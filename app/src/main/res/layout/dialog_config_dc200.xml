@@ -45,7 +45,8 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:background="@drawable/spinner_border"
-                    android:gravity="end"
+                    android:entries="@array/spinner_items_dc200"
+                    android:gravity="right"
                     android:textSize="16sp" />
 
             </RelativeLayout>
@@ -99,7 +100,7 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:text="Config 2"
+                    android:text="Config"
                     android:textSize="12sp" />
 
             </RelativeLayout>

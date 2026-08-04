@@ -51,8 +51,8 @@ data class BleDevice(var device:BluetoothDevice, var rssi:Int, var name:String?)
 
 class BleCallback : BluetoothGattCallback() {
     private val TAG = BleCallback::class.java.simpleName
-    private var uiCallback: MainActivity? = null
-    private var uiDebugCallback: DebugActivity? = null
+    private lateinit var uiCallback: MainActivity
+    private lateinit var uiDebugCallback: DebugActivity
 
     fun setUiCallback(uiCallback: MainActivity) {
         this.uiCallback = uiCallback
@@ -63,33 +63,27 @@ class BleCallback : BluetoothGattCallback() {
     }
 
     /**
-     * 连接状态回调
+     * 连接状态回调serviceUuid.isNullOrEmpty()
      */
     @SuppressLint("MissingPermission")
     override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-        Log.d(TAG, "onConnectionStateChange: status=$status, newState=$newState")
-        
-        if (status != BluetoothGatt.GATT_SUCCESS) {
-            Log.e(TAG, "Bluetooth GATT operation failed with status: $status")
-            uiCallback?.stateEvent("Bluetooth connection failed: $status")
-            // 当连接失败时，确保正确关闭GATT资源
-            safeCloseGatt(gatt)
+        if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+            // 断开连接时无论 status 是什么都要更新状态，否则异常断开无法检测
             connectState = false
+            uiCallback.stateEvent("Bluetooth Disconnect")
             return
         }
 
-        uiCallback?.stateEvent(
+        if (status != BluetoothGatt.GATT_SUCCESS) {
+            Log.e(TAG, "onConnectionStateChange: $status")
+            return
+        }
+
+        uiCallback.stateEvent(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    //获取MtuSize
                     gatt.requestMtu(512)
                     "connect success, wait enable notification..."
-                }
-                BluetoothProfile.STATE_DISCONNECTED -> {
-                    connectState = false
-                    // 确保在断开连接时正确关闭GATT资源
-                    safeCloseGatt(gatt)
-                    "Bluetooth Disconnect"
                 }
                 else -> "onConnectionStateChange: $status"
             }
@@ -97,36 +91,13 @@ class BleCallback : BluetoothGattCallback() {
     }
 
     /**
-     * 安全关闭GATT连接并释放资源
-     */
-    @SuppressLint("MissingPermission")
-    private fun safeCloseGatt(gatt: BluetoothGatt?) {
-        gatt?.let { gattInstance ->
-            try {
-                gattInstance.disconnect()
-                gattInstance.close()
-                Log.d(TAG, "GATT connection closed successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error closing GATT connection: ${e.message}")
-            }
-        }
-    }
-
-    /**
      * 获取MtuSize回调
      */
     @SuppressLint("MissingPermission")
     override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
-        Log.d(TAG, "onMtuChanged: mtu=$mtu, status=$status")
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            //发现服务
-            gatt.discoverServices()
-        } else {
-            Log.e(TAG, "Failed to set MTU size: $status")
-            uiCallback?.stateEvent("Failed to set MTU size: $status")
-            safeCloseGatt(gatt)
-            connectState = false
-        }
+//        uiCallback.stateEvent("get mtu size：$mtu")
+        //发现服务
+        gatt.discoverServices()
     }
 
     /**
@@ -134,10 +105,8 @@ class BleCallback : BluetoothGattCallback() {
      */
     @SuppressLint("MissingPermission")
     override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-        Log.d(TAG, "onServicesDiscovered: status=$status")
-        uiCallback?.stateEvent(if (!BleHelper.enableIndicateNotification(gatt)) {
-            safeCloseGatt(gatt)
-            "open notification error"
+        uiCallback.stateEvent(if (!BleHelper.enableIndicateNotification(gatt)) { gatt.disconnect()
+            "open notification error "
         } else "find server code: $status")
     }
 
@@ -145,30 +114,22 @@ class BleCallback : BluetoothGattCallback() {
      * 特性改变回调
      */
     override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-        val content = characteristic.value.map { it.toChar() }
-            .joinToString(separator = "")
-        Log.d("ble-rev", " = $characteristic")
-        Log.d("ble-rev", "value = 0x" + ByteUtils.bytesToHexString(characteristic.value).toString().uppercase(Locale.getDefault()))
+        val content = characteristic.value.map { it.toChar() } // 将每个整数转换为对应的字符
+            .joinToString(separator = "") // 将字符拼接成字符串
+        Log.d("ble-rev", " = $characteristic");
+        Log.d("ble-rev", "value = 0x" + ByteUtils.bytesToHexString(characteristic.value).toString().uppercase(Locale.getDefault()));
 
-        if (debugActivityPageRun == 1) {
-            uiDebugCallback?.let { callback ->
-                try {
-                    callback.stateEvent("$content")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error updating debug UI: ${e.message}")
-                }
-            } ?: run {
-                Log.e(TAG, "uiDebugCallback is not initialized")
+        if(debugActivityPageRun == 1){
+            if (uiDebugCallback != null) {
+                uiDebugCallback.stateEvent("$content")
+            } else {
+                Log.e("ble-error", "uiDebugCallback is not initialized")
             }
-        } else {
-            try {
-                streamRev(
-                    ByteUtils.bytesToHexString(characteristic.value).toString()
-                        .uppercase(Locale.getDefault())
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing received data: ${e.message}")
-            }
+        }else {
+            streamRev(
+                ByteUtils.bytesToHexString(characteristic.value).toString()
+                    .uppercase(Locale.getDefault())
+            )
         }
     }
 
@@ -177,11 +138,9 @@ class BleCallback : BluetoothGattCallback() {
      */
     override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
         val command = ByteUtils.bytesToHexString(characteristic.value)
-        Log.d(TAG, "onCharacteristicWrite: status=$status, command=$command")
-        if (status != BluetoothGatt.GATT_SUCCESS) {
-            Log.e(TAG, "Write failed (status=$status), allowing immediate retry for command: $command")
-            mDeviceEvent.commandRetryWait = 0
-        }
+//        if(!OTAState) {
+//            uiCallback.stateEvent("send: ${if (status == BluetoothGatt.GATT_SUCCESS) "success：" else "fail："}$command code: $status")
+//        }
     }
 
     /**
@@ -191,7 +150,7 @@ class BleCallback : BluetoothGattCallback() {
     override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
         if (BleUuid.DESCRIPTOR_UUID == descriptor.toString().lowercase(Locale.getDefault()) ||
             BleUuid.DESCRIPTOR_UUID == descriptor.uuid.toString().uppercase(Locale.getDefault())) {
-            uiCallback?.stateEvent(if (status == BluetoothGatt.GATT_SUCCESS) {
+            uiCallback.stateEvent(if (status == BluetoothGatt.GATT_SUCCESS) {
                 gatt.apply {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) readPhy()
                     readDescriptor(descriptor)
@@ -199,19 +158,14 @@ class BleCallback : BluetoothGattCallback() {
                     connectState = true
                 }
                 "open notification successful"
-            } else {
-                safeCloseGatt(gatt)
-                "open notification fail"
-            })
+            } else "open notification fail")
         }
     }
 
     /**
      * 读取远程设备的信号强度回调
      */
-    override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) {
-        uiCallback?.stateEvent("onReadRemoteRssi: rssi: $rssi")
-    }
+    override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssi: Int, status: Int) = uiCallback.stateEvent("onReadRemoteRssi: rssi: $rssi")
 
     /**
      * UI回调
@@ -230,58 +184,21 @@ object BleHelper {
     /**
      * 启用指令通知
      */
-    fun enableIndicateNotification(gatt: BluetoothGatt?): Boolean {
-        gatt ?: run {
-            Log.e("BleHelper", "BluetoothGatt is null, cannot enable notifications")
-            return false
-        }
-        
-        return try {
-            val service = gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
-            service ?: run {
-                Log.e("BleHelper", "Service not found: ${BleUuid.SERVICE_UUID}")
-                return false
-            }
-            
-            val characteristic = service.getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_INDICATE_UUID))
-            characteristic ?: run {
-                Log.e("BleHelper", "Characteristic not found: ${BleUuid.CHARACTERISTIC_INDICATE_UUID}")
-                return false
-            }
-            
-            setCharacteristicNotification(gatt, characteristic)
-        } catch (e: Exception) {
-            Log.e("BleHelper", "Error enabling notifications: ${e.message}")
-            false
-        }
-    }
+    fun enableIndicateNotification(gatt: BluetoothGatt): Boolean =
+        setCharacteristicNotification(gatt, gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
+            .getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_INDICATE_UUID)))
 
     /**
      * 设置特征通知
      * return true, if the write operation was initiated successfully
      */
     @SuppressLint("MissingPermission")
-    private fun setCharacteristicNotification(gatt: BluetoothGatt, gattCharacteristic: BluetoothGattCharacteristic): Boolean {
-        return try {
-            if (gatt.setCharacteristicNotification(gattCharacteristic, true)) {
-                val descriptor = gattCharacteristic.getDescriptor(UUID.fromString(BleUuid.DESCRIPTOR_UUID))
-                descriptor ?: run {
-                    Log.e("BleHelper", "Descriptor not found: ${BleUuid.DESCRIPTOR_UUID}")
-                    return false
-                }
-                
-                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gatt.writeDescriptor(descriptor)
-            } else {
-                Log.e("BleHelper", "Failed to set characteristic notification")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e("BleHelper", "Error setting characteristic notification: ${e.message}")
-            false
-        }
-    }
-    
+    private fun setCharacteristicNotification(gatt: BluetoothGatt, gattCharacteristic: BluetoothGattCharacteristic): Boolean =
+        if (gatt.setCharacteristicNotification(gattCharacteristic, true))
+            gatt.writeDescriptor(gattCharacteristic.getDescriptor(UUID.fromString(BleUuid.DESCRIPTOR_UUID))
+                .apply {
+                    value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                }) else false
     /**
      * 发送指令
      * @param gatt gatt
@@ -289,72 +206,18 @@ object BleHelper {
      * @param isResponse 是否响应
      */
     @SuppressLint("MissingPermission")
-    fun sendCommand(gatt: BluetoothGatt?, command: String, isResponse: Boolean = true): Boolean {
-        gatt ?: run {
-            Log.e("BleHelper", "BluetoothGatt is null, cannot send command")
-            return false
-        }
-        
-        if (!connectState) {
-            Log.e("BleHelper", "Bluetooth not connected, cannot send command")
-            return false
-        }
-        
-        return try {
-            val service = gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
-            service ?: run {
-                Log.e("BleHelper", "Service not found: ${BleUuid.SERVICE_UUID}")
-                return false
-            }
-            
-            val characteristic = service.getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_WRITE_UUID))
-            characteristic ?: run {
-                Log.e("BleHelper", "Characteristic not found: ${BleUuid.CHARACTERISTIC_WRITE_UUID}")
-                return false
-            }
-            
-            characteristic.writeType = if (isResponse) WRITE_TYPE_DEFAULT else WRITE_TYPE_NO_RESPONSE
-            characteristic.value = ByteUtils.hexStringToBytes(command)
-            gatt.writeCharacteristic(characteristic)
-        } catch (e: Exception) {
-            Log.e("BleHelper", "Error sending command: ${e.message}")
-            false
-        }
-    }
+    fun sendCommand(gatt: BluetoothGatt, command: String, isResponse: Boolean = true): Boolean =
+        gatt.writeCharacteristic(gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
+            .getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_WRITE_UUID)).apply {
+                writeType = if (isResponse) WRITE_TYPE_DEFAULT else WRITE_TYPE_NO_RESPONSE
+                value = ByteUtils.hexStringToBytes(command) })
 
     @SuppressLint("MissingPermission")
-    fun sendCommandString(gatt: BluetoothGatt?, command: String, isResponse: Boolean = false): Boolean {
-        gatt ?: run {
-            Log.e("BleHelper", "BluetoothGatt is null, cannot send command string")
-            return false
-        }
-        
-        if (!connectState) {
-            Log.e("BleHelper", "Bluetooth not connected, cannot send command string")
-            return false
-        }
-        
-        return try {
-            val service = gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
-            service ?: run {
-                Log.e("BleHelper", "Service not found: ${BleUuid.SERVICE_UUID}")
-                return false
-            }
-            
-            val characteristic = service.getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_WRITE_UUID))
-            characteristic ?: run {
-                Log.e("BleHelper", "Characteristic not found: ${BleUuid.CHARACTERISTIC_WRITE_UUID}")
-                return false
-            }
-            
-            characteristic.writeType = if (isResponse) WRITE_TYPE_DEFAULT else WRITE_TYPE_NO_RESPONSE
-            characteristic.value = command.encodeToByteArray()
-            gatt.writeCharacteristic(characteristic)
-        } catch (e: Exception) {
-            Log.e("BleHelper", "Error sending command string: ${e.message}")
-            false
-        }
-    }
+    fun sendCommandString(gatt: BluetoothGatt, command: String, isResponse: Boolean = false): Boolean =
+        gatt.writeCharacteristic(gatt.getService(UUID.fromString(BleUuid.SERVICE_UUID))
+            .getCharacteristic(UUID.fromString(BleUuid.CHARACTERISTIC_WRITE_UUID)).apply {
+                writeType = if (isResponse) WRITE_TYPE_DEFAULT else WRITE_TYPE_NO_RESPONSE
+                value = command.encodeToByteArray() })
 }
 
 object ByteUtils {
@@ -423,10 +286,10 @@ object ByteUtils {
         val sb = StringBuilder()
         for (i in byteArray.indices) {
             var hex = Integer.toHexString((byteArray[i]).toInt() and 0xFF)
-            if (hex.length == 1) {
+            if(hex.length == 1){
                 hex = "0$hex"
+                sb.append(hex.uppercase(Locale.getDefault()))
             }
-            sb.append(hex.uppercase(Locale.getDefault()))
         }
         return sb.toString()
     }

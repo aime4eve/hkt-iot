@@ -1,29 +1,15 @@
-# Built application files / build outputs
 *.iml
 .gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
-app/build/
-app/release/
-
-# Local configuration (SDK paths, etc.)
-/local.properties
 local.properties
-
-# macOS
-.DS_Store
-
-# Signing / keystore files (DO NOT COMMIT)
-*.jks
-*.keystore
-keystore.properties
-
-# IDE / editor / AI tool configs
-.idea/
-.vscode/
-.claude/
-.cursor/
-.opencode/
-.trae/

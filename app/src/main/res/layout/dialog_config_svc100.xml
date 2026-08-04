@@ -46,6 +46,7 @@
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
                     android:background="@drawable/spinner_border"
+                    android:entries="@array/spinner_items_vol"
                     android:textSize="16sp" />
 
             </RelativeLayout>
@@ -78,6 +79,7 @@
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
                     android:background="@drawable/spinner_border"
+                    android:entries="@array/spinner_items_valve_mode"
                     android:textSize="10sp" />
 
             </RelativeLayout>
@@ -146,6 +148,7 @@
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
                     android:background="@drawable/spinner_border"
+                    android:entries="@array/spinner_items_auto_power_on"
                     android:textSize="10sp" />
 
             </RelativeLayout>
@@ -177,6 +180,7 @@
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
                     android:background="@drawable/spinner_border"
+                    android:entries="@array/spinner_items_timezone"
                     android:textSize="10sp" />
 
             </RelativeLayout>
@@ -230,7 +234,7 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:text="Config 3"
+                    android:text="Config"
                     android:textSize="12sp" />
 
             </RelativeLayout>

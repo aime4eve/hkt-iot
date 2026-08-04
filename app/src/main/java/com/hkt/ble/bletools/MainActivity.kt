@@ -8,10 +8,15 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothManager
+import android.bluetooth.le.BluetoothLeScanner
+//import android.bluetooth.le.BluetoothLeScanner
+//import android.bluetooth.le.ScanCallback
+//import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import no.nordicsemi.android.support.v18.scanner.BluetoothLeScannerCompat
 import no.nordicsemi.android.support.v18.scanner.ScanCallback
 import no.nordicsemi.android.support.v18.scanner.ScanResult
-import no.nordicsemi.android.support.v18.scanner.ScanSettings
+//import no.nordicsemi.android.support.v18.scanner.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -94,12 +99,11 @@ class MyActivity : AppCompatActivity(){
 class BaseApp : Application() {
 
     companion object {
+        fun instance(): Context? {
+            return instance()
+        }
         @SuppressLint("StaticFieldLeak")
         lateinit var context: Context
-        
-        fun instance(): Context {
-            return context
-        }
     }
 
     override fun onCreate() {
@@ -110,39 +114,23 @@ class BaseApp : Application() {
 
 
 class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
-    
-    /**
-     * 根据设备名称解析设备类型
-     */
-    private fun parseDeviceType(deviceName: String): Int {
-        return when {
-            deviceName.contains("UDS100") -> DeviceNameEnum.NAME_UDS100.ordinal
-            deviceName.contains("SVC100") -> DeviceNameEnum.NAME_SVC100.ordinal
-            deviceName.contains("MPS100") || deviceName.contains("M_") ->
-                DeviceNameEnum.NAME_MPS100.ordinal
-            deviceName.contains("DC200") || deviceName.contains("DC201") ||
-            deviceName.contains("EPS100") || deviceName.contains("E_") ||
-            deviceName.contains("PS100") -> DeviceNameEnum.NAME_DC200.ordinal
-            else -> DeviceNameEnum.VALUE_NULL.ordinal
-        }
-    }
 
-    // 视图组件引用
-    private lateinit var btImage: ImageView
-    private lateinit var btTip: TextView
-    private lateinit var rvDeviceList: RecyclerView
-    
-    private var bluetoothAdapter: BluetoothAdapter? = null
-    private var bluetoothLeScanner: BluetoothLeScannerCompat? = null
+    private lateinit var bluetoothAdapter: BluetoothAdapter
+    private lateinit var bluetoothLeScanner: BluetoothLeScanner
 
 //    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var adapterBluetoothList: RecyclerViewListAdapter
 
+    // 缓存的 View 引用，避免在热路径中重复 findViewById
+    private lateinit var btImage: ImageView
+    private lateinit var btTip: TextView
+    private lateinit var rvDeviceList: RecyclerView
+
     //蓝牙列表
     private var mList: MutableList<BleDevice> = ArrayList()
 
-    private var addressSet: HashSet<String> = HashSet()
-    private var deviceIndexMap: HashMap<String, Int> = HashMap()
+    //地址列表
+    private var addressList: MutableList<String> = ArrayList()
 
     private var bleHandler: Handler? = Handler(Looper.getMainLooper())
 
@@ -151,67 +139,37 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
     //当前是否扫描
     private var isScanning = false
 
-    // 当前扫描轮次（0-2）
-    private var scanCycleCount = 0
+    //缓存的 SP 过滤值，在 scan() 时刷新，避免每次扫描结果都读 SP
+    private var filterNullName = false
+    private var filterRssi = -100
 
-    //当前扫描设备是否过滤设备名称为Null的设备
-    private var isScanNullNameDevice = true
-
-    private var cachedRssiThreshold = -100
+    // 扫描动画延迟 3 秒后再展示设备列表
+    private var scanAnimationDelay = false
 
     // 想要连接的蓝牙名称
     private var bandNameDevice = ""
     private var isBand = false
 
-    private var pendingUiUpdate = false
-
-    private val uiUpdateRunnable = Runnable {
-        if (mList.size > 0) {
-            btImage.visibility = View.GONE
-            btTip.visibility = View.GONE
-            rvDeviceList.visibility = View.VISIBLE
-            animationRunning = false
-        } else {
-            btImage.visibility = View.VISIBLE
-            rvDeviceList.visibility = View.GONE
-        }
-        adapterBluetoothList.updateItems(mList.map { it.copy() })
-        pendingUiUpdate = false
-    }
-
     private val processDialogFragment = ProcessDialogFragment()
 
     companion object MainActivity{
-        private var gatt: BluetoothGatt? = null
-        fun getGatt(): BluetoothGatt? {
+        private lateinit var gatt: BluetoothGatt
+        fun getGatt(): BluetoothGatt {
             return gatt
-        }
-        fun setGatt(value: BluetoothGatt) {
-            gatt = value
-        }
-
-        /**
-         * Determine whether to filter the device based on name and settings
-         * @param isScanNullNameDevice Whether to filter null name devices
-         * @param deviceName The name of the device
-         * @return true if the device should be filtered (skipped), false otherwise
-         */
-        fun shouldFilterDevice(isScanNullNameDevice: Boolean, deviceName: String?): Boolean {
-            return isScanNullNameDevice && deviceName == null
         }
     }
 
-    private val scanCallback = object : ScanCallback() {
+    private val scanCallback = object : android.bluetooth.le.ScanCallback() {
         @SuppressLint("MissingPermission")
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
+        override fun onScanResult(callbackType: Int, result: android.bluetooth.le.ScanResult) {
             super.onScanResult(callbackType, result)
             // 处理扫描结果，比如显示设备名
             val name = result.device.name ?: "N/A"
             addDeviceList(BleDevice(result.device, result.rssi, name))
-            Log.d("BluetoothScan", "Found device: ${result.device.name} (${result.device.address})")
+//            Log.d("BluetoothScan", "Found device: ${result.device.name} (${result.device.address})")
         }
 
-        override fun onBatchScanResults(results: List<ScanResult>) {
+        override fun onBatchScanResults(results: List<android.bluetooth.le.ScanResult>) {
             super.onBatchScanResults(results)
             // 处理批量扫描结果（如果需要）
         }
@@ -273,16 +231,13 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             .setPositiveButton(getString(R.string.go_to_settings)) { _, _ ->
                 startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             }
-            .setNegativeButton(getString(R.string.deny)) { _, _ -> 
-                // 不退出应用，只显示提示
-                Toast.makeText(this, "部分功能可能受限", Toast.LENGTH_SHORT).show()
-                // 继续初始化界面，即使存储权限被拒绝
-                initView()
-            }
+            .setNegativeButton(getString(R.string.deny)) { _, _ -> finish() }
             .setCancelable(false)
             .show()
     }
 
+
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -295,9 +250,8 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                     .filter { it.second != PackageManager.PERMISSION_GRANTED }
                     .map { it.first }
                 if (deniedPermissions.isEmpty()) {
-                    // 所有权限已授予，初始化界面
+                    // 所有权限已授予
                     Toast.makeText(this, getString(R.string.all_permissions_granted), Toast.LENGTH_SHORT).show()
-                    initView()
                 } else {
                     // 打印未通过的权限
                     val deniedPermissionsString = deniedPermissions.joinToString()
@@ -323,17 +277,10 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                         data = Uri.fromParts("package", packageName, null)
                     })
                 }
-                .setNegativeButton(getString(R.string.deny)) { _, _ -> 
-                    // 不退出应用，只显示提示
-                    Toast.makeText(this, "蓝牙功能可能受限", Toast.LENGTH_SHORT).show()
-                    // 继续初始化界面，即使关键权限被拒绝
-                    initView()
-                }
+                .setNegativeButton(getString(R.string.deny)) { _, _ -> finish() }
                 .show()
         } else {
             Toast.makeText(this, getString(R.string.partial_function_restricted), Toast.LENGTH_SHORT).show()
-            // 即使部分权限被拒绝，也继续初始化界面
-            initView()
         }
     }
 
@@ -343,39 +290,23 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
         val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
-        
-        // 检查蓝牙是否支持和已启用
+        bluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner!!
+
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, "Not support Bluetooth Low Energy", Toast.LENGTH_SHORT).show()
-        }
-        
-        if (bluetoothAdapter == null) {
-            // 设备不支持蓝牙
-            Toast.makeText(this, "Bluetooth not supported on this device", Toast.LENGTH_SHORT).show()
-        }
-        
-        if (!bluetoothAdapter!!.isEnabled) {
-            // 如果蓝牙未启用，显示提示但不阻止应用启动
-            Toast.makeText(this, "Bluetooth is not enabled. Some features may be limited.", Toast.LENGTH_LONG).show()
-        }
-        
-        // 安全地获取 BluetoothLeScanner（如果蓝牙已启用）
-        if (bluetoothAdapter != null && bluetoothAdapter!!.isEnabled) {
-            val leScanner = BluetoothLeScannerCompat.getScanner()
-            if (leScanner == null) {
-                Toast.makeText(this, "Bluetooth LE scanner not available", Toast.LENGTH_SHORT).show()
-            } else {
-                bluetoothLeScanner = leScanner
-                Log.d("BluetoothScan", "Scanner initialized: $bluetoothLeScanner")
-            }
+            return
         }
 
         if (!checkAllPermissionsGranted()) {
             requestPermissions()
-        } else {
-            // 所有权限已授予，初始化界面
-            initView()
         }
+        initView()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从 DeviceActivity 返回时刷新工具栏扫描图标状态
+        invalidateOptionsMenu()
     }
 
     private fun isValidHex16(hexString: String): Boolean {
@@ -384,66 +315,34 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        
-        // 处理蓝牙启用请求结果
-        if (requestCode == REQUEST_ENABLE_BT) {
-            if (resultCode == RESULT_OK) {
-                // 蓝牙已成功启用，继续初始化
-                try {
-                    val leScanner = BluetoothLeScannerCompat.getScanner()
-                    if (leScanner == null) {
-                        Toast.makeText(this, "Bluetooth LE scanner not available", Toast.LENGTH_SHORT).show()
-                        // 即使蓝牙扫描器不可用，也继续初始化界面
-                        initView()
-                        return
-                    }
-                    bluetoothLeScanner = leScanner
-                    
-                    if (!checkAllPermissionsGranted()) {
-                        requestPermissions()
-                    } else {
-                        initView()
-                    }
-                } catch (e: Exception) {
-                    Log.e("BluetoothError", "Failed to initialize Bluetooth after enable: ${e.message}")
-                    Toast.makeText(this, "Failed to initialize Bluetooth: ${e.message}", Toast.LENGTH_SHORT).show()
-                    // 即使蓝牙初始化失败，也继续显示界面
-                    initView()
-                }
-            } else {
-                // 用户拒绝启用蓝牙，显示提示但不退出应用
-                Toast.makeText(this, "Bluetooth is not enabled. Some features may be limited.", Toast.LENGTH_LONG).show()
-                // 继续初始化界面
-                if (!checkAllPermissionsGranted()) {
-                    requestPermissions()
-                } else {
-                    initView()
-                }
-            }
-            return
-        }
 
-        val result: IntentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
+        val result: IntentResult =
+            IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result.contents == null) {
             Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show()
         } else {
-            if (isValidHex16(result.contents)) {
+            if (isValidHex16(result.contents))
+            {
                 Toast.makeText(this, "Scanned: " + result.contents, Toast.LENGTH_LONG).show()
 
-                val locale = resources.configuration.locales.get(0)
+                val locale =
+                    resources.configuration.locales.get(0)
                 val tipText = when (locale.language) {
                     "zh" -> "请等待蓝牙扫描完成并自动连接"
                     "en" -> "Please wait for the Bluetooth scan to complete and automatically connect"
-                    else -> "Please wait for the Bluetooth scan to complete and automatically connect"
+                    // 可以添加更多语言判断分支，如日语等
+                    else -> "Please wait for the Bluetooth scan to complete and automatically connect" // 默认显示英文或其他合适的提示语
                 }
                 Toast.makeText(this, tipText, Toast.LENGTH_LONG).show()
 
+//                    bandNameDevice = result.contents
+                // 提取后6位作为bandNameDevice
                 bandNameDevice = result.contents.substring(10)
-                Log.d("bandNameDevice", bandNameDevice)
-
-                scan()
                 isBand = true
-            } else {
+                // 在这里处理扫描结果，例如显示在UI上
+                Log.d("bandNameDevice", bandNameDevice)
+            }
+        else {
                 Toast.makeText(this, "Error: " + result.contents, Toast.LENGTH_LONG).show()
             }
         }
@@ -457,7 +356,6 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
             val sbRssi = findViewById<SeekBar>(R.id.sb_rssi)
             val tvRssi = findViewById<TextView>(R.id.tv_rssi)
-            val switchFilterNullNames = findViewById<android.widget.Switch>(R.id.switch_filter_null_names)
             val tvClose = findViewById<TextView>(R.id.tv_close)
 
             // 设置SeekBar的初始值
@@ -465,9 +363,6 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             val initialRssi = getInt(RSSI, 100)
             sbRssi?.progress = initialRssi
             tvRssi?.text = "-$initialRssi dBm"
-
-            // 设置Switch的初始状态
-            switchFilterNullNames?.isChecked = isScanNullNameDevice
 
             // 设置SeekBar的监听器
             sbRssi?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -478,48 +373,50 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                 override fun onStartTrackingTouch(seekBar: SeekBar) {}
 
                 override fun onStopTrackingTouch(seekBar: SeekBar) {
+                    // 这里可以保存progress到SharedPreferences或其他地方
                     seekBar.progress.putInt(RSSI)
-                    cachedRssiThreshold = -seekBar.progress
+                    // 更新缓存的过滤值并重新过滤列表
+                    filterRssi = -seekBar.progress
                     filterDeviceList()
-                    scheduleUiUpdate()
+                    adapterBluetoothList.updateItems(mList)
                 }
             })
-
-            switchFilterNullNames?.setOnCheckedChangeListener { _, isChecked ->
-                isScanNullNameDevice = isChecked
-                filterDeviceList()
-                scheduleUiUpdate()
-            }
-
             tvClose?.setOnClickListener { dismiss() }
             show()
         }
     /**
      * 扫描蓝牙
-     * @param isNewSession 是否是新的一轮扫描会话（如果是，则清空列表并重置计数）
      */
     @SuppressLint("MissingPermission")
-    private fun scan(isNewSession: Boolean = true) {
+    private fun scan() {
 
-        val btImage = findViewById<ImageView>(R.id.bt_image)
-        val btTip = findViewById<TextView>(R.id.bt_tip)
-        val rvDeviceList = findViewById<RecyclerView>(R.id.rv_device_list)
-        btTip.visibility  = View.GONE
-        btImage.visibility  = View.VISIBLE
-        rvDeviceList.visibility  = View.GONE
+        btTip.visibility = View.GONE
+        btImage.visibility = View.VISIBLE
+        rvDeviceList.visibility = View.GONE
 
-        if (isNewSession) {
-            addressSet.clear()
-            deviceIndexMap.clear()
-            mList.clear()
-            adapterBluetoothList.updateItems(ArrayList())
-            scanCycleCount = 0
-            cachedRssiThreshold = -getInt(RSSI, 100)
-        }
+        addressList.clear()
+        mList.clear()
+
+        // 缓存 SP 过滤值，避免每个扫描结果都读 SP
+        filterNullName = getBoolean("N/A")
+        filterRssi = -getInt(RSSI, 100)
 
         isScanning = true
         animationRunning = true
         isBand = false
+        scanAnimationDelay = true
+
+        // 3 秒动画延迟后展示设备列表
+        bleHandler?.postDelayed({
+            scanAnimationDelay = false
+            if (mList.size > 0) {
+                btImage.visibility = View.GONE
+                btTip.visibility = View.GONE
+                rvDeviceList.visibility = View.VISIBLE
+                animationRunning = false
+                adapterBluetoothList.updateItems(mList)
+            }
+        }, 1500)
 
 
         if (bluetoothAdapter?.isEnabled == false) {
@@ -529,50 +426,16 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             return
         }
 
-        bluetoothLeScanner?.let { scanner ->
+        // 关闭上一次连接的 GATT（此时 StreamThread 已退出，安全）
+        try { getGatt().close() } catch (_: Exception) {}
+
+        bluetoothLeScanner.let { scanner ->
             scanner.stopScan(scanCallback)
             val scanSettings = ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-                .setReportDelay(0) // Set to 0 for immediate results
                 .build()
             scanner.startScan(null, scanSettings, scanCallback)
-
-            // Auto stop scan after 10 seconds
-            bleHandler?.postDelayed({
-                if (isScanning) {
-                    onScanCycleComplete()
-                }
-            }, 10000)
-        } ?: run {
-            Toast.makeText(this, "Bluetooth scanner not available", Toast.LENGTH_SHORT).show()
-            isScanning = false
-            animationRunning = false
-        }
-    }
-
-    /**
-     * 单次扫描周期完成
-     */
-    @SuppressLint("MissingPermission")
-    private fun onScanCycleComplete() {
-        // 停止当前扫描
-        bluetoothLeScanner?.stopScan(scanCallback)
-        
-        scanCycleCount++
-        Log.d("BluetoothScan", "Scan cycle $scanCycleCount complete")
-        
-        if (scanCycleCount < 3) {
-            // 如果还未满3次，稍作延迟后继续下一次扫描（不清除列表）
-            bleHandler?.postDelayed({
-                if (isScanning) { // 确保用户没有手动停止
-                    scan(isNewSession = false)
-                }
-            }, 500)
-        } else {
-            // 已满3次，彻底停止
-            stopScan()
-            Toast.makeText(this, "Scan complete (3 cycles)", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -582,14 +445,6 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
      */
     @SuppressLint("MissingPermission")
     private fun stopScan() {
-        bleHandler?.removeCallbacksAndMessages(null)
-
-        if (pendingUiUpdate) {
-            pendingUiUpdate = false
-            adapterBluetoothList.updateItems(mList.map { it.copy() })
-        }
-
-        scanCycleCount = 0
 
         btTip.visibility = View.VISIBLE
         btImage.visibility = View.GONE
@@ -597,9 +452,10 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
         isBand = false
         animationRunning = false
+        scanAnimationDelay = false
         if (isScanning) {
             isScanning = false
-            bluetoothLeScanner?.stopScan(scanCallback)
+            bluetoothLeScanner.stopScan(scanCallback)
         }
     }
 
@@ -608,44 +464,48 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
      */
     @SuppressLint("MissingPermission")
     private fun addDeviceList(bleDevice: BleDevice) {
-        if (MainActivity.shouldFilterDevice(isScanNullNameDevice, bleDevice.device.name)) {
+        //过滤设备名为null的设备
+        if (bleDevice.device.name == null) {
             return
         }
 
-        if (bleDevice.rssi < cachedRssiThreshold) {
+        if (bleDevice.rssi < filterRssi) {
             return
         }
 
+        //检查之前所添加的设备地址是否存在当前地址列表
         val address = bleDevice.device.address
-        if (addressSet.contains(address)) {
-            deviceIndexMap[address]?.let { index ->
-                mList[index].rssi = bleDevice.rssi
-                if (mList[index].name == "N/A" && bleDevice.device.name != null) {
-                    mList[index].name = bleDevice.device.name
-                }
-            }
-            scheduleUiUpdate()
-        } else {
-            addressSet.add(address)
-            val index = mList.size
+        if (!addressList.contains(address)) {
+            addressList.add(address)
             mList.add(bleDevice)
-            deviceIndexMap[address] = index
 
-            scheduleUiUpdate()
+            // 仅在新增设备且动画延迟结束后才刷新列表
+            if (!scanAnimationDelay && mList.size > 0) {
+                if (mList.size == 1) {
+                    btImage.visibility = View.GONE
+                    btTip.visibility = View.GONE
+                    rvDeviceList.visibility = View.VISIBLE
+                    animationRunning = false
+                }
+                adapterBluetoothList.updateItems(mList)
+            }
+        }
 
-            if (isBand && bleDevice.device.name?.contains(bandNameDevice) == true) {
+        if(isBand){
+            if(bleDevice.device.name.contains(bandNameDevice)){
                 isBand = false
                 onDeviceClicked(bleDevice.device)
                 mDeviceDataString.name = bleDevice.device.name
-                mDeviceData.name = parseDeviceType(mDeviceDataString.name)
+                when {
+                    mDeviceDataString.name.contains("UDS100") -> mDeviceData.name = DeviceNameEnum.NAME_UDS100.ordinal
+                    mDeviceDataString.name.contains("SVC100") -> mDeviceData.name = DeviceNameEnum.NAME_SVC100.ordinal
+                    mDeviceDataString.name.contains("DC200") || mDeviceDataString.name.contains("DC201") ||
+                    mDeviceDataString.name.contains("EPS100") || mDeviceDataString.name.contains("MPS100") ||
+                    mDeviceDataString.name.contains("E_") || mDeviceDataString.name.contains("M_") ||
+                    mDeviceDataString.name.contains("PS100") -> mDeviceData.name = DeviceNameEnum.NAME_DC200.ordinal
+                    else -> mDeviceData.name = DeviceNameEnum.VALUE_NULL.ordinal
+                }
             }
-        }
-    }
-
-    private fun scheduleUiUpdate() {
-        if (!pendingUiUpdate) {
-            pendingUiUpdate = true
-            bleHandler?.postDelayed(uiUpdateRunnable, 300)
         }
     }
 
@@ -658,14 +518,10 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             val mIterator = mList.iterator()
             while (mIterator.hasNext()) {
                 val next = mIterator.next()
-                if (MainActivity.shouldFilterDevice(isScanNullNameDevice, next.device.name) || next.rssi < cachedRssiThreshold) {
-                    addressSet.remove(next.device.address)
+                if ((filterNullName && next.device.name == null) || next.rssi < filterRssi) {
+                    addressList.remove(next.device.address)
                     mIterator.remove()
                 }
-            }
-            deviceIndexMap.clear()
-            mList.forEachIndexed { index, bleDevice ->
-                deviceIndexMap[bleDevice.device.address] = index
             }
         }
     }
@@ -761,6 +617,8 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                 integrator.setBarcodeImageEnabled(true)
                 integrator.captureActivity = (QrCodeActivity::class.java)
                 integrator.initiateScan()
+
+                scan()
             }
 
 //            else -> showMsg("Do nothing...")
@@ -785,7 +643,7 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
     @SuppressLint("MissingPermission")
     private fun connectToDevice(device: BluetoothDevice) {
-        setGatt(device.connectGatt(this@MainActivity, false, bleCallback))
+        gatt = device.connectGatt(this@MainActivity, false, bleCallback)
         bleCallback.setUiCallback(this@MainActivity)
         // 可以在这里添加连接状态的监听逻辑
     }
@@ -813,8 +671,7 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                 btImage.visibility = View.GONE
                 rvDeviceList.visibility = View.GONE
 
-                addressSet.clear()
-                deviceIndexMap.clear()
+                addressList.clear()
                 mList.clear()
                 // 取消所有回调（如果需要）
                 bleHandler?.removeCallbacksAndMessages(null)
@@ -837,21 +694,24 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
     }
 
 
+    // 处理设备点击事件的方法
     @SuppressLint("MissingPermission")
     fun onDeviceClicked(device: BluetoothDevice) {
-        if (isScanning) {
-            stopScan()
-            invalidateOptionsMenu()
-        }
 
+        // 在这里处理设备点击后的逻辑，比如停止扫描、连接设备等
         if (checkUuid()) {
+
+            isScanning = false
+            stopScan()
+            bluetoothLeScanner.stopScan(scanCallback)
             animationRunning = false
+
             btImage.visibility = View.GONE
             btTip.visibility = View.GONE
 
             processDialogFragment.show(supportFragmentManager, "")
 
-            connectTime = 0
+            // 异步连接蓝牙设备
             connectToDevice(device)
             startConnectionCheck(device)
         }
@@ -859,10 +719,10 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
     @SuppressLint("MissingPermission")
     fun initView() {
-        // 初始化视图组件引用
-        btImage = findViewById(R.id.bt_image)
-        btTip = findViewById(R.id.bt_tip)
-        rvDeviceList = findViewById(R.id.rv_device_list)
+
+        btImage = findViewById<ImageView>(R.id.bt_image)
+        btTip = findViewById<TextView>(R.id.bt_tip)
+        rvDeviceList = findViewById<RecyclerView>(R.id.rv_device_list)
 //        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
 
         btImage.visibility = View.GONE
@@ -873,11 +733,17 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
         adapterBluetoothList = RecyclerViewListAdapter(mList)
         adapterBluetoothList.setOnItemClickListener(object : RecyclerViewListAdapter.OnItemClickListener {
             override fun onItemClicked(position: Int) {
-//                Toast.makeText(this@MainActivity, "Item click: $position", Toast.LENGTH_SHORT).show()
-//                Log.w("setOnItemClickListener", "recyclerView onItemClicked")
                 onDeviceClicked(mList[position].device)
                 mDeviceDataString.name = mList[position].device.name
-                mDeviceData.name = parseDeviceType(mDeviceDataString.name)
+                when {
+                    mDeviceDataString.name.contains("UDS100") -> mDeviceData.name = DeviceNameEnum.NAME_UDS100.ordinal
+                    mDeviceDataString.name.contains("SVC100") -> mDeviceData.name = DeviceNameEnum.NAME_SVC100.ordinal
+                    mDeviceDataString.name.contains("DC200") || mDeviceDataString.name.contains("DC201") ||
+                    mDeviceDataString.name.contains("EPS100") || mDeviceDataString.name.contains("MPS100") ||
+                    mDeviceDataString.name.contains("E_") || mDeviceDataString.name.contains("M_") ||
+                    mDeviceDataString.name.contains("PS100") -> mDeviceData.name = DeviceNameEnum.NAME_DC200.ordinal
+                    else -> mDeviceData.name = DeviceNameEnum.VALUE_NULL.ordinal
+                }
             }
         })
         rvDeviceList.adapter = adapterBluetoothList
@@ -927,11 +793,10 @@ class RecyclerViewListAdapter(mList: MutableList<BleDevice>) : RecyclerView.Adap
 
     @SuppressLint("NotifyDataSetChanged")
     fun updateItems(newItems: List<BleDevice>) {
-//        Log.d("RecyclerViewListAdapter", "Updating items with size: ${newItems.size}")
-        val diffCallback = BleDeviceDiffCallback(this.items, newItems)
+        val newList = newItems.toList()  // 拷贝一份，避免与 mList 同引用导致 DiffUtil 无变化
+        val diffCallback = BleDeviceDiffCallback(this.items, newList)
         val diffResult = DiffUtil.calculateDiff(diffCallback)
-        this.items = newItems // 在这里更新数据列表
-        // 使用DiffUtil高效更新，避免使用notifyDataSetChanged
+        this.items = newList
         diffResult.dispatchUpdatesTo(this)
     }
 

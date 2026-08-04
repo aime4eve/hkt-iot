@@ -16,7 +16,7 @@ var debugActivityPageRun = 0
 
 class DebugActivity : AppCompatActivity(), BleCallback.UiCallback {
 
-    private var gatt: BluetoothGatt? = com.hkt.ble.bletools.MainActivity.getGatt()
+    private var gatt: BluetoothGatt = com.hkt.ble.bletools.MainActivity.getGatt()
     //状态缓存
 //    private var stringBuffer = StringBuffer()
     private var spannableStringBuilder = SpannableStringBuilder()
@@ -44,7 +44,7 @@ class DebugActivity : AppCompatActivity(), BleCallback.UiCallback {
                     showMsg("Please Input Command")
                     return@setOnClickListener
                 }
-                gatt?.let { BleHelper.sendCommandString(it, command, false) }
+                BleHelper.sendCommandString(gatt, command, false)
             }
         }
 

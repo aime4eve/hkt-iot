@@ -3,6 +3,7 @@
     <string-array name="spinner_items_dc200">
         <item>Fusion mode</item>
         <item>Geomagnetic only</item>
+        <item>Radar priority</item>
     </string-array>
 
     <string-array name="spinner_items_valve">

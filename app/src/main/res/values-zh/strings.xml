@@ -8,7 +8,6 @@
     <string name="critical_permissions_denied_message">蓝牙和定位权限是必需权限，请前往设置开启</string>
     <string name="partial_function_restricted">部分功能可能受限</string>
     <string name="permission_denied_log">以下权限未申请通过: %s</string>
-    <string name="filter_null_names">过滤无名称设备</string>
     <!-- res/values-zh/strings.xml -->
     <string name="storage_permissions_denied_message">存储读写权限是必需权限，请前往设置开启</string>
 </resources>

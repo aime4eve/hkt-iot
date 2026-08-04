@@ -4,13 +4,6 @@
 
     <!-- 禁止手机休眠 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" /> <!-- SD卡读写权限 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.GET_CONTENT" />
-            <category android:name="android.intent.category.OPENABLE" />
-            <data android:mimeType="application/octet-stream" />
-        </intent>
-    </queries>
     <uses-permission
         android:name="android.permission.MANAGE_DOCUMENTS"
         tools:ignore="ProtectedPermissions" />
@@ -74,7 +67,7 @@
             android:stateNotNeeded="true"
             android:windowSoftInputMode="stateAlwaysHidden"/>
 
-        <activity android:name=".DeviceActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:name=".DeviceActivity"/>
         <activity android:name=".DebugActivity"/>
     </application>
 

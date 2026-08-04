@@ -18,8 +18,11 @@
     <string name="critical_permissions_denied_message">Bluetooth and location permissions are required. Please go to settings to enable them.</string>
     <string name="partial_function_restricted">Some functions may be restricted.</string>
     <string name="permission_denied_log">The following permissions were not granted: %s</string>
-    <string name="filter_null_names">Filter devices without names</string>
     <!-- res/values/strings.xml -->
     <string name="storage_permissions_denied_message">存储读写权限是必需权限，请前往设置开启</string>
+
+    <string name="ble_disconnect_title">蓝牙已断开</string>
+    <string name="ble_disconnect_message">设备蓝牙连接已断开，即将返回扫描页面</string>
+    <string name="ok">确定</string>
 
 </resources>

@@ -60,6 +60,7 @@
                             android:layout_marginStart="10dp"
                             android:layout_marginEnd="5dp"
                             android:background="@drawable/spinner_border"
+                            android:entries="@array/spinner_items_task"
                             android:textSize="16sp" />
                     </RelativeLayout>
 
@@ -93,6 +94,7 @@
                             android:layout_centerVertical="true"
                             android:layout_marginTop="10dp"
                             android:layout_marginEnd="16dp"
+                            android:entries="@array/spinner_items_valve"
                             android:background="@drawable/spinner_border"
                             android:gravity="center"
                             android:textSize="16sp" />
@@ -127,7 +129,8 @@
                             android:layout_marginTop="10dp"
                             android:layout_marginEnd="16dp"
                             android:background="@drawable/spinner_border"
-                            android:gravity="end"
+                            android:entries="@array/spinner_items_check"
+                            android:gravity="right"
                             android:textSize="16sp" />
 
                     </RelativeLayout>
@@ -300,7 +303,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
                     android:layout_marginEnd="20dp"
-                    android:text="Config 5"
+                    android:text="Config"
                     android:textSize="12sp" />
 
                 <Button
