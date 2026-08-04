@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+    <item
+        android:id="@+id/item_bt_start"
+        android:enabled="true"
+        android:icon="@drawable/ic_ble_start"
+        android:visible="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="20dp"
+        app:showAsAction="ifRoom"
+        android:title="TODO"
+        tools:ignore="HardcodedText" />
+
+    <item
+        android:id="@+id/item_camera"
+        android:enabled="true"
+        android:icon="@drawable/ic_scan"
+        android:visible="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="20dp"
+        app:showAsAction="ifRoom"
+        android:title="TODO"
+        tools:ignore="HardcodedText" />
+    <item
+        android:id="@+id/item_filter"
+        android:title="Filter"
+        app:showAsAction="never"
+        tools:ignore="HardcodedText" />
+<!--    <item-->
+<!--        android:id="@+id/item_choose_file"-->
+<!--        android:title="ChooseFile"-->
+<!--        tools:ignore="HardcodedText" />-->
+</menu>

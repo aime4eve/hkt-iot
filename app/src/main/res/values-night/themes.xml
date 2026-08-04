@@ -1,0 +1,31 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <!--    <style name="Theme.BLETools" parent="Theme.MaterialComponents.DayNight.DarkActionBar">-->
+    <style name="Theme.BLETools" parent="Theme.AppCompat.Light">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_200</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Customize your theme here. -->
+    </style>
+
+    <style name="SwitchStyle" parent="Theme.AppCompat.Light">
+        <!--开启时的颜色-->
+        <item name="colorControlActivated">@color/colorPrimaryDark</item> <!--处于激活状态（例如选中）的图标/控件的颜色-->
+        <!--关闭时的颜色-->
+        <item name="colorSwitchThumbNormal">@color/colorPrimary</item>
+        <!--关闭时的轨迹颜色-->
+        <item name="android:colorForeground">@color/colorPrimary</item>
+    </style>
+
+    <style name="SeekBarStyle" parent="Widget.AppCompat.SeekBar">
+        <item name="colorAccent">@color/colorPrimary</item>
+    </style>
+
+</resources>

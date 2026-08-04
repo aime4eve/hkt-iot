@@ -1,0 +1,1869 @@
+package com.hkt.ble.bletools
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.app.TimePickerDialog
+import android.bluetooth.BluetoothGatt
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.DialogInterface
+import android.content.DialogInterface.OnMultiChoiceClickListener
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.text.TextUtils
+import android.util.Log
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.BaseExpandableListAdapter
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ExpandableListView
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.Spinner
+import android.widget.Switch
+import android.widget.TextView
+import android.widget.TimePicker
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.DialogFragment
+import android.provider.OpenableColumns
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+private var statusHandler: Handler? = null
+private var statusRunnable: Runnable? = null
+private var timestampHandler: Handler? = null
+private var timestampRunnable: Runnable? = null
+private var powerHandler: Handler? = null
+private var powerRunnable: Runnable? = null
+
+private var isExternalPowerUpdate = false
+private var lastPower = 0
+private var isRefreshPaused = false
+private var isPowerUpdate = false
+
+
+private fun startUpdatingStatus() {
+    // 停止之前的任务（如果有的话）
+    stopUpdatingStatus()
+
+    statusRunnable = Runnable {
+        // 每秒执行一次
+        statusHandler?.postDelayed(statusRunnable!!, 3000)
+    }
+
+    // 首次立即执行
+    statusHandler?.post(statusRunnable!!)
+}
+private fun stopUpdatingStatus() {
+    statusRunnable?.let {
+        statusHandler?.removeCallbacks(it)
+        statusRunnable = null
+    }
+}
+
+private fun startUpdatingTimestamp(timestampText: TextView) {
+    // 停止之前的任务（如果有的话）
+    stopUpdatingTimestamp()
+
+    timestampRunnable = Runnable {
+        val currentTimeMillis = System.currentTimeMillis() / 1000 // 获取当前时间的秒级时间戳
+        timestampText.text = currentTimeMillis.toString()
+        // 每秒执行一次
+        timestampHandler?.postDelayed(timestampRunnable!!, 1000)
+    }
+
+    // 首次立即执行
+    timestampHandler?.post(timestampRunnable!!)
+}
+private fun stopUpdatingTimestamp() {
+    timestampRunnable?.let {
+        timestampHandler?.removeCallbacks(it)
+        timestampRunnable = null
+    }
+}
+
+private fun updatePowerSwitchUI(@SuppressLint("UseSwitchCompatOrMaterialCode") powerSwitch: Switch, power: Int) {
+    when (power) {
+        1 -> {
+            powerSwitch.text = "ON"
+            mDeviceDataString.power = "ON"
+            powerSwitch.isChecked = true
+            Log.i("updatePowerSwitchUI", "powerSwitch is true")
+        }
+        else -> {
+            powerSwitch.text = "OFF"
+            mDeviceDataString.power = "OFF"
+            powerSwitch.isChecked = false
+            Log.i("updatePowerSwitchUI", "powerSwitch is false")
+        }
+    }
+}
+
+private fun startUpdatingPower(powerSwitch: Switch) {
+    // 停止之前的任务（如果有的话）
+    stopUpdatingPower()
+    powerHandler = Handler(Looper.getMainLooper()) // 确保在主线程上更新UI
+    powerRunnable = Runnable {
+        if(lastPower != mDeviceData.power){
+            lastPower = mDeviceData.power
+            isExternalPowerUpdate = true
+        }
+        updatePowerSwitchUI(powerSwitch, mDeviceData.power)
+//        powerHandler?.postDelayed(powerRunnable!!, 3000)
+    }
+    // 首次立即执行
+    powerHandler?.post(powerRunnable!!)
+}
+
+private fun stopUpdatingPower() {
+    powerRunnable?.let {
+        powerHandler?.removeCallbacks(it)
+        powerHandler = null
+    }
+}
+
+
+data class Group(val id: Int, val title: String, val groupType: Int)
+data class Child(val id: Int, val groupId: Int, val title: String, val word: String)
+
+class ExpandableListAdapter(private val context: Context, private var groups: List<Group>, private var children: Map<Int, List<Child>>) : BaseExpandableListAdapter() {
+
+    private var cachedConfigSVC100View: View? = null
+    private var isConfigSVC100DataPopulated = false
+    private var cachedRealtimeTaskView: View? = null
+    private var cachedTimedTaskView: View? = null
+
+    // 获取组的视图
+    private fun getStatusView(convertView: View?, parent: ViewGroup?, isExpanded: Boolean): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
+
+        val titleTextView = view.findViewById<TextView>(R.id.tv_group_title)
+        val imageView = view.findViewById<ImageView>(R.id.tv_group_icon)
+
+        titleTextView?.text = "Status"
+
+        if (isExpanded) {
+            imageView?.setImageResource(R.drawable.arrow_down)
+        } else {
+            imageView?.setImageResource(R.drawable.arrow_right)
+        }
+        return view
+    }
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    private fun getPowerView(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_power, parent, false)
+        val powerSwitch = view.findViewById<Switch>(R.id.tv_switch_power) ?: return view
+
+        // 确保每次获取视图时更新 Power 状态
+        if(isPowerUpdate) {
+            isPowerUpdate = false
+            startUpdatingPower(powerSwitch)
+        }
+
+        // 设置监听器，但使用标志位来控制是否执行内部逻辑
+        powerSwitch.setOnCheckedChangeListener { _, isChecked ->
+            isRefreshPaused = true
+            Log.i("getPowerView", "isRefreshPaused is true")
+            if (isChecked) {
+                powerSwitch.text = "ON"
+                if (!isExternalPowerUpdate) {
+                    mDeviceEvent.power = 1
+                    mDeviceDataString.power = "ON"
+                    mDeviceEvent.event = DeviceEventEnum.POWER_ON_EVENT.ordinal
+                }
+            } else {
+                powerSwitch.text = "OFF"
+                if (!isExternalPowerUpdate) {
+                    mDeviceEvent.power = 0
+                    mDeviceDataString.power = "OFF"
+                    mDeviceEvent.event = DeviceEventEnum.POWER_OFF_EVENT.ordinal
+                }
+            }
+            // 每次监听器执行完后，将isExternalUpdate重置为false，避免影响后续正常操作
+            isExternalPowerUpdate = false
+        }
+
+        return view
+    }
+
+    private fun getCalibrationView(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_calibration, parent, false)
+        val calibrationButton = view.findViewById<Button>(R.id.tv_button_calibration)
+
+        calibrationButton.setOnClickListener(View.OnClickListener {
+            // 处理点击事件
+            if(mDeviceData.power == 1){
+                Toast.makeText(context, "Performing Calibration", Toast.LENGTH_SHORT).show()
+                val locale =
+                    context.resources.configuration.locales.get(0)
+                val tipText = when (locale.language) {
+                    "zh" -> "请耐心等待校准完成，预计需要90秒"
+                    "en" -> "Please wait patiently for the calibration to complete, it is expected to take 90 seconds"
+                    // 可以添加更多语言判断分支，如日语等
+                    else -> "Please wait patiently for the calibration to complete, it is expected to take 90 seconds" // 默认显示英文或其他合适的提示语
+                }
+                Toast.makeText(context, tipText, Toast.LENGTH_LONG).show()
+
+                mDeviceEvent.event = DeviceEventEnum.CALIBRATION_EVENT.ordinal
+            }else{
+                Toast.makeText(context, "Calibration Error, Result Power OFF", Toast.LENGTH_SHORT).show()
+            }
+        })
+        return view
+    }
+    private fun getSyncTimestampView(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_timestamp, parent, false)
+        val syncTimestamp = view.findViewById<Button>(R.id.bt_sync_timestamp)
+        val timestampText = view.findViewById<TextView>(R.id.tv_timestamp)
+
+        timestampHandler = Handler(Looper.getMainLooper()) // 确保在主线程上更新UI
+        startUpdatingTimestamp(timestampText)
+
+        syncTimestamp?.setOnClickListener(View.OnClickListener {
+            Toast.makeText(context, "Synchronize time", Toast.LENGTH_SHORT).show()
+            var inputText = timestampText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+                    println("转换后的数字是: $number")
+                    mDeviceEvent.Timestamp = number
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+            }
+            mDeviceEvent.event = DeviceEventEnum.SYNC_TIMESTAMP_EVENT.ordinal
+        })
+        return view
+    }
+    private fun getConfigUDS100View(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_uds100, parent, false)
+        val configButton = view.findViewById<Button>(R.id.tv_button_config)
+        val lowThresholdEditText = view.findViewById<EditText>(R.id.tv_low_threshold)
+        val highThresholdEditText = view.findViewById<EditText>(R.id.tv_high_threshold)
+        val reportPeriodEditText = view.findViewById<EditText>(R.id.tv_report_period)
+        val gpsPeriodEditText = view.findViewById<EditText>(R.id.tv_gps_period)
+
+        // 已获取到正常数据
+        if(mDeviceData.reportPeriod > 0){
+            lowThresholdEditText.setText(mDeviceData.overflowLowThreshold.toString())
+            highThresholdEditText.setText(mDeviceData.overflowHighThreshold.toString())
+            reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
+            gpsPeriodEditText.setText(mDeviceData.gpsPeriod.toString())
+        }
+        // 设置点击监听器
+        configButton.setOnClickListener(View.OnClickListener {
+            var error = 0
+            var inputText = highThresholdEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
+                    mDeviceEvent.overflowHighThreshold = number
+                    if((number < 30 && number != 0) || number > 4500) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            inputText = lowThresholdEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
+                    mDeviceEvent.overflowLowThreshold = number
+                    if(number < 30|| number > 4500) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            inputText = reportPeriodEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
+                    mDeviceEvent.reportPeriod = number
+                    if(number < 1 || number > 1440) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            inputText = gpsPeriodEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
+                    mDeviceEvent.gpsPeriod = number
+                    if((number < 10 && number != 0) || number > 1440) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            if(error > 0){
+                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+            }else{
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
+            }
+        })
+        return view
+    }
+    private fun getConfigDC200View(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_dc200, parent, false)
+        val configButton = view.findViewById<Button>(R.id.tv_button_config_dc200)
+        val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_dc200)
+        val spinner: Spinner = view.findViewById(R.id.sp_work_mode_dc200)
+
+        val items = listOf("OPEN", "OFF")
+
+        spinner.adapter = HighlightSpinnerAdapter(context, items, spinner)
+
+        if(mDeviceData.parkMode == 1 || mDeviceData.parkMode == 0)
+            spinner.setSelection(mDeviceData.parkMode)
+
+        // 设置选择监听器
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                // 当用户选择一个项目时，这里的代码会被执行
+                val selectedItem = parent?.getItemAtPosition(position).toString()
+                if(selectedItem.contains("Fusion mode")){
+                    mDeviceEvent.parkMode = 0
+                }
+                else if(selectedItem.contains("Geomagnetic only")){
+                    mDeviceEvent.parkMode = 1
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // 当没有项目被选中时调用（通常不需要处理）
+            }
+        }
+
+        // 已获取到正常数据
+        if(mDeviceData.reportPeriod >0){
+            reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
+        }
+        // 设置点击监听器
+        configButton.setOnClickListener(View.OnClickListener {
+            var error = 0
+            val inputText = reportPeriodEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
+                    mDeviceEvent.reportPeriod = number
+                    if(number < 1 || number > 1440) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            if(error > 0){
+                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+            }else{
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
+            }
+        })
+        return view
+    }
+    private fun getConfigSVC100View(convertView: View?, parent: ViewGroup?): View {
+        cachedConfigSVC100View?.let { cached ->
+            if (!isConfigSVC100DataPopulated && mDeviceData.reportPeriod > 0) {
+                populateConfigSVC100Data(cached)
+                setConfigSVC100Loading(cached, false)
+                isConfigSVC100DataPopulated = true
+            }
+            return cached
+        }
+
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_config_svc100, parent, false)
+
+        val volOutSpinner = view.findViewById<Spinner>(R.id.sp_vol_out)
+        val valveModeSpinner = view.findViewById<Spinner>(R.id.sp_valve_mode)
+        val buffetingDurationEditText = view.findViewById<EditText>(R.id.et_buffeting_duration)
+        val autoPowerOnSpinner = view.findViewById<Spinner>(R.id.sp_auto_power_on)
+        val timezoneOnSpinner = view.findViewById<Spinner>(R.id.sp_timezone)
+        val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
+        val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
+
+        val volItems = context.resources.getStringArray(R.array.spinner_items_vol).toList()
+        volOutSpinner.adapter = HighlightSpinnerAdapter(context, volItems, volOutSpinner)
+
+        val valveModeItems = context.resources.getStringArray(R.array.spinner_items_valve_mode).toList()
+        valveModeSpinner.adapter = HighlightSpinnerAdapter(context, valveModeItems, valveModeSpinner)
+
+        val autoPowerItems = context.resources.getStringArray(R.array.spinner_items_auto_power_on).toList()
+        autoPowerOnSpinner.adapter = HighlightSpinnerAdapter(context, autoPowerItems, autoPowerOnSpinner)
+
+        val timezoneItems = context.resources.getStringArray(R.array.spinner_items_timezone).toList()
+        timezoneOnSpinner.adapter = HighlightSpinnerAdapter(context, timezoneItems, timezoneOnSpinner)
+
+        if(mDeviceData.reportPeriod > 0){
+            populateConfigSVC100Data(view)
+            isConfigSVC100DataPopulated = true
+        } else {
+            setConfigSVC100Loading(view, true)
+        }
+
+        configButton?.setOnClickListener(View.OnClickListener {
+            var error = 0
+            var inputText = reportPeriodEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    mDeviceEvent.reportPeriod = number
+                    if(number < 1 || number > 1440) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    e.printStackTrace()
+                }
+            } else {
+                println("输入无效")
+                error++
+            }
+
+            inputText = buffetingDurationEditText.text.toString()
+            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                try {
+                    val number: Int = inputText.toInt()
+                    mDeviceEvent.buffetingDuration = number
+                    if(number < 1 || number > 255) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    e.printStackTrace()
+                }
+            } else {
+                println("输入无效")
+                error++
+            }
+
+            if(error > 0){
+                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+            }else{
+                mDeviceEvent.volOut = volOutSpinner.selectedItemPosition
+                mDeviceEvent.valveMode = valveModeSpinner.selectedItemPosition
+                mDeviceEvent.autoPower = autoPowerOnSpinner.selectedItemPosition
+                mDeviceEvent.timeZone = timezoneOnSpinner.selectedItemPosition
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
+            }
+        })
+
+        cachedConfigSVC100View = view
+        return view
+    }
+
+    private fun populateConfigSVC100Data(view: View) {
+        view.findViewById<Spinner>(R.id.sp_vol_out)?.setSelection(mDeviceData.volOut)
+        view.findViewById<Spinner>(R.id.sp_valve_mode)?.setSelection(mDeviceData.valveMode)
+        view.findViewById<EditText>(R.id.et_buffeting_duration)?.setText(mDeviceData.buffetingDuration.toString())
+        view.findViewById<Spinner>(R.id.sp_auto_power_on)?.setSelection(mDeviceData.autoPower)
+        view.findViewById<Spinner>(R.id.sp_timezone)?.setSelection(mDeviceData.timeZone)
+        view.findViewById<EditText>(R.id.et_report_period_svc100)?.setText(mDeviceData.reportPeriod.toString())
+    }
+
+    private fun setConfigSVC100Loading(view: View, loading: Boolean) {
+        val cardView = (view as? ViewGroup)?.getChildAt(0) as? ViewGroup ?: return
+        val innerLayout = cardView.getChildAt(0) as? ViewGroup ?: return
+
+        val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
+        val volOutSpinner = view.findViewById<Spinner>(R.id.sp_vol_out)
+        val valveModeSpinner = view.findViewById<Spinner>(R.id.sp_valve_mode)
+        val buffetingDurationEditText = view.findViewById<EditText>(R.id.et_buffeting_duration)
+        val autoPowerOnSpinner = view.findViewById<Spinner>(R.id.sp_auto_power_on)
+        val timezoneOnSpinner = view.findViewById<Spinner>(R.id.sp_timezone)
+        val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
+
+        if (loading) {
+            val loadingText = TextView(context).apply {
+                text = "Loading device parameters..."
+                setTextColor(Color.GRAY)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setPadding(16, 32, 16, 16)
+                tag = "svc100_loading_hint"
+            }
+            innerLayout.addView(loadingText, 0)
+
+            configButton?.isEnabled = false
+            volOutSpinner?.isEnabled = false
+            valveModeSpinner?.isEnabled = false
+            buffetingDurationEditText?.isEnabled = false
+            autoPowerOnSpinner?.isEnabled = false
+            timezoneOnSpinner?.isEnabled = false
+            reportPeriodEditText?.isEnabled = false
+        } else {
+            val hint = innerLayout.findViewWithTag<View>("svc100_loading_hint")
+            if (hint != null) innerLayout.removeView(hint)
+
+            configButton?.isEnabled = true
+            volOutSpinner?.isEnabled = true
+            valveModeSpinner?.isEnabled = true
+            buffetingDurationEditText?.isEnabled = true
+            autoPowerOnSpinner?.isEnabled = true
+            timezoneOnSpinner?.isEnabled = true
+            reportPeriodEditText?.isEnabled = true
+        }
+    }
+    private fun getRealtimeTask(convertView: View?, parent: ViewGroup?): View {
+        cachedRealtimeTaskView?.let { return it }
+
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_realtime_task, parent, false)
+
+        val valveSpinner = view.findViewById<Spinner>(R.id.sp_valve_realtime_task)
+        val openStateSpinner = view.findViewById<Spinner>(R.id.sp_open_state_realtime_task)
+        val pulseEditText = view.findViewById<EditText>(R.id.et_pulse_realtime_task)
+        val timeEditText = view.findViewById<EditText>(R.id.et_time_realtime_task)
+        val configButton = view.findViewById<Button>(R.id.bt_config_realtime_task)
+
+        val valveItems = context.resources.getStringArray(R.array.spinner_items_valve).toList()
+        valveSpinner.adapter = HighlightSpinnerAdapter(context, valveItems, valveSpinner)
+
+        val checkItems = context.resources.getStringArray(R.array.spinner_items_check).toList()
+        openStateSpinner.adapter = HighlightSpinnerAdapter(context, checkItems, openStateSpinner)
+
+        // 设置点击监听器
+        configButton?.setOnClickListener(View.OnClickListener {
+            var error = 0
+            val pulse = pulseEditText.text.toString()
+            val time=  timeEditText.text.toString()
+            if (pulse.isNotEmpty() && TextUtils.isDigitsOnly(pulse)) {
+                try {
+                    val number: Int = pulse.toInt()
+                    // 在这里使用转换后的整型
+                    mDeviceEvent.pulseRealtime = number
+                    if(number > 65535) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            if (time.isNotEmpty() && TextUtils.isDigitsOnly(time)) {
+                try {
+                    val number: Int = time.toInt()
+                    // 在这里使用转换后的整型
+                    mDeviceEvent.timeRealtime = number
+                    if(number > 65535) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            if(error > 0){
+                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+            }else{
+                mDeviceEvent.valveRealtime = valveSpinner.selectedItemPosition
+                mDeviceEvent.stateRealtime = openStateSpinner.selectedItemPosition
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_REALTIME_TASK.ordinal
+                saveRealtimeTaskConfig(
+                    valveSpinner.selectedItemPosition,
+                    openStateSpinner.selectedItemPosition,
+                    mDeviceEvent.pulseRealtime,
+                    mDeviceEvent.timeRealtime
+                )
+            }
+        })
+
+        restoreRealtimeTaskConfig(valveSpinner, openStateSpinner, pulseEditText, timeEditText)
+
+        cachedRealtimeTaskView = view
+        return view
+    }
+
+    private fun saveRealtimeTaskConfig(valve: Int, state: Int, pulse: Int, time: Int) {
+        val prefs = context.getSharedPreferences("config_realtime_task", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putInt("valve", valve)
+            .putInt("state", state)
+            .putInt("pulse", pulse)
+            .putInt("time", time)
+            .apply()
+    }
+
+    private fun restoreRealtimeTaskConfig(
+        valveSpinner: Spinner, openStateSpinner: Spinner,
+        pulseEditText: EditText, timeEditText: EditText
+    ) {
+        val prefs = context.getSharedPreferences("config_realtime_task", Context.MODE_PRIVATE)
+        if (!prefs.contains("valve")) return
+        valveSpinner.setSelection(prefs.getInt("valve", 0))
+        openStateSpinner.setSelection(prefs.getInt("state", 0))
+        val pulse = prefs.getInt("pulse", 0)
+        if (pulse > 0) pulseEditText.setText(pulse.toString())
+        val time = prefs.getInt("time", 0)
+        if (time > 0) timeEditText.setText(time.toString())
+    }
+    private fun getTimedTask(convertView: View?, parent: ViewGroup?): View {
+        cachedTimedTaskView?.let { return it }
+
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_timed_task, parent, false)
+
+        val idSpinner = view.findViewById<Spinner>(R.id.sp_task_number)
+        val valveSpinner = view.findViewById<Spinner>(R.id.sp_valve_timed)
+        val openStateSpinner = view.findViewById<Spinner>(R.id.sp_open_state_timed)
+        val pulseEditText = view.findViewById<EditText>(R.id.et_pulse_timed)
+        val startTimeEditText = view.findViewById<EditText>(R.id.et_task_start_time_timed)
+        val endTimeEditText = view.findViewById<EditText>(R.id.et_task_end_time_timed)
+        val repeatTextView = view.findViewById<TextView>(R.id.tv_task_repeat_timed)
+        val configButton = view.findViewById<Button>(R.id.bt_config_timed_task)
+        val deleteButton = view.findViewById<Button>(R.id.bt_delete_timed_task)
+
+        val taskItems = context.resources.getStringArray(R.array.spinner_items_task).toList()
+        idSpinner.adapter = HighlightSpinnerAdapter(context, taskItems, idSpinner)
+
+        val valveItems = context.resources.getStringArray(R.array.spinner_items_valve).toList()
+        valveSpinner.adapter = HighlightSpinnerAdapter(context, valveItems, valveSpinner)
+
+        val checkItems = context.resources.getStringArray(R.array.spinner_items_check).toList()
+        openStateSpinner.adapter = HighlightSpinnerAdapter(context, checkItems, openStateSpinner)
+
+        var startTimeSelected = false
+        var endTimeSelected = false
+
+        startTimeEditText?.setOnClickListener {
+            val calendar: Calendar = Calendar.getInstance()
+            val hour: Int = calendar.get(Calendar.HOUR_OF_DAY)
+            val minute: Int = calendar.get(Calendar.MINUTE)
+            val timePickerDialog = TimePickerDialog(
+                context,
+                { _: TimePicker?, selectedHour: Int, selectedMinute: Int ->
+                    startTimeEditText.setText(formatTime(selectedHour, selectedMinute))
+                    mDeviceEvent.startTimeTimed = selectedHour * 60 + selectedMinute
+                    startTimeSelected = true
+                },
+                hour,
+                minute,
+                false
+            )
+            timePickerDialog.show()
+        }
+        endTimeEditText?.setOnClickListener {
+            val calendar: Calendar = Calendar.getInstance()
+            val hour: Int = calendar.get(Calendar.HOUR_OF_DAY)
+            val minute: Int = calendar.get(Calendar.MINUTE)
+            val timePickerDialog = TimePickerDialog(
+                context,
+                { _: TimePicker?, selectedHour: Int, selectedMinute: Int ->
+                    endTimeEditText.setText(formatTime(selectedHour, selectedMinute))
+                    mDeviceEvent.endTimeTimed = selectedHour * 60 + selectedMinute
+                    endTimeSelected = true
+                },
+                hour,
+                minute,
+                false
+            )
+            timePickerDialog.show()
+        }
+        val repeatList: ArrayList<MutableMap<String, String>> = ArrayList()
+        val daysOfWeek = listOf("1", "2", "3", "4", "5", "6", "7")
+        daysOfWeek.forEach { day ->
+            addItemToMapAndList("week", day, repeatList)
+        }
+        val repeatSelected = BooleanArray(repeatList.size)
+        val repeatStr = arrayOfNulls<String>(repeatList.size)
+        val repeatId = IntArray(repeatList.size)
+        for (i in repeatList.indices) {
+            repeatStr[i] = repeatList[i]["week"].toString()
+            repeatSelected[i] = false
+        }
+        repeatTextView?.setOnClickListener { checkboxEdit(repeatTextView, repeatSelected, repeatStr, repeatId) }
+
+        // 设置点击监听器
+        configButton?.setOnClickListener(View.OnClickListener {
+            var error = 0
+            val pulse = pulseEditText.text.toString()
+            var id = idSpinner.selectedItemPosition
+
+            if(id == 17){
+                id = 0xFF
+            }else{
+                id += 1
+            }
+
+            if (pulse.isNotEmpty() && TextUtils.isDigitsOnly(pulse)) {
+                try {
+                    val number: Int = pulse.toInt()
+                    // 在这里使用转换后的整型
+                    mDeviceEvent.pulseTimed = number
+                    if(number > 65535) {
+                        error++
+                    }
+                } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
+                    e.printStackTrace()
+                }
+            } else {
+                // 输入为空或不是纯数字
+                println("输入无效")
+                error++
+            }
+
+            if (!startTimeSelected || !endTimeSelected) {
+                error++
+            }
+
+            if(id == 0xFF){
+                error++
+            }
+
+            if(error > 0){
+                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+            }else{
+                mDeviceEvent.idTimed = id
+                mDeviceEvent.valveTimed = valveSpinner.selectedItemPosition
+                mDeviceEvent.stateTimed = openStateSpinner.selectedItemPosition
+//                mDeviceEvent.repeatTimed = repeatSpinner.selectedItemPosition
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_TIMED_TASK.ordinal
+                saveTimedTaskConfig(
+                    idSpinner.selectedItemPosition,
+                    valveSpinner.selectedItemPosition,
+                    openStateSpinner.selectedItemPosition,
+                    mDeviceEvent.pulseTimed,
+                    mDeviceEvent.startTimeTimed,
+                    mDeviceEvent.endTimeTimed,
+                    mDeviceEvent.repeatTimed
+                )
+            }
+        })
+        deleteButton?.setOnClickListener(View.OnClickListener {
+            var id = idSpinner.selectedItemPosition
+
+            if(id == 17){
+                id = 0xFF
+            }else{
+                id += 1
+            }
+
+            mDeviceEvent.idTimed = id
+            mDeviceEvent.event = DeviceEventEnum.DELETE_TIMED_TASK.ordinal
+        })
+
+        restoreTimedTaskConfig(idSpinner, valveSpinner, openStateSpinner, pulseEditText)
+
+        cachedTimedTaskView = view
+        return view
+    }
+
+    private fun saveTimedTaskConfig(
+        idPosition: Int, valve: Int, state: Int, pulse: Int,
+        startTime: Int, endTime: Int, repeat: Int
+    ) {
+        val prefs = context.getSharedPreferences("config_timed_task", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putInt("idPosition", idPosition)
+            .putInt("valve", valve)
+            .putInt("state", state)
+            .putInt("pulse", pulse)
+            .putInt("startTime", startTime)
+            .putInt("endTime", endTime)
+            .putInt("repeat", repeat)
+            .apply()
+    }
+
+    private fun restoreTimedTaskConfig(
+        idSpinner: Spinner, valveSpinner: Spinner,
+        openStateSpinner: Spinner, pulseEditText: EditText
+    ) {
+        val prefs = context.getSharedPreferences("config_timed_task", Context.MODE_PRIVATE)
+        if (!prefs.contains("valve")) return
+        idSpinner.setSelection(prefs.getInt("idPosition", 0))
+        valveSpinner.setSelection(prefs.getInt("valve", 0))
+        openStateSpinner.setSelection(prefs.getInt("state", 0))
+        val pulse = prefs.getInt("pulse", 0)
+        if (pulse > 0) pulseEditText.setText(pulse.toString())
+    }
+
+    private fun getOTAView(convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
+        val selectFileButton = view.findViewById<Button>(R.id.tv_select_file)
+        val updateButton = view.findViewById<Button>(R.id.tv_update)
+
+        // 设置点击监听器
+        selectFileButton?.setOnClickListener(View.OnClickListener {
+            mDeviceEvent.event = DeviceEventEnum.SELECT_FILE.ordinal
+        })
+
+        // 设置点击监听器
+        updateButton?.setOnClickListener(View.OnClickListener {
+            mDeviceEvent.event = DeviceEventEnum.START_OTA.ordinal
+//            Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show();
+        })
+        return view
+    }
+
+    // 定义一个函数来添加键值对到HashMap并添加到列表中
+    private fun addItemToMapAndList(key: String, value: String, list: MutableList<MutableMap<String, String>>): MutableMap<String, String> {
+        val map = HashMap<String, String>()
+        map[key] = value
+        list.add(map)
+        return map  // 如果需要返回这个map
+    }
+    private fun checkboxEdit(edit: TextView, selected: BooleanArray, str: Array<String?>, id: IntArray) {
+        val builder: AlertDialog.Builder = AlertDialog.Builder(context)
+        builder.setTitle("Repeat")
+        val multiChoiceClickListener = OnMultiChoiceClickListener { _, which, isChecked -> selected[which] = isChecked }
+        builder.setMultiChoiceItems(str, selected, multiChoiceClickListener)
+        val clickListener = DialogInterface.OnClickListener { _, _ ->
+                var selectStr = ""
+                var ids = ""
+                mDeviceEvent.repeatTimed = 0
+                for (i in selected.indices) {
+                    if (selected[i]) {
+                        mDeviceEvent.repeatTimed += (1 shl i)
+                        if (TextUtils.isEmpty(selectStr)) {
+                            selectStr += str[i]
+                            ids += id[i]
+                        } else {
+                            selectStr = selectStr + "," + str[i]
+                            ids = ids + "," + id[i]
+                        }
+                    }
+                }
+                edit.text = selectStr
+            }
+        builder.setCancelable(false)
+        builder.setNegativeButton("cancel", null)
+        builder.setPositiveButton("ok", clickListener)
+        val dialog: AlertDialog = builder.create()
+        dialog.show()
+    }
+
+    fun updateChildren(newChildren: Map<Int, List<Child>>) {
+        this.children = newChildren
+        updateUserNotify()
+    }
+
+    fun updateStatusOnly(listView: ExpandableListView, statusChildren: List<Child>) {
+        this.children = this.children.toMutableMap().apply { put(0, statusChildren) }
+
+        val firstVisible = listView.firstVisiblePosition
+        val lastVisible = listView.lastVisiblePosition
+
+        for (i in firstVisible..lastVisible) {
+            val packedPosition = listView.getExpandableListPosition(i)
+            val type = ExpandableListView.getPackedPositionType(packedPosition)
+            val groupPos = ExpandableListView.getPackedPositionGroup(packedPosition)
+            val childPos = ExpandableListView.getPackedPositionChild(packedPosition)
+
+            if (type == ExpandableListView.PACKED_POSITION_TYPE_CHILD && groupPos == 0) {
+                if (childPos >= 0 && childPos < statusChildren.size) {
+                    val view = listView.getChildAt(i - firstVisible)
+                    val child = statusChildren[childPos]
+                    view?.findViewById<TextView>(R.id.tv_child_title)?.text = child.title
+                    view?.findViewById<TextView>(R.id.tv_child_word)?.text = child.word
+                }
+            }
+        }
+    }
+
+    fun updateGroups(newGroups: List<Group>) {
+        this.groups  = newGroups
+        notifyDataSetChanged()
+    }
+
+    fun updateUserNotify() {
+        if (!isRefreshPaused) {
+            notifyDataSetChanged()
+        }
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private fun formatTime(hour: Int, minute: Int): String {
+        val sdf = SimpleDateFormat("HH:mm")
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, hour)
+        cal.set(Calendar.MINUTE, minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return sdf.format(cal.time)
+    }
+
+
+    override fun getGroupView(groupPosition: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View {
+        val group = groups[groupPosition]
+
+        // 尝试复用 convertView，如果为空则通过 LayoutInflater 创建新视图
+//        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
+        Log.d("getGroupView", "$group")
+
+        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 2 && cachedConfigSVC100View != null) {
+            return getConfigSVC100View(null, parent)
+        }
+
+        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 3 && cachedRealtimeTaskView != null) {
+            return cachedRealtimeTaskView!!
+        }
+
+        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 4 && cachedTimedTaskView != null) {
+            return cachedTimedTaskView!!
+        }
+
+        var view: View
+        // 尝试复用 convertView，如果为空或 tag 不匹配则创建新视图
+        if (convertView == null || convertView.tag != group.groupType) {
+            view = LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
+            when (group.groupType) {
+                0 -> {
+                    // 配置状态视图
+                    view = LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
+                }
+                1, 2, 3, 4, 5, 6 -> {
+                    if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal) {
+                        when (group.groupType) {
+                            1 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_power, parent, false)
+                            2 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_svc100, parent, false)
+                            3 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_realtime_task, parent, false)
+                            4 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_timed_task, parent, false)
+                            5 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_timestamp, parent, false)
+                            6 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
+                        }
+                    }
+                    else if (mDeviceData.name == DeviceNameEnum.VALUE_NULL.ordinal) {
+                        when (group.groupType) {
+                            1 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_timestamp, parent, false)
+                            2  -> view = LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
+                        }
+                    }
+                    else {
+                        // 处理非 SVC100 设备的情况
+                        when (group.groupType) {
+                            1 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_power, parent, false)
+                            2 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_calibration, parent, false)
+                            3 -> {
+                                // 根据设备类型配置 Config 视图
+                                if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal)
+                                    view = LayoutInflater.from(context).inflate(R.layout.dialog_config_uds100, parent, false)
+                                else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal)
+                                    view = LayoutInflater.from(context).inflate(R.layout.dialog_config_dc200, parent, false)
+                            }
+                            4 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_timestamp, parent, false)
+                            5 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
+                        }
+                    }
+                }
+            }
+            view.tag = group.groupType // 设置 tag 以帮助复用
+
+        } else {
+            view = convertView
+        }
+
+        // 根据 groupType 和设备类型配置视图
+        when (group.groupType) {
+            0 -> {
+                // 配置状态视图
+                return getStatusView(view, parent, isExpanded)
+            }
+            1, 2, 3, 4, 5, 6 -> {
+                if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal) {
+                    when (group.groupType) {
+                        1 -> return getPowerView(view, parent)
+                        2 -> return getConfigSVC100View(view, parent)
+                        3 -> return getRealtimeTask(view, parent)
+                        4 -> return getTimedTask(view, parent)
+                        5 -> return getSyncTimestampView(view, parent)
+                        6 -> return getOTAView(view, parent)
+                    }
+                }else if (mDeviceData.name == DeviceNameEnum.VALUE_NULL.ordinal) {
+                    when (group.groupType) {
+                        1 -> return getSyncTimestampView(view, parent)
+                        2 -> return getOTAView(view, parent)
+                    }
+                }
+                else {
+                    // 处理非 SVC100 设备的情况
+                    when (group.groupType) {
+                        1 -> return getPowerView(view, parent) // 假设所有设备都需要 Power 视图
+                        2 -> return getCalibrationView(view, parent) // 假设这是非 SVC100 设备的特定视图
+                        3 -> {
+                            // 根据设备类型配置 Config 视图
+                            if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal)
+                                return getConfigUDS100View(view, parent)
+                            else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal)
+                                return getConfigDC200View(view, parent)
+                        }
+                        4 -> return getSyncTimestampView(view, parent)
+                        5 -> return getOTAView(view, parent)
+                    }
+                }
+            }
+            // 可以添加其他 groupType 的处理
+            else -> {
+                // 处理未知的 groupType
+                Log.d("getGroupView", "处理未知的 groupType: $group")
+            }
+        }
+
+        // 假设这些方法总是修改并返回传入的 view（或至少不返回 null）
+        return view
+    }
+
+    // 你可以考虑将获取子项的逻辑封装到一个辅助函数中，以减少重复代码
+    private fun getChildAt(groupPosition: Int, childPosition: Int): Child {
+        val groupId = groups[groupPosition].id
+        return children[groupId]?.get(childPosition) ?: throw IndexOutOfBoundsException("No child at position $childPosition in group $groupId")
+    }
+
+    // 获取子项的视图（使用辅助函数）
+    override fun getChildView(groupPosition: Int, childPosition: Int, isLastChild: Boolean, convertView: View?, parent: ViewGroup?): View {
+        val child = getChildAt(groupPosition, childPosition)
+        val group = groups[groupPosition]
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.child_item, parent, false)
+        val titleTextView = view.findViewById<TextView>(R.id.tv_child_title)
+        val wordTextView = view.findViewById<TextView>(R.id.tv_child_word)
+        if (titleTextView == null || wordTextView == null) {
+            Log.e(
+                "ExpandableListAdapter",
+                "titleTextView/wordTextView is null for child $childPosition"
+            )
+        } else {
+            titleTextView.text = child.title
+            wordTextView.text = child.word
+        }
+        return view
+    }
+
+    // 子项是否可选
+    override fun isChildSelectable(groupPosition: Int, childPosition: Int): Boolean = true
+
+    // 组和子项的ID是否稳定
+    override fun hasStableIds(): Boolean = true
+
+    // 获取组的数量
+    override fun getGroupCount(): Int = groups.size
+
+    // 获取指定组的子项数量
+    override fun getChildrenCount(groupPosition: Int): Int = children[groups[groupPosition].id]?.size ?: 0
+
+    // 获取组的对象
+    override fun getGroup(groupPosition: Int): Any = groups[groupPosition]
+
+    // 获取指定组的子项对象
+    override fun getChild(groupPosition: Int, childPosition: Int): Any {
+        val groupId = groups[groupPosition].id
+        return children[groupId]?.get(childPosition) ?: throw IndexOutOfBoundsException()
+    }
+
+    // 组的ID
+    override fun getGroupId(groupPosition: Int): Long = groups[groupPosition].id.toLong()
+
+    // 子项的ID
+    override fun getChildId(groupPosition: Int, childPosition: Int): Long =
+        children[groups[groupPosition].id]?.get(childPosition)?.id?.toLong() ?: -1
+}
+
+class DeviceActivity: AppCompatActivity(){
+
+    private var gatt: BluetoothGatt? = MainActivity.getGatt()
+    private val stream: StreamThread? = gatt?.let { StreamThread(it) }
+    private var syncHandler: Handler? = Handler(Looper.getMainLooper())
+    private var otaHandler: Handler? = Handler(Looper.getMainLooper())
+    private lateinit var adapter: ExpandableListAdapter
+    private lateinit var expandableListView: ExpandableListView
+    private var executorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private var syncTime: Int = 0
+
+    // 在你的Activity或Fragment中
+    private val progressDialogFragment = ProgressDialogFragment()
+    private val processDialogFragment = ProcessDialogFragment()
+
+    private lateinit var groupsList: List<Group>
+    private lateinit var children : Map<Int, List<Child>>
+    private lateinit var newChildren : Map<Int, List<Child>>
+
+    private var isKeyboardVisible = false
+    private var isInitialDataLoaded = false
+
+    private val counterRunnable  =  Runnable {
+        /* 在这里定义周期性执行的任务 */
+        runOnUiThread {
+            if(isKeyboardVisible){
+                return@runOnUiThread
+            }
+            if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal) {
+                newChildren = mapOf(
+                    0 to listOf(
+                        Child(0, 0, "Name", mDeviceDataString.name),
+                        Child(1, 0, "Version", mDeviceDataString.version),
+                        Child(2, 0, "Power", mDeviceDataString.power),
+                        Child(4, 0, "Battery", mDeviceDataString.battery),
+                        Child(5, 0, "Temperature", mDeviceDataString.temperature),
+                        Child(6, 0, "Humidity", mDeviceDataString.humidity),
+                        Child(7, 0, "Alarm Status", mDeviceDataString.htAlarm),
+                        Child(8, 0, "Angle", mDeviceDataString.angle),
+                        Child(9, 0, "Slant", mDeviceDataString.slant),
+                        Child(10, 0, "Distance", mDeviceDataString.distance),
+                        Child(11, 0, "Overflow State", mDeviceDataString.overflowState),
+                        Child(12, 0, "Low Threshold", mDeviceDataString.overflowLowThreshold),
+                        Child(13, 0, "High Threshold", mDeviceDataString.overflowHighThreshold),
+                        Child(14, 0, "Latitude", mDeviceDataString.latitude),
+                        Child(15, 0, "Longitude", mDeviceDataString.longitude),
+                        Child(16, 0, "Report Period", mDeviceDataString.reportPeriod),
+                        Child(17, 0, "Gps Period", mDeviceDataString.gpsPeriod)
+                    ),
+                )
+            } else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal) {
+                newChildren = mapOf(
+                    0 to listOf(
+                        Child(0, 0, "Name", mDeviceDataString.name),
+                        Child(1, 0, "Version", mDeviceDataString.version),
+                        Child(2, 0, "Power", mDeviceDataString.power),
+                        Child(3, 0, "Battery", mDeviceDataString.battery),
+                        Child(4, 0, "Parking Status", mDeviceDataString.parkStatus),
+                        Child(5, 0, "Tamper Status", mDeviceDataString.tamperAlarm),
+                        Child(6, 0, "Report Period", mDeviceDataString.reportPeriod)
+                    )
+                )
+            } else if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal) {
+                newChildren = mapOf(
+                    0 to listOf(
+                        Child(0, 0, "Name", mDeviceDataString.name),
+                        Child(1, 0, "Version", mDeviceDataString.version),
+                        Child(2, 0, "Power", mDeviceDataString.power),
+                        Child(3, 0, "Battery", mDeviceDataString.battery),
+                        Child(4, 0, "Port1 value state", mDeviceDataString.value1State),
+                        Child(5, 0, "Port1 insert state", mDeviceDataString.insert1Connected),
+                        Child(6, 0, "Port1 pulse count", mDeviceDataString.pulse1Count),
+                        Child(7, 0, "Port2 value state", mDeviceDataString.value2State),
+                        Child(8, 0, "Port2 insert state", mDeviceDataString.insert2Connected),
+                        Child(9, 0, "Port2 pulse count", mDeviceDataString.pulse2Count),
+                        Child(10, 0, "Voltage out level", mDeviceDataString.volOut),
+                        Child(11, 0, "Interface function", mDeviceDataString.valveMode),
+                        Child(12, 0, "Buffeting duration", mDeviceDataString.buffetingDuration),
+                        Child(13, 0, "Timezone", mDeviceDataString.timeZone),
+                        Child(14, 0, "Report Period", mDeviceDataString.reportPeriod)
+                    )
+                )
+            } else if (mDeviceData.name == DeviceNameEnum.VALUE_NULL.ordinal) {
+                children = mapOf(
+                    0 to listOf(
+                        Child(0, 0, "Name", mDeviceDataString.name),
+                    )
+                )
+            }
+
+            if (mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
+                val statusList = newChildren[0] ?: emptyList()
+                adapter.updateStatusOnly(expandableListView, statusList)
+            }
+
+            if (!isInitialDataLoaded && mDeviceData.reportPeriod > 0 && !isRefreshPaused) {
+                isInitialDataLoaded = true
+                adapter.notifyDataSetChanged()
+            }
+
+            if (mDeviceEvent.event == DeviceEventEnum.SELECT_FILE.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                launchFileSelector()
+            } else if (mDeviceEvent.event == DeviceEventEnum.START_OTA.ordinal) {
+                if (fileBin.isEmpty()) {
+                    Toast.makeText(this, "Please Choose OTA File", Toast.LENGTH_SHORT).show()
+                    mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                } else {
+                    mDeviceEvent.event = DeviceEventEnum.ENTER_OTA.ordinal
+                    progressDialogFragment.show(supportFragmentManager, "OTA")
+                    startOTA()
+                }
+            } else if (mDeviceEvent.event == DeviceEventEnum.POWER_ON_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.POWER_ON_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.POWER_ON_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.POWER_OFF_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.POWER_OFF_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.POWER_OFF_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CALIBRATION_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.CALIBRATION_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CALIBRATION_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_PARAMETER_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.SYNC_TIMESTAMP_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK.ordinal) {
+                mDeviceEvent.commandRetryWait = 0
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_TIMED_TASK_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK_FINISH_EVENT.ordinal) {
+                mDeviceEvent.commandRetryWait = 0
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.DELETE_TIMED_TASK_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK_FINISH_EVENT.ordinal) {
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK.ordinal) {
+                mDeviceEvent.commandRetryWait = 0
+                mDeviceEvent.event = DeviceEventEnum.CONFIG_REALTIME_TASK_START_EVENT.ordinal
+                processDialogFragment.show(supportFragmentManager, "")
+                startSyncCheck()
+            } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK_FINISH_EVENT.ordinal) {
+                mDeviceEvent.commandRetryWait = 0
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_device)
+
+        // 监听键盘状态
+        val rootView = findViewById<View>(android.R.id.content)
+        rootView.viewTreeObserver.addOnGlobalLayoutListener {
+            val heightDiff = rootView.rootView.height - rootView.height
+            val keyboardVisibleThreshold = resources.getDimensionPixelSize(R.dimen.keyboard_visible_threshold)
+            isKeyboardVisible = heightDiff > keyboardVisibleThreshold
+
+            if (isKeyboardVisible) {
+                // 键盘显示，暂停刷新任务
+                executorService.shutdownNow()
+            } else {
+                // 键盘隐藏，恢复刷新任务
+                if (executorService.isShutdown) {
+                    executorService = Executors.newSingleThreadScheduledExecutor()
+                    executorService.scheduleAtFixedRate(counterRunnable, 0, 1, TimeUnit.SECONDS)
+                }
+            }
+        }
+
+        if(mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal){
+            val hasSync = DeviceFeatureConfig.isFeatureEnabled(
+                mDeviceData.name, DeviceFeatureConfig.Feature.SYNC_TIMESTAMP
+            )
+            val udsGroups = mutableListOf(
+                Group(0, "Status",0),
+                Group(1, "Config",1),
+                Group(2, "Config",2),
+                Group(3, "Config",3),
+            )
+            if (hasSync) udsGroups.add(Group(4, "Config", 4))
+            udsGroups.add(Group(if (hasSync) 5 else 4, "Config", 5))
+            groupsList = udsGroups
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name),
+                    Child(1, 0, "Version", mDeviceDataString.version),
+                    Child(2, 0, "Power", mDeviceDataString.power),
+                    Child(4, 0, "Battery", mDeviceDataString.battery),
+                    Child(5, 0, "Temperature", mDeviceDataString.temperature),
+                    Child(6, 0, "Humidity", mDeviceDataString.humidity),
+                    Child(7, 0, "Alarm Status", mDeviceDataString.htAlarm),
+                    Child(8, 0, "Angle", mDeviceDataString.angle),
+                    Child(9, 0, "Slant", mDeviceDataString.slant),
+                    Child(10, 0, "Distance", mDeviceDataString.distance),
+                    Child(11, 0, "Overflow State", mDeviceDataString.overflowState),
+                    Child(12, 0, "Low Threshold", mDeviceDataString.overflowLowThreshold),
+                    Child(13, 0, "High Threshold", mDeviceDataString.overflowHighThreshold),
+                    Child(14, 0, "Latitude", mDeviceDataString.latitude),
+                    Child(15, 0, "Longitude", mDeviceDataString.longitude),
+                    Child(16, 0, "Report Period", mDeviceDataString.reportPeriod),
+                    Child(17, 0, "Gps Period", mDeviceDataString.gpsPeriod)),
+            )
+        }
+
+        else if(mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal){
+            groupsList = listOf(
+                Group(0, "Status",0),
+                Group(1, "Config",1),
+                Group(2, "Config",2),
+                Group(3, "Config",3),
+                Group(4, "Config",4),
+                Group(5, "Config",5),
+            )
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name),
+                    Child(1, 0, "Version", mDeviceDataString.version),
+                    Child(2, 0, "Power", mDeviceDataString.power),
+                    Child(3, 0, "Battery", mDeviceDataString.battery),
+                    Child(4, 0, "Parking Status", mDeviceDataString.temperature),
+                    Child(5, 0, "Tamper Status", mDeviceDataString.angle),
+                    Child(6, 0, "Report Period", mDeviceDataString.reportPeriod))
+            )
+        }
+
+        else if(mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal){
+            val hasSync = DeviceFeatureConfig.isFeatureEnabled(
+                mDeviceData.name, DeviceFeatureConfig.Feature.SYNC_TIMESTAMP
+            )
+            val mpsGroups = mutableListOf(
+                Group(0, "Status",0),
+                Group(1, "Config",1),
+                Group(2, "Config",2),
+                Group(3, "Config",3),
+            )
+            if (hasSync) mpsGroups.add(Group(4, "Config", 4))
+            mpsGroups.add(Group(if (hasSync) 5 else 4, "Config", 5))
+            groupsList = mpsGroups
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name),
+                    Child(1, 0, "Version", mDeviceDataString.version),
+                    Child(2, 0, "Power", mDeviceDataString.power),
+                    Child(3, 0, "Battery", mDeviceDataString.battery),
+                    Child(4, 0, "Parking Status", mDeviceDataString.temperature),
+                    Child(5, 0, "Tamper Status", mDeviceDataString.angle),
+                    Child(6, 0, "Report Period", mDeviceDataString.reportPeriod))
+            )
+        }
+
+        else if(mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal){
+            groupsList = listOf(
+                Group(0, "Status",0),
+                Group(1, "Config",1),
+                Group(2, "Config",2),
+                Group(3, "Config",3),
+                Group(4, "Config",4),
+                Group(5, "Config",5),
+                Group(6, "Config",6),
+            )
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name),
+                    Child(1, 0, "Version", mDeviceDataString.version),
+                    Child(2, 0, "Power", mDeviceDataString.power),
+                    Child(3, 0, "Battery", mDeviceDataString.battery),
+                    Child(4, 0, "Port1 value state", mDeviceDataString.value1State),
+                    Child(5, 0, "Port1 insert state", mDeviceDataString.insert1Connected),
+                    Child(6, 0, "Port1 pulse count", mDeviceDataString.pulse1Count),
+                    Child(7, 0, "Port2 value state", mDeviceDataString.value2State),
+                    Child(8, 0, "Port2 insert state", mDeviceDataString.insert2Connected),
+                    Child(9, 0, "Port2 pulse count", mDeviceDataString.pulse2Count),
+                    Child(10, 0, "Voltage out level", mDeviceDataString.volOut),
+                    Child(11, 0, "Interface function", mDeviceDataString.valveMode),
+                    Child(12, 0, "Buffeting duration", mDeviceDataString.buffetingDuration),
+                    Child(13, 0, "Timezone", mDeviceDataString.timeZone),
+                    Child(14, 0, "Report Period", mDeviceDataString.reportPeriod))
+            )
+        }
+
+        else if(mDeviceData.name == DeviceNameEnum.VALUE_NULL.ordinal){
+            groupsList = listOf(
+                Group(0, "Config",0),
+                Group(1, "Config",1),
+            )
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name)
+                )
+            )
+        }
+
+        expandableListView = findViewById(R.id.expandable_list_view)
+        expandableListView.setItemsCanFocus(true)
+        adapter = ExpandableListAdapter(this, groupsList, children)
+        expandableListView.setAdapter(adapter)
+
+        initView()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.debug_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.item_debug -> {
+                val intent = Intent(this@DeviceActivity, DebugActivity::class.java)
+                startActivity(intent)
+                true
+            }
+            else -> false // 如果有其他菜单项需要处理，可以在这里添加逻辑；否则，默认返回 false
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // 文件读取权限
+        if (requestCode == 1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(this, "Failed to obtain storage permission", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        if (requestCode == 0xFF && resultCode == ComponentActivity.RESULT_OK) {
+            data?.data?.let { selectedFileUri ->
+                // 处理选择的文件URI
+                Log.d("FileSelectionActivity", "Selected file URI: $selectedFileUri")
+//                contentResolver.takePersistableUriPermission(selectedFileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                try {
+                    // 持久化授予读取 URI 的权限
+                    contentResolver.takePersistableUriPermission(
+                        selectedFileUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                    // 现在您的应用可以在设备重启后仍然访问这个 Uri
+                } catch (e: SecurityException) {
+                    // 处理权限被拒绝的情况
+                    // 例如，可以提示用户权限被拒绝，或者需要用户手动授予权限
+                }
+
+                val displayName = getFileDisplayName(selectedFileUri)
+                if (displayName == null || !displayName.lowercase().endsWith(".bin")) {
+                    Toast.makeText(this,
+                        "Please select a .bin firmware file. .hex files are not supported.",
+                        Toast.LENGTH_LONG).show()
+                    return
+                }
+
+                try {
+                    val inputStream = contentResolver.openInputStream(selectedFileUri)
+                    if (inputStream == null) {
+                        Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                    val byteBuffer = ByteArrayOutputStream()
+                    val buffer = ByteArray(1024)
+                    var len: Int
+                    while (inputStream.read(buffer).also { len = it } != -1) {
+                        byteBuffer.write(buffer, 0, len)
+                    }
+                    inputStream.close()
+                    byteBuffer.close()
+                    val bytes = byteBuffer.toByteArray()
+                    val size = bytes.size.toLong()
+                    val fileData = ByteUtils.bytesToHexString(bytes)
+
+                    if (fileData.isNullOrEmpty()) {
+                        Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val length: Int = fileBin.length
+                        fileBin.delete(0, length).append(fileData)
+                        Toast.makeText(this, "file size: $size", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Log.e("FileSelectionActivity", "Failed to read file", e)
+                    Toast.makeText(this, "file read fail: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun getFileDisplayName(uri: Uri): String? {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) {
+                    return cursor.getString(nameIndex)
+                }
+            }
+        }
+        return uri.lastPathSegment
+    }
+
+    // 选择文件
+    private fun launchFileSelector() {
+//        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+////        intent.type = "*/*"
+//        intent.type = "application/octet-stream"
+//        intent.addCategory(Intent.CATEGORY_OPENABLE)
+//        if (intent.resolveActivity(packageManager) != null) {
+//            // 启动 Intent，等待结果
+//            startActivityForResult(intent, 0xFF)
+//        } else {
+//            // 处理没有应用可以处理 Intent 的情况
+//            Toast.makeText(this, "应用权限不足", Toast.LENGTH_SHORT).show()
+//        }
+
+        // val intent = Intent(Intent.ACTION_GET_CONTENT)
+        // intent.type = "application/octet-stream"
+        // intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        // intent.addCategory(Intent.CATEGORY_OPENABLE)
+        // // 检查是否有应用可以处理这个Intent
+        // if (intent.resolveActivity(packageManager) != null) {
+        //     startActivityForResult(intent, 0xFF)
+        // } else {
+        //     Toast.makeText(this, "Insufficient app permissions", Toast.LENGTH_SHORT).show()
+        // }
+        
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        
+        try {
+            startActivityForResult(intent, 0xFF)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "No file manager found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * 初始化
+     */
+    @SuppressLint("MissingPermission")
+    private fun initView() {
+        stream?.start()
+        executorService.scheduleAtFixedRate(counterRunnable, 0, 1, TimeUnit.SECONDS)
+        processDialogFragment.show(supportFragmentManager, "")
+        if(mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
+            mDeviceEvent.event = DeviceEventEnum.SYNC_EVENT.ordinal
+        }
+        startSyncCheck()
+    }
+
+    // 使用lambda表达式作为Runnable
+    private fun startSyncCheck() {
+        syncHandler?.postDelayed({
+            if (mDeviceEvent.event == DeviceEventEnum.VALUE_NULL.ordinal || (mDeviceData.hardVersion > 0 && mDeviceEvent.event == DeviceEventEnum.SYNC_EVENT.ordinal)) {
+                processDialogFragment.dismiss()
+                syncTime = 0
+                if(mDeviceEvent.event == DeviceEventEnum.SYNC_EVENT.ordinal) {
+                    mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                    Toast.makeText(context, "Sync successfully", Toast.LENGTH_SHORT).show()
+                    isPowerUpdate = true
+//                    adapter.updateUserNotify()
+                }
+            } else {
+                // 如果还没有连接，则再次检查（递归调用）
+                var timeout = 40
+                if(mDeviceEvent.event == DeviceEventEnum.CALIBRATION_EXECUTE_EVENT.ordinal) {
+                    timeout = 240
+                }
+                if (syncTime++ >= timeout) {
+                    syncTime = 0
+                    processDialogFragment.dismiss()
+                    mDeviceEvent.commandRetryWait = 0
+                    mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                    Toast.makeText(this, "timeout", Toast.LENGTH_SHORT).show()
+                }
+                else{
+                    startSyncCheck() // 注意这里调用的是函数本身，而不是Handler的postDelayed
+                }
+            }
+        }, 500) // 延迟1秒执行
+    }
+
+    private var otaTimeoutCount = 0
+
+    private fun startOTA() {
+        otaHandler?.postDelayed({
+            otaTimeoutCount++
+            if (otaLevel >= 100) {
+                progressDialogFragment.updateProgress(100)
+                otaHandler?.postDelayed({
+                    progressDialogFragment.dismiss()
+                    mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                    otaLevel = 0
+                    otaTimeoutCount = 0
+                    Toast.makeText(this, "OTA Successful", Toast.LENGTH_SHORT).show()
+                }, 3000)
+            } else if (otaTimeoutCount > 120) {
+                progressDialogFragment.dismiss()
+                mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                otaLevel = 0
+                otaTimeoutCount = 0
+                Toast.makeText(this, "OTA Failed: Timeout", Toast.LENGTH_LONG).show()
+            } else {
+                progressDialogFragment.updateProgress(otaLevel)
+                startOTA()
+            }
+        }, 1000)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        executorService.shutdown()
+        syncHandler?.removeCallbacksAndMessages(null)
+        otaHandler?.removeCallbacksAndMessages(null)
+//        stream.interrupt()
+        stopUpdatingTimestamp()
+        disconnectGatt()
+
+        restartApp()
+    }
+
+    // 关闭BLE连接
+    private fun disconnectGatt() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )!= PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        gatt?.disconnect()
+        Handler(Looper.getMainLooper()).postDelayed({
+            gatt?.close()
+        }, 1000)
+    }
+
+    private fun restartApp() {
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        startActivity(intent)
+        exitProcess(0)
+    }
+}
+
+
+class ProgressDialogFragment : DialogFragment() {
+
+    private lateinit var progressBar: ProgressBar
+    private lateinit var textView: TextView
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // 加载你的布局文件
+        return inflater.inflate(R.layout.fragment_progress_dialog, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // 设置DialogFragment为非全屏，并且不可取消（可选）
+        dialog?.setCancelable(false)
+        dialog?.window?.setDimAmount(0.5f) // 设置背景透明度（可选）
+
+        progressBar = view.findViewById<ProgressBar>(R.id.tv_ota_progress_bar)
+        textView = view.findViewById<TextView>(R.id.tv_ota_text_view)
+        progressBar.max = 100
+        textView.text = "0%"
+    }
+
+    // 假设你有一个方法来更新进度
+    fun updateProgress(progress: Int) {
+        // 这里通常应该通过ViewModel或其他机制来更新进度
+        // 但为了简单起见，我们直接更新进度条
+        progressBar.progress = progress
+        textView.text = "$progress%"
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isRefreshPaused = true
+        Log.i("onStart", "isRefreshPaused is true")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Handler(Looper.getMainLooper()).postDelayed({
+            isRefreshPaused = false
+            Log.i("onStop", "isRefreshPaused is false")
+        }, 3000) // 延迟5秒后恢复周期性任务
+    }
+}
+class ProcessDialogFragment : DialogFragment() {
+
+    private lateinit var progressBar: ProgressBar
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // 加载你的布局文件
+        return inflater.inflate(R.layout.fragment_process_dialog, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // 设置DialogFragment为非全屏，并且不可取消（可选）
+        dialog?.setCancelable(false)
+        dialog?.window?.setDimAmount(0.0f) // 设置背景透明度（可选）
+        val semiTransparentWhite = Color.argb(128, 255, 255, 255) // 128是alpha值，范围0-255
+        view.setBackgroundColor(semiTransparentWhite)
+        progressBar = view.findViewById<ProgressBar>(R.id.tv_process_progress_bar)
+        progressBar.max = 100
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isRefreshPaused = true
+        Log.i("onStart", "isRefreshPaused is true")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Handler(Looper.getMainLooper()).postDelayed({
+            isRefreshPaused = false
+            Log.i("onStop", "isRefreshPaused is false")
+        }, 3000) // 延迟5秒后恢复周期性任务
+    }
+}
+class DropDownActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dropdown)
+
+        // 使用ArrayList来存储HashMap，但明确HashMap的键值类型
+        val list: ArrayList<MutableMap<String, String>> = ArrayList()
+
+        // 使用循环或列表来添加每个星期的日子
+        val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+        daysOfWeek.forEach { day ->
+            addWeekToMapAndList(day, list)
+        }
+
+        //下拉项选中状态
+        val selected = BooleanArray(list.size)
+        //下拉框数据源
+        val str = arrayOfNulls<String>(list.size)
+        //下拉项ID
+        val id = IntArray(list.size)
+        for (i in list.indices) {
+            str[i] = list[i]!!["hobbies"].toString()
+            //id[i] = (int)list.get(i).get("id");
+            id[i] = list[i]!!["id"].toString().toInt()
+            selected[i] = false
+        }
+        val edit = findViewById<EditText>(R.id.et_week_repeat)
+        edit.setOnClickListener { checkboxEdit(edit, selected, str, id) }
+    }
+
+    // 定义一个函数来添加键值对到HashMap并添加到列表中
+    private fun addWeekToMapAndList(weekDay: String, list: MutableList<MutableMap<String, String>>) {
+        val map = HashMap<String, String>()
+        map["week"] = weekDay
+        list.add(map)
+    }
+
+    private fun checkboxEdit(
+        edit: EditText,
+        selected: BooleanArray,
+        str: Array<String?>,
+        id: IntArray
+    ) {
+        val builder: AlertDialog.Builder = AlertDialog.Builder(this)
+        builder.setTitle("Repeat")
+        val multiChoiceClickListener =
+            OnMultiChoiceClickListener { dialog, which, isChecked -> selected[which] = isChecked }
+        builder.setMultiChoiceItems(str, selected, multiChoiceClickListener)
+        val clickListener =
+            DialogInterface.OnClickListener { _, _ ->
+                var selectStr = ""
+                var ids = ""
+                for (i in selected.indices) {
+                    if (selected[i]) {
+                        if (TextUtils.isEmpty(selectStr)) {
+                            selectStr += str[i]
+                            ids += id[i]
+                        } else {
+                            selectStr = selectStr + "," + str[i]
+                            ids = ids + "," + id[i]
+                        }
+                    }
+                }
+                edit.setText(selectStr)
+                Toast.makeText(this, ids, Toast.LENGTH_SHORT).show()
+            }
+        builder.setCancelable(false)
+        builder.setNegativeButton("cancel", null)
+        builder.setPositiveButton("ok", clickListener)
+        val dialog: AlertDialog = builder.create()
+        dialog.show()
+    }
+}

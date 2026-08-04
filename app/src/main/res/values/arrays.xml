@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="spinner_items_dc200">
+        <item>Fusion mode</item>
+        <item>Geomagnetic only</item>
+    </string-array>
+
+    <string-array name="spinner_items_valve">
+        <item>1&amp;2</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="spinner_items_check">
+        <item>OFF</item>
+        <item>OPEN</item>
+    </string-array>
+
+    <string-array name="spinner_items_task">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
+        <item>13</item>
+        <item>14</item>
+        <item>15</item>
+        <item>16</item>
+        <item>FF</item>
+    </string-array>
+
+    <string-array name="spinner_items_vol">
+        <item>12V</item>
+        <item>9V</item>
+        <item>5V</item>
+    </string-array>
+
+    <string-array name="spinner_items_valve_mode">
+        <item>1&amp;2 pulse mode</item>
+        <item>1 switch state mode,2 pulse mode</item>
+        <item>1 pulse mode,2 switch state mode</item>
+        <item>1&amp;2 switch state mode</item>
+        <item>1 switch state mode, 2 pulse mode(with anti-shake)</item>
+        <item>2 pulse mode, 1 switch state mode(with anti-shake)</item>
+        <item>1&amp;2 switch state mode(with anti-shake)</item>
+    </string-array>
+
+    <string-array name="spinner_items_auto_power_on">
+        <item>Automatic power on/off mode is invalid</item>
+        <item>Automatic on/off mode is effective</item>
+    </string-array>
+
+    <string-array name="spinner_items_timezone">
+        <item>UTC+0</item>
+        <item>UTC+1</item>
+        <item>UTC+2</item>
+        <item>UTC+3</item>
+        <item>UTC+4</item>
+        <item>UTC+5</item>
+        <item>UTC+6</item>
+        <item>UTC+7</item>
+        <item>UTC+8</item>
+        <item>UTC+9</item>
+        <item>UTC+10</item>
+        <item>UTC+11</item>
+        <item>UTC+12</item>
+        <item>UTC-1</item>
+        <item>UTC-2</item>
+        <item>UTC-3</item>
+        <item>UTC-4</item>
+        <item>UTC-5</item>
+        <item>UTC-6</item>
+        <item>UTC-7</item>
+        <item>UTC-8</item>
+        <item>UTC-9</item>
+        <item>UTC-10</item>
+        <item>UTC-11</item>
+        <item>UTC-12</item>
+        <item>UTC+3.5</item>
+        <item>UTC+5.5</item>
+    </string-array>
+
+</resources>

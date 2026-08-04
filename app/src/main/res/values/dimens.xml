@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 键盘显示的高度阈值 -->
+    <dimen name="keyboard_visible_threshold">200dp</dimen>
+</resources>

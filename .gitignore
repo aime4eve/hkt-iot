@@ -1,0 +1,29 @@
+# Built application files / build outputs
+*.iml
+.gradle
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+app/release/
+
+# Local configuration (SDK paths, etc.)
+/local.properties
+local.properties
+
+# macOS
+.DS_Store
+
+# Signing / keystore files (DO NOT COMMIT)
+*.jks
+*.keystore
+keystore.properties
+
+# IDE / editor / AI tool configs
+.idea/
+.vscode/
+.claude/
+.cursor/
+.opencode/
+.trae/

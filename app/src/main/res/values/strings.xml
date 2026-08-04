@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">BLETools</string>
+    <string name="ble_connect">BLE_Connect</string>
+    <string name="todo">TODO</string>
+    <string name="tap_to_scanner">Tap to scanner</string>
+    <!--qrcode-->
+    <string name="str_scan_title">Scan</string>
+    <string name="str_scan_hint">Place the QR code in the box and scan</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="storage_permission_title">Storage Permission Required</string>
+    <string name="storage_permission_message">Please allow access to all files to save data.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="deny">Deny</string>
+    <string name="all_permissions_granted">All permissions have been granted.</string>
+    <string name="critical_permissions_denied_title">Necessary Permissions Denied</string>
+    <string name="critical_permissions_denied_message">Bluetooth and location permissions are required. Please go to settings to enable them.</string>
+    <string name="partial_function_restricted">Some functions may be restricted.</string>
+    <string name="permission_denied_log">The following permissions were not granted: %s</string>
+    <string name="filter_null_names">Filter devices without names</string>
+    <!-- res/values/strings.xml -->
+    <string name="storage_permissions_denied_message">存储读写权限是必需权限，请前往设置开启</string>
+
+</resources>

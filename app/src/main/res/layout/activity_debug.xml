@@ -1,0 +1,53 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DebugActivity">
+
+    <!-- ScrollView to allow TextView to scroll -->
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/layout_bottom"
+        android:background="@drawable/border_scrollview"
+        android:fillViewport="true">
+
+        <TextView
+            android:id="@+id/tv_debug"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="left"
+            android:padding="16dp"
+            android:text="The debug mode is only for professional technicians"
+            android:textColor="@color/colorTextContent"
+            android:visibility="visible"
+            tools:visibility="visible" />
+    </ScrollView>
+
+    <!-- LinearLayout to hold EditText and Button at the bottom -->
+    <LinearLayout
+        android:id="@+id/layout_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/et_command"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Please Input Command"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/bt_send_cmd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send"
+            android:textSize="12sp"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
+</RelativeLayout>
