@@ -375,12 +375,15 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_dc200)
         val spinner: Spinner = view.findViewById(R.id.sp_work_mode_dc200)
 
-        val items = listOf("OPEN", "OFF")
+        val items = listOf("Fusion mode", "Geomagnetic only", "Radar priority")
 
         spinner.adapter = HighlightSpinnerAdapter(context, items, spinner)
 
-        if(mDeviceData.parkMode == 1 || mDeviceData.parkMode == 0)
+        if (mDeviceEvent.parkMode in 0 until items.size) {
+            spinner.setSelection(mDeviceEvent.parkMode)
+        } else if (mDeviceData.parkMode in 0 until items.size) {
             spinner.setSelection(mDeviceData.parkMode)
+        }
 
         // 设置选择监听器
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -392,6 +395,9 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 }
                 else if(selectedItem.contains("Geomagnetic only")){
                     mDeviceEvent.parkMode = 1
+                }
+                else if(selectedItem.contains("Radar priority")){
+                    mDeviceEvent.parkMode = 2
                 }
             }
 
@@ -1196,6 +1202,10 @@ class DeviceActivity: AppCompatActivity(){
                         Child(4, 0, "Parking Status", mDeviceDataString.parkStatus),
                         Child(5, 0, "Tamper Status", mDeviceDataString.tamperAlarm),
                         Child(6, 0, "Report Period", mDeviceDataString.reportPeriod)
+                        Child(7, 0, "Mag X", mDeviceDataString.magX),
+                        Child(8, 0, "Mag Y", mDeviceDataString.magY),
+                        Child(9, 0, "Mag Z", mDeviceDataString.magZ),
+                        Child(10, 0, "Radar Spectrum", mDeviceDataString.radarSpectrum)
                     )
                 )
             } else if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal) {
@@ -1388,6 +1398,10 @@ class DeviceActivity: AppCompatActivity(){
                     Child(4, 0, "Parking Status", mDeviceDataString.temperature),
                     Child(5, 0, "Tamper Status", mDeviceDataString.angle),
                     Child(6, 0, "Report Period", mDeviceDataString.reportPeriod))
+                    Child(7, 0, "Mag X", mDeviceDataString.magX),
+                    Child(8, 0, "Mag Y", mDeviceDataString.magY),
+                    Child(9, 0, "Mag Z", mDeviceDataString.magZ),
+                    Child(10, 0, "Radar Spectrum", mDeviceDataString.radarSpectrum)
             )
         }
 

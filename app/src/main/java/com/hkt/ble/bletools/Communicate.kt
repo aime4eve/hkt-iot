@@ -52,6 +52,12 @@ data class DeviceTypeData(
     var valveMode:Int = 0,
     var buffetingDuration:Int = 0,
     var timeZone :Int = 0,
+
+    // geomagnetic sensor
+    var magX:Int = 0,
+    var magY:Int = 0,
+    var magZ:Int = 0,
+    var radarSpectrum:List<Int> = List(10) { 0 },
 )
 
 data class DeviceTypeDataString(
@@ -87,6 +93,11 @@ data class DeviceTypeDataString(
     var valveMode: String = "",
     var buffetingDuration: String = "",
     var timeZone: String = "",
+
+    var magX: String = "",
+    var magY: String = "",
+    var magZ: String = "",
+    var radarSpectrum: String = "",
 )
 
 enum class DeviceEventEnum {
@@ -469,10 +480,11 @@ fun streamRev(content: String) {
                     indexLen += 2
                 }else if (cmd == 0x3B) {
                     mDeviceData.parkMode = subArray[1 + indexLen]
-                    mDeviceDataString.parkMode = if (mDeviceData.parkStatus == 1) {
-                        "Fusion mode"
-                    } else {
-                        "Geomagnetic only"
+                    mDeviceDataString.parkMode = when (mDeviceData.parkMode) {
+                        0 -> "Fusion mode"
+                        1 -> "Geomagnetic only"
+                        2 -> "Radar priority"
+                        else -> "Unknown"
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -641,7 +653,43 @@ fun streamRev(content: String) {
                     }
                     dataLen -= 2
                     indexLen += 2
-                } else if (cmd == 0xFF) {
+                }else if (cmd == 0x5D) {
+                    var magX = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magX > 0x8000) {
+                        magX = magX - 0x10000
+                    }
+                    mDeviceData.magX = magX
+                    mDeviceDataString.magX = mDeviceData.magX.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x5E) {
+                    var magY = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magY > 0x8000) {
+                        magY = magY - 0x10000
+                    }
+                    mDeviceData.magY = magY
+                    mDeviceDataString.magY = mDeviceData.magY.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x5F) {
+                    var magZ = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magZ > 0x8000) {
+                        magZ = magZ - 0x10000
+                    }
+                    mDeviceData.magZ = magZ
+                    mDeviceDataString.magZ = mDeviceData.magZ.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x60) {
+                    val spectrumValues = IntArray(10)
+                    for (i in 0 until 10) {
+                        spectrumValues[i] = subArray[1 + indexLen + i * 2] shl 8 or subArray[1 + indexLen + i * 2 + 1]
+                    }
+                    mDeviceData.radarSpectrum = spectrumValues.toList()
+                    mDeviceDataString.radarSpectrum = spectrumValues.joinToString(", ")
+                    dataLen -= 21
+                    indexLen += 21
+                }  else if (cmd == 0xFF) {
                     if(mDeviceEvent.event == DeviceEventEnum.POWER_ON_START_EVENT.ordinal){
                         mDeviceEvent.event = DeviceEventEnum.POWER_ON_FINISH_EVENT.ordinal
                     }
