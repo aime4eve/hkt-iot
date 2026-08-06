@@ -22,4 +22,6 @@
     <!-- res/values/strings.xml -->
     <string name="storage_permissions_denied_message">存储读写权限是必需权限，请前往设置开启</string>
 
+    <string name="ble_disconnect_message">Device disconnected</string>
+
 </resources>

@@ -11,4 +11,5 @@
     <string name="filter_null_names">过滤无名称设备</string>
     <!-- res/values-zh/strings.xml -->
     <string name="storage_permissions_denied_message">存储读写权限是必需权限，请前往设置开启</string>
+    <string name="ble_disconnect_message">设备已断开连接</string>
 </resources>

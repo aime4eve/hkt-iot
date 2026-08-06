@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.bluetooth.BluetoothGatt
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.DialogInterface
 import android.content.DialogInterface.OnMultiChoiceClickListener
@@ -20,13 +19,13 @@ import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.BaseExpandableListAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -42,8 +41,6 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.DialogFragment
-import android.provider.OpenableColumns
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -150,11 +147,6 @@ data class Group(val id: Int, val title: String, val groupType: Int)
 data class Child(val id: Int, val groupId: Int, val title: String, val word: String)
 
 class ExpandableListAdapter(private val context: Context, private var groups: List<Group>, private var children: Map<Int, List<Child>>) : BaseExpandableListAdapter() {
-
-    private var cachedConfigSVC100View: View? = null
-    private var isConfigSVC100DataPopulated = false
-    private var cachedRealtimeTaskView: View? = null
-    private var cachedTimedTaskView: View? = null
 
     // 获取组的视图
     private fun getStatusView(convertView: View?, parent: ViewGroup?, isExpanded: Boolean): View {
@@ -375,12 +367,19 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_dc200)
         val spinner: Spinner = view.findViewById(R.id.sp_work_mode_dc200)
 
-        val items = listOf("OPEN", "OFF")
+        val items = listOf("Fusion mode", "Geomagnetic only", "Radar priority")
 
-        spinner.adapter = HighlightSpinnerAdapter(context, items, spinner)
+        // 创建并设置Adapter
+        val adapter = ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, items)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
 
-        if(mDeviceData.parkMode == 1 || mDeviceData.parkMode == 0)
+        // mDeviceEvent.parkMode 可能是用户选择或 resetEventFromDevice 后的设备值
+        if (mDeviceEvent.parkMode in 0 until items.size) {
+            spinner.setSelection(mDeviceEvent.parkMode)
+        } else if (mDeviceData.parkMode in 0 until items.size) {
             spinner.setSelection(mDeviceData.parkMode)
+        }
 
         // 设置选择监听器
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -392,6 +391,9 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 }
                 else if(selectedItem.contains("Geomagnetic only")){
                     mDeviceEvent.parkMode = 1
+                }
+                else if(selectedItem.contains("Radar priority")){
+                    mDeviceEvent.parkMode = 2
                 }
             }
 
@@ -436,16 +438,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         return view
     }
     private fun getConfigSVC100View(convertView: View?, parent: ViewGroup?): View {
-        cachedConfigSVC100View?.let { cached ->
-            if (!isConfigSVC100DataPopulated && mDeviceData.reportPeriod > 0) {
-                populateConfigSVC100Data(cached)
-                setConfigSVC100Loading(cached, false)
-                isConfigSVC100DataPopulated = true
-            }
-            return cached
-        }
-
-        val view = LayoutInflater.from(context).inflate(R.layout.dialog_config_svc100, parent, false)
+        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_svc100, parent, false)
 
         val volOutSpinner = view.findViewById<Spinner>(R.id.sp_vol_out)
         val valveModeSpinner = view.findViewById<Spinner>(R.id.sp_valve_mode)
@@ -455,39 +448,34 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
         val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
 
-        val volItems = context.resources.getStringArray(R.array.spinner_items_vol).toList()
-        volOutSpinner.adapter = HighlightSpinnerAdapter(context, volItems, volOutSpinner)
-
-        val valveModeItems = context.resources.getStringArray(R.array.spinner_items_valve_mode).toList()
-        valveModeSpinner.adapter = HighlightSpinnerAdapter(context, valveModeItems, valveModeSpinner)
-
-        val autoPowerItems = context.resources.getStringArray(R.array.spinner_items_auto_power_on).toList()
-        autoPowerOnSpinner.adapter = HighlightSpinnerAdapter(context, autoPowerItems, autoPowerOnSpinner)
-
-        val timezoneItems = context.resources.getStringArray(R.array.spinner_items_timezone).toList()
-        timezoneOnSpinner.adapter = HighlightSpinnerAdapter(context, timezoneItems, timezoneOnSpinner)
-
-        if(mDeviceData.reportPeriod > 0){
-            populateConfigSVC100Data(view)
-            isConfigSVC100DataPopulated = true
-        } else {
-            setConfigSVC100Loading(view, true)
+        // 已获取到正常数据
+        if(mDeviceData.reportPeriod >0){
+            volOutSpinner.setSelection(mDeviceData.volOut)
+            valveModeSpinner.setSelection(mDeviceData.valveMode)
+            buffetingDurationEditText.setText(mDeviceData.reportPeriod.toString())
+            autoPowerOnSpinner.setSelection(mDeviceData.autoPower)
+            timezoneOnSpinner.setSelection(mDeviceData.timeZone)
+            reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
         }
-
+        // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
             var inputText = reportPeriodEditText.text.toString()
             if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
                 try {
                     val number: Int = inputText.toInt()
+                    // 在这里使用转换后的整型
+//                    println("转换后的数字是: $number")
                     mDeviceEvent.reportPeriod = number
                     if(number < 1 || number > 1440) {
                         error++
                     }
                 } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
                     e.printStackTrace()
                 }
             } else {
+                // 输入为空或不是纯数字
                 println("输入无效")
                 error++
             }
@@ -501,9 +489,11 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                         error++
                     }
                 } catch (e: NumberFormatException) {
+                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
                     e.printStackTrace()
                 }
             } else {
+                // 输入为空或不是纯数字
                 println("输入无效")
                 error++
             }
@@ -518,66 +508,9 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
             }
         })
-
-        cachedConfigSVC100View = view
         return view
     }
-
-    private fun populateConfigSVC100Data(view: View) {
-        view.findViewById<Spinner>(R.id.sp_vol_out)?.setSelection(mDeviceData.volOut)
-        view.findViewById<Spinner>(R.id.sp_valve_mode)?.setSelection(mDeviceData.valveMode)
-        view.findViewById<EditText>(R.id.et_buffeting_duration)?.setText(mDeviceData.buffetingDuration.toString())
-        view.findViewById<Spinner>(R.id.sp_auto_power_on)?.setSelection(mDeviceData.autoPower)
-        view.findViewById<Spinner>(R.id.sp_timezone)?.setSelection(mDeviceData.timeZone)
-        view.findViewById<EditText>(R.id.et_report_period_svc100)?.setText(mDeviceData.reportPeriod.toString())
-    }
-
-    private fun setConfigSVC100Loading(view: View, loading: Boolean) {
-        val cardView = (view as? ViewGroup)?.getChildAt(0) as? ViewGroup ?: return
-        val innerLayout = cardView.getChildAt(0) as? ViewGroup ?: return
-
-        val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
-        val volOutSpinner = view.findViewById<Spinner>(R.id.sp_vol_out)
-        val valveModeSpinner = view.findViewById<Spinner>(R.id.sp_valve_mode)
-        val buffetingDurationEditText = view.findViewById<EditText>(R.id.et_buffeting_duration)
-        val autoPowerOnSpinner = view.findViewById<Spinner>(R.id.sp_auto_power_on)
-        val timezoneOnSpinner = view.findViewById<Spinner>(R.id.sp_timezone)
-        val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
-
-        if (loading) {
-            val loadingText = TextView(context).apply {
-                text = "Loading device parameters..."
-                setTextColor(Color.GRAY)
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setPadding(16, 32, 16, 16)
-                tag = "svc100_loading_hint"
-            }
-            innerLayout.addView(loadingText, 0)
-
-            configButton?.isEnabled = false
-            volOutSpinner?.isEnabled = false
-            valveModeSpinner?.isEnabled = false
-            buffetingDurationEditText?.isEnabled = false
-            autoPowerOnSpinner?.isEnabled = false
-            timezoneOnSpinner?.isEnabled = false
-            reportPeriodEditText?.isEnabled = false
-        } else {
-            val hint = innerLayout.findViewWithTag<View>("svc100_loading_hint")
-            if (hint != null) innerLayout.removeView(hint)
-
-            configButton?.isEnabled = true
-            volOutSpinner?.isEnabled = true
-            valveModeSpinner?.isEnabled = true
-            buffetingDurationEditText?.isEnabled = true
-            autoPowerOnSpinner?.isEnabled = true
-            timezoneOnSpinner?.isEnabled = true
-            reportPeriodEditText?.isEnabled = true
-        }
-    }
     private fun getRealtimeTask(convertView: View?, parent: ViewGroup?): View {
-        cachedRealtimeTaskView?.let { return it }
-
         val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_realtime_task, parent, false)
 
         val valveSpinner = view.findViewById<Spinner>(R.id.sp_valve_realtime_task)
@@ -585,12 +518,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val pulseEditText = view.findViewById<EditText>(R.id.et_pulse_realtime_task)
         val timeEditText = view.findViewById<EditText>(R.id.et_time_realtime_task)
         val configButton = view.findViewById<Button>(R.id.bt_config_realtime_task)
-
-        val valveItems = context.resources.getStringArray(R.array.spinner_items_valve).toList()
-        valveSpinner.adapter = HighlightSpinnerAdapter(context, valveItems, valveSpinner)
-
-        val checkItems = context.resources.getStringArray(R.array.spinner_items_check).toList()
-        openStateSpinner.adapter = HighlightSpinnerAdapter(context, checkItems, openStateSpinner)
 
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
@@ -615,7 +542,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 error++
             }
 
-            if (time.isNotEmpty() && TextUtils.isDigitsOnly(time)) {
+            if (time.isNotEmpty() && TextUtils.isDigitsOnly(pulse)) {
                 try {
                     val number: Int = time.toInt()
                     // 在这里使用转换后的整型
@@ -639,47 +566,11 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 mDeviceEvent.valveRealtime = valveSpinner.selectedItemPosition
                 mDeviceEvent.stateRealtime = openStateSpinner.selectedItemPosition
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_REALTIME_TASK.ordinal
-                saveRealtimeTaskConfig(
-                    valveSpinner.selectedItemPosition,
-                    openStateSpinner.selectedItemPosition,
-                    mDeviceEvent.pulseRealtime,
-                    mDeviceEvent.timeRealtime
-                )
             }
         })
-
-        restoreRealtimeTaskConfig(valveSpinner, openStateSpinner, pulseEditText, timeEditText)
-
-        cachedRealtimeTaskView = view
         return view
     }
-
-    private fun saveRealtimeTaskConfig(valve: Int, state: Int, pulse: Int, time: Int) {
-        val prefs = context.getSharedPreferences("config_realtime_task", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putInt("valve", valve)
-            .putInt("state", state)
-            .putInt("pulse", pulse)
-            .putInt("time", time)
-            .apply()
-    }
-
-    private fun restoreRealtimeTaskConfig(
-        valveSpinner: Spinner, openStateSpinner: Spinner,
-        pulseEditText: EditText, timeEditText: EditText
-    ) {
-        val prefs = context.getSharedPreferences("config_realtime_task", Context.MODE_PRIVATE)
-        if (!prefs.contains("valve")) return
-        valveSpinner.setSelection(prefs.getInt("valve", 0))
-        openStateSpinner.setSelection(prefs.getInt("state", 0))
-        val pulse = prefs.getInt("pulse", 0)
-        if (pulse > 0) pulseEditText.setText(pulse.toString())
-        val time = prefs.getInt("time", 0)
-        if (time > 0) timeEditText.setText(time.toString())
-    }
     private fun getTimedTask(convertView: View?, parent: ViewGroup?): View {
-        cachedTimedTaskView?.let { return it }
-
         val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_config_timed_task, parent, false)
 
         val idSpinner = view.findViewById<Spinner>(R.id.sp_task_number)
@@ -692,18 +583,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val configButton = view.findViewById<Button>(R.id.bt_config_timed_task)
         val deleteButton = view.findViewById<Button>(R.id.bt_delete_timed_task)
 
-        val taskItems = context.resources.getStringArray(R.array.spinner_items_task).toList()
-        idSpinner.adapter = HighlightSpinnerAdapter(context, taskItems, idSpinner)
-
-        val valveItems = context.resources.getStringArray(R.array.spinner_items_valve).toList()
-        valveSpinner.adapter = HighlightSpinnerAdapter(context, valveItems, valveSpinner)
-
-        val checkItems = context.resources.getStringArray(R.array.spinner_items_check).toList()
-        openStateSpinner.adapter = HighlightSpinnerAdapter(context, checkItems, openStateSpinner)
-
-        var startTimeSelected = false
-        var endTimeSelected = false
-
         startTimeEditText?.setOnClickListener {
             val calendar: Calendar = Calendar.getInstance()
             val hour: Int = calendar.get(Calendar.HOUR_OF_DAY)
@@ -713,7 +592,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 { _: TimePicker?, selectedHour: Int, selectedMinute: Int ->
                     startTimeEditText.setText(formatTime(selectedHour, selectedMinute))
                     mDeviceEvent.startTimeTimed = selectedHour * 60 + selectedMinute
-                    startTimeSelected = true
                 },
                 hour,
                 minute,
@@ -730,7 +608,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 { _: TimePicker?, selectedHour: Int, selectedMinute: Int ->
                     endTimeEditText.setText(formatTime(selectedHour, selectedMinute))
                     mDeviceEvent.endTimeTimed = selectedHour * 60 + selectedMinute
-                    endTimeSelected = true
                 },
                 hour,
                 minute,
@@ -738,19 +615,28 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
             )
             timePickerDialog.show()
         }
-        val repeatList: ArrayList<MutableMap<String, String>> = ArrayList()
-        val daysOfWeek = listOf("1", "2", "3", "4", "5", "6", "7")
-        daysOfWeek.forEach { day ->
-            addItemToMapAndList("week", day, repeatList)
+        repeatTextView?.setOnClickListener {
+
+            // 使用ArrayList来存储HashMap，但明确HashMap的键值类型
+            val list: ArrayList<MutableMap<String, String>> = ArrayList()
+            // 使用循环或列表来添加每个星期的日子
+//            val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+            val daysOfWeek = listOf("1", "2", "3", "4", "5", "6", "7")
+            daysOfWeek.forEach { day ->
+                addItemToMapAndList("week",day, list)
+            }
+            //下拉项选中状态
+            val selected = BooleanArray(list.size)
+            //下拉框数据源
+            val str = arrayOfNulls<String>(list.size)
+            //下拉项ID
+            val id = IntArray(list.size)
+            for (i in list.indices) {
+                str[i] = list[i]!!["week"].toString()
+                selected[i] = false
+            }
+            repeatTextView?.setOnClickListener { checkboxEdit(repeatTextView, selected, str, id) }
         }
-        val repeatSelected = BooleanArray(repeatList.size)
-        val repeatStr = arrayOfNulls<String>(repeatList.size)
-        val repeatId = IntArray(repeatList.size)
-        for (i in repeatList.indices) {
-            repeatStr[i] = repeatList[i]["week"].toString()
-            repeatSelected[i] = false
-        }
-        repeatTextView?.setOnClickListener { checkboxEdit(repeatTextView, repeatSelected, repeatStr, repeatId) }
 
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
@@ -782,7 +668,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 error++
             }
 
-            if (!startTimeSelected || !endTimeSelected) {
+            if(mDeviceEvent.endTimeTimed - mDeviceEvent.startTimeTimed <= 0){
                 error++
             }
 
@@ -798,15 +684,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 mDeviceEvent.stateTimed = openStateSpinner.selectedItemPosition
 //                mDeviceEvent.repeatTimed = repeatSpinner.selectedItemPosition
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_TIMED_TASK.ordinal
-                saveTimedTaskConfig(
-                    idSpinner.selectedItemPosition,
-                    valveSpinner.selectedItemPosition,
-                    openStateSpinner.selectedItemPosition,
-                    mDeviceEvent.pulseTimed,
-                    mDeviceEvent.startTimeTimed,
-                    mDeviceEvent.endTimeTimed,
-                    mDeviceEvent.repeatTimed
-                )
             }
         })
         deleteButton?.setOnClickListener(View.OnClickListener {
@@ -821,42 +698,8 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
             mDeviceEvent.idTimed = id
             mDeviceEvent.event = DeviceEventEnum.DELETE_TIMED_TASK.ordinal
         })
-
-        restoreTimedTaskConfig(idSpinner, valveSpinner, openStateSpinner, pulseEditText)
-
-        cachedTimedTaskView = view
         return view
     }
-
-    private fun saveTimedTaskConfig(
-        idPosition: Int, valve: Int, state: Int, pulse: Int,
-        startTime: Int, endTime: Int, repeat: Int
-    ) {
-        val prefs = context.getSharedPreferences("config_timed_task", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putInt("idPosition", idPosition)
-            .putInt("valve", valve)
-            .putInt("state", state)
-            .putInt("pulse", pulse)
-            .putInt("startTime", startTime)
-            .putInt("endTime", endTime)
-            .putInt("repeat", repeat)
-            .apply()
-    }
-
-    private fun restoreTimedTaskConfig(
-        idSpinner: Spinner, valveSpinner: Spinner,
-        openStateSpinner: Spinner, pulseEditText: EditText
-    ) {
-        val prefs = context.getSharedPreferences("config_timed_task", Context.MODE_PRIVATE)
-        if (!prefs.contains("valve")) return
-        idSpinner.setSelection(prefs.getInt("idPosition", 0))
-        valveSpinner.setSelection(prefs.getInt("valve", 0))
-        openStateSpinner.setSelection(prefs.getInt("state", 0))
-        val pulse = prefs.getInt("pulse", 0)
-        if (pulse > 0) pulseEditText.setText(pulse.toString())
-    }
-
     private fun getOTAView(convertView: View?, parent: ViewGroup?): View {
         val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
         val selectFileButton = view.findViewById<Button>(R.id.tv_select_file)
@@ -893,13 +736,13 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 mDeviceEvent.repeatTimed = 0
                 for (i in selected.indices) {
                     if (selected[i]) {
-                        mDeviceEvent.repeatTimed += (1 shl i)
                         if (TextUtils.isEmpty(selectStr)) {
                             selectStr += str[i]
                             ids += id[i]
                         } else {
                             selectStr = selectStr + "," + str[i]
                             ids = ids + "," + id[i]
+                            mDeviceEvent.repeatTimed += (1 shl i)
                         }
                     }
                 }
@@ -915,29 +758,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
     fun updateChildren(newChildren: Map<Int, List<Child>>) {
         this.children = newChildren
         updateUserNotify()
-    }
-
-    fun updateStatusOnly(listView: ExpandableListView, statusChildren: List<Child>) {
-        this.children = this.children.toMutableMap().apply { put(0, statusChildren) }
-
-        val firstVisible = listView.firstVisiblePosition
-        val lastVisible = listView.lastVisiblePosition
-
-        for (i in firstVisible..lastVisible) {
-            val packedPosition = listView.getExpandableListPosition(i)
-            val type = ExpandableListView.getPackedPositionType(packedPosition)
-            val groupPos = ExpandableListView.getPackedPositionGroup(packedPosition)
-            val childPos = ExpandableListView.getPackedPositionChild(packedPosition)
-
-            if (type == ExpandableListView.PACKED_POSITION_TYPE_CHILD && groupPos == 0) {
-                if (childPos >= 0 && childPos < statusChildren.size) {
-                    val view = listView.getChildAt(i - firstVisible)
-                    val child = statusChildren[childPos]
-                    view?.findViewById<TextView>(R.id.tv_child_title)?.text = child.title
-                    view?.findViewById<TextView>(R.id.tv_child_word)?.text = child.word
-                }
-            }
-        }
     }
 
     fun updateGroups(newGroups: List<Group>) {
@@ -969,18 +789,6 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         // 尝试复用 convertView，如果为空则通过 LayoutInflater 创建新视图
 //        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
         Log.d("getGroupView", "$group")
-
-        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 2 && cachedConfigSVC100View != null) {
-            return getConfigSVC100View(null, parent)
-        }
-
-        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 3 && cachedRealtimeTaskView != null) {
-            return cachedRealtimeTaskView!!
-        }
-
-        if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 4 && cachedTimedTaskView != null) {
-            return cachedTimedTaskView!!
-        }
 
         var view: View
         // 尝试复用 convertView，如果为空或 tag 不匹配则创建新视图
@@ -1017,8 +825,9 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                                 // 根据设备类型配置 Config 视图
                                 if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal)
                                     view = LayoutInflater.from(context).inflate(R.layout.dialog_config_uds100, parent, false)
-                                else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal)
+                                else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal)
                                     view = LayoutInflater.from(context).inflate(R.layout.dialog_config_dc200, parent, false)
+                                // 如果没有匹配的设备类型，可以选择不修改 view 或设置默认视图
                             }
                             4 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_config_timestamp, parent, false)
                             5 -> view = LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
@@ -1063,8 +872,9 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                             // 根据设备类型配置 Config 视图
                             if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal)
                                 return getConfigUDS100View(view, parent)
-                            else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal)
+                            else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal)
                                 return getConfigDC200View(view, parent)
+                            // 如果没有匹配的设备类型，可以选择不修改 view 或设置默认视图
                         }
                         4 -> return getSyncTimestampView(view, parent)
                         5 -> return getOTAView(view, parent)
@@ -1138,14 +948,29 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
 
 class DeviceActivity: AppCompatActivity(){
 
-    private var gatt: BluetoothGatt? = MainActivity.getGatt()
-    private val stream: StreamThread? = gatt?.let { StreamThread(it) }
+    private var gatt: BluetoothGatt = MainActivity.getGatt()!!
+    private val stream = StreamThread(gatt)
     private var syncHandler: Handler? = Handler(Looper.getMainLooper())
     private var otaHandler: Handler? = Handler(Looper.getMainLooper())
     private lateinit var adapter: ExpandableListAdapter
-    private lateinit var expandableListView: ExpandableListView
     private var executorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private var syncTime: Int = 0
+    private var isCleanedUp = false
+    private var needRestart = false
+    private val disconnectHandler = Handler(Looper.getMainLooper())
+    private val disconnectCheckRunnable = object : Runnable {
+        override fun run() {
+            if (isCleanedUp) return
+            if (!connectState && mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
+                if (!isFinishing) {
+                    Toast.makeText(this@DeviceActivity, getString(R.string.ble_disconnect_message), Toast.LENGTH_LONG).show()
+                    onBackPressed()
+                }
+                return
+            }
+            disconnectHandler.postDelayed(this, 1000)
+        }
+    }
 
     // 在你的Activity或Fragment中
     private val progressDialogFragment = ProgressDialogFragment()
@@ -1156,14 +981,10 @@ class DeviceActivity: AppCompatActivity(){
     private lateinit var newChildren : Map<Int, List<Child>>
 
     private var isKeyboardVisible = false
-    private var isInitialDataLoaded = false
 
     private val counterRunnable  =  Runnable {
         /* 在这里定义周期性执行的任务 */
         runOnUiThread {
-            if(isKeyboardVisible){
-                return@runOnUiThread
-            }
             if (mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal) {
                 newChildren = mapOf(
                     0 to listOf(
@@ -1186,7 +1007,7 @@ class DeviceActivity: AppCompatActivity(){
                         Child(17, 0, "Gps Period", mDeviceDataString.gpsPeriod)
                     ),
                 )
-            } else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal) {
+            } else if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal) {
                 newChildren = mapOf(
                     0 to listOf(
                         Child(0, 0, "Name", mDeviceDataString.name),
@@ -1195,7 +1016,11 @@ class DeviceActivity: AppCompatActivity(){
                         Child(3, 0, "Battery", mDeviceDataString.battery),
                         Child(4, 0, "Parking Status", mDeviceDataString.parkStatus),
                         Child(5, 0, "Tamper Status", mDeviceDataString.tamperAlarm),
-                        Child(6, 0, "Report Period", mDeviceDataString.reportPeriod)
+                        Child(6, 0, "Report Period", mDeviceDataString.reportPeriod),
+                        Child(7, 0, "Mag X", mDeviceDataString.magX),
+                        Child(8, 0, "Mag Y", mDeviceDataString.magY),
+                        Child(9, 0, "Mag Z", mDeviceDataString.magZ),
+                        Child(10, 0, "Radar Spectrum", mDeviceDataString.radarSpectrum)
                     )
                 )
             } else if (mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal) {
@@ -1227,13 +1052,7 @@ class DeviceActivity: AppCompatActivity(){
             }
 
             if (mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
-                val statusList = newChildren[0] ?: emptyList()
-                adapter.updateStatusOnly(expandableListView, statusList)
-            }
-
-            if (!isInitialDataLoaded && mDeviceData.reportPeriod > 0 && !isRefreshPaused) {
-                isInitialDataLoaded = true
-                adapter.notifyDataSetChanged()
+                adapter.updateChildren(newChildren)
             }
 
             if (mDeviceEvent.event == DeviceEventEnum.SELECT_FILE.ordinal) {
@@ -1284,12 +1103,10 @@ class DeviceActivity: AppCompatActivity(){
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                 Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
             } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK.ordinal) {
-                mDeviceEvent.commandRetryWait = 0
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_TIMED_TASK_START_EVENT.ordinal
                 processDialogFragment.show(supportFragmentManager, "")
                 startSyncCheck()
             } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK_FINISH_EVENT.ordinal) {
-                mDeviceEvent.commandRetryWait = 0
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                 Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
             } else if (mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK.ordinal) {
@@ -1300,12 +1117,10 @@ class DeviceActivity: AppCompatActivity(){
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                 Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
             } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK.ordinal) {
-                mDeviceEvent.commandRetryWait = 0
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_REALTIME_TASK_START_EVENT.ordinal
                 processDialogFragment.show(supportFragmentManager, "")
                 startSyncCheck()
             } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK_FINISH_EVENT.ordinal) {
-                mDeviceEvent.commandRetryWait = 0
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                 Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
             }
@@ -1336,18 +1151,15 @@ class DeviceActivity: AppCompatActivity(){
         }
 
         if(mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal){
-            val hasSync = DeviceFeatureConfig.isFeatureEnabled(
-                mDeviceData.name, DeviceFeatureConfig.Feature.SYNC_TIMESTAMP
-            )
-            val udsGroups = mutableListOf(
+            groupsList = listOf(
                 Group(0, "Status",0),
                 Group(1, "Config",1),
                 Group(2, "Config",2),
                 Group(3, "Config",3),
+                Group(4, "Config",4),
+                Group(5, "Config",5),
+                // ...更多组
             )
-            if (hasSync) udsGroups.add(Group(4, "Config", 4))
-            udsGroups.add(Group(if (hasSync) 5 else 4, "Config", 5))
-            groupsList = udsGroups
             children = mapOf(
                 0 to listOf(
                     Child(0, 0, "Name", mDeviceDataString.name),
@@ -1378,6 +1190,7 @@ class DeviceActivity: AppCompatActivity(){
                 Group(3, "Config",3),
                 Group(4, "Config",4),
                 Group(5, "Config",5),
+                // ...更多组
             )
             children = mapOf(
                 0 to listOf(
@@ -1385,34 +1198,13 @@ class DeviceActivity: AppCompatActivity(){
                     Child(1, 0, "Version", mDeviceDataString.version),
                     Child(2, 0, "Power", mDeviceDataString.power),
                     Child(3, 0, "Battery", mDeviceDataString.battery),
-                    Child(4, 0, "Parking Status", mDeviceDataString.temperature),
-                    Child(5, 0, "Tamper Status", mDeviceDataString.angle),
-                    Child(6, 0, "Report Period", mDeviceDataString.reportPeriod))
-            )
-        }
-
-        else if(mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal){
-            val hasSync = DeviceFeatureConfig.isFeatureEnabled(
-                mDeviceData.name, DeviceFeatureConfig.Feature.SYNC_TIMESTAMP
-            )
-            val mpsGroups = mutableListOf(
-                Group(0, "Status",0),
-                Group(1, "Config",1),
-                Group(2, "Config",2),
-                Group(3, "Config",3),
-            )
-            if (hasSync) mpsGroups.add(Group(4, "Config", 4))
-            mpsGroups.add(Group(if (hasSync) 5 else 4, "Config", 5))
-            groupsList = mpsGroups
-            children = mapOf(
-                0 to listOf(
-                    Child(0, 0, "Name", mDeviceDataString.name),
-                    Child(1, 0, "Version", mDeviceDataString.version),
-                    Child(2, 0, "Power", mDeviceDataString.power),
-                    Child(3, 0, "Battery", mDeviceDataString.battery),
-                    Child(4, 0, "Parking Status", mDeviceDataString.temperature),
-                    Child(5, 0, "Tamper Status", mDeviceDataString.angle),
-                    Child(6, 0, "Report Period", mDeviceDataString.reportPeriod))
+                    Child(4, 0, "Parking Status", mDeviceDataString.parkStatus),
+                    Child(5, 0, "Tamper Status", mDeviceDataString.tamperAlarm),
+                    Child(6, 0, "Report Period", mDeviceDataString.reportPeriod),
+                    Child(7, 0, "Mag X", mDeviceDataString.magX),
+                    Child(8, 0, "Mag Y", mDeviceDataString.magY),
+                    Child(9, 0, "Mag Z", mDeviceDataString.magZ),
+                    Child(10, 0, "Radar Spectrum", mDeviceDataString.radarSpectrum))
             )
         }
 
@@ -1458,10 +1250,18 @@ class DeviceActivity: AppCompatActivity(){
             )
         }
 
-        expandableListView = findViewById(R.id.expandable_list_view)
-        expandableListView.setItemsCanFocus(true)
+        val expandableListView = findViewById<ExpandableListView>(R.id.expandable_list_view)
         adapter = ExpandableListAdapter(this, groupsList, children)
         expandableListView.setAdapter(adapter)
+
+        // 点击 Status 组时重置待配置参数为设备当前值
+        expandableListView.setOnGroupClickListener { _, _, groupPosition, _ ->
+            if (groupsList[groupPosition].groupType == 0) {
+                resetEventFromDevice()
+                adapter.notifyDataSetChanged()
+            }
+            false
+        }
 
         initView()
     }
@@ -1507,58 +1307,27 @@ class DeviceActivity: AppCompatActivity(){
                     // 处理权限被拒绝的情况
                     // 例如，可以提示用户权限被拒绝，或者需要用户手动授予权限
                 }
+                val uri =
+                    selectedFileUri.toString().replace("%3A", ":").replace("%2F", "/")  //过滤URL 包含中文
+                        .replace("%3F", "?").replace("%3D", "=").replace("%26", "&")
+//                val selectedFile: InputStream? = contentResolver.openInputStream(uri.toUri())
+//                val selectedFile = data?.data //The uri with the location of the file
 
-                val displayName = getFileDisplayName(selectedFileUri)
-                if (displayName == null || !displayName.lowercase().endsWith(".bin")) {
-                    Toast.makeText(this,
-                        "Please select a .bin firmware file. .hex files are not supported.",
-                        Toast.LENGTH_LONG).show()
-                    return
-                }
-
-                try {
-                    val inputStream = contentResolver.openInputStream(selectedFileUri)
-                    if (inputStream == null) {
-                        Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
-                        return
-                    }
-                    val byteBuffer = ByteArrayOutputStream()
-                    val buffer = ByteArray(1024)
-                    var len: Int
-                    while (inputStream.read(buffer).also { len = it } != -1) {
-                        byteBuffer.write(buffer, 0, len)
-                    }
-                    inputStream.close()
-                    byteBuffer.close()
-                    val bytes = byteBuffer.toByteArray()
-                    val size = bytes.size.toLong()
-                    val fileData = ByteUtils.bytesToHexString(bytes)
-
-                    if (fileData.isNullOrEmpty()) {
-                        Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val length: Int = fileBin.length
-                        fileBin.delete(0, length).append(fileData)
-                        Toast.makeText(this, "file size: $size", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Log.e("FileSelectionActivity", "Failed to read file", e)
-                    Toast.makeText(this, "file read fail: ${e.message}", Toast.LENGTH_SHORT).show()
+                val path = FileUtil.getFileAbsolutePath(this, Uri.parse(uri))
+//                    val fileData = FileUtil.readFile(path.toString())
+                val size = FileUtil.getFileSize(File(path.toString()))
+                val fileData = FileUtil.readBinFile(path.toString())
+                if(fileData == "false"){
+                    Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
+                }else {
+                    // 清空buffer
+                    var length: Int = fileBin.length
+                    fileBin.delete(0, length).append(fileData)
+                    Toast.makeText(this, "file size: $size", Toast.LENGTH_SHORT).show()
+//                    Toast.makeText(this, "file path: $uri", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-    }
-
-    private fun getFileDisplayName(uri: Uri): String? {
-        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (nameIndex >= 0) {
-                    return cursor.getString(nameIndex)
-                }
-            }
-        }
-        return uri.lastPathSegment
     }
 
     // 选择文件
@@ -1575,27 +1344,15 @@ class DeviceActivity: AppCompatActivity(){
 //            Toast.makeText(this, "应用权限不足", Toast.LENGTH_SHORT).show()
 //        }
 
-        // val intent = Intent(Intent.ACTION_GET_CONTENT)
-        // intent.type = "application/octet-stream"
-        // intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-        // intent.addCategory(Intent.CATEGORY_OPENABLE)
-        // // 检查是否有应用可以处理这个Intent
-        // if (intent.resolveActivity(packageManager) != null) {
-        //     startActivityForResult(intent, 0xFF)
-        // } else {
-        //     Toast.makeText(this, "Insufficient app permissions", Toast.LENGTH_SHORT).show()
-        // }
-        
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "application/octet-stream"
-            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        
-        try {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "application/octet-stream"
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        // 检查是否有应用可以处理这个Intent
+        if (intent.resolveActivity(packageManager) != null) {
             startActivityForResult(intent, 0xFF)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "No file manager found", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Insufficient app permissions", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1604,8 +1361,9 @@ class DeviceActivity: AppCompatActivity(){
      */
     @SuppressLint("MissingPermission")
     private fun initView() {
-        stream?.start()
+        stream.start()
         executorService.scheduleAtFixedRate(counterRunnable, 0, 1, TimeUnit.SECONDS)
+        disconnectHandler.post(disconnectCheckRunnable)  // 启动断连检测
         processDialogFragment.show(supportFragmentManager, "")
         if(mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
             mDeviceEvent.event = DeviceEventEnum.SYNC_EVENT.ordinal
@@ -1622,8 +1380,10 @@ class DeviceActivity: AppCompatActivity(){
                 if(mDeviceEvent.event == DeviceEventEnum.SYNC_EVENT.ordinal) {
                     mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                     Toast.makeText(context, "Sync successfully", Toast.LENGTH_SHORT).show()
+                    isExternalPowerUpdate = true  // 同步状态变化不触发指令
                     isPowerUpdate = true
-//                    adapter.updateUserNotify()
+                    resetEventFromDevice()
+                    adapter.notifyDataSetChanged()
                 }
             } else {
                 // 如果还没有连接，则再次检查（递归调用）
@@ -1634,7 +1394,6 @@ class DeviceActivity: AppCompatActivity(){
                 if (syncTime++ >= timeout) {
                     syncTime = 0
                     processDialogFragment.dismiss()
-                    mDeviceEvent.commandRetryWait = 0
                     mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                     Toast.makeText(this, "timeout", Toast.LENGTH_SHORT).show()
                 }
@@ -1645,65 +1404,60 @@ class DeviceActivity: AppCompatActivity(){
         }, 500) // 延迟1秒执行
     }
 
-    private var otaTimeoutCount = 0
-
+    // 使用lambda表达式作为Runnable
     private fun startOTA() {
         otaHandler?.postDelayed({
-            otaTimeoutCount++
-            if (otaLevel >= 100) {
-                progressDialogFragment.updateProgress(100)
-                otaHandler?.postDelayed({
-                    progressDialogFragment.dismiss()
-                    mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
-                    otaLevel = 0
-                    otaTimeoutCount = 0
-                    Toast.makeText(this, "OTA Successful", Toast.LENGTH_SHORT).show()
-                }, 3000)
-            } else if (otaTimeoutCount > 120) {
+            if(otaLevel >= 100){
+                Thread.sleep(3000)
                 progressDialogFragment.dismiss()
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
                 otaLevel = 0
-                otaTimeoutCount = 0
-                Toast.makeText(this, "OTA Failed: Timeout", Toast.LENGTH_LONG).show()
-            } else {
+                Toast.makeText(this, "OTA Successful", Toast.LENGTH_SHORT).show()
+            }else{
+                startOTA() // 注意这里调用的是函数本身，而不是Handler的postDelayed
                 progressDialogFragment.updateProgress(otaLevel)
-                startOTA()
             }
-        }, 1000)
+        }, 1000) // 延迟1秒执行
+    }
+
+    override fun onBackPressed() {
+        needRestart = connectState  // BLE 连着主动返回需要杀进程
+        cleanUp()
+        super.onBackPressed()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        cleanUp()
+    }
+
+    // 点击 Status 时重置待配置参数为设备当前值
+    private fun resetEventFromDevice() {
+        mDeviceEvent.parkMode = mDeviceData.parkMode
+        mDeviceEvent.reportPeriod = mDeviceData.reportPeriod
+        mDeviceEvent.overflowLowThreshold = mDeviceData.overflowLowThreshold
+        mDeviceEvent.overflowHighThreshold = mDeviceData.overflowHighThreshold
+        mDeviceEvent.gpsPeriod = mDeviceData.gpsPeriod
+        mDeviceEvent.volOut = mDeviceData.volOut
+        mDeviceEvent.valveMode = mDeviceData.valveMode
+        mDeviceEvent.buffetingDuration = mDeviceData.buffetingDuration
+        mDeviceEvent.autoPower = mDeviceData.autoPower
+        mDeviceEvent.timeZone = mDeviceData.timeZone
+    }
+
+    private fun cleanUp() {
+        if (isCleanedUp) return
+        isCleanedUp = true
+        mDeviceData.name = DeviceNameEnum.VALUE_NULL.ordinal
         executorService.shutdown()
+        disconnectHandler.removeCallbacksAndMessages(null)
         syncHandler?.removeCallbacksAndMessages(null)
         otaHandler?.removeCallbacksAndMessages(null)
-//        stream.interrupt()
         stopUpdatingTimestamp()
-        disconnectGatt()
-
-        restartApp()
-    }
-
-    // 关闭BLE连接
-    private fun disconnectGatt() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_CONNECT
-            )!= PackageManager.PERMISSION_GRANTED
-        ) {
-            return
+        connectState = false
+        if (!needRestart) {
+            stream.interrupt()
         }
-        gatt?.disconnect()
-        Handler(Looper.getMainLooper()).postDelayed({
-            gatt?.close()
-        }, 1000)
-    }
-
-    private fun restartApp() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        startActivity(intent)
-        exitProcess(0)
     }
 }
 

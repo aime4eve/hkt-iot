@@ -10,7 +10,7 @@ const val HKT_STR = "686B74"
 const val BOOTLOAD_STR = "626F6F746C6F6164"
 
 var levelString = ""
-@Volatile var otaLevel = 0
+var otaLevel = 0
 var groupViewUpdate = 0
 var fileBin = StringBuffer()
 
@@ -52,6 +52,12 @@ data class DeviceTypeData(
     var valveMode:Int = 0,
     var buffetingDuration:Int = 0,
     var timeZone :Int = 0,
+
+    // geomagnetic sensor
+    var magX:Int = 0,
+    var magY:Int = 0,
+    var magZ:Int = 0,
+    var radarSpectrum:List<Int> = List(10) { 0 },
 )
 
 data class DeviceTypeDataString(
@@ -87,6 +93,11 @@ data class DeviceTypeDataString(
     var valveMode: String = "",
     var buffetingDuration: String = "",
     var timeZone: String = "",
+
+    var magX: String = "",
+    var magY: String = "",
+    var magZ: String = "",
+    var radarSpectrum: String = "",
 )
 
 enum class DeviceEventEnum {
@@ -135,6 +146,7 @@ enum class DeviceEventEnum {
 }
 
 enum class DeviceNameEnum {
+    // 枚举常量
     VALUE_NULL,
     NAME_UDS100,
     NAME_DC200,
@@ -144,7 +156,7 @@ enum class DeviceNameEnum {
 
 data class DeviceEventData(
     var event: Int = 0,
-    @Volatile var commandRetryWait: Int = 0,
+    var commandRetryWait: Int = 0,
     var overflowLowThreshold: Int = 0,
     var overflowHighThreshold: Int = 0,
     var reportPeriod: Int = 0,
@@ -182,13 +194,13 @@ var mDeviceEvent = DeviceEventData()
 var mDeviceDataString = DeviceTypeDataString()
 
 
-class StreamThread(gatt: BluetoothGatt?):Thread () {
+class StreamThread(gatt: BluetoothGatt):Thread () {
     //run函数是线程执行start()后执行的函数
     //由于请求过程处于阻塞状态，所以整个请求过程得用线程
-    private val device: BluetoothGatt? = gatt
+    private val device: BluetoothGatt = gatt
     private var timeout: Int = 0
     override fun run() {
-        while (true) {
+        while (!isInterrupted) {
             sleep(500)
             if(connectState) {
                 if (mDeviceEvent.event > 0 && mDeviceEvent.event != DeviceEventEnum.SYNC_EVENT.ordinal) {
@@ -203,19 +215,9 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
                     }else if(mDeviceEvent.event == DeviceEventEnum.ENTER_OTA.ordinal){
                         BleHelper.sendCommand(device, backBootLoaderBuf(fileBin.length/2,fileBin.toString(),1,0),false)
                     }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK_START_EVENT.ordinal){
-                        if (mDeviceEvent.commandRetryWait > 0) {
-                            mDeviceEvent.commandRetryWait--
-                        } else {
-                            BleHelper.sendCommand(device, streamDevice(0x03, 0), false)
-                            mDeviceEvent.commandRetryWait = 5
-                        }
+                        BleHelper.sendCommand(device, streamDevice(0x03, 0), false)
                     }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK_START_EVENT.ordinal){
-                        if (mDeviceEvent.commandRetryWait > 0) {
-                            mDeviceEvent.commandRetryWait--
-                        } else {
-                            BleHelper.sendCommand(device, streamDevice(0x04, 0), false)
-                            mDeviceEvent.commandRetryWait = 5
-                        }
+                        BleHelper.sendCommand(device, streamDevice(0x04, 0), false)
                     }else if(mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK_START_EVENT.ordinal){
                         BleHelper.sendCommand(device, streamDevice(0x05, 0), false)
                     }else if(mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_START_EVENT.ordinal){
@@ -283,7 +285,7 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
                     mDeviceEvent.overflowLowThreshold,
                     mDeviceEvent.overflowHighThreshold
                 )
-            }else if(mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal || mDeviceData.name == DeviceNameEnum.NAME_MPS100.ordinal) {
+            }else if(mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal) {
                 //地磁传感器传感器上报周期+工作模式配置 hkt(3) packnum(1) len(2)(cmd+data) cmd(1) data(变长) crc(2)
                 dataLenString = String.format("%0${4}X", 4)
                 cmdString = String.format("%0${2}X", cmd)
@@ -363,10 +365,10 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
 }
 
 fun streamRev(content: String) {
-    val gatt: BluetoothGatt? = MainActivity.getGatt()
+    val gatt: BluetoothGatt = MainActivity.getGatt()!!
     if(content.toString().startsWith("686B74")) {
         if(content.toString().endsWith("626F6F746C6F6164")) {
-            val cmd = Integer.parseInt(content.toString().substring(6, 8), 16)
+            val cmd = content.toString().substring(6,8).toInt()
             val packNum = Integer.parseInt(content.toString().substring(8,12), 16)
             if(packNum == 2){
                 mDeviceEvent.event = DeviceEventEnum.UPDATING_OTA.ordinal
@@ -469,10 +471,11 @@ fun streamRev(content: String) {
                     indexLen += 2
                 }else if (cmd == 0x3B) {
                     mDeviceData.parkMode = subArray[1 + indexLen]
-                    mDeviceDataString.parkMode = if (mDeviceData.parkStatus == 1) {
-                        "Fusion mode"
-                    } else {
-                        "Geomagnetic only"
+                    mDeviceDataString.parkMode = when (mDeviceData.parkMode) {
+                        0 -> "Fusion mode"
+                        1 -> "Geomagnetic only"
+                        2 -> "Radar priority"
+                        else -> "Unknown"
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -641,6 +644,42 @@ fun streamRev(content: String) {
                     }
                     dataLen -= 2
                     indexLen += 2
+                } else if (cmd == 0x5D) {
+                    var magX = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magX > 0x8000) {
+                        magX = magX - 0x10000
+                    }
+                    mDeviceData.magX = magX
+                    mDeviceDataString.magX = mDeviceData.magX.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x5E) {
+                    var magY = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magY > 0x8000) {
+                        magY = magY - 0x10000
+                    }
+                    mDeviceData.magY = magY
+                    mDeviceDataString.magY = mDeviceData.magY.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x5F) {
+                    var magZ = subArray[1 + indexLen] shl 8 or subArray[2 + indexLen]
+                    if (magZ > 0x8000) {
+                        magZ = magZ - 0x10000
+                    }
+                    mDeviceData.magZ = magZ
+                    mDeviceDataString.magZ = mDeviceData.magZ.toString() + " μT"
+                    dataLen -= 3
+                    indexLen += 3
+                } else if (cmd == 0x60) {
+                    val spectrumValues = IntArray(10)
+                    for (i in 0 until 10) {
+                        spectrumValues[i] = subArray[1 + indexLen + i * 2] shl 8 or subArray[1 + indexLen + i * 2 + 1]
+                    }
+                    mDeviceData.radarSpectrum = spectrumValues.toList()
+                    mDeviceDataString.radarSpectrum = spectrumValues.joinToString(", ")
+                    dataLen -= 21
+                    indexLen += 21
                 } else if (cmd == 0xFF) {
                     if(mDeviceEvent.event == DeviceEventEnum.POWER_ON_START_EVENT.ordinal){
                         mDeviceEvent.event = DeviceEventEnum.POWER_ON_FINISH_EVENT.ordinal
