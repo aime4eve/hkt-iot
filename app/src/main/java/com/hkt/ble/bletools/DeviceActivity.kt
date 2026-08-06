@@ -948,8 +948,8 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
 
 class DeviceActivity: AppCompatActivity(){
 
-    private var gatt: BluetoothGatt = MainActivity.getGatt()!!
-    private val stream = StreamThread(gatt)
+    private var gatt: BluetoothGatt? = MainActivity.getGatt()
+    private val stream: StreamThread? = gatt?.let { StreamThread(it) }
     private var syncHandler: Handler? = Handler(Looper.getMainLooper())
     private var otaHandler: Handler? = Handler(Looper.getMainLooper())
     private lateinit var adapter: ExpandableListAdapter
@@ -1361,7 +1361,7 @@ class DeviceActivity: AppCompatActivity(){
      */
     @SuppressLint("MissingPermission")
     private fun initView() {
-        stream.start()
+        stream?.start()
         executorService.scheduleAtFixedRate(counterRunnable, 0, 1, TimeUnit.SECONDS)
         disconnectHandler.post(disconnectCheckRunnable)  // 启动断连检测
         processDialogFragment.show(supportFragmentManager, "")
@@ -1456,7 +1456,7 @@ class DeviceActivity: AppCompatActivity(){
         stopUpdatingTimestamp()
         connectState = false
         if (!needRestart) {
-            stream.interrupt()
+            stream?.interrupt()
         }
     }
 }

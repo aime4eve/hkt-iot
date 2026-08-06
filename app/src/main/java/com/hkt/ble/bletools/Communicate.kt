@@ -194,10 +194,10 @@ var mDeviceEvent = DeviceEventData()
 var mDeviceDataString = DeviceTypeDataString()
 
 
-class StreamThread(gatt: BluetoothGatt):Thread () {
+class StreamThread(gatt: BluetoothGatt?):Thread () {
     //run函数是线程执行start()后执行的函数
     //由于请求过程处于阻塞状态，所以整个请求过程得用线程
-    private val device: BluetoothGatt = gatt
+    private val device: BluetoothGatt? = gatt
     private var timeout: Int = 0
     override fun run() {
         while (!isInterrupted) {
@@ -365,7 +365,7 @@ class StreamThread(gatt: BluetoothGatt):Thread () {
 }
 
 fun streamRev(content: String) {
-    val gatt: BluetoothGatt = MainActivity.getGatt()!!
+    val gatt: BluetoothGatt? = MainActivity.getGatt()
     if(content.toString().startsWith("686B74")) {
         if(content.toString().endsWith("626F6F746C6F6164")) {
             val cmd = content.toString().substring(6,8).toInt()
