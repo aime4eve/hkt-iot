@@ -12,7 +12,7 @@
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="20dp"
         app:showAsAction="ifRoom"
-        android:title="TODO"
+        android:title="Scan"
         tools:ignore="HardcodedText" />
 
     <item
@@ -25,11 +25,16 @@
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="20dp"
         app:showAsAction="ifRoom"
-        android:title="TODO"
+        android:title="Scan"
         tools:ignore="HardcodedText" />
     <item
         android:id="@+id/item_filter"
         android:title="Filter"
+        app:showAsAction="never"
+        tools:ignore="HardcodedText" />
+    <item
+        android:id="@+id/item_about"
+        android:title="About"
         app:showAsAction="never"
         tools:ignore="HardcodedText" />
 <!--    <item-->

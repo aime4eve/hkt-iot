@@ -962,6 +962,7 @@ class DeviceActivity: AppCompatActivity(){
         override fun run() {
             if (isCleanedUp) return
             if (!connectState && mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
+                FileLogger.log("Device", "disconnectCheck 触发退出: connectState=$connectState name=${mDeviceData.name} → onBackPressed")
                 if (!isFinishing) {
                     Toast.makeText(this@DeviceActivity, getString(R.string.ble_disconnect_message), Toast.LENGTH_LONG).show()
                     onBackPressed()
@@ -1142,6 +1143,7 @@ class DeviceActivity: AppCompatActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device)
+        FileLogger.log("Device", "DeviceActivity.onCreate name=${mDeviceData.name} connectState=$connectState")
 
         // 监听键盘状态
         val rootView = findViewById<View>(android.R.id.content)
@@ -1454,6 +1456,7 @@ class DeviceActivity: AppCompatActivity(){
     }
 
     override fun onBackPressed() {
+        FileLogger.log("Device", "onBackPressed 调用 connectState=$connectState name=${mDeviceData.name}")
         needRestart = connectState  // BLE 连着主动返回需要杀进程
         cleanUp()
         super.onBackPressed()

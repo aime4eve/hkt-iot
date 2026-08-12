@@ -115,6 +115,7 @@ class BleCallback : BluetoothGattCallback() {
     @SuppressLint("MissingPermission")
     override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         Log.d(TAG, "onConnectionStateChange: status=$status, newState=$newState")
+        FileLogger.log("Ble", "onConnectionStateChange status=$status newState=$newState connectState=$connectState")
         
         if (status != BluetoothGatt.GATT_SUCCESS) {
             Log.e(TAG, "Bluetooth GATT operation failed with status: $status")
@@ -165,6 +166,7 @@ class BleCallback : BluetoothGattCallback() {
     @SuppressLint("MissingPermission")
     override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
         Log.d(TAG, "onMtuChanged: mtu=$mtu, status=$status")
+        FileLogger.log("Ble", "onMtuChanged status=$status mtu=$mtu")
         if (status == BluetoothGatt.GATT_SUCCESS) {
             //发现服务
             gatt.discoverServices()
@@ -182,6 +184,7 @@ class BleCallback : BluetoothGattCallback() {
     @SuppressLint("MissingPermission")
     override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
         Log.d(TAG, "onServicesDiscovered: status=$status")
+        FileLogger.log("Ble", "onServicesDiscovered status=$status")
         uiCallback?.stateEvent(if (!BleHelper.enableIndicateNotification(gatt)) {
             safeCloseGatt(gatt)
             "open notification error"
@@ -248,6 +251,7 @@ class BleCallback : BluetoothGattCallback() {
      */
     @SuppressLint("MissingPermission")
     override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+        FileLogger.log("Ble", "onDescriptorWrite status=$status")
         if (BleUuid.DESCRIPTOR_UUID == descriptor.toString().lowercase(Locale.getDefault()) ||
             BleUuid.DESCRIPTOR_UUID == descriptor.uuid.toString().uppercase(Locale.getDefault())) {
             uiCallback?.stateEvent(if (status == BluetoothGatt.GATT_SUCCESS) {

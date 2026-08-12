@@ -24,6 +24,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import java.io.File
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -105,6 +106,48 @@ class BaseApp : Application() {
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
+        setupCrashHandler()
+    }
+
+    /**
+     * 全局未捕获异常处理器：把崩溃线程名 + 堆栈写入文件，用于在无法连接 logcat 时定位闪退根因。
+     * 写入位置（按优先级逐个尝试，任一失败不影响后续）：
+     *   1. 公共 Download 目录：Download/BLETools_crash/crash_latest.txt（便于直接用文件管理器查看，需"所有文件访问权限"）
+     *   2. 应用私有目录兜底：/Android/data/<包名>/files/crash/crash_latest.txt（无需存储权限，保证落盘）
+     */
+    private fun setupCrashHandler() {
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val log = "Thread: ${thread.name}\n" +
+                    "Time(ms): ${System.currentTimeMillis()}\n\n" +
+                    Log.getStackTraceString(throwable) + "\n"
+            val stamp = System.currentTimeMillis()
+            // 候选目录：Download 优先，私有目录兜底
+            val targetDirs = mutableListOf<File>()
+            try {
+                targetDirs.add(
+                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "BLETools_crash")
+                )
+            } catch (e: Exception) {
+            }
+            try {
+                getExternalFilesDir(null)?.let { targetDirs.add(File(it, "crash")) }
+            } catch (e: Exception) {
+            }
+            for (dir in targetDirs) {
+                try {
+                    if (!dir.exists()) dir.mkdirs()
+                    // 覆盖写一份"最新"日志，便于快速查看
+                    File(dir, "crash_latest.txt").writeText(log)
+                    // 另存一份带时间戳的归档
+                    File(dir, "crash_$stamp.txt").writeText(log)
+                } catch (e: Exception) {
+                    // 某个目录不可写（如未授权存储权限），忽略并继续尝试下一个目录
+                }
+            }
+            // 交给默认处理器，保留系统默认退出行为（仍会闪退，但日志已落盘供定位）
+            previousHandler?.uncaughtException(thread, throwable)
+        }
     }
 }
 
@@ -723,6 +766,23 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
     private fun showMsg(msg: String) =
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
+    /**
+     * About：显示版本号 + 诊断日志（最多 256K）
+     */
+    private fun showAbout() {
+        @Suppress("DEPRECATION")
+        val pi = try { packageManager.getPackageInfo(packageName, 0) } catch (e: Exception) { null }
+        val version = if (pi != null) "BLETools  v${pi.versionName} (${pi.versionCode})" else "BLETools  v?"
+        val view = layoutInflater.inflate(R.layout.dialog_about, null)
+        view.findViewById<TextView>(R.id.tv_about_version).text = version
+        view.findViewById<TextView>(R.id.tv_about_log).text = FileLogger.lastFileLog()
+        AlertDialog.Builder(this)
+            .setTitle("About")
+            .setView(view)
+            .setPositiveButton("关闭", null)
+            .show()
+    }
+
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
@@ -732,6 +792,9 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.item_filter -> showScanFilterDialog()
+            R.id.item_about -> {
+                showAbout()
+            }
             //扫描蓝牙
             R.id.item_bt_start -> {
                 // 刷新菜单显示
