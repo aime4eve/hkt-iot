@@ -19,7 +19,8 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
-
+*.apk
+release_log.txt
 # IDE / editor / AI tool configs
 .idea/
 .vscode/
