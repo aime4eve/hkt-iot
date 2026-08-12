@@ -5,12 +5,59 @@ import android.bluetooth.*
 import android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
 import android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
 import android.os.Build
+import android.os.Environment
 import android.util.Log
+import java.io.File
 import java.util.*
 import kotlin.experimental.xor
 
 //蓝牙连接状态
 public var connectState: Boolean = false
+
+/** 简易文件日志（诊断用）：追加写入私有目录与 Download，并维护内存缓冲；日志文件上限 256K；可通过 About 菜单查看。 */
+object FileLogger {
+    private const val MAX_LOG_BYTES = 256 * 1024
+    private val buffer = StringBuffer()
+    private fun dirs(): List<File> {
+        val result = mutableListOf<File>()
+        try { BaseApp.context.getExternalFilesDir(null)?.let { result.add(File(it, "log")) } } catch (e: Exception) {}
+        try { result.add(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "BLETools_log")) } catch (e: Exception) {}
+        return result
+    }
+    @Synchronized
+    fun log(tag: String, msg: String) {
+        val line = "${System.currentTimeMillis()} [$tag] $msg\n"
+        buffer.append(line)
+        if (buffer.length > 50000) buffer.delete(0, buffer.length - 50000)
+        for (dir in dirs()) {
+            try {
+                if (!dir.exists()) dir.mkdirs()
+                val f = File(dir, "run.log")
+                f.appendText(line)
+                // 日志文件上限 256K，超过则保留最新的一半
+                if (f.length() > MAX_LOG_BYTES) {
+                    val full = f.readText()
+                    f.writeText(full.substring(full.length / 2))
+                }
+            } catch (e: Exception) {}
+        }
+    }
+    @Synchronized
+    fun snapshot(): String {
+        val s = buffer.toString()
+        return if (s.length > 8000) "(仅显示最后8000字符)\n" + s.substring(s.length - 8000) else s
+    }
+    /** 读取私有目录 run.log（上限 256K）。 */
+    @Synchronized
+    fun lastFileLog(): String {
+        return try {
+            val f = File(BaseApp.context.getExternalFilesDir(null), "log/run.log")
+            if (f.exists()) f.readText() else "（run.log 不存在：FileLogger 可能未被调用，或私有目录写入失败）"
+        } catch (e: Exception) {
+            "读取文件失败: ${e.message}"
+        }
+    }
+}
 
 class BleUuid {
 
@@ -145,30 +192,42 @@ class BleCallback : BluetoothGattCallback() {
      * 特性改变回调
      */
     override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-        val content = characteristic.value.map { it.toChar() }
-            .joinToString(separator = "")
-        Log.d("ble-rev", " = $characteristic")
-        Log.d("ble-rev", "value = 0x" + ByteUtils.bytesToHexString(characteristic.value).toString().uppercase(Locale.getDefault()))
+        // 该回调运行在 BLE Binder 线程，未捕获异常会触发默认 UncaughtExceptionHandler 杀掉整个进程
+        // （表现为无 Toast 闪退）。整体用 try-catch 兜底，并对 characteristic.value 判空：
+        // Android 13+ / 部分固件下 indication 的 value 可能为 null，直接 .map{} 会抛 NPE。
+        // DC200 数据量最大（含 20 字节雷达频谱），最易第一个踩到该边界，故历史上"只有地磁闪退"。
+        try {
+            val value = characteristic.value
+            if (value == null) {
+                Log.e(TAG, "onCharacteristicChanged: characteristic.value is null, skip frame")
+                return
+            }
+            val content = value.map { it.toChar() }.joinToString(separator = "")
+            Log.d("ble-rev", " = $characteristic")
+            Log.d("ble-rev", "value = 0x" + ByteUtils.bytesToHexString(value).toString().uppercase(Locale.getDefault()))
 
-        if (debugActivityPageRun == 1) {
-            uiDebugCallback?.let { callback ->
-                try {
-                    callback.stateEvent("$content")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error updating debug UI: ${e.message}")
+            if (debugActivityPageRun == 1) {
+                uiDebugCallback?.let { callback ->
+                    try {
+                        callback.stateEvent("$content")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating debug UI: ${e.message}")
+                    }
+                } ?: run {
+                    Log.e(TAG, "uiDebugCallback is not initialized")
                 }
-            } ?: run {
-                Log.e(TAG, "uiDebugCallback is not initialized")
+            } else {
+                try {
+                    streamRev(
+                        ByteUtils.bytesToHexString(value).toString()
+                            .uppercase(Locale.getDefault())
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing received data: ${e.message}")
+                }
             }
-        } else {
-            try {
-                streamRev(
-                    ByteUtils.bytesToHexString(characteristic.value).toString()
-                        .uppercase(Locale.getDefault())
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing received data: ${e.message}")
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "onCharacteristicChanged unexpected error: ${e.message}", e)
         }
     }
 

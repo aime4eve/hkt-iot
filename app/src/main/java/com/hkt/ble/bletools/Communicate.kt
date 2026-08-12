@@ -1,6 +1,7 @@
 package com.hkt.ble.bletools
 
 import android.bluetooth.BluetoothGatt
+import android.util.Log
 import java.util.Locale
 
 
@@ -201,37 +202,50 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
     private var timeout: Int = 0
     override fun run() {
         while (!isInterrupted) {
-            sleep(500)
-            if(connectState) {
-                if (mDeviceEvent.event > 0 && mDeviceEvent.event != DeviceEventEnum.SYNC_EVENT.ordinal) {
-                    if(mDeviceEvent.event == DeviceEventEnum.POWER_ON_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0xFE, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.POWER_OFF_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0xFE, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.CALIBRATION_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0xFD, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_PARAMETER_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0x02, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.ENTER_OTA.ordinal){
-                        BleHelper.sendCommand(device, backBootLoaderBuf(fileBin.length/2,fileBin.toString(),1,0),false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0x03, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0x04, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0x05, 0), false)
-                    }else if(mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_START_EVENT.ordinal){
-                        BleHelper.sendCommand(device, streamDevice(0x06, 0), false)
-                    }
-                } else {
-                    if(debugActivityPageRun == 0) {
-                        timeout++
-                        if (timeout >= 2) {
-                            timeout = 0
-                            BleHelper.sendCommand(device, streamDevice(0xFF, 0), false)
+            // 后台线程的未捕获异常会触发默认 UncaughtExceptionHandler 杀掉整个进程
+            // （表现为无 Toast 闪退），因此整个循环体需要兜底。
+            try {
+                sleep(500)
+            } catch (e: InterruptedException) {
+                // 被 cleanUp() 的 interrupt() 唤醒，属于正常退出轮询
+                interrupt()
+                break
+            }
+            try {
+                if(connectState) {
+                    if (mDeviceEvent.event > 0 && mDeviceEvent.event != DeviceEventEnum.SYNC_EVENT.ordinal) {
+                        if(mDeviceEvent.event == DeviceEventEnum.POWER_ON_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0xFE, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.POWER_OFF_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0xFE, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.CALIBRATION_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0xFD, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_PARAMETER_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0x02, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.ENTER_OTA.ordinal){
+                            BleHelper.sendCommand(device, backBootLoaderBuf(fileBin.length/2,fileBin.toString(),1,0),false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_REALTIME_TASK_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0x03, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.CONFIG_TIMED_TASK_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0x04, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.DELETE_TIMED_TASK_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0x05, 0), false)
+                        }else if(mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_START_EVENT.ordinal){
+                            BleHelper.sendCommand(device, streamDevice(0x06, 0), false)
+                        }
+                    } else {
+                        if(debugActivityPageRun == 0) {
+                            timeout++
+                            if (timeout >= 2) {
+                                timeout = 0
+                                BleHelper.sendCommand(device, streamDevice(0xFF, 0), false)
+                            }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                // 兜底记录，不让单次发送/解析异常拖垮整个轮询线程和进程
+                Log.e("StreamThread", "Error in stream loop: ${e.message}", e)
             }
         }
     }

@@ -115,16 +115,18 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
      * 根据设备名称解析设备类型
      */
     private fun parseDeviceType(deviceName: String): Int {
-        return when {
+        val result = when {
             deviceName.contains("UDS100") -> DeviceNameEnum.NAME_UDS100.ordinal
             deviceName.contains("SVC100") -> DeviceNameEnum.NAME_SVC100.ordinal
-            deviceName.contains("MPS100") || deviceName.contains("M_") ->
-                DeviceNameEnum.NAME_MPS100.ordinal
+            // 地磁传感器：DC200 为旧称谓，现包含 EPS100 / MPS100，统一按地磁（DC200）处理
             deviceName.contains("DC200") || deviceName.contains("DC201") ||
             deviceName.contains("EPS100") || deviceName.contains("E_") ||
-            deviceName.contains("PS100") -> DeviceNameEnum.NAME_DC200.ordinal
+            deviceName.contains("PS100") || deviceName.contains("MPS100") ||
+            deviceName.contains("M_") -> DeviceNameEnum.NAME_DC200.ordinal
             else -> DeviceNameEnum.VALUE_NULL.ordinal
         }
+        FileLogger.log("Scan", "parseDeviceType('$deviceName')=$result")
+        return result
     }
 
     // 视图组件引用

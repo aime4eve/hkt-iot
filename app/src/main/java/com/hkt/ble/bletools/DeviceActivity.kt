@@ -1050,6 +1050,18 @@ class DeviceActivity: AppCompatActivity(){
                     )
                 )
             }
+            else {
+                // MPS100 等其他未明确处理类型：默认 children，避免 newChildren lateinit 崩溃
+                newChildren = mapOf(
+                    0 to listOf(
+                        Child(0, 0, "Name", mDeviceDataString.name),
+                        Child(1, 0, "Version", mDeviceDataString.version),
+                        Child(2, 0, "Power", mDeviceDataString.power),
+                        Child(3, 0, "Battery", mDeviceDataString.battery),
+                        Child(4, 0, "Report Period", mDeviceDataString.reportPeriod)
+                    )
+                )
+            }
 
             if (mDeviceData.name != DeviceNameEnum.VALUE_NULL.ordinal) {
                 adapter.updateChildren(newChildren)
@@ -1246,6 +1258,27 @@ class DeviceActivity: AppCompatActivity(){
             children = mapOf(
                 0 to listOf(
                     Child(0, 0, "Name", mDeviceDataString.name)
+                )
+            )
+        }
+        else {
+            // MPS100 等其他未明确处理类型：使用通用结构，避免 groupsList lateinit 未初始化导致崩溃
+            FileLogger.log("Device", "onCreate 默认分支(未识别类型) name=${mDeviceData.name}")
+            groupsList = listOf(
+                Group(0, "Status",0),
+                Group(1, "Config",1),
+                Group(2, "Config",2),
+                Group(3, "Config",3),
+                Group(4, "Config",4),
+                Group(5, "Config",5),
+            )
+            children = mapOf(
+                0 to listOf(
+                    Child(0, 0, "Name", mDeviceDataString.name),
+                    Child(1, 0, "Version", mDeviceDataString.version),
+                    Child(2, 0, "Power", mDeviceDataString.power),
+                    Child(3, 0, "Battery", mDeviceDataString.battery),
+                    Child(4, 0, "Report Period", mDeviceDataString.reportPeriod)
                 )
             )
         }
