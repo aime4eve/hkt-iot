@@ -161,11 +161,10 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
         val result = when {
             deviceName.contains("UDS100") -> DeviceNameEnum.NAME_UDS100.ordinal
             deviceName.contains("SVC100") -> DeviceNameEnum.NAME_SVC100.ordinal
-            // 地磁传感器：DC200 为旧称谓，现包含 EPS100 / MPS100，统一按地磁（DC200）处理
-            deviceName.contains("DC200") || deviceName.contains("DC201") ||
-            deviceName.contains("EPS100") || deviceName.contains("E_") ||
-            deviceName.contains("PS100") || deviceName.contains("MPS100") ||
-            deviceName.contains("M_") -> DeviceNameEnum.NAME_DC200.ordinal
+            // 地磁传感器：DC200 / EPS100 / MPS100 为同一系列，统一按地磁（DC200）处理
+            deviceName.contains("DC200") ||
+            deviceName.contains("EPS100") ||
+            deviceName.contains("MPS100") -> DeviceNameEnum.NAME_DC200.ordinal
             else -> DeviceNameEnum.VALUE_NULL.ordinal
         }
         FileLogger.log("Scan", "parseDeviceType('$deviceName')=$result")

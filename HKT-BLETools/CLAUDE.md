@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 BLETools is an Android (Kotlin) app that scans, connects to, configures, and firmware-updates a family of BLE IoT devices over a custom binary protocol. The supported device families are:
 
 - **UDS100** — ultrasonic trash-bin overflow sensor
-- **DC200** — geomagnetic / radar parking sensor (also matches names `DC201`, `EPS100`, `PS100`, `E_`)
+- **DC200** — geomagnetic / radar parking sensor (also matches names `EPS100`, `MPS100`)
 - **SVC100** — dual solenoid-valve controller
-- **MPS100** — (matches `M_` prefix)
+- **MPS100** — same as DC200 (geomagnetic sensor, merged into DC200 type at parse time)
 
 Device type is resolved from the advertised name by `MainActivity.parseDeviceType()` into a `DeviceNameEnum`. The same Activity/protocol code serves all types — the device type drives which command/data fields are sent and which UI sections render in `DeviceActivity`.
 
