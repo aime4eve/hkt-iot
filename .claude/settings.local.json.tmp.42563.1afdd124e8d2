@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull *)",
+      "Bash(git remote *)",
+      "Bash(git add *)"
+    ]
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "kotlin-lsp@claude-plugins-official": true,
+    "claude-mem@thedotmack": true,
+    "claude-md-management@claude-plugins-official": true
+  }
+}
