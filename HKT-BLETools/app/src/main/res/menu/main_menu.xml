@@ -28,6 +28,10 @@
         android:title="Scan"
         tools:ignore="HardcodedText" />
     <item
+        android:id="@+id/item_manual_eui"
+        android:title="@string/manual_eui_menu_title"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/item_filter"
         android:title="Filter"
         app:showAsAction="never"

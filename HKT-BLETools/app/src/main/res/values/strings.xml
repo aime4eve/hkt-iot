@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">BLETools</string>
     <string name="ble_connect">BLE_Connect</string>
+    <string name="connect">Connect</string>
+    <string name="cancel">Cancel</string>
+    <string name="manual_eui_menu_title">Input EUI</string>
+    <string name="manual_eui_title">Enter DevEUI</string>
+    <string name="manual_eui_hint">16-character hexadecimal DevEUI</string>
+    <string name="invalid_dev_eui">Enter a 16-character hexadecimal DevEUI</string>
+    <string name="target_scan_started">Waiting for the target device to be found</string>
+    <string name="target_device_not_found">Target device not found</string>
+    <string name="scan_complete">Scan complete (3 cycles)</string>
     <string name="todo">TODO</string>
     <string name="tap_to_scanner">Tap to scanner</string>
     <!--qrcode-->

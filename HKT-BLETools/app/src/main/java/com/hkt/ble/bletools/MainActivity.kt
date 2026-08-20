@@ -23,6 +23,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.InputFilter
+import android.text.InputType
 import android.util.Log
 import java.io.File
 import android.view.LayoutInflater
@@ -30,6 +32,8 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -227,6 +231,8 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
     companion object MainActivity{
         private var gatt: BluetoothGatt? = null
+        const val DEFAULT_DEV_EUI_PREFIX = "0095690"
+
         fun getGatt(): BluetoothGatt? {
             return gatt
         }
@@ -242,6 +248,18 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
          */
         fun shouldFilterDevice(isScanNullNameDevice: Boolean, deviceName: String?): Boolean {
             return isScanNullNameDevice && deviceName == null
+        }
+
+        fun isValidDevEui(devEui: String): Boolean {
+            return devEui.matches(Regex("""^[0-9A-Fa-f]{16}$"""))
+        }
+
+        fun getDevEuiMatchSuffix(devEui: String): String? {
+            return if (isValidDevEui(devEui)) devEui.takeLast(6).uppercase() else null
+        }
+
+        fun isTargetDevice(deviceName: String?, matchSuffix: String?): Boolean {
+            return matchSuffix != null && deviceName?.contains(matchSuffix, ignoreCase = true) == true
         }
     }
 
@@ -422,10 +440,6 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
         }
     }
 
-    private fun isValidHex16(hexString: String): Boolean {
-        return hexString.matches(Regex("""^[0-9A-Fa-f]{16}$"""))
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         
@@ -471,22 +485,8 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
         if (result.contents == null) {
             Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show()
         } else {
-            if (isValidHex16(result.contents)) {
-                Toast.makeText(this, "Scanned: " + result.contents, Toast.LENGTH_LONG).show()
-
-                val locale = resources.configuration.locales.get(0)
-                val tipText = when (locale.language) {
-                    "zh" -> "请等待蓝牙扫描完成并自动连接"
-                    "en" -> "Please wait for the Bluetooth scan to complete and automatically connect"
-                    else -> "Please wait for the Bluetooth scan to complete and automatically connect"
-                }
-                Toast.makeText(this, tipText, Toast.LENGTH_LONG).show()
-
-                bandNameDevice = result.contents.substring(10)
-                Log.d("bandNameDevice", bandNameDevice)
-
-                scan()
-                isBand = true
+            if (isValidDevEui(result.contents)) {
+                startTargetedScan(result.contents)
             } else {
                 Toast.makeText(this, "Error: " + result.contents, Toast.LENGTH_LONG).show()
             }
@@ -538,12 +538,78 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             tvClose?.setOnClickListener { dismiss() }
             show()
         }
+
+    private fun showManualEuiDialog() {
+        val input = EditText(this).apply {
+            hint = getString(R.string.manual_eui_hint)
+            setSingleLine()
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            filters = arrayOf(
+                InputFilter.LengthFilter(16),
+                InputFilter { source, _, _, _, _, _ ->
+                    val allowed = source.filter { char ->
+                        char.isDigit() || char in 'A'..'F' || char in 'a'..'f'
+                    }
+                    if (allowed.length == source.length) null else allowed
+                }
+            )
+            setText(DEFAULT_DEV_EUI_PREFIX)
+            setSelection(length())
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.manual_eui_title))
+            .setView(input)
+            .setPositiveButton(getString(R.string.connect), null)
+            .setNegativeButton(getString(R.string.cancel), null)
+            .create()
+
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                confirmManualEui(input.text.toString().trim(), dialog)
+                true
+            } else {
+                false
+            }
+        }
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                confirmManualEui(input.text.toString().trim(), dialog)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun confirmManualEui(devEui: String, dialog: AlertDialog?) {
+        if (!isValidDevEui(devEui)) {
+            showMsg(getString(R.string.invalid_dev_eui))
+            return
+        }
+        dialog?.dismiss()
+        startTargetedScan(devEui)
+    }
+
+    private fun startTargetedScan(devEui: String) {
+        val matchSuffix = getDevEuiMatchSuffix(devEui) ?: run {
+            showMsg(getString(R.string.invalid_dev_eui))
+            return
+        }
+
+        Toast.makeText(
+            this,
+            getString(R.string.target_scan_started),
+            Toast.LENGTH_LONG
+        ).show()
+        scan(targetDeviceName = matchSuffix)
+    }
     /**
      * 扫描蓝牙
      * @param isNewSession 是否是新的一轮扫描会话（如果是，则清空列表并重置计数）
      */
     @SuppressLint("MissingPermission")
-    private fun scan(isNewSession: Boolean = true) {
+    private fun scan(isNewSession: Boolean = true, targetDeviceName: String? = null) {
 
         val btImage = findViewById<ImageView>(R.id.bt_image)
         val btTip = findViewById<TextView>(R.id.bt_tip)
@@ -563,7 +629,8 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
 
         isScanning = true
         animationRunning = true
-        isBand = false
+        isBand = targetDeviceName != null
+        bandNameDevice = targetDeviceName.orEmpty()
 
 
         if (bluetoothAdapter?.isEnabled == false) {
@@ -610,13 +677,18 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             // 如果还未满3次，稍作延迟后继续下一次扫描（不清除列表）
             bleHandler?.postDelayed({
                 if (isScanning) { // 确保用户没有手动停止
-                    scan(isNewSession = false)
+                    scan(
+                        isNewSession = false,
+                        targetDeviceName = if (isBand) bandNameDevice else null
+                    )
                 }
             }, 500)
         } else {
             // 已满3次，彻底停止
+            val wasTargetedScan = isBand
             stopScan()
-            Toast.makeText(this, "Scan complete (3 cycles)", Toast.LENGTH_SHORT).show()
+            val messageId = if (wasTargetedScan) R.string.target_device_not_found else R.string.scan_complete
+            showMsg(getString(messageId))
         }
     }
 
@@ -652,6 +724,20 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
      */
     @SuppressLint("MissingPermission")
     private fun addDeviceList(bleDevice: BleDevice) {
+        if (isBand) {
+            if (!isTargetDevice(bleDevice.device.name, bandNameDevice)) {
+                return
+            }
+
+            isBand = false
+            runOnUiThread {
+                mDeviceDataString.name = bleDevice.device.name
+                mDeviceData.name = parseDeviceType(mDeviceDataString.name)
+                onDeviceClicked(bleDevice.device)
+            }
+            return
+        }
+
         if (MainActivity.shouldFilterDevice(isScanNullNameDevice, bleDevice.device.name)) {
             return
         }
@@ -676,13 +762,6 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
             deviceIndexMap[address] = index
 
             scheduleUiUpdate()
-
-            if (isBand && bleDevice.device.name?.contains(bandNameDevice) == true) {
-                isBand = false
-                onDeviceClicked(bleDevice.device)
-                mDeviceDataString.name = bleDevice.device.name
-                mDeviceData.name = parseDeviceType(mDeviceDataString.name)
-            }
         }
     }
 
@@ -805,6 +884,7 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
                 }
                 invalidateOptionsMenu()
             }
+            R.id.item_manual_eui -> showManualEuiDialog()
             // 启动二维码扫描
             R.id.item_camera -> {
 
