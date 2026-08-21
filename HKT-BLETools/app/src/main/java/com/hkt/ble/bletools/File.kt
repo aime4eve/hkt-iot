@@ -7,6 +7,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.OpenableColumns
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.text.TextUtils
@@ -104,6 +105,27 @@ object FileUtil {
             }
         } catch (e: Exception) {
             Log.e("FileUtil", "Failed to read selected file: $uri", e)
+            null
+        }
+    }
+
+    fun getDisplayName(context: Context, uri: Uri): String? {
+        return try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getString(0)
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FileUtil", "Failed to get file display name: $uri", e)
             null
         }
     }

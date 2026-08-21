@@ -34,5 +34,7 @@
     <string name="ble_disconnect_message">Device disconnected</string>
     <string name="ota_file_read_fail">Failed to read the OTA file</string>
     <string name="ota_file_size">File size: %1$d bytes</string>
+    <string name="ota_file_name">File name: %1$s</string>
+    <string name="ota_unknown_file_name">Unknown file</string>
 
 </resources>

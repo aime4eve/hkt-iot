@@ -23,4 +23,6 @@
     <string name="ble_disconnect_message">设备已断开连接</string>
     <string name="ota_file_read_fail">OTA 文件读取失败</string>
     <string name="ota_file_size">文件大小：%1$d 字节</string>
+    <string name="ota_file_name">文件名：%1$s</string>
+    <string name="ota_unknown_file_name">未知文件</string>
 </resources>
