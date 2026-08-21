@@ -7,9 +7,11 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.OpenableColumns
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.text.TextUtils
+import android.util.Log
 import org.json.JSONObject.NULL
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
@@ -91,6 +93,41 @@ object FileUtil {
             data.close()
             val bytes = data.toByteArray()
             return ByteUtils.bytesToHexString(bytes)
+    }
+
+    fun readBinFile(context: Context, uri: Uri): String? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                ByteArrayOutputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                    ByteUtils.bytesToHexString(outputStream.toByteArray())
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FileUtil", "Failed to read selected file: $uri", e)
+            null
+        }
+    }
+
+    fun getDisplayName(context: Context, uri: Uri): String? {
+        return try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getString(0)
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FileUtil", "Failed to get file display name: $uri", e)
+            null
+        }
     }
 
     /**

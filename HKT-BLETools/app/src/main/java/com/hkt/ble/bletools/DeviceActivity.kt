@@ -60,6 +60,7 @@ private var isExternalPowerUpdate = false
 private var lastPower = 0
 private var isRefreshPaused = false
 private var isPowerUpdate = false
+private var otaFileName: String? = null
 
 
 private fun startUpdatingStatus() {
@@ -702,8 +703,20 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
     }
     private fun getOTAView(convertView: View?, parent: ViewGroup?): View {
         val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
+        val fileInfoLayout = view.findViewById<View>(R.id.ll_ota_file_info)
+        val fileNameTextView = view.findViewById<TextView>(R.id.tv_ota_file_name)
+        val fileSizeTextView = view.findViewById<TextView>(R.id.tv_ota_file_size)
         val selectFileButton = view.findViewById<Button>(R.id.tv_select_file)
         val updateButton = view.findViewById<Button>(R.id.tv_update)
+
+        val selectedFileName = otaFileName
+        if (fileBin.isEmpty() || selectedFileName == null) {
+            fileInfoLayout?.visibility = View.GONE
+        } else {
+            fileInfoLayout?.visibility = View.VISIBLE
+            fileNameTextView?.text = context.getString(R.string.ota_file_name, selectedFileName)
+            fileSizeTextView?.text = context.getString(R.string.ota_file_size, fileBin.length / 2)
+        }
 
         // 设置点击监听器
         selectFileButton?.setOnClickListener(View.OnClickListener {
@@ -1328,8 +1341,7 @@ class DeviceActivity: AppCompatActivity(){
 
         if (requestCode == 0xFF && resultCode == ComponentActivity.RESULT_OK) {
             data?.data?.let { selectedFileUri ->
-                // 处理选择的文件URI
-                Log.d("FileSelectionActivity", "Selected file URI: $selectedFileUri")
+                // Read through the transient SAF grant returned by the picker.
 //                contentResolver.takePersistableUriPermission(selectedFileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 try {
                     // 持久化授予读取 URI 的权限
@@ -1348,18 +1360,25 @@ class DeviceActivity: AppCompatActivity(){
 //                val selectedFile: InputStream? = contentResolver.openInputStream(uri.toUri())
 //                val selectedFile = data?.data //The uri with the location of the file
 
-                val path = FileUtil.getFileAbsolutePath(this, Uri.parse(uri))
-//                    val fileData = FileUtil.readFile(path.toString())
-                val size = FileUtil.getFileSize(File(path.toString()))
-                val fileData = FileUtil.readBinFile(path.toString())
-                if(fileData == "false"){
-                    Toast.makeText(this, "file read fail", Toast.LENGTH_SHORT).show()
+                val fileData = FileUtil.readBinFile(this, selectedFileUri)
+                if (fileData.isNullOrEmpty()) {
+                    fileBin.setLength(0)
+                    otaFileName = null
+                    adapter.notifyDataSetChanged()
+                    FileLogger.log("OTA", "readFileFailed uri=$selectedFileUri")
+                    Toast.makeText(this, getString(R.string.ota_file_read_fail), Toast.LENGTH_SHORT).show()
                 }else {
-                    // 清空buffer
-                    var length: Int = fileBin.length
-                    fileBin.delete(0, length).append(fileData)
-                    Toast.makeText(this, "file size: $size", Toast.LENGTH_SHORT).show()
-//                    Toast.makeText(this, "file path: $uri", Toast.LENGTH_SHORT).show()
+                    fileBin.setLength(0)
+                    fileBin.append(fileData)
+                    otaFileName = FileUtil.getDisplayName(this, selectedFileUri)
+                        ?: getString(R.string.ota_unknown_file_name)
+                    adapter.notifyDataSetChanged()
+                    FileLogger.log("OTA", "selectedFile uri=$selectedFileUri bytes=${fileBin.length / 2}")
+                    Toast.makeText(
+                        this,
+                        getString(R.string.ota_file_size, fileBin.length / 2),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
