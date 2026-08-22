@@ -5,7 +5,7 @@
 | 项目 | 内容 | 技术栈 / 构建方式 | 详细说明 |
 | --- | --- | --- | --- |
 | [HKT-BLETools](HKT-BLETools/) | Android 蓝牙配置工具，当前版本 3.16，支持设备扫描、连接、参数配置、状态查看和 OTA 升级 | Kotlin 1.8.0、AGP 7.4.2、Gradle 8.5、JDK 17 | [HKT-BLETools/Readme.md](HKT-BLETools/Readme.md) |
-| [HKT-Firmwares](HKT-Firmwares/) | 12 个 LoRaWAN 产品条目、历史固件产物和硬件/协议资料，其中 11 个有应用工程 | Keil MDK5，入口为各产品 `USER` 目录下的 `.uvprojx` | [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) |
+| [HKT-Firmwares](HKT-Firmwares/) | 13 个 LoRaWAN 设备条目、历史固件产物和硬件/协议资料，其中 12 个有应用工程 | 以 Keil MDK5 为主，人员计数发射端为 IAR EWARM | [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) |
 
 ## 设备覆盖
 
@@ -37,7 +37,7 @@ BLE 扫描、GATT 连接、协议收发和 OTA 需要真机及真实设备验证
 
 ### HKT-Firmwares
 
-固件工程使用 Keil MDK5。进入具体产品目录，打开 `USER` 目录下对应的 `.uvprojx` 文件构建；包含 OTA 的产品通常还提供 Bootloader 工程。部分产品目录存在历史限制，例如牛羊定位器源码已入库但缺少 `.uvprojx` 文件，构建前先查看对应 README 和实际工程入口。
+固件工程以 Keil MDK5 为主，人员计数发射端使用 IAR EWARM。进入具体产品目录，打开 `USER` 目录下对应的 `.uvprojx` 或 `.eww` 文件构建；包含 OTA 的产品通常还提供 Bootloader 工程。部分产品目录存在历史限制，例如牛羊定位器源码已入库但缺少 `.uvprojx` 文件，构建前先查看对应 README 和实际工程入口。
 
 ## 项目边界
 
