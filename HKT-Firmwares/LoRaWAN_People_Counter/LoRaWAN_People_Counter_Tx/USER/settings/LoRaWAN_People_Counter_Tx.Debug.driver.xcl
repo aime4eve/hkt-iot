@@ -1,0 +1,15 @@
+"-p" 
+
+"D:\Program Files (x86)\IAR Systems\Embedded Workbench 7.3\stm8\config\ddf\iostm8l101f2.ddf" 
+
+"-d" 
+
+"stlink" 
+
+"--mcuname" 
+
+"STM8L101F2P" 
+
+
+
+
