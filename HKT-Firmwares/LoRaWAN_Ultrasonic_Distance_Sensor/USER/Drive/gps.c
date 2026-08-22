@@ -1,0 +1,449 @@
+
+/* Includes ------------------------------------------------------------------*/
+#include "gps.h"
+#include "communicate.h"
+#include "control_center.h"
+#include "gpio.h"
+#include "math.h"
+#include "rtc.h"
+#include "systick.h"
+#include "tim.h"
+#include "time.h"
+#include "uart.h"
+#include <ctype.h> /* for isdigit() */
+
+#include "LoRaWAN_ATCMD.h"
+
+u8 gps_rmc[100];
+time_t gps_stamp;
+
+static u8 processRMC(char *field[], struct gps_fix_t *session);
+static struct gps_fix_t gps_l76k;
+
+void nmea_add_checksum(char *sentence)
+/* add NMEA checksum to a possibly  *-terminated sentence */
+{
+    unsigned char sum = '\0';
+    char c, *p = sentence;
+
+    if (*p == '$' || *p == '!') {
+        p++;
+    }
+    while (((c = *p) != '*') && (c != '\0')) {
+        sum ^= c;
+        p++;
+    }
+    *p++ = '*';
+    (void)snprintf(p, 5, "%02X\r\n", (unsigned)sum);
+}
+
+void nmea_write(struct gps_fix_t *session, char *buf)
+/* ship a command to the GPS, adding * and correct checksum */
+{
+    (void)strlcpy(session->msgbuf, buf, sizeof(session->msgbuf));
+    if (session->msgbuf[0] == '$') {
+        (void)strlcat(session->msgbuf, "*", sizeof(session->msgbuf));
+        nmea_add_checksum(session->msgbuf);
+    } else
+        (void)strlcat(session->msgbuf, "\r\n", sizeof(session->msgbuf));
+    session->msgbuflen = strlen(session->msgbuf);
+    // Gps_SendData((u8 *)session->msgbuf, session->msgbuflen);
+}
+
+// Galaxy configuration
+void set_gps_galaxy(u8 galaxy)
+{
+    char vaule[] = {"$PCAS04,3*1A\r\n"};
+    vaule[8] = galaxy + 0x30;
+    nmea_write(&gps_l76k, vaule);
+}
+
+void set_gps_restart(void)
+{
+    // char vaule[] = {"$PCAS10,0*1C\r\n"};
+    // Gps_SendCMD(vaule);
+}
+
+/**
+ * @brief  处理来自串口接收到的数据
+ * @param
+ * @retval
+ */
+void fromGpsDataHandle(u8 *buffer, u16 size)
+{
+    int num = 0;
+    //$ NMEA 语句的起始字段（Hex 0x24）
+    //	if (buffer[0] == 0x24)
+    {
+        // DEBUG_TRACE(LOG_TAG, "Recv Uart Gps Data: %s", (char *)buffer);
+        // cmd_split((char *)buffer + 1, ",", splitBuf, &num);
+        memset(&splitBuf, 0, sizeof(splitBuf));
+        cmd_split((char *)buffer, "$", splitBuf, &num);
+        for (int i = 0; i < num; i++) {
+            if (strstr(splitBuf[i], "RMC")) {
+                if (strlen(splitBuf[i]) < sizeof(gps_rmc)) {
+                    memcpy(gps_rmc, splitBuf[i], strlen(splitBuf[i]));
+                } else {
+                    memcpy(gps_rmc, splitBuf[i], sizeof(gps_rmc));
+                }
+                memset(&splitBuf, 0, sizeof(splitBuf));
+                cmd_split((char *)gps_rmc, ",", splitBuf, &num);
+                processRMC(splitBuf, &gps_l76k);
+                break;
+            }
+        }
+    }
+}
+
+#define DD(s) ((int)((s)[0] - '0') * 10 + (int)((s)[1] - '0'))
+
+/* sentence supplied ddmmyy, but no century part
+ *
+ * return: 0 == OK,  greater than zero on failure
+ */
+static int gps_ddmmyy(char *ddmmyy, struct tm *time)
+{
+    int yy;
+    int mon;
+    int mday;
+    int year;
+    unsigned i; /* NetBSD complains about signed array index */
+
+    if (NULL == ddmmyy) {
+        return 1;
+    }
+    for (i = 0; i < 6; i++) {
+        /* NetBSD 6 wants the cast */
+        if (0 == isdigit((int)ddmmyy[i])) {
+            /* catches NUL and non-digits */
+            /* Telit HE910 can set year to "-1" (1999 - 2000) */
+            // DEBUG_TRACE(WARN_TAG,
+            // 			"gps_ddmmyy(%s), malformed date", ddmmyy);
+            return 2;
+        }
+    }
+    /* check for termination */
+    if ('\0' != ddmmyy[6]) {
+        /* missing NUL */
+        // DEBUG_TRACE(WARN_TAG,
+        // 			"gps_ddmmyy(%s), malformed date", ddmmyy);
+        return 3;
+    }
+
+    /* should be no defects left to segfault DD() */
+    yy = DD(ddmmyy + 4);
+    mon = DD(ddmmyy + 2);
+    mday = DD(ddmmyy);
+
+    year = 2000 + yy;
+
+    /* 32 bit systems will break in 2038.
+     * Telix fails on GPS rollover to 2099, which 32 bit system
+     * can not handle.  So wrap at 2080.  That way 64 bit systems
+     * work until 2080, and 2099 gets reported as 1999.
+     * since GPS epoch started in 1980, allows for old NMEA to work.
+     */
+    if (2080 <= year) {
+        year -= 100;
+    }
+
+    if ((1 > mon) || (12 < mon)) {
+        DEBUG_TRACE(WARN_TAG, "gps_ddmmyy(%s), malformed month", ddmmyy);
+        return 4;
+    } else if ((1 > mday) || (31 < mday)) {
+        DEBUG_TRACE(WARN_TAG, "gps_ddmmyy(%s), malformed day", ddmmyy);
+        return 5;
+    } else {
+        // DEBUG_TRACE(LOG_TAG, "gps_ddmmyy(%s) sets year %d", ddmmyy, year);
+        time->tm_year = year - 1900;
+        time->tm_mon = mon - 1;
+        time->tm_mday = mday;
+    }
+    // DEBUG_TRACE(LOG_TAG, "gps_ddmmyy(%s) %d-%d-%d, timestamp: %ld", ddmmyy, time->tm_year, time->tm_mon, time->tm_mday, Timestamp);
+    return 0;
+}
+
+/* update from a UTC time
+ *
+ * return: 0 == OK,  greater than zero on failure
+ */
+static int gps_hhmmss(char *hhmmss, struct tm *time)
+{
+    int i;
+
+    if (NULL == hhmmss) {
+        return 1;
+    }
+    for (i = 0; i < 6; i++) {
+        /* NetBSD 6 wants the cast */
+        if (0 == isdigit((int)hhmmss[i])) {
+            /* catches NUL and non-digits */
+            DEBUG_TRACE(WARN_TAG, "gps_hhmmss(%s), malformed time", hhmmss);
+            return 2;
+        }
+    }
+    /* don't check for termination, might have fractional seconds */
+
+    time->tm_hour = DD(hhmmss);
+    time->tm_min = DD(hhmmss + 2);
+    time->tm_sec = DD(hhmmss + 4);
+    return 0;
+}
+
+/* process a pair of latitude/longitude fields starting at field index BEGIN
+ * The input fields look like this:
+ *     field[0]: 4404.1237962
+ *     field[1]: N
+ *     field[2]: 12118.8472460
+ *     field[3]: W
+ * input format of lat/lon is NMEA style  DDDMM.mmmmmmm
+ * yes, 7 digits of precision from survey grade GPS
+ *
+ * return: 0 == OK, non zero is failure.
+ */
+static int do_lat_lon(char *field[], struct gps_fix_t *out)
+{
+    double d, m;
+    double lon;
+    double lat;
+
+    if ('\0' == field[0][0] || '\0' == field[1][0] || '\0' == field[2][0] || '\0' == field[3][0]) {
+        return 1;
+    }
+
+    lat = atof(field[0]);
+    m = 100.0 * modf(lat / 100.0, &d);
+    lat = d + m / 60.0;
+    if ('S' == field[1][0])
+        lat = -lat;
+
+    lon = atof(field[2]);
+    m = 100.0 * modf(lon / 100.0, &d);
+    lon = d + m / 60.0;
+    if ('W' == field[3][0])
+        lon = -lon;
+
+    if (0 == isfinite(lat) || 0 == isfinite(lon)) {
+        return 2;
+    }
+
+    out->latitude = lat;
+    out->longitude = lon;
+    return 0;
+}
+
+/* Recommend Minimum Course Specific GPS/TRANSIT Data */
+static u8 processRMC(char *field[], struct gps_fix_t *session)
+{
+    /*
+     * RMC,225446.33,A,4916.45,N,12311.12,W,000.5,054.7,191194,020.3,E,A*68
+     * 1     225446.33    Time of fix 22:54:46 UTC
+     * 2     A            Status of Fix:
+     *                     A = Autonomous, valid;
+     *                     D = Differential, valid;
+     *                     V = invalid
+     * 3,4   4916.45,N    Latitude 49 deg. 16.45 min North
+     * 5,6   12311.12,W   Longitude 123 deg. 11.12 min West
+     * 7     000.5        Speed over ground, Knots
+     * 8     054.7        Course Made Good, True north
+     * 9     181194       Date of fix ddmmyy.  18 November 1994
+     * 10,11 020.3,E      Magnetic variation 20.3 deg East
+     * 12    A            FAA mode indicator (NMEA 2.3 and later)
+     *                     see faa_mode() for possible mode values
+     * 13    V            Nav Status (NMEA 4.1 and later)
+     *                     A=autonomous,
+     *                     D=differential,
+     *                     E=Estimated,
+     *                     M=Manual input mode
+     *                     N=not valid,
+     *                     S=Simulator,
+     *                     V = Valid
+     * *68        mandatory nmea_checksum
+     *
+     * SiRF chipsets don't return either Mode Indicator or magnetic variation.
+     */
+    char status = field[2][0];
+
+    switch (status) {
+    default:
+        /* missing */
+        /* FALLTHROUGH */
+    case 'V':
+        /* Invalid */
+        session->status = 0;
+        break;
+    case 'D':
+        /* Differential Fix */
+        /* FALLTHROUGH */
+    case 'A':
+        /* Valid Fix */
+        /*
+         * The MTK3301, Royaltek RGM-3800, and possibly other
+         * devices deliver bogus time values when the navigation
+         * warning bit is set.
+         */
+        if ('\0' != field[1][0] && '\0' != field[9][0]) {
+            struct tm gps_time;
+            if (0 == gps_hhmmss(field[1], &gps_time) && 0 == gps_ddmmyy(field[9], &gps_time)) {
+                /* got a good data/time */
+                Timestamp = mktime(&gps_time);
+
+                time_t rawtime = Timestamp + (8 * 60 * 60);
+                struct tm *info = localtime(&rawtime);
+                memcpy(&systime, info, sizeof(systime));
+                systime.tm_year += 1900;
+                systime.tm_wday = whatday(systime.tm_year, systime.tm_mon + 1, systime.tm_mday);
+                DEBUG_TRACE(LOG_TAG, "Update GPS RMC UTC Time %d-%d-%d-%d:%d:%d, week: %02d, Timestamp :%ld", systime.tm_year, systime.tm_mon + 1,
+                            systime.tm_mday, systime.tm_hour, systime.tm_min, systime.tm_sec, systime.tm_wday, Timestamp);
+                getTimestamp();
+                RTC_TimeSet();
+                // device_t.sync_state = 1;
+                gps_stamp = Timestamp + device_t.gps_convert_interval * 60;
+                dataConvertTimestamp = Timestamp + 5 * 60;
+            }
+        }
+        /* else, no point to the time only case, no regressions with that */
+
+        if (0 == do_lat_lon(&field[3], session)) {
+            /* we have at least a 2D fix */
+            /* might cause blinking */
+            session->mode = MODE_2D;
+            session->status = 1;
+        } else {
+            session->mode = MODE_NO_FIX;
+        }
+        if ('\0' != field[7][0]) {
+            session->speed = atof(field[7]) * KNOTS_TO_MPS;
+        }
+        if ('\0' != field[8][0]) {
+            session->track = atof(field[8]);
+        }
+
+        /* get magnetic variation */
+        if ('\0' != field[10][0] && '\0' != field[11][0]) {
+            session->magnetic_var = atof(field[10]);
+
+            switch (field[11][0]) {
+            case 'E':
+                /* no change */
+                break;
+            case 'W':
+                session->magnetic_var = -session->magnetic_var;
+                break;
+            default:
+                /* huh? */
+                session->magnetic_var = NAN;
+                break;
+            }
+            if (0 == isfinite(session->magnetic_var) || 0.09 >= fabs(session->magnetic_var)) {
+                /* some GPS set 0.0,E, or 0,w instead of blank */
+                session->magnetic_var = NAN;
+            }
+        }
+
+        /*
+         * This copes with GPSes like the Magellan EC-10X that *only* emit
+         * GPRMC. In this case we set mode and status here so the client
+         * code that relies on them won't mistakenly believe it has never
+         * received a fix.
+         */
+        //		if (0 != isfinite(session->altHAE) ||
+        //			0 != isfinite(session->altMSL))
+        //		{
+        //			/* we probably have at least a 3D fix */
+        //			/* this handles old GPS that do not report 3D */
+        //			session->mode = MODE_3D;
+        //		}
+        DEBUG_TRACE(LOG_TAG, "RMC: ddmmyy=%s hhmmss=%s lat=%f lon=%f speed=%f track=%f mode=%d var=%.1f status=%d", field[9], field[1],
+                    session->latitude, session->longitude, session->speed, session->track, session->mode, session->magnetic_var, session->status);
+    }
+    return 0;
+}
+
+void Gps_Handler(void)
+{
+    static u32 startTimer;
+    static u8 wait_result_count;
+    static u8 init_position; // 首次定位成功
+    static u8 init_position_delay; // 首次定位成功延时
+
+    if (!device_t.power_on || !device_t.gps_convert_interval)
+        return;
+    if (!check_delay_expired(startTimer, 500))
+        return;
+    startTimer = get_syspant_ms();
+
+    if (gps_stamp <= Timestamp) {
+        gps_stamp = Timestamp + device_t.gps_convert_interval * 60;
+        GPIO_GPS_PWR_CTRL_H; // 开启GPS模块
+        gps_l76k.latitude = gps_l76k.longitude = 0; // 清除历史定位记录
+        wait_result_count = 180;
+        DEBUG_TRACE(LOG_TAG, "Open Gps Mode Power, Next Read Timestamp: %d, Now Timestamp: %d", gps_stamp, Timestamp);
+    }
+
+    if (wait_result_count) {
+        wait_result_count--;
+        if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
+            device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
+        DEBUG_TRACE(LOG_TAG, "Wait Gps Mode Result: %d", wait_result_count);
+
+        bool gps_position_valid = gps_l76k.latitude && gps_l76k.longitude;
+        if (!wait_result_count || gps_position_valid) {
+            // 定位间隔小于1小时时使用热启动
+            if (device_t.gps_convert_interval < 60) {
+                // 处理首次定位成功的延迟15S关闭
+                if (!init_position && wait_result_count > 0) {
+                    if (++init_position_delay >= 30) {
+                        init_position = 1;
+                        init_position_delay = 0;
+                        wait_result_count = (wait_result_count < 160) ? 160 : wait_result_count;
+                    } else {
+                        return;
+                    }
+                }
+                // 下一次定位时间若超过20S，则下次定位成功延迟15S关闭
+                if (gps_position_valid) {
+                    init_position = (wait_result_count < 140) ? 0 : init_position;
+                }
+            }
+
+            wait_result_count = 0;
+            GPIO_GPS_PWR_CTRL_L;
+            DEBUG_TRACE(LOG_TAG, "Close Gps Mode Power, Next Read Timestamp: %d, Now Timestamp: %d", gps_stamp, Timestamp);
+            device_t.gps_state = 1;
+
+            // 更新设备位置信息
+            if (gps_position_valid) {
+                device_t.longitude = (u32)(fabs(gps_l76k.longitude) * 1000000);
+                device_t.latitude = (u32)(fabs(gps_l76k.latitude) * 1000000);
+
+                if (gps_l76k.longitude < 0)
+                    device_t.longitude |= 0x80000000;
+                if (gps_l76k.latitude < 0)
+                    device_t.latitude |= 0x80000000;
+            } else {
+                device_t.latitude = device_t.longitude = 0;
+            }
+        }
+    } else if (device_t.ble_connected) {
+        if(ReadOutputPin(GPIO_GPS_PWR_CTRL_PORT, GPIO_GPS_PWR_CTRL_PIN) == 0){
+            GPIO_GPS_PWR_CTRL_H;
+            gps_l76k.latitude = gps_l76k.longitude = 0;
+        }
+        bool gps_position_valid = gps_l76k.latitude && gps_l76k.longitude;
+        // 更新设备位置信息
+        if (gps_position_valid) {
+            device_t.longitude = (u32)(fabs(gps_l76k.longitude) * 1000000);
+            device_t.latitude = (u32)(fabs(gps_l76k.latitude) * 1000000);
+
+            if (gps_l76k.longitude < 0)
+                device_t.longitude |= 0x80000000;
+            if (gps_l76k.latitude < 0)
+                device_t.latitude |= 0x80000000;
+        } else {
+            device_t.latitude = device_t.longitude = 0;
+        }
+    } else {
+        GPIO_GPS_PWR_CTRL_L;
+    }
+}

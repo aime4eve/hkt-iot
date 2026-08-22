@@ -1,0 +1,222 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         #line   1                "..\\Compents\\ThreadX\\ports\\
+cortex_m0\\ac5\\src\\tx_thread_stack_build.s"
+    1 00000000         ; 
+    2 00000000         ; 
+    3 00000000         ; 
+    4 00000000         ; 
+    5 00000000         ; 
+    6 00000000         ; 
+    7 00000000         ; 
+    8 00000000         ; 
+    9 00000000         ; 
+   10 00000000         ; 
+   11 00000000         ;
+   12 00000000         ;
+   13 00000000         ; 
+   14 00000000         ; 
+   15 00000000         ; 
+   16 00000000         ; 
+   17 00000000         ; 
+   18 00000000         ; 
+   19 00000000         ; 
+   20 00000000         ; 
+   21 00000000         ; 
+   22 00000000         ;
+   23 00000000         ;
+   24 00000000                 AREA             ||.text||, CODE, READONLY
+   25 00000000         ; 
+   26 00000000         ; 
+   27 00000000         ; 
+   28 00000000         ; 
+   29 00000000         ; 
+   30 00000000         ; 
+   31 00000000         ; 
+   32 00000000         ; 
+   33 00000000         ; 
+   34 00000000         ; 
+   35 00000000         ; 
+   36 00000000         ; 
+   37 00000000         ; 
+   38 00000000         ; 
+   39 00000000         ; 
+   40 00000000         ; 
+   41 00000000         ; 
+   42 00000000         ; 
+   43 00000000         ; 
+   44 00000000         ; 
+   45 00000000         ; 
+   46 00000000         ; 
+   47 00000000         ; 
+   48 00000000         ; 
+   49 00000000         ; 
+   50 00000000         ; 
+   51 00000000         ; 
+   52 00000000         ; 
+   53 00000000         ; 
+   54 00000000         ; 
+   55 00000000         ; 
+   56 00000000         ; 
+   57 00000000         ; 
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   58 00000000         ; 
+   59 00000000         ; 
+   60 00000000         ; 
+   61 00000000         ; 
+   62 00000000         ; 
+   63 00000000         ; 
+   64 00000000         ; 
+   65 00000000         ;VOID   _tx_thread_stack_build(TX_THREAD *thread_ptr, VO
+                       ID (*function_ptr)(VOID))
+   66 00000000         ;{
+   67 00000000                 EXPORT           _tx_thread_stack_build
+   68 00000000         _tx_thread_stack_build
+   69 00000000         ;
+   70 00000000         ;
+   71 00000000         ;    
+   72 00000000         
+   73 00000000         
+   74 00000000         
+   75 00000000         
+   76 00000000         
+   77 00000000         
+   78 00000000         
+   79 00000000         
+   80 00000000         
+   81 00000000         
+   82 00000000         
+   83 00000000         
+   84 00000000         
+   85 00000000         
+   86 00000000         
+   87 00000000         
+   88 00000000         
+   89 00000000         
+   90 00000000         
+   91 00000000         
+   92 00000000         
+   93 00000000         
+   94 00000000         ;
+   95 00000000 6902            LDR              r2, [r0, #16] ; Pickup end of s
+                                                            tack area
+   96 00000002 2307            MOVS             r3, #0x7    ;
+   97 00000004 439A            BICS             r2, r2, r3  ; Align frame for 8
+                                                            -byte alignment
+   98 00000006 3A44            SUBS             r2, r2, #68 ; Subtract frame si
+                                                            ze
+   99 00000008 4B0B            LDR              r3, =0xFFFFFFFD ; Build initial
+                                                             LR value
+  100 0000000A 6013            STR              r3, [r2, #0] 
+                                                            ; Save on the stack
+                                                            
+  101 0000000C         ;
+  102 0000000C         ;     
+  103 0000000C         ;
+  104 0000000C 2300            MOVS             r3, #0      ; Build initial reg
+                                                            ister value
+  105 0000000E 6053            STR              r3, [r2, #4] ; Store initial r8
+                                                            
+  106 00000010 6093            STR              r3, [r2, #8] ; Store initial r9
+                                                            
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+  107 00000012 60D3            STR              r3, [r2, #12] 
+                                                            ; Store initial r10
+                                                            
+  108 00000014 6113            STR              r3, [r2, #16] 
+                                                            ; Store initial r11
+                                                            
+  109 00000016 6153            STR              r3, [r2, #20] 
+                                                            ; Store initial r4
+  110 00000018 6193            STR              r3, [r2, #24] 
+                                                            ; Store initial r5
+  111 0000001A 61D3            STR              r3, [r2, #28] 
+                                                            ; Store initial r6
+  112 0000001C 6213            STR              r3, [r2, #32] 
+                                                            ; Store initial r7
+  113 0000001E         ;
+  114 0000001E         ;     
+  115 0000001E         ;
+  116 0000001E 6253            STR              r3, [r2, #36] 
+                                                            ; Store initial r0
+  117 00000020 6293            STR              r3, [r2, #40] 
+                                                            ; Store initial r1
+  118 00000022 62D3            STR              r3, [r2, #44] 
+                                                            ; Store initial r2
+  119 00000024 6313            STR              r3, [r2, #48] 
+                                                            ; Store initial r3
+  120 00000026 6353            STR              r3, [r2, #52] 
+                                                            ; Store initial r12
+                                                            
+  121 00000028 4B04            LDR              r3, =0xFFFFFFFF ; Poison EXC_RE
+                                                            TURN value
+  122 0000002A 6393            STR              r3, [r2, #56] 
+                                                            ; Store initial lr
+  123 0000002C 63D1            STR              r1, [r2, #60] 
+                                                            ; Store initial pc
+  124 0000002E 4B04            LDR              r3, =0x01000000 ; Only T-bit ne
+                                                            ed be set
+  125 00000030 6413            STR              r3, [r2, #64] ; Store initial x
+                                                            PSR
+  126 00000032         ;
+  127 00000032         ;     
+  128 00000032         ;    thread_ptr -> tx_thread_stack_ptr =  r2;
+  129 00000032         ;
+  130 00000032 6082            STR              r2, [r0, #8] ; Save stack point
+                                                            er in thread's
+  131 00000034         ;   control block
+  132 00000034 4770            BX               lr          ; Return to caller
+  133 00000036         ;}
+  134 00000036 00 00           ALIGN
+  135 00000038 FFFFFFFD 
+              FFFFFFFF 
+              01000000         LTORG
+  136 00000044                 END
+Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M0 --
+apcs=interwork --depend=.\objects\tx_thread_stack_build.d -o.\objects\tx_thread
+_stack_build.o --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VERSION S
+ETA 536" --predefine="TX_ENABLE_FPU_SUPPORT SETA 1" --predefine="TX_EXECUTION_P
+ROFILE_ENABLE SETA 1" --predefine="TX_ENABLE_EXECUTION_CHANGE_NOTIFY SETA 1" --
+predefine="TX_LOW_POWER SETA 1" --list=.\listings\tx_thread_stack_build.lst ..\
+Compents\ThreadX\ports\cortex_m0\ac5\src\tx_thread_stack_build.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+_tx_thread_stack_build 00000000
+
+Symbol: _tx_thread_stack_build
+   Definitions
+      At line 68 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_stack_build.s
+   Uses
+      At line 67 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_stack_build.s
+Comment: _tx_thread_stack_build used once
+|.text| 00000000
+
+Symbol: |.text|
+   Definitions
+      At line 24 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_stack_build.s
+   Uses
+      None
+Comment: |.text| unused
+2 symbols
+340 symbols in table

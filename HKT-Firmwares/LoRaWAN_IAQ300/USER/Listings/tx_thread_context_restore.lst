@@ -1,0 +1,137 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         #line   1                "..\\Compents\\ThreadX\\ports\\
+cortex_m0\\ac5\\src\\tx_thread_context_restore.s"
+    1 00000000         ; 
+    2 00000000         ; 
+    3 00000000         ; 
+    4 00000000         ; 
+    5 00000000         ; 
+    6 00000000         ; 
+    7 00000000         ; 
+    8 00000000         ; 
+    9 00000000         ; 
+   10 00000000         ; 
+   11 00000000         ;
+   12 00000000         ;
+   13 00000000         ; 
+   14 00000000         ; 
+   15 00000000         ; 
+   16 00000000         ; 
+   17 00000000         ; 
+   18 00000000         ; 
+   19 00000000         ; 
+   20 00000000         ; 
+   21 00000000         ; 
+   22 00000000         ;
+   23 00000000         ;
+   24 00000000         
+   25 00000000         
+   26 00000000         
+   27 00000000         ;
+   28 00000000                 AREA             ||.text||, CODE, READONLY
+   29 00000000                 PRESERVE8
+   30 00000000         ; 
+   31 00000000         ; 
+   32 00000000         ; 
+   33 00000000         ; 
+   34 00000000         ; 
+   35 00000000         ; 
+   36 00000000         ; 
+   37 00000000         ; 
+   38 00000000         ; 
+   39 00000000         ; 
+   40 00000000         ; 
+   41 00000000         ; 
+   42 00000000         ; 
+   43 00000000         ; 
+   44 00000000         ; 
+   45 00000000         ; 
+   46 00000000         ; 
+   47 00000000         ; 
+   48 00000000         ; 
+   49 00000000         ; 
+   50 00000000         ; 
+   51 00000000         ; 
+   52 00000000         ; 
+   53 00000000         ; 
+   54 00000000         ; 
+   55 00000000         ; 
+   56 00000000         ; 
+   57 00000000         ; 
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   58 00000000         ; 
+   59 00000000         ; 
+   60 00000000         ; 
+   61 00000000         ; 
+   62 00000000         ; 
+   63 00000000         ; 
+   64 00000000         ; 
+   65 00000000         ; 
+   66 00000000         ; 
+   67 00000000         ; 
+   68 00000000         ; 
+   69 00000000         ; 
+   70 00000000         ; 
+   71 00000000         ; 
+   72 00000000         ;VOID   _tx_thread_context_restore(VOID)
+   73 00000000         ;{
+   74 00000000                 EXPORT           _tx_thread_context_restore
+   75 00000000         _tx_thread_context_restore
+   76 00000000         
+   77 00000000         #line   83               "..\\Compents\\ThreadX\\ports\\
+cortex_m0\\ac5\\src\\tx_thread_context_restore.s"
+   83 00000000         ;
+   84 00000000         ;     
+   85 00000000         ;
+   86 00000000 BC01            POP              {r0}
+   87 00000002 4686            MOV              lr, r0
+   88 00000004 4770            BX               lr
+   89 00000006         ;}
+   90 00000006 00 00           ALIGN
+   91 00000008                 LTORG
+   92 00000008                 END
+Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M0 --
+apcs=interwork --depend=.\objects\tx_thread_context_restore.d -o.\objects\tx_th
+read_context_restore.o --predefine="__MICROLIB SETA 1" --predefine="__UVISION_V
+ERSION SETA 536" --predefine="TX_ENABLE_FPU_SUPPORT SETA 1" --predefine="TX_EXE
+CUTION_PROFILE_ENABLE SETA 1" --predefine="TX_ENABLE_EXECUTION_CHANGE_NOTIFY SE
+TA 1" --predefine="TX_LOW_POWER SETA 1" --list=.\listings\tx_thread_context_res
+tore.lst ..\Compents\ThreadX\ports\cortex_m0\ac5\src\tx_thread_context_restore.
+s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+_tx_thread_context_restore 00000000
+
+Symbol: _tx_thread_context_restore
+   Definitions
+      At line 75 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_context_restore.s
+   Uses
+      At line 74 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_context_restore.s
+Comment: _tx_thread_context_restore used once
+|.text| 00000000
+
+Symbol: |.text|
+   Definitions
+      At line 28 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_context_restore.s
+   Uses
+      None
+Comment: |.text| unused
+2 symbols
+338 symbols in table

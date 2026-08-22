@@ -1,0 +1,9 @@
+.\objects\drv_spi_flash.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\drv_spi_flash.c
+.\objects\drv_spi_flash.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud.h
+.\objects\drv_spi_flash.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_def.h
+.\objects\drv_spi_flash.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\drv_spi_flash.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\objects\drv_spi_flash.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\drv_spi_flash.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\objects\drv_spi_flash.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_cfg.h
+.\objects\drv_spi_flash.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_flash_def.h

@@ -1,0 +1,13 @@
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\Drivers\fm33a0xxev_qspi.c
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\Drivers\fm33a0xxev_qspi.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\System\FM33A0XXEV.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\CMSIS\Core\Include\core_cm0plus.h
+.\objects\fm33a0xxev_qspi.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_version.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_compiler.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_armcc.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\CMSIS\Core\Include\mpu_armv7.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\System\system_FM33A0XXEV.h
+.\objects\fm33a0xxev_qspi.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\System\FM33A0XXEV.h
+.\objects\fm33a0xxev_qspi.o: ..\Compents\Lib\Drivers\fm33a0xxev_rmu.h

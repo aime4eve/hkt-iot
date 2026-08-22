@@ -1,0 +1,10 @@
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\src\txe_byte_release.c
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\inc\tx_api.h
+.\objects\txe_byte_release.o: ..\USER\tx_port.h
+.\objects\txe_byte_release.o: ..\USER\tx_user.h
+.\objects\txe_byte_release.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\objects\txe_byte_release.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\inc\tx_initialize.h
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\inc\tx_thread.h
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\inc\tx_timer.h
+.\objects\txe_byte_release.o: ..\Compents\ThreadX\common\inc\tx_byte_pool.h

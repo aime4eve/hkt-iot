@@ -1,0 +1,10 @@
+.\objects\sfud.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\src\sfud.c
+.\objects\sfud.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud.h
+.\objects\sfud.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_def.h
+.\objects\sfud.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\sfud.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\objects\sfud.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\sfud.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\objects\sfud.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_cfg.h
+.\objects\sfud.o: ..\Compents\Modules\FlashDB-1.1.2\sfud\inc\sfud_flash_def.h
+.\objects\sfud.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

@@ -1,0 +1,86 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: ¦ÌVision V5.36.0.0
+Copyright (C) 2021 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: zlbb aszx11020@outlook.com, zlbb, LIC=UJWP0-BTXX8-2Z2W4-FG41V-IUFXK-SV4BX
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Plus  Version: 5.36.0.0
+Toolchain Path:  d:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 7 (build 960)
+Assembler:       Armasm.exe V5.06 update 7 (build 960)
+Linker/Locator:  ArmLink.exe V5.06 update 7 (build 960)
+Library Manager: ArmAr.exe V5.06 update 7 (build 960)
+Hex Converter:   FromElf.exe V5.06 update 7 (build 960)
+CPU DLL:         SARMCM3.DLL V5.36.0.0
+Dialog DLL:      DARMCM1.DLL V1.19.4.0
+Target DLL:      Segger\JL2CM3.dll V2.99.40.0
+Dialog DLL:      TARMCM1.DLL V1.14.4.0
+ 
+<h2>Project:</h2>
+D:\Workspace\Projects\HKTProject\Project\LoRaWAN_THTB_Sensor\USER\LoRaWAN_THTB_Sensor.uvprojx
+Project File Date:  06/22/2025
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'd:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'LoRaWAN_THTB_Sensor_Release'
+compiling stm32l0xx_it.c...
+compiling systick.c...
+compiling stm32l0xx_hal_msp.c...
+compiling spi.c...
+compiling flash.c...
+compiling communicate.c...
+compiling gps.c...
+compiling gpio.c...
+compiling main.c...
+compiling iic.c...
+compiling tim.c...
+compiling rtc.c...
+compiling control_center.c...
+compiling uart.c...
+compiling adc.c...
+compiling stm32l0xx_hal_timebase_tim_template.c...
+compiling stm32l0xx_hal_flash.c...
+compiling LoRaWAN_APPLY.c...
+..\Compents\LoRa\LoRaWAN_APPLY.c(269): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *restrict"
+      sprintf(tappKey, "%08X", (BordId >> 32));
+..\Compents\LoRa\LoRaWAN_APPLY.c(269): warning:  #181-D: argument is incompatible with corresponding format string conversion
+      sprintf(tappKey, "%08X", (BordId >> 32));
+..\Compents\LoRa\LoRaWAN_APPLY.c(270): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *restrict"
+      sprintf(&tappKey[8], "%08X", BordId & 0x00000000ffffffff);
+..\Compents\LoRa\LoRaWAN_APPLY.c(270): warning:  #181-D: argument is incompatible with corresponding format string conversion
+      sprintf(&tappKey[8], "%08X", BordId & 0x00000000ffffffff);
+..\Compents\LoRa\LoRaWAN_APPLY.c(273): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "char *restrict"
+          sprintf(TempBuf, "%02X", LoRaWAN.DevEUI[i]);
+..\Compents\LoRa\LoRaWAN_APPLY.c(274): warning:  #167-D: argument of type "unsigned char *" is incompatible with parameter of type "char *restrict"
+          strcat(tappKey, TempBuf);
+..\Compents\LoRa\LoRaWAN_APPLY.c(274): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "const char *restrict"
+          strcat(tappKey, TempBuf);
+..\Compents\LoRa\LoRaWAN_APPLY.c: 7 warnings, 0 errors
+compiling ens210.c...
+compiling lis2dh12.c...
+compiling LoRaWAN_ATCMD.c...
+linking...
+Program Size: Code=52708 RO-data=1828 RW-data=188 ZI-data=7292  
+FromELF: creating hex file...
+After Build - User command #1: fromelf.exe  --bin -o "D:\Workspace\Projects\HKTProject\Project\LoRaWAN_THTB_Sensor\USER\Objects\LoRaWAN_THTB_Sensor.bin" "D:\Workspace\Projects\HKTProject\Project\LoRaWAN_THTB_Sensor\USER\Objects\LoRaWAN_THTB_Sensor.axf"
+".\Objects\LoRaWAN_THTB_Sensor.axf" - 0 Error(s), 7 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: Keil
+                http://www.keil.com/pack/Keil.STM32L0xx_DFP.2.2.0.pack
+                Keil.STM32L0xx_DFP.2.2.0
+                STMicroelectronics STM32L0 Series Device Support, Drivers and Examples
+
+<h2>Collection of Component include folders:</h2>
+  D:\Keil_v5\ARM\PACK\Keil\STM32L0xx_DFP\2.2.0\Drivers\CMSIS\Device\ST\STM32L0xx\Include
+
+<h2>Collection of Component Files used:</h2>
+Build Time Elapsed:  00:00:05
+</pre>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Dependencies for Project 'ThreadX_Demo', Target 'ThreadX_Demo': (DO NOT MODIFY !)
+CompilerVersion: 5060960::V5.06 update 7 (build 960)::.\ARMCC
+F (.\sample_threadx.c)(0x62C23F85)(-c --cpu Cortex-M0 --li -g -O0 --apcs=interwork --split_sections -I ..\inc -I ..\..\..\..\common\inc-Id:\Keil_v5\Arm\Packs\ARM\CMSIS\5.8.0\Device\ARM\ARMCM0\Include-D__UVISION_VERSION="536" -DARMCM0-o .\objects\sample_threadx.o --omf_browse .\objects\sample_threadx.crf --depend .\objects\sample_threadx.d)
+I (..\..\..\..\common\inc\tx_api.h)(0x636350C8)
+I (..\inc\tx_port.h)(0x62C23F85)
+I (d:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x60252374)
+I (d:\Keil_v5\ARM\ARMCC\include\string.h)(0x6025237E)
+F (.\tx_initialize_low_level.s)(0x63635225)(--cpu Cortex-M0 --li -g --apcs=interwork --cpreproc-Id:\Keil_v5\Arm\Packs\ARM\CMSIS\5.8.0\Device\ARM\ARMCM0\Include--pd "__UVISION_VERSION SETA 536" --pd "ARMCM0 SETA 1"--list .\listings\tx_initialize_low_level.lst --xref -o .\objects\tx_initialize_low_level.o --depend .\objects\tx_initialize_low_level.d)
+F (.\Objects\tx.lib)(0x00000000)()

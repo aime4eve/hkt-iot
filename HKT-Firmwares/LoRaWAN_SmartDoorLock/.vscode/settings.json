@@ -1,0 +1,8 @@
+{
+    "cmake.sourceDirectory": "D:/Workspace/Projects/HKTProject/Project/LoRaWAN_SmartDoorLock/Compents/ThreadX",
+    "files.associations": {
+        "control_center.h": "c",
+        "spi.h": "c",
+        "nz3801.h": "c"
+    }
+}

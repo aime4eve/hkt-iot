@@ -1,0 +1,123 @@
+
+#ifndef __GPIO_H__
+#define __GPIO_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Includes ------------------------------------------------------------------*/
+#include <config.h>
+
+#define GPIO_PIN_STATUS_RESET 0
+#define GPIO_PIN_STATUS_SET 1
+
+#define ReadInputPin(x, PinMask) (READ_BIT(x->IDR, PinMask) ? GPIO_PIN_STATUS_SET : GPIO_PIN_STATUS_RESET)
+#define ReadOutputPin(x, PinMask) (READ_BIT(x->ODR, PinMask) ? GPIO_PIN_STATUS_SET : GPIO_PIN_STATUS_RESET)
+
+// ** GPS ** //
+#define GPIO_GPS_PWR_CTRL_PIN LL_GPIO_PIN_1
+#define GPIO_GPS_PWR_CTRL_PORT GPIOC
+#define GPIO_GPS_PWR_CTRL_L LL_GPIO_ResetOutputPin(GPIO_GPS_PWR_CTRL_PORT, GPIO_GPS_PWR_CTRL_PIN)
+#define GPIO_GPS_PWR_CTRL_H LL_GPIO_SetOutputPin(GPIO_GPS_PWR_CTRL_PORT, GPIO_GPS_PWR_CTRL_PIN)
+
+#define GPIO_GPS_RESET_CTRL_PIN LL_GPIO_PIN_2
+#define GPIO_GPS_RESET_CTRL_PORT GPIOC
+#define GPIO_GPS_RESET_CTRL_L LL_GPIO_ResetOutputPin(GPIO_GPS_RESET_CTRL_PORT, GPIO_GPS_RESET_CTRL_PIN)
+#define GPIO_GPS_RESET_CTRL_H LL_GPIO_SetOutputPin(GPIO_GPS_RESET_CTRL_PORT, GPIO_GPS_RESET_CTRL_PIN)
+
+#define GPIO_GPS_TXD_PIN LL_GPIO_PIN_6
+#define GPIO_GPS_TXD_PORT GPIOB
+#define GPIO_GPS_TXD_L LL_GPIO_ResetOutputPin(GPIO_GPS_TXD_PORT, GPIO_GPS_TXD_PIN)
+#define GPIO_GPS_TXD_H LL_GPIO_SetOutputPin(GPIO_GPS_TXD_PORT, GPIO_GPS_TXD_PIN)
+
+#define GPIO_GPS_RXD_PIN LL_GPIO_PIN_7
+#define GPIO_GPS_RXD_PORT GPIOB
+#define GPIO_GPS_RXD_L LL_GPIO_ResetOutputPin(GPIO_GPS_RXD_PORT, GPIO_GPS_RXD_PIN)
+#define GPIO_GPS_RXD_H LL_GPIO_SetOutputPin(GPIO_GPS_RXD_PORT, GPIO_GPS_RXD_PIN)
+#define GPIO_GPS_RXD_STA ReadInputPin(GPIO_GPS_RXD_PORT, GPIO_GPS_RXD_PIN)
+
+enum {
+    COM_START_BIT,
+    COM_D0_BIT,
+    COM_D1_BIT,
+    COM_D2_BIT,
+    COM_D3_BIT,
+    COM_D4_BIT,
+    COM_D5_BIT,
+    COM_D6_BIT,
+    COM_D7_BIT,
+    COM_STOP_BIT,
+};
+
+// ** 按键 ** //
+#define GPIO_KEY_PIN LL_GPIO_PIN_0
+#define GPIO_KEY_PORT GPIOA
+#define GPIO_KEY_STA ReadInputPin(GPIO_KEY_PORT, GPIO_KEY_PIN)
+
+// ** ACC ** //
+#define GPIO_LIS3D_INT_PIN LL_GPIO_PIN_5
+#define GPIO_LIS3D_INT_PORT GPIOA
+#define GPIO_LIS3D_INT_STA ReadInputPin(GPIO_LIS3D_INT_PORT, GPIO_LIS3D_INT_PIN)
+
+// ** 电压检测 ** //
+#define GPIO_VOL_CTRL_PIN LL_GPIO_PIN_6
+#define GPIO_VOL_CTRL_PORT GPIOA
+#define GPIO_VOL_CTRL_L LL_GPIO_ResetOutputPin(GPIO_VOL_CTRL_PORT, GPIO_VOL_CTRL_PIN)
+#define GPIO_VOL_CTRL_H LL_GPIO_SetOutputPin(GPIO_VOL_CTRL_PORT, GPIO_VOL_CTRL_PIN)
+
+// ** LED ** //
+#define GPIO_LED_PIN LL_GPIO_PIN_0
+#define GPIO_LED_PORT GPIOB
+#define GPIO_LED_L LL_GPIO_ResetOutputPin(GPIO_LED_PORT, GPIO_LED_PIN)
+#define GPIO_LED_H LL_GPIO_SetOutputPin(GPIO_LED_PORT, GPIO_LED_PIN)
+
+// ** 蓝牙连接状态 ** //
+#define BLE_CONNECT_PIN LL_GPIO_PIN_2
+#define BLE_CONNECT_PORT GPIOB
+#define BLE_CONNECT_STA ReadInputPin(BLE_CONNECT_PORT, BLE_CONNECT_PIN)
+
+// ** FLASH ** //
+#define FLASH_WP_PIN LL_GPIO_PIN_4
+#define FLASH_WP_PORT GPIOB
+#define FLASH_WP_L LL_GPIO_ResetOutputPin(FLASH_WP_PORT, FLASH_WP_PIN)
+#define FLASH_WP_H LL_GPIO_SetOutputPin(FLASH_WP_PORT, FLASH_WP_PIN)
+
+// ** LoRaWAN ** //
+#define LoRaWAN_WAKE_PIN LL_GPIO_PIN_8
+#define LoRaWAN_WAKE_PORT GPIOA
+#define LoRaWAN_WAKE_STA ReadOutputPin(LoRaWAN_WAKE_PORT, LoRaWAN_WAKE_PIN)
+#define LoRaWAN_WAKE_L LL_GPIO_ResetOutputPin(LoRaWAN_WAKE_PORT, LoRaWAN_WAKE_PIN)
+#define LoRaWAN_WAKE_H LL_GPIO_SetOutputPin(LoRaWAN_WAKE_PORT, LoRaWAN_WAKE_PIN)
+
+#define LoRaWAN_STAT_PIN LL_GPIO_PIN_9
+#define LoRaWAN_STAT_PORT GPIOC
+#define LoRaWAN_STAT_STA ReadInputPin(LoRaWAN_STAT_PORT, LoRaWAN_STAT_PIN)
+
+#define LoRaWAN_BUSY_PIN LL_GPIO_PIN_8
+#define LoRaWAN_BUSY_PORT GPIOC
+#define LoRaWAN_BUSY_STA ReadInputPin(LoRaWAN_BUSY_PORT, LoRaWAN_BUSY_PIN)
+
+#define LoRaWAN_MODE_PIN LL_GPIO_PIN_7
+#define LoRaWAN_MODE_PORT GPIOC
+#define LoRaWAN_MODE_STA ReadOutputPin(LoRaWAN_MODE_PORT, LoRaWAN_MODE_PIN)
+#define LoRaWAN_MODE_L LL_GPIO_ResetOutputPin(LoRaWAN_MODE_PORT, LoRaWAN_MODE_PIN)
+#define LoRaWAN_MODE_H LL_GPIO_SetOutputPin(LoRaWAN_MODE_PORT, LoRaWAN_MODE_PIN)
+
+#define LoRaWAN_NRST_PIN LL_GPIO_PIN_6
+#define LoRaWAN_NRST_PORT GPIOC
+#define LoRaWAN_NRST_L LL_GPIO_ResetOutputPin(LoRaWAN_NRST_PORT, LoRaWAN_NRST_PIN)
+#define LoRaWAN_NRST_H LL_GPIO_SetOutputPin(LoRaWAN_NRST_PORT, LoRaWAN_NRST_PIN)
+
+extern u8 recvStat;
+
+void port_sleep_init(void);
+void App_PortCfg(void);
+void GpioEventProcess(void);
+void IO_Uart_Deinit(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

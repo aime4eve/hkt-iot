@@ -1,0 +1,155 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         #line   1                "..\\Compents\\ThreadX\\ports\\
+cortex_m0\\ac5\\src\\tx_thread_system_return.s"
+    1 00000000         ; 
+    2 00000000         ; 
+    3 00000000         ; 
+    4 00000000         ; 
+    5 00000000         ; 
+    6 00000000         ; 
+    7 00000000         ; 
+    8 00000000         ; 
+    9 00000000         ; 
+   10 00000000         ; 
+   11 00000000         ;
+   12 00000000         ;
+   13 00000000         ; 
+   14 00000000         ; 
+   15 00000000         ; 
+   16 00000000         ; 
+   17 00000000         ; 
+   18 00000000         ; 
+   19 00000000         ; 
+   20 00000000         ; 
+   21 00000000         ; 
+   22 00000000         ;
+   23 00000000         ;
+   24 00000000                 AREA             ||.text||, CODE, READONLY
+   25 00000000         ; 
+   26 00000000         ; 
+   27 00000000         ; 
+   28 00000000         ; 
+   29 00000000         ; 
+   30 00000000         ; 
+   31 00000000         ; 
+   32 00000000         ; 
+   33 00000000         ; 
+   34 00000000         ; 
+   35 00000000         ; 
+   36 00000000         ; 
+   37 00000000         ; 
+   38 00000000         ; 
+   39 00000000         ; 
+   40 00000000         ; 
+   41 00000000         ; 
+   42 00000000         ; 
+   43 00000000         ; 
+   44 00000000         ; 
+   45 00000000         ; 
+   46 00000000         ; 
+   47 00000000         ; 
+   48 00000000         ; 
+   49 00000000         ; 
+   50 00000000         ; 
+   51 00000000         ; 
+   52 00000000         ; 
+   53 00000000         ; 
+   54 00000000         ; 
+   55 00000000         ; 
+   56 00000000         ; 
+   57 00000000         ; 
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   58 00000000         ; 
+   59 00000000         ; 
+   60 00000000         ; 
+   61 00000000         ; 
+   62 00000000         ; 
+   63 00000000         ; 
+   64 00000000         ; 
+   65 00000000         ;VOID   _tx_thread_system_return(VOID)
+   66 00000000         ;{
+   67 00000000                 EXPORT           _tx_thread_system_return
+   68 00000000         _tx_thread_system_return
+   69 00000000         ;
+   70 00000000         ;    
+   71 00000000         
+   72 00000000         ;
+   73 00000000 4806            LDR              r0, =0x10000000 ; Load PENDSVSE
+                                                            T bit
+   74 00000002 4907            LDR              r1, =0xE000ED04 
+                                                            ; Load NVIC base
+   75 00000004 6008            STR              r0, [r1]    ; Set PENDSVBIT in 
+                                                            ICSR
+   76 00000006 F3EF 8005       MRS              r0, IPSR    ; Pickup IPSR
+   77 0000000A 2800            CMP              r0, #0      ; Is it a thread re
+                                                            turning?
+   78 0000000C D104            BNE              _isr_context ; If ISR, skip int
+                                                            errupt enable
+   79 0000000E F3EF 8110       MRS              r1, PRIMASK ; Thread context re
+                                                            turning, pickup PRI
+                                                            MASK
+   80 00000012 B662            CPSIE            i           ; Enable interrupts
+                                                            
+   81 00000014 F381 8810       MSR              PRIMASK, r1 ; Restore original 
+                                                            interrupt posture
+   82 00000018         _isr_context
+   83 00000018 4770            BX               lr          ; Return to caller
+   84 0000001A BF00            NOP
+   85 0000001C         ;}
+   86 0000001C                 END
+              10000000 
+              E000ED04 
+Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M0 --
+apcs=interwork --depend=.\objects\tx_thread_system_return.d -o.\objects\tx_thre
+ad_system_return.o --predefine="__MICROLIB SETA 1" --predefine="__UVISION_VERSI
+ON SETA 536" --predefine="TX_ENABLE_FPU_SUPPORT SETA 1" --predefine="TX_EXECUTI
+ON_PROFILE_ENABLE SETA 1" --predefine="TX_ENABLE_EXECUTION_CHANGE_NOTIFY SETA 1
+" --predefine="TX_LOW_POWER SETA 1" --list=.\listings\tx_thread_system_return.l
+st ..\Compents\ThreadX\ports\cortex_m0\ac5\src\tx_thread_system_return.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+_isr_context 00000018
+
+Symbol: _isr_context
+   Definitions
+      At line 82 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_system_return.s
+   Uses
+      At line 78 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_system_return.s
+Comment: _isr_context used once
+_tx_thread_system_return 00000000
+
+Symbol: _tx_thread_system_return
+   Definitions
+      At line 68 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_system_return.s
+   Uses
+      At line 67 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_system_return.s
+Comment: _tx_thread_system_return used once
+|.text| 00000000
+
+Symbol: |.text|
+   Definitions
+      At line 24 in file ..\\Compents\\ThreadX\\ports\\cortex_m0\\ac5\\src\\tx_
+thread_system_return.s
+   Uses
+      None
+Comment: |.text| unused
+3 symbols
+341 symbols in table

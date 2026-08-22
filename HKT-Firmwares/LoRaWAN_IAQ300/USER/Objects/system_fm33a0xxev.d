@@ -1,0 +1,11 @@
+.\objects\system_fm33a0xxev.o: ..\Compents\System\system_FM33A0XXEV.c
+.\objects\system_fm33a0xxev.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\system_fm33a0xxev.o: ..\Compents\System\FM33A0XXEV.h
+.\objects\system_fm33a0xxev.o: ..\Compents\Lib\CMSIS\Core\Include\core_cm0plus.h
+.\objects\system_fm33a0xxev.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_version.h
+.\objects\system_fm33a0xxev.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_compiler.h
+.\objects\system_fm33a0xxev.o: ..\Compents\Lib\CMSIS\Core\Include\cmsis_armcc.h
+.\objects\system_fm33a0xxev.o: ..\Compents\Lib\CMSIS\Core\Include\mpu_armv7.h
+.\objects\system_fm33a0xxev.o: ..\Compents\System\system_FM33A0XXEV.h
+.\objects\system_fm33a0xxev.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\system_fm33a0xxev.o: ..\Compents\System\FM33A0XXEV.h
