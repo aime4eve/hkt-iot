@@ -429,9 +429,9 @@ fun streamRev(content: String) {
                     indexLen += 4
                 } else if (cmd == 0x0A) {
                     var humidity =
-                        subArray[1 + indexLen]shl 16 or subArray[2 + indexLen]shl 8 or subArray[3 + indexLen]
-                    if (humidity > 0x800000) {
-                        humidity = -humidity
+                        (subArray[1 + indexLen] shl 16) or (subArray[2 + indexLen] shl 8) or subArray[3 + indexLen]
+                    if (humidity >= 0x800000) {
+                        humidity -= 0x1000000
                     }
                     mDeviceData.humidity = humidity.toFloat() / 1000
                     mDeviceDataString.humidity = mDeviceData.humidity.toString() + "%"

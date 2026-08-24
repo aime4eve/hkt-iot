@@ -19,6 +19,10 @@ android {
         xmlReport = true
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     defaultConfig {
         applicationId = "com.hkt.ble.bletools"
         minSdk = 26
