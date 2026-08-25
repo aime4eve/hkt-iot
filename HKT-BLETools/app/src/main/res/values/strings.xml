@@ -3,6 +3,15 @@
     <string name="ble_connect">BLE_Connect</string>
     <string name="connect">Connect</string>
     <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="numeric_low_threshold">Low Threshold (mm)</string>
+    <string name="numeric_high_threshold">High Threshold (mm)</string>
+    <string name="numeric_report_period">Report Period (min)</string>
+    <string name="numeric_gps_period">GPS Period (min)</string>
+    <string name="numeric_buffeting_duration">Buffeting duration</string>
+    <string name="numeric_time_seconds">Time (s)</string>
+    <string name="numeric_pulse">Pulse</string>
+    <string name="invalid_numeric_range">Enter a valid number for this field</string>
     <string name="manual_eui_menu_title">Input EUI</string>
     <string name="manual_eui_title">Enter DevEUI</string>
     <string name="manual_eui_hint">16-character hexadecimal DevEUI</string>

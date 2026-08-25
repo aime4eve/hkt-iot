@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
@@ -24,6 +25,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.BaseExpandableListAdapter
@@ -37,6 +39,7 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.TimePicker
 import android.widget.Toast
+import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -148,6 +151,120 @@ data class Group(val id: Int, val title: String, val groupType: Int)
 data class Child(val id: Int, val groupId: Int, val title: String, val word: String)
 
 class ExpandableListAdapter(private val context: Context, private var groups: List<Group>, private var children: Map<Int, List<Child>>) : BaseExpandableListAdapter() {
+
+    private val configViews = mutableMapOf<Int, View>()
+    private val shouldRefreshConfigValues = mutableMapOf<Int, Boolean>()
+
+    fun requestConfigValueRefresh() {
+        configViews.keys.forEach { shouldRefreshConfigValues[it] = true }
+    }
+
+    private fun getCachedConfigView(layoutRes: Int, groupType: Int, parent: ViewGroup?): View {
+        shouldRefreshConfigValues.putIfAbsent(layoutRes, true)
+        val view = configViews.getOrPut(layoutRes) {
+            LayoutInflater.from(context).inflate(layoutRes, parent, false)
+        }
+        view.tag = groupType
+        setupNumericInputs(view)
+        return view
+    }
+
+    private data class NumericInputSpec(
+        val titleRes: Int,
+        val min: Int,
+        val max: Int,
+        val allowZero: Boolean = false
+    )
+
+    private fun setupNumericInputs(view: View) {
+        if (view is EditText) {
+            setupNumericInput(view)
+        } else if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                setupNumericInputs(view.getChildAt(index))
+            }
+        }
+    }
+
+    private fun setupNumericInput(editText: EditText) {
+        val spec = when (editText.id) {
+            R.id.tv_low_threshold ->
+                NumericInputSpec(R.string.numeric_low_threshold, 30, 4500)
+            R.id.tv_high_threshold ->
+                NumericInputSpec(R.string.numeric_high_threshold, 30, 4500, allowZero = true)
+            R.id.tv_report_period ->
+                NumericInputSpec(R.string.numeric_report_period, 1, 1440)
+            R.id.tv_gps_period ->
+                NumericInputSpec(R.string.numeric_gps_period, 10, 1440, allowZero = true)
+            R.id.et_report_period_dc200 ->
+                NumericInputSpec(R.string.numeric_report_period, 1, 1440)
+            R.id.et_buffeting_duration ->
+                NumericInputSpec(R.string.numeric_buffeting_duration, 1, 255)
+            R.id.et_report_period_svc100 ->
+                NumericInputSpec(R.string.numeric_report_period, 1, 1440)
+            R.id.et_time_realtime_task ->
+                NumericInputSpec(R.string.numeric_time_seconds, 0, 65535)
+            R.id.et_pulse_realtime_task ->
+                NumericInputSpec(R.string.numeric_pulse, 0, 65535)
+            R.id.et_pulse_timed ->
+                NumericInputSpec(R.string.numeric_pulse, 0, 65535)
+            else -> return
+        }
+
+        editText.isFocusable = false
+        editText.isFocusableInTouchMode = false
+        editText.isCursorVisible = false
+        editText.inputType = InputType.TYPE_NULL
+        editText.setOnClickListener {
+            showNumericInputDialog(editText, spec)
+        }
+    }
+
+    private fun showNumericInputDialog(currentValueEditText: EditText, spec: NumericInputSpec) {
+        val input = EditText(context).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSingleLine()
+            hint = currentValueEditText.hint
+            setText(currentValueEditText.text.toString())
+            setSelection(length())
+        }
+
+        val dialog = AlertDialog.Builder(context)
+            .setTitle(context.getString(spec.titleRes))
+            .setView(input)
+            .setPositiveButton(context.getString(R.string.ok)) { _, _ -> }
+            .setNegativeButton(context.getString(R.string.cancel), null)
+            .create()
+
+        fun submitIfValid() {
+            val value = input.text.toString().toIntOrNull()
+            val isValid = value != null &&
+                ((value == 0 && spec.allowZero) || value in spec.min..spec.max)
+            if (isValid) {
+                currentValueEditText.setText(input.text.toString())
+                dialog.dismiss()
+            } else {
+                input.error = context.getString(R.string.invalid_numeric_range)
+            }
+        }
+
+        input.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitIfValid()
+                true
+            } else {
+                false
+            }
+        }
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener { submitIfValid() }
+            input.requestFocus()
+            dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        }
+        dialog.show()
+    }
 
     // 获取组的视图
     private fun getStatusView(convertView: View?, parent: ViewGroup?, isExpanded: Boolean): View {
@@ -264,12 +381,13 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.tv_report_period)
         val gpsPeriodEditText = view.findViewById<EditText>(R.id.tv_gps_period)
 
-        // 已获取到正常数据
-        if(mDeviceData.reportPeriod > 0){
+        // Refresh from device data only for initial sync or an explicit reset.
+        if (shouldRefreshConfigValues.getOrDefault(R.layout.dialog_config_uds100, true) && mDeviceData.reportPeriod > 0) {
             lowThresholdEditText.setText(mDeviceData.overflowLowThreshold.toString())
             highThresholdEditText.setText(mDeviceData.overflowHighThreshold.toString())
             reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
             gpsPeriodEditText.setText(mDeviceData.gpsPeriod.toString())
+            shouldRefreshConfigValues[R.layout.dialog_config_uds100] = false
         }
         // 设置点击监听器
         configButton.setOnClickListener(View.OnClickListener {
@@ -403,9 +521,10 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
             }
         }
 
-        // 已获取到正常数据
-        if(mDeviceData.reportPeriod >0){
+        // Refresh from device data only for initial sync or an explicit reset.
+        if (shouldRefreshConfigValues.getOrDefault(R.layout.dialog_config_dc200, true) && mDeviceData.reportPeriod > 0) {
             reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
+            shouldRefreshConfigValues[R.layout.dialog_config_dc200] = false
         }
         // 设置点击监听器
         configButton.setOnClickListener(View.OnClickListener {
@@ -449,14 +568,15 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
         val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
 
-        // 已获取到正常数据
-        if(mDeviceData.reportPeriod >0){
+        // Refresh from device data only for initial sync or an explicit reset.
+        if (shouldRefreshConfigValues.getOrDefault(R.layout.dialog_config_svc100, true) && mDeviceData.reportPeriod > 0) {
             volOutSpinner.setSelection(mDeviceData.volOut)
             valveModeSpinner.setSelection(mDeviceData.valveMode)
-            buffetingDurationEditText.setText(mDeviceData.reportPeriod.toString())
+            buffetingDurationEditText.setText(mDeviceData.buffetingDuration.toString())
             autoPowerOnSpinner.setSelection(mDeviceData.autoPower)
             timezoneOnSpinner.setSelection(mDeviceData.timeZone)
             reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
+            shouldRefreshConfigValues[R.layout.dialog_config_svc100] = false
         }
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
@@ -799,6 +919,30 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
     override fun getGroupView(groupPosition: Int, isExpanded: Boolean, convertView: View?, parent: ViewGroup?): View {
         val group = groups[groupPosition]
 
+        val configLayoutRes = when {
+            mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 2 ->
+                R.layout.dialog_config_svc100
+            mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 3 ->
+                R.layout.dialog_config_realtime_task
+            mDeviceData.name == DeviceNameEnum.NAME_SVC100.ordinal && group.groupType == 4 ->
+                R.layout.dialog_config_timed_task
+            mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal && group.groupType == 3 ->
+                R.layout.dialog_config_uds100
+            mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal && group.groupType == 3 ->
+                R.layout.dialog_config_dc200
+            else -> null
+        }
+        if (configLayoutRes != null) {
+            val view = getCachedConfigView(configLayoutRes, group.groupType, parent)
+            return when (configLayoutRes) {
+                R.layout.dialog_config_svc100 -> getConfigSVC100View(view, parent)
+                R.layout.dialog_config_realtime_task -> getRealtimeTask(view, parent)
+                R.layout.dialog_config_timed_task -> getTimedTask(view, parent)
+                R.layout.dialog_config_dc200 -> getConfigDC200View(view, parent)
+                else -> getConfigUDS100View(view, parent)
+            }
+        }
+
         // 尝试复用 convertView，如果为空则通过 LayoutInflater 创建新视图
 //        val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.group_item, parent, false)
         Log.d("getGroupView", "$group")
@@ -994,8 +1138,6 @@ class DeviceActivity: AppCompatActivity(){
     private lateinit var children : Map<Int, List<Child>>
     private lateinit var newChildren : Map<Int, List<Child>>
 
-    private var isKeyboardVisible = false
-
     private val counterRunnable  =  Runnable {
         /* 在这里定义周期性执行的任务 */
         runOnUiThread {
@@ -1120,6 +1262,7 @@ class DeviceActivity: AppCompatActivity(){
                 startSyncCheck()
             } else if (mDeviceEvent.event == DeviceEventEnum.CONFIG_PARAMETER_FINISH_EVENT.ordinal) {
                 mDeviceEvent.event = DeviceEventEnum.VALUE_NULL.ordinal
+                adapter.requestConfigValueRefresh()
                 Toast.makeText(context, "Executed successfully", Toast.LENGTH_SHORT).show()
             } else if (mDeviceEvent.event == DeviceEventEnum.SYNC_TIMESTAMP_EVENT.ordinal) {
                 mDeviceEvent.event = DeviceEventEnum.SYNC_TIMESTAMP_START_EVENT.ordinal
@@ -1157,25 +1300,6 @@ class DeviceActivity: AppCompatActivity(){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device)
         FileLogger.log("Device", "DeviceActivity.onCreate name=${mDeviceData.name} connectState=$connectState")
-
-        // 监听键盘状态
-        val rootView = findViewById<View>(android.R.id.content)
-        rootView.viewTreeObserver.addOnGlobalLayoutListener {
-            val heightDiff = rootView.rootView.height - rootView.height
-            val keyboardVisibleThreshold = resources.getDimensionPixelSize(R.dimen.keyboard_visible_threshold)
-            isKeyboardVisible = heightDiff > keyboardVisibleThreshold
-
-            if (isKeyboardVisible) {
-                // 键盘显示，暂停刷新任务
-                executorService.shutdownNow()
-            } else {
-                // 键盘隐藏，恢复刷新任务
-                if (executorService.isShutdown) {
-                    executorService = Executors.newSingleThreadScheduledExecutor()
-                    executorService.scheduleAtFixedRate(counterRunnable, 0, 1, TimeUnit.SECONDS)
-                }
-            }
-        }
 
         if(mDeviceData.name == DeviceNameEnum.NAME_UDS100.ordinal){
             groupsList = listOf(
@@ -1306,6 +1430,7 @@ class DeviceActivity: AppCompatActivity(){
         expandableListView.setOnGroupClickListener { _, _, groupPosition, _ ->
             if (groupsList[groupPosition].groupType == 0) {
                 resetEventFromDevice()
+                adapter.requestConfigValueRefresh()
                 adapter.notifyDataSetChanged()
             }
             false
@@ -1437,13 +1562,15 @@ class DeviceActivity: AppCompatActivity(){
                     isExternalPowerUpdate = true  // 同步状态变化不触发指令
                     isPowerUpdate = true
                     resetEventFromDevice()
+                    adapter.requestConfigValueRefresh()
                     adapter.notifyDataSetChanged()
                 }
             } else {
                 // 如果还没有连接，则再次检查（递归调用）
                 var timeout = 40
                 if(mDeviceEvent.event == DeviceEventEnum.CALIBRATION_EXECUTE_EVENT.ordinal) {
-                    timeout = 240
+                    // DC200 covers EPS100/MPS100; their calibration can take up to 3 minutes.
+                    timeout = if (mDeviceData.name == DeviceNameEnum.NAME_DC200.ordinal) 360 else 240
                 }
                 if (syncTime++ >= timeout) {
                     syncTime = 0

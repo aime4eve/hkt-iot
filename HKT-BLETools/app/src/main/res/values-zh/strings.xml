@@ -1,6 +1,15 @@
 <resources>
     <string name="connect">连接</string>
     <string name="cancel">取消</string>
+    <string name="ok">确定</string>
+    <string name="numeric_low_threshold">低阈值（mm）</string>
+    <string name="numeric_high_threshold">高阈值（mm）</string>
+    <string name="numeric_report_period">上报周期（分钟）</string>
+    <string name="numeric_gps_period">GPS 周期（分钟）</string>
+    <string name="numeric_buffeting_duration">防抖时长</string>
+    <string name="numeric_time_seconds">时间（秒）</string>
+    <string name="numeric_pulse">脉冲</string>
+    <string name="invalid_numeric_range">请输入有效数值</string>
     <string name="manual_eui_menu_title">Input EUI</string>
     <string name="manual_eui_title">输入DevEUI</string>
     <string name="manual_eui_hint">16位十六进制DevEUI</string>
