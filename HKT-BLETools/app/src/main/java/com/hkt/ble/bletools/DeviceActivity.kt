@@ -568,6 +568,13 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
         val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
 
+        if (convertView == null) {
+            bindSpinnerItems(volOutSpinner, R.array.spinner_items_vol)
+            bindSpinnerItems(valveModeSpinner, R.array.spinner_items_valve_mode)
+            bindSpinnerItems(autoPowerOnSpinner, R.array.spinner_items_auto_power_on)
+            bindSpinnerItems(timezoneOnSpinner, R.array.spinner_items_timezone)
+        }
+
         // Refresh from device data only for initial sync or an explicit reset.
         if (shouldRefreshConfigValues.getOrDefault(R.layout.dialog_config_svc100, true) && mDeviceData.reportPeriod > 0) {
             volOutSpinner.setSelection(mDeviceData.volOut)
@@ -640,6 +647,11 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val timeEditText = view.findViewById<EditText>(R.id.et_time_realtime_task)
         val configButton = view.findViewById<Button>(R.id.bt_config_realtime_task)
 
+        if (convertView == null) {
+            bindSpinnerItems(valveSpinner, R.array.spinner_items_valve)
+            bindSpinnerItems(openStateSpinner, R.array.spinner_items_check)
+        }
+
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
@@ -703,6 +715,12 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val repeatTextView = view.findViewById<TextView>(R.id.tv_task_repeat_timed)
         val configButton = view.findViewById<Button>(R.id.bt_config_timed_task)
         val deleteButton = view.findViewById<Button>(R.id.bt_delete_timed_task)
+
+        if (convertView == null) {
+            bindSpinnerItems(idSpinner, R.array.spinner_items_task)
+            bindSpinnerItems(valveSpinner, R.array.spinner_items_valve)
+            bindSpinnerItems(openStateSpinner, R.array.spinner_items_check)
+        }
 
         startTimeEditText?.setOnClickListener {
             val calendar: Calendar = Calendar.getInstance()
@@ -821,6 +839,15 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         })
         return view
     }
+
+    private fun bindSpinnerItems(spinner: Spinner, itemsResId: Int) {
+        spinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(itemsResId).toList(),
+            spinner
+        )
+    }
+
     private fun getOTAView(convertView: View?, parent: ViewGroup?): View {
         val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.dialog_ota, parent, false)
         val fileInfoLayout = view.findViewById<View>(R.id.ll_ota_file_info)
