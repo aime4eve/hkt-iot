@@ -47,6 +47,47 @@ sdk.dir=D\:\\Android\\sdk
 
 **签名现状**：仓库根有 `key.jks`（`alias=hkt`），但**密码未知**，`build.gradle.kts` 未配 `signingConfigs` → release 产物恒为 `-unsigned.apk`。如需正式签名，获取 `storePassword`/`keyPassword` 后用 `apksigner`（见 [docs/安装包制作说明.md](docs/安装包制作说明.md)，注意该文档版本号/SDK 信息偏旧，以 `build.gradle.kts` 为准）。
 
+### macOS 编译（2026-08-26 验证通过）
+
+仓库里的 `gradle.properties` 固定 Windows JDK 路径，`local.properties` 固定 Windows Android SDK 路径；在 macOS 直接构建会失败。**不要为了编译修改仓库内这两个配置**，建议复制一份 ASCII 临时工程：
+
+```bash
+rsync -a --exclude .git --exclude .gradle --exclude build --exclude app/build \
+  ./ /private/tmp/HKT-BLETools-macos/
+```
+
+macOS 本机可用组件：
+
+| 组件 | 位置 |
+|------|------|
+| Android SDK | `/Users/hkt/Library/Android/sdk` |
+| JDK 17 | `/Applications/Android Studio.app/Contents/jbr/Contents/Home` |
+
+将临时工程的 `local.properties` 改为：
+
+```properties
+sdk.dir=/Users/hkt/Library/Android/sdk
+```
+
+`gradle.properties` 里的 `D:\Java\jdk-17` 可用命令行 JDK 覆盖。Android Studio JBR 路径含空格，Gradle 解析 `-Dorg.gradle.java.home` 时会把它截成 `/Applications/Android`，先建无空格软链接最稳：
+
+```bash
+cd /private/tmp/HKT-BLETools-macos
+ln -s '/Applications/Android Studio.app/Contents/jbr/Contents/Home' jdk-17
+
+# gradlew 在当前 macOS 工作区可能没有执行位；用 sh 启动可避开
+sh ./gradlew :app:assembleDevDebug --console=plain \
+  -Dorg.gradle.java.home=/private/tmp/HKT-BLETools-macos/jdk-17
+sh ./gradlew :app:testDevDebugUnitTest --console=plain \
+  -Dorg.gradle.java.home=/private/tmp/HKT-BLETools-macos/jdk-17
+```
+
+macOS 已验证的关键坑：
+
+- 系统 JDK 21 会让 `compileDevDebugJavaWithJavac` 在转换 `core-for-system-modules.jar` 时触发 `jlink` 失败；本项目 AGP 7.4.2 必须用 JDK 17。
+- Gradle wrapper 需要写 `~/.gradle` 锁文件。受沙盒限制的 Agent 环境若报 `gradle-8.5-bin.zip.lck (Operation not permitted)`，需按权限流程申请非沙盒执行。
+- 产物路径仍是 `app/build/outputs/apk/<flavor>/<buildType>/`；需要分发包时把命令换成 `:app:assembleProdDebug`。
+
 ---
 
 ## 3. 关键环境坑与对策（必读，省大量时间）
