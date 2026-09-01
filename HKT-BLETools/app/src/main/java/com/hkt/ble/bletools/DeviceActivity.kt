@@ -418,7 +418,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 ?.let { mDeviceEvent.overflowHighThreshold = it } ?: run { error++ }
             validate(lowThresholdEditText) { it < 30 || it > 4500 }
                 ?.let { mDeviceEvent.overflowLowThreshold = it } ?: run { error++ }
-            validate(reportPeriodEditText) { it != 0 && (it < 1 || it > 1440) }
+            validate(reportPeriodEditText) { it < 1 || it > 1440 }
                 ?.let { mDeviceEvent.reportPeriod = it } ?: run { error++ }
             validate(gpsPeriodEditText) { (it < 10 && it != 0) || it > 1440 }
                 ?.let { mDeviceEvent.gpsPeriod = it } ?: run { error++ }

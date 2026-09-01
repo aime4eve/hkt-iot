@@ -542,20 +542,12 @@ fun streamRev(content: String) {
                 }else if (cmd == 0x41) {
                     mDeviceData.valveMode = subArray[1 + indexLen]
 
-                    if(mDeviceData.valveMode == 0){
-                        mDeviceDataString.valveMode = "1&amp;2 pulse mode"
-                    }else if(mDeviceData.valveMode == 1){
-                        mDeviceDataString.valveMode = "1 switch state mode,2 pulse mode"
-                    }else if(mDeviceData.valveMode == 2){
-                        mDeviceDataString.valveMode = "1 pulse mode,2 switch state mode"
-                    }else if(mDeviceData.valveMode == 3){
-                        mDeviceDataString.valveMode = "1&amp;2 switch state mode"
-                    }else if(mDeviceData.valveMode == 0x81){
-                        mDeviceDataString.valveMode = "1 switch state mode, 2 pulse mode(with anti-shake)"
-                    }else if(mDeviceData.valveMode == 0x82){
-                        mDeviceDataString.valveMode = "2 pulse mode, 1 switch state mode(with anti-shake)"
-                    }else if(mDeviceData.valveMode == 0x83){
-                        mDeviceDataString.valveMode = "1&amp;2 switch state mode(with anti-shake)"
+                    val portModeValues = intArrayOf(0x00, 0x01, 0x02, 0x03, 0x81, 0x82, 0x83)
+                    val portModeIndex = portModeValues.indexOf(mDeviceData.valveMode)
+                    mDeviceDataString.valveMode = if (portModeIndex >= 0) {
+                        BaseApp.instance().resources.getStringArray(R.array.spinner_items_valve_mode)[portModeIndex]
+                    } else {
+                        BaseApp.instance().getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -594,10 +586,12 @@ fun streamRev(content: String) {
                     indexLen += 3
                 } else if (cmd == 0x47) {  //垃圾桶满溢状态
                     mDeviceData.overflowState = subArray[1 + indexLen]
-                    mDeviceDataString.overflowState = if (mDeviceData.overflowState == 1) {
-                        "Invalid"
-                    } else {
-                        "Normal"
+                    mDeviceDataString.overflowState = when (mDeviceData.overflowState) {
+                        0 -> BaseApp.instance().getString(R.string.overflow_state_normal)
+                        1 -> BaseApp.instance().getString(R.string.overflow_state_low_threshold)
+                        2 -> BaseApp.instance().getString(R.string.overflow_state_high_threshold)
+                        0xFF -> BaseApp.instance().getString(R.string.overflow_state_invalid)
+                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -629,17 +623,9 @@ fun streamRev(content: String) {
                     indexLen += 3
                 }else if (cmd == 0x8A) {
                     mDeviceData.timeZone = subArray[1 + indexLen]
-                    var timezone: Float
-                    if(mDeviceData.timeZone == 25){
-                        timezone = 3.5F
-                    }else if(mDeviceData.timeZone == 26){
-                        timezone = 5.5F
-                    }else if(mDeviceData.timeZone >= 13){
-                        timezone = (-(mDeviceData.timeZone - 12)).toFloat()
-                    }else{
-                        timezone = mDeviceData.timeZone.toFloat()
-                    }
-                    mDeviceDataString.timeZone = "UTC+$timezone"
+                    mDeviceDataString.timeZone = BaseApp.instance().resources
+                        .getStringArray(R.array.spinner_items_timezone)
+                        .getOrNull(mDeviceData.timeZone) ?: BaseApp.instance().getString(R.string.parking_status_unknown)
                     dataLen -= 2
                     indexLen += 2
                 }else if (cmd == 0x8B) {

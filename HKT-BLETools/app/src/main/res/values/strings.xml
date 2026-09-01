@@ -39,6 +39,10 @@
     <string name="parking_status_occupied">Occupied</string>
     <string name="parking_status_covered">Covered</string>
     <string name="parking_status_unknown">Unknown</string>
+    <string name="overflow_state_normal">Normal</string>
+    <string name="overflow_state_low_threshold">Low threshold triggered</string>
+    <string name="overflow_state_high_threshold">High threshold triggered</string>
+    <string name="overflow_state_invalid">Invalid</string>
     <string name="parking_mode_fusion">Magnetic + Radar</string>
     <string name="parking_mode_magnetic_only">Magnetic Only</string>
     <string name="parking_mode_radar_priority">Radar Priority</string>

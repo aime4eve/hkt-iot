@@ -37,6 +37,10 @@
     <string name="parking_status_occupied">占用</string>
     <string name="parking_status_covered">已覆盖</string>
     <string name="parking_status_unknown">未知</string>
+    <string name="overflow_state_normal">正常</string>
+    <string name="overflow_state_low_threshold">低阈值触发</string>
+    <string name="overflow_state_high_threshold">高阈值触发</string>
+    <string name="overflow_state_invalid">无效</string>
     <string name="parking_mode_fusion">地磁 + 雷达</string>
     <string name="parking_mode_magnetic_only">仅地磁</string>
     <string name="parking_mode_radar_priority">雷达优先</string>
