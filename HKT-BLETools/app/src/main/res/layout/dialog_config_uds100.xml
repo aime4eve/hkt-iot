@@ -29,7 +29,7 @@
                     android:layout_centerVertical="true"
                     android:layout_marginTop="16dp"
                     android:layout_marginStart="16dp"
-                    android:text="Low Threshold(mm)"
+                    android:text="@string/numeric_low_threshold"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -44,7 +44,7 @@
                     android:background="@drawable/input_border"
                     android:textSize="16sp"
                     android:ems="10"
-                    android:hint="30-4500"
+                    android:hint="@string/range_low_threshold_mm"
                     android:textAlignment="center"
                     android:textColorHint="#80000000"
                     android:textColor="@color/black"
@@ -63,7 +63,7 @@
                     android:layout_centerVertical="true"
                     android:layout_marginTop="5dp"
                     android:layout_marginStart="16dp"
-                    android:text="High Threshold(mm)"
+                    android:text="@string/numeric_high_threshold"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -79,7 +79,7 @@
                     android:layout_marginBottom="16dp"
                     android:background="@drawable/input_border"
                     android:ems="10"
-                    android:hint="30-4500"
+                    android:hint="@string/range_high_threshold_mm"
                     android:inputType="number"
                     android:padding="5dp"
                     android:textAlignment="center"
@@ -101,7 +101,7 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Report Period(min)"
+                    android:text="@string/numeric_report_period"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -116,7 +116,7 @@
                     android:background="@drawable/input_border"
                     android:textSize="16sp"
                     android:ems="10"
-                    android:hint="1-1440"
+                    android:hint="@string/range_report_period_minutes"
                     android:textColor="@color/black"
                     android:textAlignment="center"
                     android:textColorHint="#80000000"
@@ -137,7 +137,7 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Gps Period(min)"
+                    android:text="@string/numeric_gps_period"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -152,7 +152,7 @@
                     android:background="@drawable/input_border"
                     android:textSize="16sp"
                     android:ems="10"
-                    android:hint="10-1440"
+                    android:hint="@string/range_gps_period_minutes"
                     android:textColor="@color/black"
                     android:textAlignment="center"
                     android:textColorHint="#80000000"
@@ -173,7 +173,7 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:text="Config 1"
+                    android:text="@string/save_settings"
                     android:textSize="12sp" />
 
             </RelativeLayout>

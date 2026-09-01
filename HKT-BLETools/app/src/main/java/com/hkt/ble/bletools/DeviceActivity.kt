@@ -392,88 +392,39 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         // 设置点击监听器
         configButton.setOnClickListener(View.OnClickListener {
             var error = 0
-            var inputText = highThresholdEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    // 在这里使用转换后的整型
-//                    println("转换后的数字是: $number")
-                    mDeviceEvent.overflowHighThreshold = number
-                    if((number < 30 && number != 0) || number > 4500) {
-                        error++
+
+            fun validate(field: EditText, isValid: (Int) -> Boolean): Int? {
+                val inputText = field.text.toString()
+                val number = if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                    try {
+                        inputText.toInt()
+                    } catch (e: NumberFormatException) {
+                        null
                     }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
+                } else {
+                    null
                 }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
+
+                return if (number != null && isValid(number)) {
+                    field.error = null
+                    number
+                } else {
+                    field.error = context.getString(R.string.invalid_numeric_range)
+                    null
+                }
             }
 
-            inputText = lowThresholdEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    // 在这里使用转换后的整型
-//                    println("转换后的数字是: $number")
-                    mDeviceEvent.overflowLowThreshold = number
-                    if(number < 30|| number > 4500) {
-                        error++
-                    }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
-                }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
-            }
-
-            inputText = reportPeriodEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    // 在这里使用转换后的整型
-//                    println("转换后的数字是: $number")
-                    mDeviceEvent.reportPeriod = number
-                    if(number < 1 || number > 1440) {
-                        error++
-                    }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
-                }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
-            }
-
-            inputText = gpsPeriodEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    // 在这里使用转换后的整型
-//                    println("转换后的数字是: $number")
-                    mDeviceEvent.gpsPeriod = number
-                    if((number < 10 && number != 0) || number > 1440) {
-                        error++
-                    }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
-                }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
-            }
+            validate(highThresholdEditText) { (it < 30 && it != 0) || it > 4500 }
+                ?.let { mDeviceEvent.overflowHighThreshold = it } ?: run { error++ }
+            validate(lowThresholdEditText) { it < 30 || it > 4500 }
+                ?.let { mDeviceEvent.overflowLowThreshold = it } ?: run { error++ }
+            validate(reportPeriodEditText) { it != 0 && (it < 1 || it > 1440) }
+                ?.let { mDeviceEvent.reportPeriod = it } ?: run { error++ }
+            validate(gpsPeriodEditText) { (it < 10 && it != 0) || it > 1440 }
+                ?.let { mDeviceEvent.gpsPeriod = it } ?: run { error++ }
 
             if(error > 0){
-                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.invalid_numeric_range, Toast.LENGTH_SHORT).show()
             }else{
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
             }
@@ -486,7 +437,11 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_dc200)
         val spinner: Spinner = view.findViewById(R.id.sp_work_mode_dc200)
 
-        val items = listOf("Fusion mode", "Geomagnetic only", "Radar priority")
+        val items = listOf(
+            context.getString(R.string.parking_mode_fusion),
+            context.getString(R.string.parking_mode_magnetic_only),
+            context.getString(R.string.parking_mode_radar_priority)
+        )
 
         // 创建并设置Adapter
         val adapter = ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, items)
@@ -503,17 +458,8 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         // 设置选择监听器
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                // 当用户选择一个项目时，这里的代码会被执行
-                val selectedItem = parent?.getItemAtPosition(position).toString()
-                if(selectedItem.contains("Fusion mode")){
-                    mDeviceEvent.parkMode = 0
-                }
-                else if(selectedItem.contains("Geomagnetic only")){
-                    mDeviceEvent.parkMode = 1
-                }
-                else if(selectedItem.contains("Radar priority")){
-                    mDeviceEvent.parkMode = 2
-                }
+                // Spinner order intentionally matches the firmware values 0/1/2.
+                mDeviceEvent.parkMode = position
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -568,62 +514,91 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val reportPeriodEditText = view.findViewById<EditText>(R.id.et_report_period_svc100)
         val configButton = view.findViewById<Button>(R.id.tv_button_config_svc100)
 
+        val outputVoltageItems = context.resources.getStringArray(R.array.spinner_items_vol)
+        val portFunctionItems = context.resources.getStringArray(R.array.spinner_items_valve_mode)
+        val portFunctionValues = intArrayOf(0x00, 0x01, 0x02, 0x03, 0x81, 0x82, 0x83)
+        val powerModeItems = context.resources.getStringArray(R.array.spinner_items_auto_power_on)
+        val timezoneItems = context.resources.getStringArray(R.array.spinner_items_timezone)
+
+        volOutSpinner.adapter = HighlightSpinnerAdapter(context, outputVoltageItems.toList(), volOutSpinner)
+        valveModeSpinner.adapter = HighlightSpinnerAdapter(context, portFunctionItems.toList(), valveModeSpinner)
+        autoPowerOnSpinner.adapter = HighlightSpinnerAdapter(context, powerModeItems.toList(), autoPowerOnSpinner)
+        timezoneOnSpinner.adapter = HighlightSpinnerAdapter(context, timezoneItems.toList(), timezoneOnSpinner)
+
+        fun updateStableTimeEditor() {
+            val usesStableTime = portFunctionValues.getOrNull(valveModeSpinner.selectedItemPosition)
+                ?.let { it and 0x80 != 0 } == true
+            buffetingDurationEditText.isEnabled = usesStableTime
+            buffetingDurationEditText.alpha = if (usesStableTime) 1.0F else 0.5F
+            buffetingDurationEditText.hint = context.getString(
+                if (usesStableTime) R.string.range_stable_time_seconds else R.string.stable_time_hint
+            )
+        }
+
         // Refresh from device data only for initial sync or an explicit reset.
         if (shouldRefreshConfigValues.getOrDefault(R.layout.dialog_config_svc100, true) && mDeviceData.reportPeriod > 0) {
-            volOutSpinner.setSelection(mDeviceData.volOut)
-            valveModeSpinner.setSelection(mDeviceData.valveMode)
+            if (mDeviceData.volOut in outputVoltageItems.indices) {
+                volOutSpinner.setSelection(mDeviceData.volOut)
+            }
+            val portFunctionIndex = portFunctionValues.indexOf(mDeviceData.valveMode)
+            if (portFunctionIndex >= 0) {
+                valveModeSpinner.setSelection(portFunctionIndex)
+            }
             buffetingDurationEditText.setText(mDeviceData.buffetingDuration.toString())
-            autoPowerOnSpinner.setSelection(mDeviceData.autoPower)
-            timezoneOnSpinner.setSelection(mDeviceData.timeZone)
+            if (mDeviceData.autoPower in powerModeItems.indices) {
+                autoPowerOnSpinner.setSelection(mDeviceData.autoPower)
+            }
+            if (mDeviceData.timeZone in timezoneItems.indices) {
+                timezoneOnSpinner.setSelection(mDeviceData.timeZone)
+            }
             reportPeriodEditText.setText(mDeviceData.reportPeriod.toString())
             shouldRefreshConfigValues[R.layout.dialog_config_svc100] = false
         }
+
+        updateStableTimeEditor()
+        valveModeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                updateStableTimeEditor()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
-            var inputText = reportPeriodEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    // 在这里使用转换后的整型
-//                    println("转换后的数字是: $number")
-                    mDeviceEvent.reportPeriod = number
-                    if(number < 1 || number > 1440) {
-                        error++
+
+            fun validate(field: EditText, isValid: (Int) -> Boolean): Int? {
+                val inputText = field.text.toString()
+                val number = if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
+                    try {
+                        inputText.toInt()
+                    } catch (e: NumberFormatException) {
+                        null
                     }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
+                } else {
+                    null
                 }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
+
+                return if (number != null && isValid(number)) {
+                    field.error = null
+                    number
+                } else {
+                    field.error = context.getString(R.string.invalid_numeric_range)
+                    null
+                }
             }
 
-            inputText = buffetingDurationEditText.text.toString()
-            if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
-                try {
-                    val number: Int = inputText.toInt()
-                    mDeviceEvent.buffetingDuration = number
-                    if(number < 1 || number > 255) {
-                        error++
-                    }
-                } catch (e: NumberFormatException) {
-                    // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
-                    e.printStackTrace()
-                }
-            } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
-                error++
-            }
+            validate(reportPeriodEditText) { it < 1 || it > 1440 }
+                ?.let { mDeviceEvent.reportPeriod = it } ?: run { error++ }
+            validate(buffetingDurationEditText) { it < 1 || it > 255 }
+                ?.let { mDeviceEvent.buffetingDuration = it } ?: run { error++ }
 
             if(error > 0){
-                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.invalid_numeric_range, Toast.LENGTH_SHORT).show()
             }else{
                 mDeviceEvent.volOut = volOutSpinner.selectedItemPosition
-                mDeviceEvent.valveMode = valveModeSpinner.selectedItemPosition
+                mDeviceEvent.valveMode = portFunctionValues[valveModeSpinner.selectedItemPosition]
                 mDeviceEvent.autoPower = autoPowerOnSpinner.selectedItemPosition
                 mDeviceEvent.timeZone = timezoneOnSpinner.selectedItemPosition
                 mDeviceEvent.event = DeviceEventEnum.CONFIG_PARAMETER_EVENT.ordinal
@@ -640,6 +615,17 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val timeEditText = view.findViewById<EditText>(R.id.et_time_realtime_task)
         val configButton = view.findViewById<Button>(R.id.bt_config_realtime_task)
 
+        valveSpinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(R.array.spinner_items_valve).toList(),
+            valveSpinner
+        )
+        openStateSpinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(R.array.spinner_items_check).toList(),
+            openStateSpinner
+        )
+
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
@@ -652,33 +638,37 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     mDeviceEvent.pulseRealtime = number
                     if(number > 65535) {
                         error++
+                        pulseEditText.error = context.getString(R.string.invalid_numeric_range)
+                    } else {
+                        pulseEditText.error = null
                     }
                 } catch (e: NumberFormatException) {
                     // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
                     e.printStackTrace()
                 }
             } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
                 error++
+                pulseEditText.error = context.getString(R.string.invalid_numeric_range)
             }
 
-            if (time.isNotEmpty() && TextUtils.isDigitsOnly(pulse)) {
+            if (time.isNotEmpty() && TextUtils.isDigitsOnly(time)) {
                 try {
                     val number: Int = time.toInt()
                     // 在这里使用转换后的整型
                     mDeviceEvent.timeRealtime = number
                     if(number > 65535) {
                         error++
+                        timeEditText.error = context.getString(R.string.invalid_numeric_range)
+                    } else {
+                        timeEditText.error = null
                     }
                 } catch (e: NumberFormatException) {
                     // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
                     e.printStackTrace()
                 }
             } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
                 error++
+                timeEditText.error = context.getString(R.string.invalid_numeric_range)
             }
 
             if(error > 0){
@@ -703,6 +693,31 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val repeatTextView = view.findViewById<TextView>(R.id.tv_task_repeat_timed)
         val configButton = view.findViewById<Button>(R.id.bt_config_timed_task)
         val deleteButton = view.findViewById<Button>(R.id.bt_delete_timed_task)
+
+        idSpinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(R.array.spinner_items_task).toList(),
+            idSpinner
+        )
+        valveSpinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(R.array.spinner_items_valve).toList(),
+            valveSpinner
+        )
+        openStateSpinner.adapter = HighlightSpinnerAdapter(
+            context,
+            context.resources.getStringArray(R.array.spinner_items_check).toList(),
+            openStateSpinner
+        )
+
+        val repeatDays = listOf("1", "2", "3", "4", "5", "6", "7")
+        val repeatSelected = BooleanArray(repeatDays.size)
+        val repeatValues = arrayOfNulls<String>(repeatDays.size).also { values ->
+            repeatDays.forEachIndexed { index, day -> values[index] = day }
+        }
+        repeatTextView?.setOnClickListener {
+            checkboxEdit(repeatTextView, repeatSelected, repeatValues, IntArray(repeatDays.size))
+        }
 
         startTimeEditText?.setOnClickListener {
             val calendar: Calendar = Calendar.getInstance()
@@ -736,36 +751,13 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
             )
             timePickerDialog.show()
         }
-        repeatTextView?.setOnClickListener {
-
-            // 使用ArrayList来存储HashMap，但明确HashMap的键值类型
-            val list: ArrayList<MutableMap<String, String>> = ArrayList()
-            // 使用循环或列表来添加每个星期的日子
-//            val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-            val daysOfWeek = listOf("1", "2", "3", "4", "5", "6", "7")
-            daysOfWeek.forEach { day ->
-                addItemToMapAndList("week",day, list)
-            }
-            //下拉项选中状态
-            val selected = BooleanArray(list.size)
-            //下拉框数据源
-            val str = arrayOfNulls<String>(list.size)
-            //下拉项ID
-            val id = IntArray(list.size)
-            for (i in list.indices) {
-                str[i] = list[i]!!["week"].toString()
-                selected[i] = false
-            }
-            repeatTextView?.setOnClickListener { checkboxEdit(repeatTextView, selected, str, id) }
-        }
-
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
             val pulse = pulseEditText.text.toString()
             var id = idSpinner.selectedItemPosition
 
-            if(id == 17){
+            if(id == 16){
                 id = 0xFF
             }else{
                 id += 1
@@ -778,19 +770,26 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     mDeviceEvent.pulseTimed = number
                     if(number > 65535) {
                         error++
+                        pulseEditText.error = context.getString(R.string.invalid_numeric_range)
+                    } else {
+                        pulseEditText.error = null
                     }
                 } catch (e: NumberFormatException) {
                     // 这里通常不会触发，因为已经用TextUtils.isDigitsOnly检查过了
                     e.printStackTrace()
                 }
             } else {
-                // 输入为空或不是纯数字
-                println("输入无效")
                 error++
+                pulseEditText.error = context.getString(R.string.invalid_numeric_range)
             }
 
             if(mDeviceEvent.endTimeTimed - mDeviceEvent.startTimeTimed <= 0){
                 error++
+                startTimeEditText.error = context.getString(R.string.invalid_time_range)
+                endTimeEditText.error = context.getString(R.string.invalid_time_range)
+            } else {
+                startTimeEditText.error = null
+                endTimeEditText.error = null
             }
 
             if(id == 0xFF){
@@ -798,7 +797,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
             }
 
             if(error > 0){
-                Toast.makeText(context, "The input format is incorrect", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.invalid_numeric_range, Toast.LENGTH_SHORT).show()
             }else{
                 mDeviceEvent.idTimed = id
                 mDeviceEvent.valveTimed = valveSpinner.selectedItemPosition
@@ -810,7 +809,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         deleteButton?.setOnClickListener(View.OnClickListener {
             var id = idSpinner.selectedItemPosition
 
-            if(id == 17){
+            if(id == 16){
                 id = 0xFF
             }else{
                 id += 1

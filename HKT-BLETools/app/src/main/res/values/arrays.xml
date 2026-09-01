@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="spinner_items_dc200">
-        <item>Fusion mode</item>
-        <item>Geomagnetic only</item>
+        <item>Magnetic + Radar</item>
+        <item>Magnetic Only</item>
+        <item>Radar Priority</item>
     </string-array>
 
     <string-array name="spinner_items_valve">
@@ -12,8 +13,8 @@
     </string-array>
 
     <string-array name="spinner_items_check">
-        <item>OFF</item>
-        <item>OPEN</item>
+        <item>Close</item>
+        <item>Open</item>
     </string-array>
 
     <string-array name="spinner_items_task">
@@ -43,48 +44,48 @@
     </string-array>
 
     <string-array name="spinner_items_valve_mode">
-        <item>1&amp;2 pulse mode</item>
-        <item>1 switch state mode,2 pulse mode</item>
-        <item>1 pulse mode,2 switch state mode</item>
-        <item>1&amp;2 switch state mode</item>
-        <item>1 switch state mode, 2 pulse mode(with anti-shake)</item>
-        <item>2 pulse mode, 1 switch state mode(with anti-shake)</item>
-        <item>1&amp;2 switch state mode(with anti-shake)</item>
+        <item>Port 1 + Port 2 pulse</item>
+        <item>Port 1 switch, Port 2 pulse</item>
+        <item>Port 1 pulse, Port 2 switch</item>
+        <item>Port 1 + Port 2 switch</item>
+        <item>Port 1 switch, Port 2 pulse (stable time)</item>
+        <item>Port 1 pulse, Port 2 switch (stable time)</item>
+        <item>Port 1 + Port 2 switch (stable time)</item>
     </string-array>
 
     <string-array name="spinner_items_auto_power_on">
-        <item>Automatic power on/off mode is invalid</item>
-        <item>Automatic on/off mode is effective</item>
+        <item>Manual power on/off</item>
+        <item>Automatic power on/off</item>
     </string-array>
 
     <string-array name="spinner_items_timezone">
-        <item>UTC+0</item>
-        <item>UTC+1</item>
-        <item>UTC+2</item>
-        <item>UTC+3</item>
-        <item>UTC+4</item>
-        <item>UTC+5</item>
-        <item>UTC+6</item>
-        <item>UTC+7</item>
-        <item>UTC+8</item>
-        <item>UTC+9</item>
-        <item>UTC+10</item>
-        <item>UTC+11</item>
-        <item>UTC+12</item>
-        <item>UTC-1</item>
-        <item>UTC-2</item>
-        <item>UTC-3</item>
-        <item>UTC-4</item>
-        <item>UTC-5</item>
-        <item>UTC-6</item>
-        <item>UTC-7</item>
-        <item>UTC-8</item>
-        <item>UTC-9</item>
-        <item>UTC-10</item>
-        <item>UTC-11</item>
-        <item>UTC-12</item>
-        <item>UTC+3.5</item>
-        <item>UTC+5.5</item>
+        <item>UTC+00:00</item>
+        <item>UTC+01:00</item>
+        <item>UTC+02:00</item>
+        <item>UTC+03:00</item>
+        <item>UTC+04:00</item>
+        <item>UTC+05:00</item>
+        <item>UTC+06:00</item>
+        <item>UTC+07:00</item>
+        <item>UTC+08:00</item>
+        <item>UTC+09:00</item>
+        <item>UTC+10:00</item>
+        <item>UTC+11:00</item>
+        <item>UTC+12:00</item>
+        <item>UTC-01:00</item>
+        <item>UTC-02:00</item>
+        <item>UTC-03:00</item>
+        <item>UTC-04:00</item>
+        <item>UTC-05:00</item>
+        <item>UTC-06:00</item>
+        <item>UTC-07:00</item>
+        <item>UTC-08:00</item>
+        <item>UTC-09:00</item>
+        <item>UTC-10:00</item>
+        <item>UTC-11:00</item>
+        <item>UTC-12:00</item>
+        <item>UTC+03:30</item>
+        <item>UTC+05:30</item>
     </string-array>
 
 </resources>

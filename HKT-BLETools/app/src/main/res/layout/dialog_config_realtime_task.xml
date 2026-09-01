@@ -37,7 +37,7 @@
                         android:layout_marginTop="16dp"
                         android:layout_marginEnd="5dp"
                         android:layout_marginBottom="16dp"
-                        android:text="realtime"
+                        android:text="@string/realtime_task"
                         android:textColor="@color/black"
                         android:textSize="16sp" />
                 </RelativeLayout>
@@ -58,13 +58,13 @@
                             android:layout_centerVertical="true"
                             android:layout_marginTop="10dp"
                             android:layout_marginStart="16dp"
-                            android:text="valve"
+                            android:text="@string/valve"
                             android:textColor="@color/black"
                             android:textSize="16sp" />
 
                         <Spinner
                             android:id="@+id/sp_valve_realtime_task"
-                            android:layout_width="100dp"
+                            android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
@@ -93,13 +93,13 @@
                             android:layout_centerVertical="true"
                             android:layout_marginTop="10dp"
                             android:layout_marginStart="16dp"
-                            android:text="state"
+                            android:text="@string/state"
                             android:textColor="@color/black"
                             android:textSize="16sp" />
 
                         <Spinner
                             android:id="@+id/sp_open_state_realtime_task"
-                            android:layout_width="100dp"
+                            android:layout_width="120dp"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
@@ -128,7 +128,7 @@
                             android:layout_centerVertical="true"
                             android:layout_marginTop="10dp"
                             android:layout_marginStart="16dp"
-                            android:text="time(s)"
+                            android:text="@string/time_seconds"
                             android:textColor="@color/black"
                             android:textSize="16sp" />
 
@@ -141,7 +141,7 @@
                             android:layout_marginEnd="16dp"
                             android:background="@drawable/input_border"
                             android:ems="10"
-                            android:hint="0-65535"
+                            android:hint="@string/range_task_time_seconds"
                             android:inputType="number"
                             android:textAlignment="center"
                             android:textColor="@color/black"
@@ -168,7 +168,7 @@
                             android:layout_centerVertical="true"
                             android:layout_marginTop="10dp"
                             android:layout_marginStart="16dp"
-                            android:text="pulse"
+                            android:text="@string/pulse"
                             android:textColor="@color/black"
                             android:textSize="16sp" />
 
@@ -182,7 +182,7 @@
                             android:layout_marginEnd="16dp"
                             android:background="@drawable/input_border"
                             android:ems="10"
-                            android:hint="0-65535"
+                            android:hint="@string/range_task_pulse"
                             android:inputType="number"
                             android:textAlignment="center"
                             android:textColor="@color/black"
@@ -213,7 +213,7 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:text="Config 4"
+                    android:text="@string/save_settings"
                     android:textSize="12sp" />
 
             </RelativeLayout>

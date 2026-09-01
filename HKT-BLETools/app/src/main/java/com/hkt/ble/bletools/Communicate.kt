@@ -476,20 +476,21 @@ fun streamRev(content: String) {
                     indexLen += 2
                 }else if (cmd == 0x3A) {
                     mDeviceData.parkStatus = subArray[1 + indexLen]
-                    mDeviceDataString.parkStatus = if (mDeviceData.parkStatus == 1) {
-                        "Hold"
-                    } else {
-                        "Idle"
+                    mDeviceDataString.parkStatus = when (mDeviceData.parkStatus) {
+                        0 -> BaseApp.instance().getString(R.string.parking_status_vacant)
+                        1 -> BaseApp.instance().getString(R.string.parking_status_occupied)
+                        0xFF -> BaseApp.instance().getString(R.string.parking_status_covered)
+                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
                 }else if (cmd == 0x3B) {
                     mDeviceData.parkMode = subArray[1 + indexLen]
                     mDeviceDataString.parkMode = when (mDeviceData.parkMode) {
-                        0 -> "Fusion mode"
-                        1 -> "Geomagnetic only"
-                        2 -> "Radar priority"
-                        else -> "Unknown"
+                        0 -> BaseApp.instance().getString(R.string.parking_mode_fusion)
+                        1 -> BaseApp.instance().getString(R.string.parking_mode_magnetic_only)
+                        2 -> BaseApp.instance().getString(R.string.parking_mode_radar_priority)
+                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2

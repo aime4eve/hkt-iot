@@ -31,14 +31,14 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Voltage Output Value"
+                    android:text="@string/output_voltage"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
 
                 <Spinner
                     android:id="@+id/sp_vol_out"
-                    android:layout_width="100dp"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_marginStart="10dp"
@@ -63,14 +63,14 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Interface Function"
+                    android:text="@string/port_function"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
 
                 <Spinner
                     android:id="@+id/sp_valve_mode"
-                    android:layout_width="100dp"
+                    android:layout_width="180dp"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_marginStart="10dp"
@@ -95,7 +95,7 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Buffeting duration"
+                    android:text="@string/stable_time"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -109,7 +109,7 @@
                     android:layout_marginEnd="16dp"
                     android:background="@drawable/input_border"
                     android:ems="10"
-                    android:hint="1-255"
+                    android:hint="@string/range_stable_time_seconds"
                     android:inputType="number"
                     android:padding="5dp"
                     android:textAlignment="center"
@@ -132,13 +132,13 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Auto Power ON"
+                    android:text="@string/power_mode"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
                 <Spinner
                     android:id="@+id/sp_auto_power_on"
-                    android:layout_width="100dp"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_marginStart="10dp"
@@ -163,13 +163,13 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Timezone"
+                    android:text="@string/timezone"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
                 <Spinner
                     android:id="@+id/sp_timezone"
-                    android:layout_width="100dp"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_marginStart="10dp"
@@ -194,7 +194,7 @@
                     android:layout_marginTop="16dp"
                     android:layout_marginEnd="16dp"
                     android:layout_marginBottom="16dp"
-                    android:text="Report Period(min)"
+                    android:text="@string/numeric_report_period"
                     android:textColor="@color/black"
                     android:textSize="16sp" />
 
@@ -208,7 +208,7 @@
                     android:layout_marginEnd="16dp"
                     android:background="@drawable/input_border"
                     android:ems="10"
-                    android:hint="1-1440"
+                    android:hint="@string/range_svc_report_period_minutes"
                     android:inputType="number"
                     android:padding="5dp"
                     android:textAlignment="center"
@@ -230,7 +230,7 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:text="Config 3"
+                    android:text="@string/save_settings"
                     android:textSize="12sp" />
 
             </RelativeLayout>

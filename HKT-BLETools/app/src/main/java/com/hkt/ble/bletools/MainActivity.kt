@@ -41,8 +41,10 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -110,6 +112,7 @@ class BaseApp : Application() {
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en-US"))
         setupCrashHandler()
     }
 
