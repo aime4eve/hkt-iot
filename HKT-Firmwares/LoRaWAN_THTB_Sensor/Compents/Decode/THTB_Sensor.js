@@ -4,10 +4,17 @@
  * Copyright 2022 HKT SmartHard
  * 
  * @product GT-30
+ *
+ * Revision:
+ * 2026-08-31 Convert byte-array payloads to ASCII before parsing.
  */
 function Decoder(bytes, port) {
 
     var decoded = {};
+    if (Array.isArray(bytes) || ArrayBuffer.isView(bytes)) {
+        bytes = String.fromCharCode.apply(null, new Uint8Array(bytes));
+    }
+
     if (checkReportSync(bytes.slice(0, 4)) == false)
         return;
 
@@ -93,5 +100,3 @@ var gps_info = "T,S1,0095690000015896,40,15,21,E112.851069,S28.246640,2022.07.22
 
 console.log(Decoder(th_info, 10))
 console.log(Decoder(gps_info, 10))
-
-
