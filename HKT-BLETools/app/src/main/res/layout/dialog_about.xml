@@ -14,10 +14,41 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/tv_about_language"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:text="诊断日志："
+        android:text="@string/about_language"
+        android:textColor="#666666"
+        android:textSize="13sp" />
+
+    <RadioGroup
+        android:id="@+id/rg_about_language"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rb_language_english"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/about_language_english" />
+
+        <RadioButton
+            android:id="@+id/rb_language_chinese"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="@string/about_language_chinese" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/about_diagnostic_log"
         android:textColor="#666666"
         android:textSize="13sp" />
 

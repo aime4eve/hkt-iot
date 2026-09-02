@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">BLETools</string>
+    <string name="about_title">About</string>
+    <string name="about_version_format">%1$s v%2$s (%3$d)</string>
+    <string name="about_language">Language</string>
+    <string name="about_language_english">English</string>
+    <string name="about_language_chinese">中文</string>
+    <string name="about_diagnostic_log">Diagnostic log:</string>
+    <string name="close">Close</string>
     <string name="ble_connect">BLE_Connect</string>
     <string name="connect">Connect</string>
     <string name="cancel">Cancel</string>

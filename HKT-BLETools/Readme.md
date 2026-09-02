@@ -1,6 +1,6 @@
 # HKT BLETools
 
-HKT BLETools 是一款 Android/Kotlin 应用，用于扫描、连接、配置和升级 HKT 系列 BLE IoT 设备。应用通过自定义 `hkt` 二进制协议与设备通信，当前配置版本为 `3.16 (versionCode 20260820)`。
+HKT BLETools 是一款 Android/Kotlin 应用，用于扫描、连接、配置和升级 HKT 系列 BLE IoT 设备。应用通过自定义 `hkt` 二进制协议与设备通信，当前配置版本为 `3.17 (versionCode 20260902)`。
 
 ## 支持的设备
 

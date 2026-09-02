@@ -35,6 +35,8 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -44,6 +46,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.os.LocaleListCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -55,6 +58,9 @@ import com.hkt.ble.bletools.BleUuid.BleUuid.RSSI
 import java.lang.Boolean.getBoolean
 import kotlin.system.exitProcess
 
+
+private const val APP_SETTINGS_PREFS = "app_settings"
+private const val KEY_LANGUAGE_SELECTED = "language_selected"
 
 val bleCallback = BleCallback()
 
@@ -112,7 +118,11 @@ class BaseApp : Application() {
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
-        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en-US"))
+        val hasSelectedLanguage = getSharedPreferences(APP_SETTINGS_PREFS, MODE_PRIVATE)
+            .getBoolean(KEY_LANGUAGE_SELECTED, false)
+        if (!hasSelectedLanguage) {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en-US"))
+        }
         setupCrashHandler()
     }
 
@@ -853,14 +863,43 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
     private fun showAbout() {
         @Suppress("DEPRECATION")
         val pi = try { packageManager.getPackageInfo(packageName, 0) } catch (e: Exception) { null }
-        val version = if (pi != null) "BLETools  v${pi.versionName} (${pi.versionCode})" else "BLETools  v?"
+        val version = if (pi != null) {
+            getString(
+                R.string.about_version_format,
+                getString(R.string.app_name),
+                pi.versionName ?: "?",
+                PackageInfoCompat.getLongVersionCode(pi)
+            )
+        } else {
+            getString(R.string.about_version_format, getString(R.string.app_name), "?", 0L)
+        }
         val view = layoutInflater.inflate(R.layout.dialog_about, null)
         view.findViewById<TextView>(R.id.tv_about_version).text = version
+        val currentLanguage = AppCompatDelegate.getApplicationLocales().get(0)?.language ?: "en"
+        val languageGroup = view.findViewById<RadioGroup>(R.id.rg_about_language)
+        val englishButton = view.findViewById<RadioButton>(R.id.rb_language_english)
+        val chineseButton = view.findViewById<RadioButton>(R.id.rb_language_chinese)
+        englishButton.isChecked = currentLanguage != "zh"
+        chineseButton.isChecked = currentLanguage == "zh"
+        languageGroup.setOnCheckedChangeListener { _, checkedId ->
+            val selectedLanguage = if (checkedId == R.id.rb_language_chinese) "zh" else "en"
+            if (currentLanguage != selectedLanguage) {
+                getSharedPreferences(APP_SETTINGS_PREFS, MODE_PRIVATE).edit()
+                    .putBoolean(KEY_LANGUAGE_SELECTED, true)
+                    .apply()
+                val selectedLocales = if (selectedLanguage == "zh") {
+                    LocaleListCompat.forLanguageTags("zh-CN")
+                } else {
+                    LocaleListCompat.forLanguageTags("en-US")
+                }
+                AppCompatDelegate.setApplicationLocales(selectedLocales)
+            }
+        }
         view.findViewById<TextView>(R.id.tv_about_log).text = FileLogger.lastFileLog()
         AlertDialog.Builder(this)
-            .setTitle("About")
+            .setTitle(R.string.about_title)
             .setView(view)
-            .setPositiveButton("关闭", null)
+            .setPositiveButton(R.string.close, null)
             .show()
     }
 
