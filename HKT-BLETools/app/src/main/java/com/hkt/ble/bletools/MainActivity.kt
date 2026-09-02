@@ -15,6 +15,7 @@ import no.nordicsemi.android.support.v18.scanner.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -56,11 +57,12 @@ import com.google.zxing.integration.android.IntentIntegrator
 import com.google.zxing.integration.android.IntentResult
 import com.hkt.ble.bletools.BleUuid.BleUuid.RSSI
 import java.lang.Boolean.getBoolean
+import java.util.Locale
 import kotlin.system.exitProcess
 
 
 private const val APP_SETTINGS_PREFS = "app_settings"
-private const val KEY_LANGUAGE_SELECTED = "language_selected"
+private const val KEY_LANGUAGE_TAG = "language_tag"
 
 val bleCallback = BleCallback()
 
@@ -113,16 +115,36 @@ class BaseApp : Application() {
         fun instance(): Context {
             return context
         }
+
+        @Volatile
+        var selectedLanguageTag: String = "en-US"
+            private set
+
+        fun localizedContext(): Context {
+            val configuration = Configuration(context.resources.configuration)
+            configuration.setLocale(Locale.forLanguageTag(selectedLanguageTag))
+            return context.createConfigurationContext(configuration)
+        }
+
+        fun setAppLanguage(tag: String) {
+            val normalizedTag = Locale.forLanguageTag(tag).toLanguageTag().ifEmpty { "en-US" }
+            selectedLanguageTag = normalizedTag
+            context.getSharedPreferences(APP_SETTINGS_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_LANGUAGE_TAG, normalizedTag)
+                .putBoolean("language_selected", true)
+                .apply()
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(normalizedTag))
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
-        val hasSelectedLanguage = getSharedPreferences(APP_SETTINGS_PREFS, MODE_PRIVATE)
-            .getBoolean(KEY_LANGUAGE_SELECTED, false)
-        if (!hasSelectedLanguage) {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en-US"))
-        }
+        val storedTag = getSharedPreferences(APP_SETTINGS_PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LANGUAGE_TAG, null)
+        val migratedTag = storedTag
+            ?: AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        setAppLanguage(migratedTag.ifEmpty { "en-US" })
         setupCrashHandler()
     }
 
@@ -884,15 +906,9 @@ class MainActivity : AppCompatActivity() , BleCallback.UiCallback {
         languageGroup.setOnCheckedChangeListener { _, checkedId ->
             val selectedLanguage = if (checkedId == R.id.rb_language_chinese) "zh" else "en"
             if (currentLanguage != selectedLanguage) {
-                getSharedPreferences(APP_SETTINGS_PREFS, MODE_PRIVATE).edit()
-                    .putBoolean(KEY_LANGUAGE_SELECTED, true)
-                    .apply()
-                val selectedLocales = if (selectedLanguage == "zh") {
-                    LocaleListCompat.forLanguageTags("zh-CN")
-                } else {
-                    LocaleListCompat.forLanguageTags("en-US")
-                }
-                AppCompatDelegate.setApplicationLocales(selectedLocales)
+                BaseApp.setAppLanguage(
+                    if (selectedLanguage == "zh") "zh-CN" else "en-US"
+                )
             }
         }
         view.findViewById<TextView>(R.id.tv_about_log).text = FileLogger.lastFileLog()

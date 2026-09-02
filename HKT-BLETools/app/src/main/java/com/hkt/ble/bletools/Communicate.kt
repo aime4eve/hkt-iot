@@ -475,22 +475,24 @@ fun streamRev(content: String) {
                     dataLen -= 2
                     indexLen += 2
                 }else if (cmd == 0x3A) {
+                    val localizedContext = BaseApp.localizedContext()
                     mDeviceData.parkStatus = subArray[1 + indexLen]
                     mDeviceDataString.parkStatus = when (mDeviceData.parkStatus) {
-                        0 -> BaseApp.instance().getString(R.string.parking_status_vacant)
-                        1 -> BaseApp.instance().getString(R.string.parking_status_occupied)
-                        0xFF -> BaseApp.instance().getString(R.string.parking_status_covered)
-                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
+                        0 -> localizedContext.getString(R.string.parking_status_vacant)
+                        1 -> localizedContext.getString(R.string.parking_status_occupied)
+                        0xFF -> localizedContext.getString(R.string.parking_status_covered)
+                        else -> localizedContext.getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
                 }else if (cmd == 0x3B) {
+                    val localizedContext = BaseApp.localizedContext()
                     mDeviceData.parkMode = subArray[1 + indexLen]
                     mDeviceDataString.parkMode = when (mDeviceData.parkMode) {
-                        0 -> BaseApp.instance().getString(R.string.parking_mode_fusion)
-                        1 -> BaseApp.instance().getString(R.string.parking_mode_magnetic_only)
-                        2 -> BaseApp.instance().getString(R.string.parking_mode_radar_priority)
-                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
+                        0 -> localizedContext.getString(R.string.parking_mode_fusion)
+                        1 -> localizedContext.getString(R.string.parking_mode_magnetic_only)
+                        2 -> localizedContext.getString(R.string.parking_mode_radar_priority)
+                        else -> localizedContext.getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -541,13 +543,14 @@ fun streamRev(content: String) {
                     indexLen += 2
                 }else if (cmd == 0x41) {
                     mDeviceData.valveMode = subArray[1 + indexLen]
+                    val localizedContext = BaseApp.localizedContext()
 
                     val portModeValues = intArrayOf(0x00, 0x01, 0x02, 0x03, 0x81, 0x82, 0x83)
                     val portModeIndex = portModeValues.indexOf(mDeviceData.valveMode)
                     mDeviceDataString.valveMode = if (portModeIndex >= 0) {
-                        BaseApp.instance().resources.getStringArray(R.array.spinner_items_valve_mode)[portModeIndex]
+                        localizedContext.resources.getStringArray(R.array.spinner_items_valve_mode)[portModeIndex]
                     } else {
-                        BaseApp.instance().getString(R.string.parking_status_unknown)
+                        localizedContext.getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -585,13 +588,14 @@ fun streamRev(content: String) {
                     dataLen -= 3
                     indexLen += 3
                 } else if (cmd == 0x47) {  //垃圾桶满溢状态
+                    val localizedContext = BaseApp.localizedContext()
                     mDeviceData.overflowState = subArray[1 + indexLen]
                     mDeviceDataString.overflowState = when (mDeviceData.overflowState) {
-                        0 -> BaseApp.instance().getString(R.string.overflow_state_normal)
-                        1 -> BaseApp.instance().getString(R.string.overflow_state_low_threshold)
-                        2 -> BaseApp.instance().getString(R.string.overflow_state_high_threshold)
-                        0xFF -> BaseApp.instance().getString(R.string.overflow_state_invalid)
-                        else -> BaseApp.instance().getString(R.string.parking_status_unknown)
+                        0 -> localizedContext.getString(R.string.overflow_state_normal)
+                        1 -> localizedContext.getString(R.string.overflow_state_low_threshold)
+                        2 -> localizedContext.getString(R.string.overflow_state_high_threshold)
+                        0xFF -> localizedContext.getString(R.string.overflow_state_invalid)
+                        else -> localizedContext.getString(R.string.parking_status_unknown)
                     }
                     dataLen -= 2
                     indexLen += 2
@@ -622,10 +626,11 @@ fun streamRev(content: String) {
                     dataLen -= 3
                     indexLen += 3
                 }else if (cmd == 0x8A) {
+                    val localizedContext = BaseApp.localizedContext()
                     mDeviceData.timeZone = subArray[1 + indexLen]
-                    mDeviceDataString.timeZone = BaseApp.instance().resources
+                    mDeviceDataString.timeZone = localizedContext.resources
                         .getStringArray(R.array.spinner_items_timezone)
-                        .getOrNull(mDeviceData.timeZone) ?: BaseApp.instance().getString(R.string.parking_status_unknown)
+                        .getOrNull(mDeviceData.timeZone) ?: localizedContext.getString(R.string.parking_status_unknown)
                     dataLen -= 2
                     indexLen += 2
                 }else if (cmd == 0x8B) {
