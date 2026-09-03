@@ -189,6 +189,19 @@ enum BleEvent { caseStateChanged(BTState), discovered(DiscoveredDevice),
 - 同一协议提供 `MockBleTransport`（脚本化事件回放），供单元测试与 SwiftUI Preview 使用——协议层/OTA 无真机可测的落地手段。
 - iOS 模拟器不能验证 BLE；真机验收按需求 §5.4/§12.2 执行。
 
+### 7.1 硬件性能约束与写入适配（固件证据驱动）
+
+目标设备为 STM32L4 级低功耗 MCU + 透明桥 BLE 模组（模组与 MCU 之间是 LPUART1 @115200）。已核实的硬件约束及 iOS 适配要求：
+
+| 硬件约束（固件证据） | 对 iOS 的含义 | 适配设计 |
+| --- | --- | --- |
+| MCU 按「空闲超时」判帧：BLE 口 50ms 无新字节才处理已收帧（`USER/Drive/uart.c` LPUART1_IRQHandler `recvTimeout=50`） | 一条协议帧的全部字节必须落在同一个 50ms 窗口内到达 MCU；单命令 RTT 天然含 ~50ms 判帧延迟 | 不做固定延时盲发；单命令等待响应后再发下一条（单飞），看门狗预算覆盖 50ms 判帧延迟 |
+| 应用层 UART RX 缓冲 128 B、Bootloader 255 B（`USER/Drive/include/uart.h` 128 / `Compents/BootLoader/uart.h` 255，超限字节静默丢弃） | OTA 帧 146 B 只能被 Bootloader 承接；应用层响应必须 <128 B（固件查询响应已满足，解析器按此上限做防御） | OTA 只在 Bootloader 阶段发送大帧；协议解析器对超长/截断帧按 `responseFormat` 错误处理 |
+| MTU：Android 连接后协商 512；小 MTU 会把 146 B OTA 帧拆成多次写，跨 50ms 窗口即被判帧逻辑切碎 | MTU 是 OTA 可行性前置条件 | 连接后读取 `maximumWriteValueLength`；**OTA 启动前置检查 ≥160 B**（146 B 帧 + 余量），不足则 OTA 入口禁用并提示，禁止盲试 |
+| BLE↔UART 115200 ≈ 11.5 KB/s 理论上限，实际由停等流控决定吞吐 | 吞吐瓶颈在设备侧，不是 App 侧；追求写入并发无意义 | 单飞 + 设备驱动节奏（§8.1），不做流水线发送 |
+| 设备带休眠逻辑（`ble_connected` 位、sleep 延迟），会话空闲可能断开 | 空闲断开是预期行为 | 保持 1 s 级轮询维持活跃（§9.1）；断开守护即时反映（§7） |
+| 连接参数由设备侧模组决定 | iOS 不请求连接间隔，也不应假设固定间隔 | 写入节奏只依赖 ACK/回调驱动，不依赖连接间隔假设 |
+
 ## 8. OTA 状态机与并发模型（需求 §8，v1 强制）
 
 ```text
@@ -204,6 +217,22 @@ idle → fileValidated → notifying(size) → transferring(packet n/N)
 1. **验收门**：`success` 唯一前置是 `verifyingVersion` 通过——重连后 `0xFF` 查询读取 TLV `0x01` 与期望版本一致（Q8 裁决）；`transferring` 到 100% 只是 `completionSent` 的输入，不是成功（需求 §8.4）。
 2. 分包规划 `OTATransferPlanner` 为纯函数：128 B/包、包号自 `0x0002` 起（bootloader 请求驱动）、末包 `FF` 补齐 8 字节边界、完成命令 `0x03`；全部可向量测试（FW-REF：`Compents/BootLoader/uart.c`，三固件契约一致）。
 3. 并发模型：OTA 期间 `DeviceSession` 将传输授权移交 `OTAEngine`（单飞），暂停状态轮询、拒绝其他命令入队；传输写入经 Adapter 写入队列按 `writeReady` 背压推进，不使用固定延时盲发。
+
+### 8.1 设备停等流控与超时预算（固件语义驱动）
+
+Bootloader 采用**停等式 ARQ**（`Compents/BootLoader/uart.c`）：每包数据写入后回 `InfoUartAck(cmd=2, 下一包号)`，App 只能发送设备正在请求的包号——**传输节奏由设备驱动，App 端永远至多一个未确认包**。此语义优先级高于任何通用背压策略。
+
+超时与恢复预算（每项均有固件依据）：
+
+| 场景 | 固件行为（证据） | iOS 预算/动作 |
+| --- | --- | --- |
+| 单包 ACK 等待 | 设备每 16 包执行一次 2 KB 页擦+写（`FLASH_ONE_PAGE_SIZE=0x800`），第 16n 包 ACK 延迟显著增大 | 单包超时 3 s（覆盖页写峰值）；同一包连续 2 次超时判失败并释放资源 |
+| 传输静默 | 设备每秒发 nudge ACK 请求当前包；连续约 10 s 无数据则**自复位传输状态**（`flash_write_count=0`、`start_flag=0`）并回 `InfoUartAck(1, 0)` | 任何传输间隙必须 <8 s（留 2 s 余量）；App 端各传输阶段看门狗 ≤3 s，远小于 10 s 复位阈值 |
+| 收到 `InfoUartAck(1, 0)`（设备已复位传输） | 不是错误，是设备发出的"从头再来"信号 | 传输中收到即从包 0 自动重传，限 2 次；升级报告记录"设备超时重置，已自动重启传输"；超限判失败 |
+| CRC 校验 | Bootloader 逐帧校验 CRC16（`crc16_ccitt`），坏帧静默丢弃 → 表现为该包 ACK 缺失 | 复用单包超时路径；升级报告标记疑似 CRC 丢帧 |
+| 等待重启/重广播/重连 | Bootloader 完成后交棒应用，不复位传输状态机 | T1/T2/T3 阶段超时不受 10 s 约束，维持 §8 主流程取值（真机标定） |
+
+设计规则：`OTAEngine` 每包发送前断言 `pendingPacket == deviceRequestedPacket`；任何阶段超时取值必须显式登记固件依据，禁止拍脑袋常数。
 4. 每阶段有独立超时与错误归属：`waitingReboot/waitingAdvertisement/reconnecting` 超时分别映射需求 §8.5 场景 7/8/9；断开事件在任何传输阶段触发 `failed(.connectionLost)` 并释放会话资源（A-08/A-10）。
 5. 重连匹配策略 v1：按断开前设备 `PeripheralID` 直接 `retrievePeripherals(withIdentifiers:)` 重连；若系统检索失败再回退短时扫描匹配同广告名。真机阶段需验证升级重启后 identifier 稳定性（MPS100 先行验证，风险登记 §12）。
 6. UI 契约：`OTAEngine` 每次转移发布 `OTAProgress` 快照（阶段+包计数+耗时），P-04 六阶段界面一一映射（UI 设计计划 §3 P-04）；返回保护由 ViewModel 依据状态 ∈ {transferring, finalPadding, completionSent, waitingReboot, waitingAdvertisement, reconnecting} 决定。
@@ -293,3 +322,6 @@ struct FeatureSurface {
 | `.bin` 文件版本解析可行性 | M3 核对 Bootloader flash 布局；未证实前用"用户确认期望版本" |
 | 固件 App 层 CRC 是否拒收未证实 | 测试文档只声明"iOS 发送合法 CRC"（追溯文档 §7） |
 | 后台/锁屏对长 OTA 干扰 | v1 前台 OTA 为准；锁屏/后台往返列入 §8 异常测试；系统级后台保活实现前另做平台评审（需求 §9.4） |
+| 设备 UART 帧窗口/复位语义在不同固件版本的差异 | §7.1/§8.1 约束已按当前源码核实；M3 固件基线锁定时逐设备复核 `recvTimeout`/缓冲/复位阈值；真机矩阵增加"OTA 中注入 5/10/15 s 停顿"验证 nudge 与复位恢复 |
+| 不同 iPhone 与设备模组的 MTU 协商差异 | M4 真机联调记录各机型协商结果；OTA 前置 MTU ≥160 B 检查兜底 |
+| 弱信号下的连接与 OTA 稳定性 | 稳定性矩阵增加 RSSI -90 dBm 附近的扫描/连接/OTA 用例（A-10 扩展） |
