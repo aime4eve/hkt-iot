@@ -1,0 +1,17 @@
+[
+  {
+    "name": "empty",
+    "hex": "",
+    "expected": "0000"
+  },
+  {
+    "name": "abc",
+    "hex": "414243",
+    "expected": "29B1"
+  },
+  {
+    "name": "hkt-prefix",
+    "hex": "686B74",
+    "expected": "77D1"
+  }
+]
