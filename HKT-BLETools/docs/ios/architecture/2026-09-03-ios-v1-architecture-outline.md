@@ -22,6 +22,17 @@ Android 实现只作为协议、能力与业务规则参考。以下 Android 结
 | OTA 进度 `otaLevel` 全局变量，UI 直接读 | OTA 用显式状态机，转移可测试（硬性要求 4） |
 | 协议编解码散落在 `streamDevice()/streamRev()` 巨型函数、以 hex 字符串为中间格式 | 编解码为纯函数，以 `Data`/`UInt8` 为格式，不依赖 UI 类型（硬性要求 5） |
 
+### 1.1 优于 Android 的判据
+
+产品要求 iOS v1 整体优于 Android 版。优势判据锁定四个维度，不通过扩大 v1 功能面实现（功能广度仍按 §9.2 FeatureSurface 裁剪）：
+
+1. **现场更可靠**：actor 隔离消除 Android 已记载的无锁并发隐患（CLAUDE.md「Concurrency hazard」）；连接状态机 + 会话守护 + 断开分类提示。
+2. **失败更可解释**：错误十分类各自绑定人话文案与"建议动作"，Android 现状接近统一"失败"；"错误 + 建议动作"列入设计验收清单。
+3. **OTA 更可信**：重启→重新广播→重连→版本比对的成功闭环（Android 以进度条+人工观察为主）；每次 OTA 生成可导出的升级报告存档（Android 无此能力）。
+4. **迭代更快**：协议/OTA 纯函数 + 双端共享向量 + OTA 状态机 Mock 回放测试，后续加设备/加配置不回归。
+
+体验侧对应的优势项清单见 [UI 设计计划 §10](../design/2026-09-03-ios-v1-ui-design-plan.md)。
+
 ## 2. 分层与依赖方向
 
 ```text
@@ -135,7 +146,7 @@ OTAEngine（actor）：OTA 期间由 DeviceSession 独占授权（见 §8）
 | `0xFD` 校准 | ACK 后进入加速度计校准 | ACK 后进入磁力计校准，**异步完成**，按长时运行状态建模 | — |
 | `0x06` 时间同步 | 4 B 时间戳 + 固定 UTC+8 | 同左 | 4 B 时间戳 + 按配置时区换算 |
 
-超时与错误分类（需求 §10.2 十类 → `AppError` 树）：`input / permission / bluetoothUnavailable / connection / serviceMissing / writeFailure / protocolCrc / responseFormat / otaFile / otaTimeout`；每类绑定本地化文案与 UI 呈现方式（横幅/页面态/弹窗），禁止统一"失败"。请求超时由 Session 看门狗统一管理（默认值：单命令 2 s，校准例外走长时运行状态，OTA 阶段超时见 §8），超时可配置。
+超时与错误分类（需求 §10.2 十类 → `AppError` 树）：`input / permission / bluetoothUnavailable / connection / serviceMissing / writeFailure / protocolCrc / responseFormat / otaFile / otaTimeout`；每类绑定本地化文案、**建议动作**与 UI 呈现方式（横幅/页面态/弹窗），禁止统一"失败"。请求超时由 Session 看门狗统一管理（默认值：单命令 2 s，校准例外走长时运行状态，OTA 阶段超时见 §8），超时可配置。
 
 ## 6. 设备模型与能力表（硬性要求 7/8）
 
@@ -228,6 +239,7 @@ struct FeatureSurface {
 ### 9.4 日志、本地化、错误上报（需求 §9.2/§9.3）
 
 - 结构化日志：OSLog（开发）+ 进程内环形文件缓冲（诊断导出），覆盖扫描启停/目标发现/连接变化/服务发现/订阅结果/写入/响应/OTA 阶段/错误恢复九类事件；记录字段为值类型快照；敏感数据（无密钥类数据，仅设备标识）白名单制，导出前人工可见内容固定模板。
+- **OTA 升级报告**：每次 OTA 结束自动生成结构化摘要（设备型号、升级前版本、期望/实际版本、各阶段起止与耗时、失败原因与阶段），支持随诊断日志一键导出存档，作为现场支持与验收留痕材料；数据全部来自 OTAEngine 已发布的快照事件，无额外采集成本。
 - 本地化：String Catalog，禁止 view/错误提示硬编码（UI 设计计划 §7）。
 - 无远端错误上报（v1 无后端），诊断靠日志导出。
 
