@@ -314,6 +314,7 @@ struct FeatureSurface {
 | OTA 状态机（含超时/断开注入） | `OTAEngineTests`（MockBleTransport 回放） | 需求 §8.2/§8.5 |
 | 配置边界（接受/拒绝/静默） | `ConfigBoundaryTests` | FW-VEC：`fromBleDataHandle()` 各范围 |
 | 错误分类映射 | `ErrorMappingTests` | 需求 §10.2 |
+| 稳定性与业务连续性（保活/睡眠/安装形态/中断恢复） | [稳定性与连续性测试用例基线](2026-09-04-ios-v1-stability-continuity-test-cases.md)（TC-ST/TC-BC，XCTest + 真机） | 需求 §18 S-1~S-8 |
 
 每个测试登记 `FW-REF-*`/`VEC-*`/`TC-*`（追溯文档 §5 规则）；M3 固件协议与测试基线里程碑关闭时补全向量 JSON（`shared/fixtures/`）。
 
