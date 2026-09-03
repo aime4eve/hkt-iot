@@ -1,6 +1,6 @@
 # HKT BLETools
 
-HKT BLETools 是一款 Android/Kotlin 应用，用于扫描、连接、配置和升级 HKT 系列 BLE IoT 设备。应用通过自定义 `hkt` 二进制协议与设备通信，当前配置版本为 `3.17 (versionCode 20260902)`。
+HKT BLETools 是 HKT 系列 BLE IoT 设备的配置和升级工具。现有 Android/Kotlin 端用于扫描、连接、配置和升级设备，通过自定义 `hkt` 二进制协议通信；原生 SwiftUI iOS 端规划中。Android 当前配置版本为 `3.17 (versionCode 20260902)`。
 
 ## 支持的设备
 
@@ -51,7 +51,7 @@ HKT BLETools 是一款 Android/Kotlin 应用，用于扫描、连接、配置和
 
 技术栈：Kotlin 1.8.0、AGP 7.4.2、Gradle Wrapper 8.5、JDK 17、compile/target SDK 34、min SDK 26。应用要求 Android 8.0 及以上，并且手机必须支持 BLE。
 
-Windows 环境优先使用：
+仓库采用 `android/`、`ios/`、`shared/` 的双端 monorepo 结构。Windows 环境优先使用根目录兼容脚本：
 
 ```powershell
 ./build.ps1 assembleProdDebug
@@ -60,20 +60,23 @@ Windows 环境优先使用：
 ./build.ps1 lint
 ```
 
-构建变体为 `{dev, prod} x {debug, release}`，产物位于 `app/build/outputs/apk/<flavor>/<buildType>/`。`dev` 变体会追加 `.dev` 包名后缀。当前仓库的 `gradle.properties` 固定指向 Windows JDK 17 路径 `D:\Java\jdk-17`；在其他系统构建时需要先按本机 JDK 位置调整该配置。
+构建变体为 `{dev, prod} x {debug, release}`，产物位于 `android/app/build/outputs/apk/<flavor>/<buildType>/`。`dev` 变体会追加 `.dev` 包名后缀。`android/gradle.properties` 固定指向 Windows JDK 17 路径 `D:\Java\jdk-17`；在其他系统构建时需要先按本机 JDK 位置调整该配置。
 
 现有测试包括 `BluetoothScanFilterTest` 单元测试、`ExampleUnitTest`、`ScanActivityTest` 和 `ExampleInstrumentedTest`。BLE 扫描、GATT 连接、协议收发和 OTA 需要真机及真实设备验证；模拟器只能验证界面、权限和基本启动流程。
 
-Release 当前启用 R8 压缩和资源收缩，但 `app/build.gradle.kts` 未配置签名，因此 release 产物需要另行签名。仓库中的 `key.jks`、根目录 APK 和 `app/release` 元数据未被 Git 跟踪；其中 `app/release/output-metadata.json` 仍显示旧版本 2.1，不能作为当前版本依据。
+Release 当前启用 R8 压缩和资源收缩，但 `android/app/build.gradle.kts` 未配置签名，因此 release 产物需要另行签名。仓库中的 `android/key.jks`、根目录 APK 和 `android/app/release` 元数据未被 Git 跟踪；其中 `android/app/release/output-metadata.json` 仍显示旧版本 2.1，不能作为当前版本依据。
 
 ## 目录结构
 
 | 路径 | 内容 |
 | --- | --- |
-| `app/src/main/java/com/hkt/ble/bletools` | Kotlin 应用源码 |
-| `app/src/main/res` | Android 布局、菜单、图标和文案资源 |
+| `android/app/src/main/java/com/hkt/ble/bletools` | Kotlin 应用源码 |
+| `android/app/src/main/res` | Android 布局、菜单、图标和文案资源 |
 | `docs` | 参数协议、扫码逻辑、构建和发布说明 |
-| `gradle` | Gradle Wrapper 配置 |
+| `android/gradle` | Gradle Wrapper 配置 |
+| `ios` | 原生 SwiftUI iOS 工程规划目录 |
+| `shared` | 双端协议说明和测试向量 |
+| `scripts` | 双端构建辅助脚本 |
 | `更新记录.txt` | 应用历史版本记录 |
 
 `Communicate.kt` 是自定义协议、状态轮询和 OTA 组包的核心文件；`MainActivity.kt` 负责扫描、权限和连接；`DeviceActivity.kt` 负责设备配置和状态展示。修改协议、UI 或新增设备类型前，建议先阅读 [CLAUDE.md](CLAUDE.md) 和 [AGENTS.md](AGENTS.md)。

@@ -2,11 +2,15 @@
 *.iml
 .gradle
 /build
+/android/build
+/android/.gradle
 /captures
 .externalNativeBuild
 .cxx
 app/build/
 app/release/
+android/app/build/
+android/app/release/
 
 # Local configuration (SDK paths, etc.)
 /local.properties

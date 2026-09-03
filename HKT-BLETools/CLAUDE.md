@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BLETools is an Android (Kotlin) app that scans, connects to, configures, and firmware-updates a family of BLE IoT devices over a custom binary protocol. The supported device families are:
+BLETools is a dual-platform BLE tooling product. The current implementation is an Android (Kotlin) app that scans, connects to, configures, and firmware-updates a family of BLE IoT devices over a custom binary protocol. A native SwiftUI iOS app is planned. The supported device families are:
 
 - **UDS100** — ultrasonic trash-bin overflow sensor
 - **DC200** — geomagnetic / radar parking sensor (also matches names `EPS100`, `MPS100`)
@@ -15,9 +15,11 @@ Device type is resolved from the advertised name by `MainActivity.parseDeviceTyp
 
 ## Build & Run
 
-**Stack:** Kotlin 1.8.0, AGP 7.4.2, Gradle 8.5 (wrapper), compileSdk/targetSdk 34, minSdk 26, JDK 17 (jvmTarget 17).
+**Repository layout:** Android lives in `android/`; iOS will live in `ios/`; shared protocol documentation and fixtures live in `shared/`.
 
-**JDK 17 is a hard requirement.** `gradle.properties` pins `org.gradle.java.home=D:\Java\jdk-17` and `build.ps1` force-sets `JAVA_HOME` to JDK 17 before invoking gradlew — this exists specifically to avoid an invalid `jdk-21` on the PATH. On this Windows machine, prefer `./build.ps1` (or `./gradlew.bat`) over the Unix `./gradlew`.
+**Android stack:** Kotlin 1.8.0, AGP 7.4.2, Gradle 8.5 (wrapper), compileSdk/targetSdk 34, minSdk 26, JDK 17 (jvmTarget 17).
+
+**JDK 17 is a hard requirement.** `android/gradle.properties` pins `org.gradle.java.home=D:\Java\jdk-17` and the root `build.ps1` delegates to `scripts/android/build.ps1`, which force-sets `JAVA_HOME` to JDK 17 before invoking `android/gradlew.bat` — this exists specifically to avoid an invalid `jdk-21` on the PATH. On this Windows machine, prefer `./build.ps1` over invoking Gradle directly.
 
 ```bash
 # Build variants: {dev,prod} × {debug,release}
@@ -34,9 +36,9 @@ Device type is resolved from the advertised name by `MainActivity.parseDeviceTyp
 ./build.ps1 testDevDebugUnitTest --tests "*.BluetoothScanFilterTest.someMethod"
 ```
 
-Build flavors are on the `environment` dimension. `dev` adds `BASE_URL=https://dev-api.example.com`, `prod` uses `https://api.example.com` (BuildConfig fields, currently placeholder). APKs land in `app/build/outputs/apk/<flavor>/<buildType>/`.
+Build flavors are on the `environment` dimension. `dev` adds `BASE_URL=https://dev-api.example.com`, `prod` uses `https://api.example.com` (BuildConfig fields, currently placeholder). APKs land in `android/app/build/outputs/apk/<flavor>/<buildType>/`.
 
-`local.properties` (not in VCS) must contain `sdk.dir`. The signing key is `key.jks` at repo root (release is currently unsigned unless you wire `signingConfigs` into `app/build.gradle.kts`).
+`android/local.properties` (not in VCS) must contain `sdk.dir`. The signing key is `android/key.jks` (release is currently unsigned unless you wire `signingConfigs` into `android/app/build.gradle.kts`).
 
 **Note on git:** the working directory is currently **not** a git repository (`git init` has not been run here), so `git-save.ps1` (a `git add -A && git commit` helper) will fail until the repo is initialized.
 
@@ -81,7 +83,7 @@ This typically requires coordinated edits across several files (this is the recu
 ## Conventions
 
 - **Code style:** 4-space indent, 120-char width, import order Android → AndroidX → `com` → other → kotlin (per `docs/ANDROID_STUDIO_CONFIG.md`). Match existing files.
-- **Language:** Code comments are predominantly Chinese; user-facing UI strings are English with a Chinese translation in `app/src/main/res/values-zh/strings.xml`. `MissingTranslation` lint is disabled, so new strings are not blocked if untranslated, but add `values-zh` entries when adding user-facing text.
+- **Language:** Code comments are predominantly Chinese; user-facing UI strings are English with a Chinese translation in `android/app/src/main/res/values-zh/strings.xml`. `MissingTranslation` lint is disabled, so new strings are not blocked if untranslated, but add `values-zh` entries when adding user-facing text.
 - **`@SuppressLint("MissingPermission")`** is used pervasively on BLE calls rather than inline permission checks — the runtime permission flow lives in `MainActivity`. Match this when adding BLE calls.
 - **Global state first:** New device data/event fields go on the existing `DeviceTypeData` / `DeviceEventData` data classes (and their `*String` display twin), not in new per-Activity state.
 - **Concurrency hazard to know:** `StreamThread` (background thread) and `streamRev()` (invoked from BLE callbacks) mutate `mDeviceData` / `mDeviceEvent` / `mDeviceDataString` while the UI thread reads them in `DeviceActivity`. There is no locking. Preserve the existing pattern (UI refreshes off copied snapshots) and be careful adding new cross-thread fields.
