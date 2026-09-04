@@ -119,7 +119,7 @@ OTAEngine（actor）：OTA 期间由 DeviceSession 独占授权（见 §8）
 ### 5.1 帧与 CRC
 
 - App 帧：`hkt(3)+packnum(1)+len(2)+cmd(1)+data(n)+crc(2)`；`len` = `cmd+data` 字节数；CRC16-CCITT（poly `0x1021`/reflected `0x8408`，init `0x0000`，xor-out `0x0000`）计算范围为 `cmd+data`。
-- CRC 实现为查表纯函数 `CRC16.ccitt(_ data: Data) -> UInt16`，golden vector 直接使用 `shared/fixtures/crc16.json`（`empty→0000`、`abc→29B1`、`hkt→77D1`），双端共享（FW-REF：三固件 `Compents/BootLoader/crclib.c`；Bootloader 校验 CRC，App 层 iOS 一律发送合法 CRC，不声称固件 App 层拒收坏 CRC——见追溯文档 §7）。
+- CRC 实现为查表纯函数 `CRC16.ccitt(_ data: Data) -> UInt16`，golden vector 直接使用 `shared/fixtures/crc16.json`（`empty→0000`、`abc→58E9`、`hkt-prefix→77D1`、`check-value(123456789)→2189` 即 KERMIT 标准校验值；2026-09-04 评审复算更正原 `abc→29B1` 错误向量），双端共享（FW-REF：三固件 `Compents/BootLoader/crclib.c`；Bootloader 校验 CRC，App 层 iOS 一律发送合法 CRC，不声称固件 App 层拒收坏 CRC——见追溯文档 §7）。
 
 ### 5.2 帧构造与解析
 
@@ -200,7 +200,7 @@ enum BleEvent { caseStateChanged(BTState), discovered(DiscoveredDevice),
 | MTU：Android 连接后协商 512；小 MTU 会把 146 B OTA 帧拆成多次写，跨 50ms 窗口即被判帧逻辑切碎 | MTU 是 OTA 可行性前置条件 | 连接后读取 `maximumWriteValueLength`；**OTA 启动前置检查 ≥160 B**（146 B 帧 + 余量），不足则 OTA 入口禁用并提示，禁止盲试 |
 | BLE↔UART 115200 ≈ 11.5 KB/s 理论上限，实际由停等流控决定吞吐 | 吞吐瓶颈在设备侧，不是 App 侧；追求写入并发无意义 | 单飞 + 设备驱动节奏（§8.1），不做流水线发送 |
 | 设备带休眠逻辑（`ble_connected` 位、sleep 延迟），会话空闲可能断开 | 空闲断开是预期行为 | 保持 1 s 级轮询维持活跃（§9.1）；断开守护即时反映（§7） |
-| **连接后 5 s 无交互即进睡眠、60 s 未连接强制睡眠**（`control_center.h` `WAIT_SLEEP_TIME_DELAY=5`/`MAX_WAIT_SLEEP_TIMEOUT=60`，`ble_sleep_mode` 可配置） | 1 s 轮询不是 UI 优化而是**保活硬约束**；连接序列（服务发现/订阅/首次查询）必须紧凑，任一环节超 5 s 设备入睡、链路可能中断 | 连接成功即自动发起首轮 `0xFF` 查询（不等用户进 P-03）；会话任何"暂停轮询"策略必须保证间隔 ≤4 s，否则改为显式断开 |
+| **睡眠语义按连接态区分**（2026-09-04 评审更正）：未连接广播态 5 s 无交互进睡眠（`control_center.h` `WAIT_SLEEP_TIME_DELAY=5`）；**连接态固件低功耗路径提前返回、默认不睡眠**（`control_center.c` 连接态跳过），受 `ble_sleep_mode` 配置影响（实际取值 M3 核实） | 原断言"连接后 5 s 断链"失实；1 s 轮询仍保留（状态刷新 + 跨固件版本保活） | 连接成功即自动发起首轮 `0xFF` 查询；轮询暂停策略须评估设备侧行为并显式恢复；`ble_sleep_mode` 取值列入 M3 核对 |
 | LoRa 上行与 BLE 同主循环（上报时刻 `dataReportTimestamp` 触发 9600 UART 慢速收发），期间 BLE 响应延迟 | 会话中偶发秒级响应延迟，非设备故障 | 命令看门狗 2 s 起步并区分"响应慢"与"无响应"；延迟事件记入诊断日志辅助现场判断 |
 | 连接参数由设备侧模组决定 | iOS 不请求连接间隔，也不应假设固定间隔 | 写入节奏只依赖 ACK/回调驱动，不依赖连接间隔假设 |
 
@@ -217,7 +217,7 @@ idle → fileValidated → notifying(size) → transferring(packet n/N)
 要点：
 
 1. **验收门**：`success` 唯一前置是 `verifyingVersion` 通过——重连后 `0xFF` 查询读取 TLV `0x01` 与期望版本一致（Q8 裁决）；`transferring` 到 100% 只是 `completionSent` 的输入，不是成功（需求 §8.4）。
-2. 分包规划 `OTATransferPlanner` 为纯函数：128 B/包、包号自 `0x0002` 起（bootloader 请求驱动）、末包 `FF` 补齐 8 字节边界、完成命令 `0x03`；全部可向量测试（FW-REF：`Compents/BootLoader/uart.c`，三固件契约一致）。
+2. 分包规划 `OTATransferPlanner` 为纯函数：128 B/包、**包号从 `0x0000` 起**（设备 ACK 命令码为 `0x02`，其后 2 字节才是所请求包号，首 ACK 请求包 0——2026-09-04 评审更正，原"0x0002 起"系将命令码误读为包号）、末包 `FF` 补齐 8 字节边界、完成命令 `0x03`；全部可向量测试（FW-REF：`Compents/BootLoader/uart.c`，三固件契约一致）。
 3. 并发模型：OTA 期间 `DeviceSession` 将传输授权移交 `OTAEngine`（单飞），暂停状态轮询、拒绝其他命令入队；传输写入经 Adapter 写入队列按 `writeReady` 背压推进，不使用固定延时盲发。
 
 ### 8.1 设备停等流控与超时预算（固件语义驱动）
@@ -228,8 +228,8 @@ Bootloader 采用**停等式 ARQ**（`Compents/BootLoader/uart.c`）：每包数
 
 | 场景 | 固件行为（证据） | iOS 预算/动作 |
 | --- | --- | --- |
-| 单包 ACK 等待 | 设备每 16 包执行一次 2 KB 页擦+写（`FLASH_ONE_PAGE_SIZE=0x800`），第 16n 包 ACK 延迟显著增大 | 单包超时 3 s（覆盖页写峰值）；同一包连续 2 次超时判失败并释放资源 |
-| 传输静默 | 设备每秒发 nudge ACK 请求当前包；连续约 10 s 无数据则**自复位传输状态**（`flash_write_count=0`、`start_flag=0`）并回 `InfoUartAck(1, 0)` | 任何传输间隙必须 <8 s（留 2 s 余量）；App 端各传输阶段看门狗 ≤3 s，远小于 10 s 复位阈值 |
+| 单包 ACK 等待 | 设备每 16 包执行一次 2 KB 页擦+写（`FLASH_ONE_PAGE_SIZE=0x800`），第 16n 包 ACK 延迟显著增大 | 单包超时 3 s；**超时后不立即判失败**：设备静默期每秒发 nudge ACK 请求当前包，App 收到即重发所请求的包；**失败判定 = 连续 ≥15 s 无任何 ACK**（2026-09-04 评审更正：原 3s×2 次判失败会早于设备 ~10 s 复位 ACK，使自动重传路径不可达） |
+| 传输静默 | 设备每秒发 nudge ACK 请求当前包；连续约 10 s 无数据则**自复位传输状态**（`flash_write_count=0`、`start_flag=0`）并回 `InfoUartAck(1, 0)` | App 主动造成的传输间隙必须 <8 s（留余量）；被动失联时依赖下方复位 ACK 恢复路径；OTA 阶段看门狗按上行取值 |
 | 收到 `InfoUartAck(1, 0)`（设备已复位传输） | 不是错误，是设备发出的"从头再来"信号 | 传输中收到即从包 0 自动重传，限 2 次；升级报告记录"设备超时重置，已自动重启传输"；超限判失败 |
 | CRC 校验 | Bootloader 逐帧校验 CRC16（`crc16_ccitt`），坏帧静默丢弃 → 表现为该包 ACK 缺失 | 复用单包超时路径；升级报告标记疑似 CRC 丢帧 |
 | 等待重启/重广播/重连 | Bootloader 完成后交棒应用，不复位传输状态机 | T1/T2/T3 阶段超时不受 10 s 约束，维持 §8 主流程取值（真机标定） |
