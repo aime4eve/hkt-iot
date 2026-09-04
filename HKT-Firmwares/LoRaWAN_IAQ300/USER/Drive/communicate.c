@@ -255,12 +255,14 @@ void sendLoRaWANData(void)
     DebugHexInfo("Send", uartLoRa.sendData, uartLoRa.sendLen);
     tx_thread_sleep(20);
     if (getLoRaWANBusyStat()) {
-        DEBUG_TRACE(WARN_TAG, "Wait Busy IO Timeout");
+        DEBUG_TRACE(WARN_TAG, "TX_FAIL_BUSY_TIMEOUT");
+        LoRaWAN_ReportTxFail(TX_FAIL_BUSY_TIMEOUT);
         goto __fail;
     }
     if (getLoRaWANSendStat()) {
     __fail:
-        DEBUG_TRACE(WARN_TAG, "LoRa SendData Fail, Write Date To Cache");
+        DEBUG_TRACE(WARN_TAG, "TX_FAIL_UPLINK (uplink=%d, ack=%d)",
+                    txRecover.uplink_fail_cnt, txRecover.ack_fail_cnt);
         int free_number = lwrb_get_free(&lwrbBuff_t);
         if (free_number >= (sendNum + 1)) {
             lwrb_write(&lwrbBuff_t, &sendNum, 1); // 写入数据长度
@@ -270,21 +272,14 @@ void sendLoRaWANData(void)
             DEBUG_TRACE(ERROR_TAG, "Lwrb Already Full");
         }
         packSyncNumber--;
-        device_t.send_failcnt++;
-        if (device_t.send_failcnt >= 5) {
-            device_t.send_failcnt = 0;
-            LoRaWAN.joinState = 0;
-            LoRaWAN.status = LoRaWAN_STATUS_NET_ERROR;
-            LoRaWAN.joinEvent = LoRaWAN_JOINEVENT_IDLE;
-            reconnect_stamp = Timestamp + 30 * 60;
-            DEBUG_TRACE(LOG_TAG, "Update Reconnect Timestamp: %ld", reconnect_stamp);
-        }
+        if (txRecover.lastFailType != TX_FAIL_BUSY_TIMEOUT)
+            LoRaWAN_ReportTxFail(TX_FAIL_UPLINK);
         memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
         uartLoRa.recvLen = 0;
         device_t.sleepLock = 0;
         return;
     }
-    device_t.send_failcnt = 0;
+    LoRaWAN_ReportTxSuccess();
     DEBUG_TRACE(LOG_TAG, "LoRa SendData Success");
     uartLoRa.sendDelay = 5 * SEC_DELAY;
     if (device_t.sleepDelay < WAIT_SLEEP_TIME_DELAY)
@@ -348,12 +343,14 @@ void fromLoRaWANDataHandle(u8 *data, u16 len)
         DebugHexInfo("Send", uartLoRa.sendData, uartLoRa.sendLen);
         tx_thread_sleep(20);
         if (getLoRaWANBusyStat()) {
-            DEBUG_TRACE(WARN_TAG, "Wait Busy IO Timeout");
+            DEBUG_TRACE(WARN_TAG, "TX_FAIL_BUSY_TIMEOUT");
+            LoRaWAN_ReportTxFail(TX_FAIL_BUSY_TIMEOUT);
             goto __fail;
         }
         if (getLoRaWANSendStat()) {
         __fail:
-            DEBUG_TRACE(WARN_TAG, "LoRa SendData Fail, Write Date To Cache");
+            DEBUG_TRACE(WARN_TAG, "TX_FAIL_ACK (uplink=%d, ack=%d)",
+                        txRecover.uplink_fail_cnt, txRecover.ack_fail_cnt);
             int free_number = lwrb_get_free(&lwrbBuff_t);
             if (free_number >= (sendNum + 1)) {
                 lwrb_write(&lwrbBuff_t, &sendNum, 1); // 写入数据长度
@@ -363,18 +360,11 @@ void fromLoRaWANDataHandle(u8 *data, u16 len)
                 DEBUG_TRACE(ERROR_TAG, "Lwrb Already Full");
             }
             packSyncNumber--;
-            device_t.send_failcnt++;
-            if (device_t.send_failcnt >= 5) {
-                device_t.send_failcnt = 0;
-                LoRaWAN.joinState = 0;
-                LoRaWAN.status = LoRaWAN_STATUS_NET_ERROR;
-                LoRaWAN.joinEvent = LoRaWAN_JOINEVENT_IDLE;
-                reconnect_stamp = Timestamp + 30 * 60;
-                DEBUG_TRACE(LOG_TAG, "Update Reconnect Timestamp: %ld", reconnect_stamp);
-            }
+            if (txRecover.lastFailType != TX_FAIL_BUSY_TIMEOUT)
+                LoRaWAN_ReportTxFail(TX_FAIL_ACK);
             return;
         }
-        device_t.send_failcnt = 0;
+        LoRaWAN_ReportTxSuccess();
         DEBUG_TRACE(LOG_TAG, "LoRa SendData Success");
         uartLoRa.sendDelay = 5 * SEC_DELAY;
         if (device_t.sleepDelay < WAIT_SLEEP_TIME_DELAY)
@@ -1243,6 +1233,7 @@ void thread_communicate(ULONG thread_input)
     IWDT_Clr();
     while (1) {
         LoRaWAN_JoinInit();
+        LoRaWAN_TxRecoverProcess();
         fromUartDataHandle();
         DeviceStateProcess();
         tx_thread_sleep(100);

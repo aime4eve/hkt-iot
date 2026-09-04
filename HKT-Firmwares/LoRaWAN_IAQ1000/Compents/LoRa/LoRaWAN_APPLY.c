@@ -1,5 +1,6 @@
 
 /* Includes ------------------------------------------------------------------*/
+#include "stdlib.h"
 #include "EPD.h"
 #include "communicate.h"
 #include "control_center.h"
@@ -28,6 +29,13 @@ u8 nwkSKey[16] = {0x2D, 0x35, 0xC7, 0x96, 0x32, 0x75, 0xD7, 0x43, 0xB4, 0xE7, 0x
 u8 jion_fail_cnt;
 time_t reconnect_stamp;
 struct LoRaParam LoRaWAN;
+
+struct TxRecoverManager txRecover;
+
+/* Send-failure backoff: 30s, 60s, 180s, 300s */
+static const u16 tx_backoff_table[] = {30, 60, 180, 300};
+/* Rejoin backoff: 10min, 30min, 1h, 2h, 8h, 24h (seconds) */
+static const u32 rejoin_backoff_table[] = {600, 1800, 3600, 7200, 28800, 86400};
 
 #define MDK_YEAR ((((__DATE__[7] - '0') * 10 + __DATE__[8] - '0') * 10 + (__DATE__[9] - '0')) * 10 + (__DATE__[10] - '0'))
 #define MDK_DAY ((__DATE__[4] == ' ' ? 0 : __DATE__[4] - '0') * 10 + (__DATE__[5] - '0'))
@@ -267,6 +275,7 @@ void LoRaWAN_CreatAPPKEY(void)
  */
 void LoRaWAN_Init(void)
 {
+    txRecover.last_tx_success_ts = Timestamp;
     char sfre[] = "AS923_AS2";
     char smode[] = "OTAA";
     setLoRaWANStatus(LoRaWAN_WAKE_STATUS); // 唤醒模块
@@ -527,6 +536,19 @@ void LoRaWAN_JoinInit(void)
         LoRaWAN.joinEvent = LoRaWAN_JOINEVENT_IDLE;
         LoRaWAN.status = LoRaWAN_STATUS_NORMAL;
 
+        /* Reset TX recover state machine on successful join */
+        txRecover.state = TX_RECOVER_IDLE;
+        txRecover.lastFailType = TX_FAIL_NONE;
+        txRecover.uplink_fail_cnt = 0;
+        txRecover.ack_fail_cnt = 0;
+        txRecover.busy_timeout_cnt = 0;
+        txRecover.stat_timeout_cnt = 0;
+        txRecover.module_recover_cnt = 0;
+        txRecover.rejoin_trigger_cnt = 0;
+        txRecover.backoff_level = 0;
+        txRecover.last_tx_success_ts = Timestamp;
+        DEBUG_TRACE(LOG_TAG, "JOIN_SUCCESS");
+
         // 入网后同步一次数据
         device_t.syncDeviceState = 1;
         if (device_t.epdShowMode != 0xFF) {
@@ -583,6 +605,161 @@ void LoRaWAN_JoinInit(void)
         // DEBUG_TRACE(ERROR_TAG, "LoRaWAN Enter In Net Error!");
         break;
     default:
+        break;
+    }
+}
+
+/* ===================== TX Recover State Machine ===================== */
+
+static void txRecover_enter_backoff(void)
+{
+    if (txRecover.backoff_level > 3)
+        txRecover.backoff_level = 3;
+    txRecover.backoff_target_ts = Timestamp + tx_backoff_table[txRecover.backoff_level];
+    txRecover.backoff_target_ts += (rand() % 16);
+    txRecover.state = TX_RECOVER_BACKOFF;
+    DEBUG_TRACE(LOG_TAG, "TX_RECOVER_BACKOFF level=%d, resume at %ld",
+                txRecover.backoff_level, txRecover.backoff_target_ts);
+}
+
+static void txRecover_enter_rejoin(void)
+{
+    txRecover.rejoin_trigger_cnt++;
+    u8 idx = txRecover.rejoin_trigger_cnt;
+    if (idx > 5)
+        idx = 5;
+    reconnect_stamp = Timestamp + rejoin_backoff_table[idx - 1];
+
+    LoRaWAN.joinState = 0;
+    LoRaWAN.status = LoRaWAN_STATUS_NET_ERROR;
+    LoRaWAN.joinEvent = LoRaWAN_JOINEVENT_IDLE;
+
+    txRecover.state = TX_RECOVER_REJOIN;
+    DEBUG_TRACE(WARN_TAG, "REJOIN_TRIGGER_BY_TX_FAIL cnt=%d, reconnect at %ld",
+                txRecover.rejoin_trigger_cnt, reconnect_stamp);
+}
+
+void LoRaWAN_ReportTxFail(TxFailType_t type)
+{
+    txRecover.lastFailType = type;
+
+    switch (type) {
+    case TX_FAIL_BUSY_TIMEOUT:
+        txRecover.busy_timeout_cnt++;
+        break;
+    case TX_FAIL_STAT_TIMEOUT:
+        txRecover.stat_timeout_cnt++;
+        break;
+    case TX_FAIL_UPLINK:
+        txRecover.uplink_fail_cnt++;
+        break;
+    case TX_FAIL_ACK:
+        txRecover.ack_fail_cnt++;
+        break;
+    default:
+        break;
+    }
+
+    u8 total_fails = txRecover.uplink_fail_cnt + txRecover.ack_fail_cnt;
+
+    switch (txRecover.state) {
+    case TX_RECOVER_IDLE:
+        txRecover_enter_backoff();
+        break;
+    case TX_RECOVER_BACKOFF:
+        txRecover.backoff_level++;
+        if (total_fails >= 6 || txRecover.busy_timeout_cnt >= 3) {
+            txRecover.state = TX_RECOVER_MODULE;
+            DEBUG_TRACE(WARN_TAG, "TX_RECOVER_TO_MODULE (total_fails=%d, busy=%d)",
+                        total_fails, txRecover.busy_timeout_cnt);
+        } else {
+            txRecover_enter_backoff();
+        }
+        break;
+    case TX_RECOVER_MODULE:
+        break;
+    case TX_RECOVER_REJOIN:
+        break;
+    }
+}
+
+void LoRaWAN_ReportTxSuccess(void)
+{
+    if (txRecover.state != TX_RECOVER_IDLE) {
+        DEBUG_TRACE(LOG_TAG, "TX_RECOVER_SUCCESS (was in state %d, total fails: uplink=%d ack=%d)",
+                    txRecover.state, txRecover.uplink_fail_cnt, txRecover.ack_fail_cnt);
+    }
+    txRecover.state = TX_RECOVER_IDLE;
+    txRecover.lastFailType = TX_FAIL_NONE;
+    txRecover.uplink_fail_cnt = 0;
+    txRecover.ack_fail_cnt = 0;
+    txRecover.busy_timeout_cnt = 0;
+    txRecover.stat_timeout_cnt = 0;
+    txRecover.module_recover_cnt = 0;
+    txRecover.rejoin_trigger_cnt = 0;
+    txRecover.backoff_level = 0;
+    txRecover.last_tx_success_ts = Timestamp;
+    txRecover.backoff_target_ts = 0;
+}
+
+static void txRecover_do_module_recover(void)
+{
+    DEBUG_TRACE(LOG_TAG, "MODULE_WAKE_RECOVER (attempt %d)", txRecover.module_recover_cnt + 1);
+    setLoRaWANStatus(LoRaWAN_WAKE_STATUS);
+    LoRa_DelayMs(100);
+
+    u8 stable_cnt = 0;
+    for (u8 i = 0; i < 10; i++) {
+        LoRa_DelayMs(10);
+        if (getLoRaWANBusyIOLevel()) {
+            stable_cnt++;
+            if (stable_cnt >= 3)
+                break;
+        } else {
+            stable_cnt = 0;
+        }
+    }
+
+    if (stable_cnt < 3) {
+        DEBUG_TRACE(LOG_TAG, "MODULE_SOFT_RESET");
+        setLoRaWANMode(LoRaWAN_CMD_MODE);
+        rstLoRaWANModule();
+        LoRa_DelayMs(200);
+        setLoRaWANMode(LoRaWAN_PASSTHROUGH_MODE);
+        LoRa_DelayMs(100);
+    } else {
+        setLoRaWANMode(LoRaWAN_CMD_MODE);
+        LoRa_DelayMs(50);
+        setLoRaWANMode(LoRaWAN_PASSTHROUGH_MODE);
+        LoRa_DelayMs(50);
+    }
+
+    txRecover.module_recover_cnt++;
+    txRecover.backoff_level = 0;
+    txRecover_enter_backoff();
+}
+
+void LoRaWAN_TxRecoverProcess(void)
+{
+    switch (txRecover.state) {
+    case TX_RECOVER_IDLE:
+        break;
+    case TX_RECOVER_BACKOFF:
+        if (Timestamp < txRecover.backoff_target_ts)
+            break;
+        txRecover.state = TX_RECOVER_IDLE;
+        break;
+    case TX_RECOVER_MODULE:
+        if (Timestamp < txRecover.backoff_target_ts)
+            break;
+        if (txRecover.module_recover_cnt >= 2 &&
+            (Timestamp - txRecover.last_tx_success_ts) >= 15 * 60) {
+            txRecover_enter_rejoin();
+        } else {
+            txRecover_do_module_recover();
+        }
+        break;
+    case TX_RECOVER_REJOIN:
         break;
     }
 }
