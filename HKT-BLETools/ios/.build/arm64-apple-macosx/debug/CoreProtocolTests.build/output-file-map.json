@@ -1,0 +1,26 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/primary.swiftdeps"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/CRC16Tests.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.dia"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/FrameCodecTests.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.dia"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/TLVParserTests.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.dia"
+  }
+}

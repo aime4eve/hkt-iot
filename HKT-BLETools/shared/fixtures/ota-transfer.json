@@ -1,0 +1,51 @@
+[
+  {
+    "id": "OTA-NOTIFY-001",
+    "device": "ALL",
+    "purpose": "app-frame 0x01 notify -> device writes update flag and reboots into bootloader",
+    "request": "686B7400000501FFFFFFFFF8DD",
+    "firmwareReference": "*/communicate.c data[5]==1 branch: FLASH_Write_Update_Flag+reset",
+    "iosTest": "OTAEngineTests/testNotify"
+  },
+  {
+    "id": "OTA-FIRST-REQUEST-001",
+    "device": "ALL",
+    "purpose": "device ACK (cmd=0x02,count=0) requests FIRST packet number 0 - NOT 0x0002",
+    "response": "686B74020000626F6F746C6F6164",
+    "expected": {
+      "requestedPacket": 0
+    },
+    "firmwareReference": "BootLoader/uart.c case 1: InfoUartAck(cmd+1, flash_write_count=0)",
+    "iosTest": "OTAEngineTests/testFirstRequestIsPacketZero"
+  },
+  {
+    "id": "OTA-DATA-001",
+    "device": "ALL",
+    "purpose": "128-byte data packet, packet 0, 146-byte frame",
+    "request": "686B740083020000000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F606162636465666768696A6B6C6D6E6F707172737475767778797A7B7C7D7E7FA62C626F6F746C6F6164",
+    "expectedAck": "686B74020001626F6F746C6F6164",
+    "firmwareReference": "BootLoader/uart.c case 2: len-15==buflen, 128B fixed chunk",
+    "iosTest": "OTATransferPlannerTests/testDataFrame"
+  },
+  {
+    "id": "OTA-FINAL-001",
+    "device": "ALL",
+    "purpose": "final chunk 100B padded with FF to 8-byte boundary (104B sent)",
+    "request": "686B74006B020005000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F6061626300000000B731626F6F746C6F6164",
+    "expectedAck": "686B74030000626F6F746C6F6164",
+    "firmwareReference": "BootLoader/uart.c: pad to 8B boundary; completion ACK cmd=3",
+    "iosTest": "OTATransferPlannerTests/testFinalPadding"
+  },
+  {
+    "id": "OTA-RESET-001",
+    "device": "ALL",
+    "purpose": "after ~10s silence device resets transfer and asks to start over: ACK(cmd=1,count=0)",
+    "response": "686B74010000626F6F746C6F6164",
+    "expected": {
+      "action": "restartFromPacketZero",
+      "maxRestarts": 2
+    },
+    "firmwareReference": "BootLoader/uart.c reget_flash_data: recv_fail_cnt>10 -> reset+ACK(1,0)",
+    "iosTest": "OTAEngineTests/testDeviceResetRestart"
+  }
+]

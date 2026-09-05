@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/primary.swiftdeps"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreDevice/DeviceRegistry.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.dia"
+  }
+}

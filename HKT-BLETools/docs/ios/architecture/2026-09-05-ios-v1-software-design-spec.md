@@ -63,16 +63,19 @@ Adapter 实现要点：`CBCentralManagerDelegate`/`CBPeripheralDelegate` 事件�
 ```swift
 enum CRC16 { static func ccitt(_ data: Data) -> UInt16 }             // poly 0x8408 反射, init 0, KERMIT；向量 shared/fixtures/crc16.json
 enum HKTFrameEncoder {
-    static func appFrame(cmd: UInt8, packNum: UInt8, data: Data) -> Data   // hkt+packNum+len(cmd+data)+cmd+data+crc
+    static func appFrame(cmd: UInt8, packNum: UInt8, data: Data) -> Data   // hkt+packNum+len(2 BE, cmd+data)+cmd+data+crc
 }
-enum HKTFrameParser {
-    static func parse(_ data: Data) throws -> ParsedResponse               // 多 TLV 连续解析；未知 TLV 跳过并记日志（S-6）
+enum HKTResponseParser {
+    // 设备回包 = hkt(3)+0x00+seq(1)+记录流；记录 = type(1)+定长 value，无长度字节/命令字节/CRC。
+    // 按家族类型表定长分发；未知类型无法跳过 → throw dataAbnormal（S-6 M3 修订，TC-BC-011 同步修订）。
+    static func parse(_ data: Data, family: DeviceFamily) throws -> [TLVEntry]
 }
-struct ParsedResponse: Sendable { let entries: [TLVEntry]; let isAck: Bool }
-struct TLVEntry: Sendable { let type: UInt8; let value: Data }
-enum SignedValueDecoder { static func s24/s32/s16(_ v: Data) -> Int }     // 符号位规则，向量锁定
+public struct TLVEntry: Sendable { let type: UInt8; let value: Data }
+enum SignedValueDecoder { static func s24/s32/s16(_ v: Data) -> Int }     // 符号位规则，向量锁定；多字节一律大端
 enum CommandCode { static let query: UInt8 = 0xFF /* …0xFE/0xFD/0x02..0x06/0x01 */ }
 ```
+
+M3 已按固件核实并落地 `ios/Package.swift`（CoreProtocol/CoreOTA/CoreDevice + 29 个 XCTest 全绿）：三家族类型定长表、ACK 记录 `0xFF 0xFF`、0xFF/0xFE/0xFD/0x01 的 4 字节填充载荷（电源字节在 payload[3]）、DC200Family 配置=周期(2B BE)+模式(0-2)、UDS100 配置=周期+GPS+低/高阈值（4×2B BE，非法整包静默拒绝）、SVC100 配置=电压+端口+稳定+自动电源+时区+周期（时区非法无 ACK）、时区编码 25=+03:30/26=+05:30。
 
 固件值证据（TLV/命令/边界）全部引自 firmware-traceability.md §4，本 spec 不重复罗列；实现时以 `Core/Protocol/TLV.swift` 常量表登记并逐项挂 FW-REF。
 

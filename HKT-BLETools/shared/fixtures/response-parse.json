@@ -1,0 +1,113 @@
+[
+  {
+    "id": "RX-DC200-QUERY-001",
+    "device": "DC200Family",
+    "purpose": "query response: ver,power,battery,park,mode,tamper,period,magXYZ,radar",
+    "byteOrder": "bigEndian",
+    "response": "686B740001010B1C8D0103573A013B0084008600145D00785EFF885F019060000A0014001E00280032003C00460050005A0064",
+    "expected": {
+      "hardwareVersion": "0x0B",
+      "softwareVersion": "0x1C",
+      "power": 1,
+      "battery": 87,
+      "parkState": 1,
+      "parkMode": 0,
+      "tamper": 0,
+      "reportPeriod": 20,
+      "magX": 120,
+      "magY": -120,
+      "magZ": 400,
+      "radarSpectrum": [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80,
+        90,
+        100
+      ]
+    },
+    "firmwareReference": "ParkingSensor communicate.c callback_BLEQuery + setDataPackage sizes",
+    "iosTest": "TLVParserTests/testDC200FamilyQueryResponse"
+  },
+  {
+    "id": "RX-UDS-QUERY-001",
+    "device": "UDS100",
+    "purpose": "query response incl. temp/humidity x1000 (3B) and overflow config low/high",
+    "byteOrder": "bigEndian",
+    "response": "686B74000201020A8D018B0FA0090061A80A002EE00E00144400280045003C46043847004801900BB886001E10010203041105060708",
+    "expected": {
+      "hardwareVersion": "0x02",
+      "softwareVersion": "0x0A",
+      "power": 1,
+      "batteryVoltagemV": 4000,
+      "temperatureMilli": 25000,
+      "humidityMilli": 12000,
+      "angle": 20,
+      "slant": 0,
+      "htAlarm": 0,
+      "gpsPeriod": 60,
+      "distance": 1080,
+      "overflowState": 0,
+      "lowThreshold": 400,
+      "highThreshold": 3000,
+      "reportPeriod": 30,
+      "latitude": 16909060,
+      "longitude": 84281096
+    },
+    "firmwareReference": "UDS communicate.c callback_BLESearch + setDataPackage sizes",
+    "iosTest": "TLVParserTests/testUDS100QueryResponse"
+  },
+  {
+    "id": "RX-SVC-QUERY-001",
+    "device": "SVC100",
+    "purpose": "query response incl. dual-valve state(8B) and timezone 25=+03:30",
+    "byteOrder": "bigEndian",
+    "response": "686B740003010D0D8D0103633C01000064010101F440024101420543018A1986001E",
+    "expected": {
+      "hardwareVersion": "0x0D",
+      "softwareVersion": "0x0D",
+      "power": 1,
+      "battery": 99,
+      "valve1State": 1,
+      "valve1Inserted": 0,
+      "valve1Pulse": 100,
+      "valve2State": 1,
+      "valve2Inserted": 1,
+      "valve2Pulse": 500,
+      "voltageLevel": 2,
+      "portFunction": 1,
+      "stableTime": 5,
+      "smartPower": 1,
+      "timezone": "+03:30",
+      "reportPeriod": 30
+    },
+    "firmwareReference": "SVC communicate.c callback_BLEQuery + setDataPackage sizes + tz 25",
+    "iosTest": "TLVParserTests/testSVC100QueryResponse"
+  },
+  {
+    "id": "RX-ACK-001",
+    "device": "ALL",
+    "purpose": "bare ACK record after control commands",
+    "response": "686B740004FFFF",
+    "expected": {
+      "ack": true
+    },
+    "firmwareReference": "*/communicate.c callback_BLEAck",
+    "iosTest": "TLVParserTests/testAckRecord"
+  },
+  {
+    "id": "RX-UNKNOWN-TYPE-001",
+    "device": "ALL",
+    "purpose": "unknown type has no length field -> stream cannot be skipped safely -> data abnormal (S-6 revision)",
+    "response": "686B740005010B1C77000363",
+    "expected": {
+      "result": "dataAbnormal"
+    },
+    "firmwareReference": "setDataPackage has no length byte for any type",
+    "iosTest": "TLVParserTests/testUnknownTypeDataAbnormal"
+  }
+]

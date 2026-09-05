@@ -804,7 +804,7 @@ iOS v1 应按“原生架构完整、UI 里程碑可控”的方式开发：
 | S-3 | BLE 透明桥模组的广播间隔、连接间隔、监督超时配置必须作为固件追溯（FW-REF）的一部分在 M3 登记；未登记前连接类测试结果仅作基线参考 | 模组配置在 MCU 源码中不可见 | firmware-traceability.md §7；TC-ST-013 |
 | S-4 | 真机验收矩阵增加地磁设备安装形态用例：DC200 地埋、MPS100 表贴，含"车辆压顶"场景的发现/连接/OTA | 2.4 GHz 车体遮挡衰减 | TC-ST-010~013、TC-BC-002 |
 | S-5 | OTA 传输中断后设备驻留 Bootloader 升级模式（更新标志机制）；App 重连后 `0xFF` 无版本响应即判定升级模式，显示恢复态并引导重刷；"完成 ACK 后失败"窗口行为 M3 逐设备核实 | `BootLoader/main.c` `FLASH_Read_Update_Flag()`；`flash.c` `AppProgramRun()` 仅校验 SP | 架构大纲 §9.5.1；TC-BC-005/006 |
-| S-6 | TLV 解析对未知类型跳过不报错（跨固件版本兼容），未知类型记入诊断日志 | 固件后续版本可能新增字段 | 架构大纲 §9.5.3；TC-BC-011 |
+| S-6 | 设备响应为「类型+定长值」记录流，**无长度字节**（M3 修正）：未知类型无法安全跳过，解析必须判数据异常（`responseFormat`/P-03 状态②b）并记诊断日志，不得静默跳过；固件升级新增字段后旧 App 表现为该字段不可读，而非崩溃 | `setDataPackage()` 无任何长度字节（三固件一致） | 架构 spec §2.2；TC-BC-011 修订 |
 | S-7 | App 冷启动恢复用户上下文：最近设备（系统持久 identifier）、最近固件选择、未完成 OTA 标记"中断-待验证"；v1 最小持久化集=最近设备/过滤设置/语言/OTA 历史报告 | BLE 会话不跨进程存续 | 架构大纲 §9.5.2/§9.5.3；TC-BC-009 |
 | S-8 | 系统性测试用例基线见 [`architecture/2026-09-04-ios-v1-stability-continuity-test-cases.md`](architecture/2026-09-04-ios-v1-stability-continuity-test-cases.md)，与 §12.1 验收矩阵 A-04/A-06/A-08/A-10 映射 | 本轮推演产出 | M3 起执行 |
 

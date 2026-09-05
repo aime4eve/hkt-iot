@@ -1,0 +1,125 @@
+[
+  {
+    "id": "TX-QUERY-001",
+    "device": "ALL",
+    "cmd": "0xFF",
+    "purpose": "status query (Android sends 4-byte FF filler)",
+    "request": "686B74000005FFFFFFFFFF06C3",
+    "expectedAck": null,
+    "firmwareReference": "*/USER/Drive/communicate.c data[6]==0xFF branch",
+    "androidReference": "Communicate.kt streamDevice(0xFF)",
+    "iosTest": "FrameCodecTests/testQueryFrame"
+  },
+  {
+    "id": "TX-DC200-CFG-001",
+    "device": "DC200Family",
+    "cmd": "0x02",
+    "purpose": "report period 30min BE + park mode 1 (accepted)",
+    "request": "686B7400000402001E01277E",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "ParkingSensor communicate.c data[5]==4&&data[6]==2 branch",
+    "androidReference": "Communicate.kt streamDevice(0x02, DC200Family layout)",
+    "iosTest": "FrameCodecTests/testDC200ConfigFrame"
+  },
+  {
+    "id": "TX-DC200-CFG-002",
+    "device": "DC200Family",
+    "cmd": "0x02",
+    "purpose": "period 0 accepted by firmware (boundary); mode must stay 0-2",
+    "request": "686B740000040200000128FF",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "ParkingSensor communicate.c: reportInterval==0 accepted",
+    "iosTest": "ConfigBoundaryTests/testDC200ZeroPeriod"
+  },
+  {
+    "id": "TX-DC200-CFG-003",
+    "device": "DC200Family",
+    "cmd": "0x02",
+    "purpose": "park mode 3 out of range -> no ACK (silent)",
+    "request": "686B7400000402001E03046C",
+    "expectedAck": null,
+    "firmwareReference": "ParkingSensor communicate.c: parkMode>2 ERROR tag only",
+    "iosTest": "ConfigBoundaryTests/testDC200ModeRejected"
+  },
+  {
+    "id": "TX-UDS-CFG-001",
+    "device": "UDS100",
+    "cmd": "0x02",
+    "purpose": "report 30 + gps 60 + low 300 + high 3000 (all BE, accepted)",
+    "request": "686B7400000902001E003C012C0BB86CBB",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "UDS communicate.c data[5]==9&&data[6]==2 branch",
+    "iosTest": "FrameCodecTests/testUDS100ConfigFrame"
+  },
+  {
+    "id": "TX-UDS-CFG-002",
+    "device": "UDS100",
+    "cmd": "0x02",
+    "purpose": "low threshold 29 (<30) -> whole config silently rejected, no ACK",
+    "request": "686B7400000902001E003C001D0BB8AC72",
+    "expectedAck": null,
+    "firmwareReference": "UDS communicate.c: low<30 return (no callback_BLEAck)",
+    "iosTest": "ConfigBoundaryTests/testUDS100LowThresholdRejected"
+  },
+  {
+    "id": "TX-SVC-CFG-001",
+    "device": "SVC100",
+    "cmd": "0x02",
+    "purpose": "vol 2 + mode 1 + stable 5 + autoPower 1 + tz 25(+03:30) + period 30",
+    "request": "686B74000008020201050119001EE264",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "SVC communicate.c data[5]==8&&data[6]==2 branch",
+    "iosTest": "FrameCodecTests/testSVC100ConfigFrame"
+  },
+  {
+    "id": "TX-SVC-CFG-002",
+    "device": "SVC100",
+    "cmd": "0x02",
+    "purpose": "timezone 27 (>26) -> early return, no ACK even if period valid",
+    "request": "686B7400000802020105011B001E57DC",
+    "expectedAck": null,
+    "firmwareReference": "SVC communicate.c: timezone>26 return before ack",
+    "iosTest": "ConfigBoundaryTests/testSVC100TimezoneRejected"
+  },
+  {
+    "id": "TX-SVC-TASK-001",
+    "device": "SVC100",
+    "cmd": "0x03",
+    "purpose": "realtime task: valve 1 + state 1 + run 5s + pulse 100 (len=7, data 6)",
+    "request": "686B7400000703010100050064BB9E",
+    "expectedAck": null,
+    "firmwareReference": "SVC communicate.c data[5]==7&&data[6]==3 branch",
+    "iosTest": "FrameCodecTests/testSVC100RealtimeTask"
+  },
+  {
+    "id": "TX-POWER-001",
+    "device": "ALL",
+    "cmd": "0xFE",
+    "purpose": "power on; power byte is payload[3] (frame offset 10, firmware reads data[10])",
+    "request": "686B74000005FE00000001EF97",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "*/communicate.c data[6]==0xFE reads data[10]",
+    "androidReference": "Communicate.kt streamDevice(0xFE) %08X filler",
+    "iosTest": "FrameCodecTests/testPowerFrame"
+  },
+  {
+    "id": "TX-CAL-001",
+    "device": "ALL",
+    "cmd": "0xFD",
+    "purpose": "calibration trigger, filler payload, ACK immediate (completion async)",
+    "request": "686B74000005FDFFFFFFFF104B",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "*/communicate.c data[6]==0xFD",
+    "iosTest": "FrameCodecTests/testCalibrationFrame"
+  },
+  {
+    "id": "TX-SYNC-001",
+    "device": "ALL",
+    "cmd": "0x06",
+    "purpose": "time sync 4B BE unix stamp, firmware adds fixed UTC+8 (SVC uses tz)",
+    "request": "686B74000005066954678017C8",
+    "expectedAck": "686B740000FFFF",
+    "firmwareReference": "*/communicate.c data[5]==4&&data[6]==6 branch",
+    "iosTest": "FrameCodecTests/testTimeSyncFrame"
+  }
+]

@@ -1,0 +1,1411 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.xctest/Contents/MacOS/HKTBLEToolsCorePackageTests",
+      "packagePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios",
+      "productName" : "HKTBLEToolsCorePackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.CoreDevice-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreDevice/DeviceRegistry.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocol.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreDevice",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDevice.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/include/CoreDevice-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDevice.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreDevice/DeviceRegistry.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CoreDeviceTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreDeviceTests/DeviceRegistryTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDevice.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreDeviceTests",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDeviceTests.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/DeviceRegistryTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/DeviceRegistryTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDeviceTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreDeviceTests/DeviceRegistryTests.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CoreOTA-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreOTA/OTATransferPlanner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocol.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreOTA",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTA.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/include/CoreOTA-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTA.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreOTA/OTATransferPlanner.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CoreOTATests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreOTATests/OTATransferPlannerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTA.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreOTATests",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTATests.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/OTATransferPlannerTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/OTATransferPlannerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTATests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreOTATests/OTATransferPlannerTests.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CoreProtocol-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/CRC16.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTFrameEncoder.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTResponseParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/SignedValueDecoder.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreProtocol",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocol.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/CRC16.swift.o",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTFrameEncoder.swift.o",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTResponseParser.swift.o",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/SignedValueDecoder.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/include/CoreProtocol-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/CRC16.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTFrameEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTResponseParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/SignedValueDecoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocol.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/CRC16.swift",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTFrameEncoder.swift",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTResponseParser.swift",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/SignedValueDecoder.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CoreProtocolTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/CRC16Tests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/FrameCodecTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/TLVParserTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocol.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CoreProtocolTests",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocolTests.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.swift.o",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.swift.o",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocolTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/CRC16Tests.swift",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/FrameCodecTests.swift",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/TLVParserTests.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.HKTBLEToolsCorePackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/sources",
+      "importPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreProtocolTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreOTATests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/CoreDeviceTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "HKTBLEToolsCorePackageTests",
+      "moduleOutputPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/HKTBLEToolsCorePackageTests.swiftmodule",
+      "objects" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/include/HKTBLEToolsCorePackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "ios"
+      ],
+      "outputFileMapPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules/HKTBLEToolsCorePackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "CoreDevice" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreDevice",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreDevice/DeviceRegistry.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/include/CoreDevice-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CoreDeviceTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreDeviceTests",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreDeviceTests/DeviceRegistryTests.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CoreOTA" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreOTA",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreOTA/OTATransferPlanner.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/include/CoreOTA-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CoreOTATests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreOTATests",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreOTATests/OTATransferPlannerTests.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CoreProtocol" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreProtocol",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/CRC16.swift",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTFrameEncoder.swift",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTResponseParser.swift",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/SignedValueDecoder.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/include/CoreProtocol-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CoreProtocolTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CoreProtocolTests",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/CRC16Tests.swift",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/FrameCodecTests.swift",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/TLVParserTests.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "HKTBLEToolsCorePackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "HKTBLEToolsCorePackageTests",
+      "-package-name",
+      "ios",
+      "-c",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift",
+      "-I",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/include/HKTBLEToolsCorePackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "ios",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "CoreDevice" : [
+      "CoreProtocol"
+    ],
+    "CoreDeviceTests" : [
+      "CoreDevice",
+      "CoreProtocol"
+    ],
+    "CoreOTA" : [
+      "CoreProtocol"
+    ],
+    "CoreOTATests" : [
+      "CoreOTA",
+      "CoreProtocol"
+    ],
+    "CoreProtocol" : [
+
+    ],
+    "CoreProtocolTests" : [
+      "CoreProtocol"
+    ],
+    "HKTBLEToolsCorePackageTests" : [
+      "CoreDeviceTests",
+      "CoreDevice",
+      "CoreOTATests",
+      "CoreOTA",
+      "CoreProtocolTests",
+      "CoreProtocol"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreDevice/DeviceRegistry.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreDeviceTests/DeviceRegistryTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreOTA/OTATransferPlanner.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreOTATests/OTATransferPlannerTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/CRC16.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTFrameEncoder.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/HKTResponseParser.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreProtocol/SignedValueDecoder.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/CRC16Tests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/FrameCodecTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Tests/CoreProtocolTests/TLVParserTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/sources"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDevice.build/DeviceRegistry.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreDeviceTests.build/DeviceRegistryTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTATests.build/OTATransferPlannerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/CRC16.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTFrameEncoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/HKTResponseParser.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/SignedValueDecoder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/CRC16Tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/FrameCodecTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocolTests.build/TLVParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.product/Objects.LinkFileList"
+    },
+    "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}
