@@ -5,7 +5,7 @@
 | 文档版本 | v1.0 Draft（M2 评审对象） |
 | 日期 | 2026-09-05 |
 | 上游 | [架构设计大纲](2026-09-03-ios-v1-architecture-outline.md)（已评审，P1 修正完成）扩写而成；事实断言以大纲 §7.1/§8.1 固件证据为准 |
-| 下游 | Features 实现蓝图；M3 起按本文档 + [测试用例基线](2026-09-04-ios-v1-stability-continuity-test-cases.md) 开发 |
+| 下游 | Features 实现蓝图；M3 起按本文档 + [测试用例基线](2026-09-04-ios-v1-stability-continuity-test-cases.md) 开发；实现规格条目与 [设计需求与实现规格统一清单](../design/2026-09-06-ios-v1-requirements-spec-checklist.md)（SP-*）同源 |
 | 基线 | nix/ios-v1-design；iOS 17+（Q5）；仅 iPhone；Bundle ID `com.hkt.ble.bletools.ios`（Q10） |
 | 状态 | 待评审。本文档评审通过 = M2 关闭；在此之前不创建 Xcode 工程、不实现业务代码 |
 

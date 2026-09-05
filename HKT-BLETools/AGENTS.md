@@ -146,3 +146,16 @@ BT="D:/Android/sdk/build-tools/34.0.0"
 3. **跑单元测试**记得切到 ASCII 路径副本，否则 `ClassNotFoundException`。
 4. **新装 SDK 组件**用 `sdkmanager`（需 `JAVA_HOME=D:\Java\jdk-17`），许可证已接受。
 5. **全局可变状态并发**：`StreamThread`（后台线程）与 `streamRev()`（BLE 回调）并发读写 `mDeviceData`/`mDeviceEvent`/`mDeviceDataString`，UI 线程也读——无锁，改动需小心（见 CLAUDE.md「Concurrency hazard」）。
+
+---
+
+## 8. 原型-规格同审同确认原则（2026-09-06 起，用户裁决）
+
+为防止"需求和实现设计被遗忘"，iOS v1 起所有 UI/功能工作遵循以下原则：
+
+1. **高保真原型内嵌需求与规格**：`docs/ios/design/prototype/index.html` 的每一屏旁必须展示该屏的「设计需求」（必须做到什么）与「实现规格」（具体怎么算做到：范围/超时/状态/字节契约的人话版），每条带稳定编号（复用 FR / S-x / TC / FW-REF / SD 体系）。
+2. **规格总表**：原型提供全局清单视图，覆盖全部条目——用户从头核对一遍，即同时完成界面、需求、实现规格的确认。
+3. **文档同源同步**：同一份编号清单必须体现在规划文档中（`docs/ios/design/2026-09-06-ios-v1-requirements-spec-checklist.md` 为权威清单，需求说明/软件设计说明/UI 设计计划各自挂链接）。**任何改动必须原型与文档同一次提交一起改**，禁止两边漂移。
+4. **确认即冻结**：用户确认原型 = 同时确认界面 + 需求 + 实现规格。之后 SwiftUI 实现 **1:1 克隆**确认稿；新增/修改需求 → 先改原型面板与文档 → 重新确认。
+5. **详略分级**：面板写人话版规则（如"低阈值最小 30 mm"）；字节级细节放摘要 + 文档/固件文件链接，不把面板变成代码手册。
+6. **实施前检查**：每个需求/规格条目在进入实现前必须具备六类链接（FR / FW-REF / VEC / TC / SD / UX，见 `shared/devices/firmware-traceability.md` §5），缺链接只能标记"架构预留"，不得进入验收。

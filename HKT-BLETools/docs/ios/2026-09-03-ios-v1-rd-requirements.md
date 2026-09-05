@@ -809,3 +809,5 @@ iOS v1 应按“原生架构完整、UI 里程碑可控”的方式开发：
 | S-8 | 系统性测试用例基线见 [`architecture/2026-09-04-ios-v1-stability-continuity-test-cases.md`](architecture/2026-09-04-ios-v1-stability-continuity-test-cases.md)，与 §12.1 验收矩阵 A-04/A-06/A-08/A-10 映射 | 本轮推演产出 | M3 起执行 |
 
 校准（`0xFD`）UI 是否进入 v1 仍由第 14 章第 1 项裁决；无论裁决结果，校准按长时运行状态建模（架构大纲 §5.3），UI 侧保留流程态设计预案（UI 设计计划 P-09）。
+
+> **同源清单**：本章 S-1~S-8 及全部功能性需求条目已收编进 [设计需求与实现规格统一清单](design/2026-09-06-ios-v1-requirements-spec-checklist.md)（R-*/SP-* 编号），与高保真原型逐字同源；用户确认原型即确认本需求。改则同改（AGENTS.md §8）。

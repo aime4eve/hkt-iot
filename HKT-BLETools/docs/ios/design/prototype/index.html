@@ -131,6 +131,7 @@
     <option value="cfgReject">UDS100 配置被静默拒绝</option>
     <option value="svcBusy">SVC100 实时任务被忙拒绝</option>
   </select>
+  <button class="tb" id="specBtn" onclick="toggleSpec()">📋 规格总表</button>
   <button class="tb" id="themeBtn">🌗</button>
   <button class="tb" id="langBtn">EN</button>
 </div>
@@ -991,24 +992,86 @@ function runScene(id){
   notes();
 }
 
-/* ═══════════ notes ═══════════ */
+/* ═══════════ 设计需求与实现规格清单（与 2026-09-06-ios-v1-requirements-spec-checklist.md 同源，改则同改） ═══════════ */
+const SPEC=[
+ {id:"R-G1",pg:"all",tp:"需求",txt:"四设备 OTA 是 v1 强制能力；验收=设备重启→重新广播→App 重连→读到新版本，进度 100% 不算成功",ref:"需求 §8.4/§17"},
+ {id:"SP-G1",pg:"all",tp:"规格",txt:"OTAEngine 七阶段状态机+版本比对终态；失败必须带阶段与原因；升级报告留痕",ref:"SD §8；ADR-006"},
+ {id:"R-G2",pg:"all",tp:"需求",txt:"架构按全能力域建模，UI 分批开放（FeatureSurface 控制显隐）",ref:"需求 §2/§3.4"},
+ {id:"R-G3",pg:"all",tp:"需求",txt:"全部文案走 String Catalog，中英双语，禁止硬编码",ref:"需求 §9.3"},
+ {id:"R-G4",pg:"all",tp:"需求",txt:"错误十分类，每类带人话原因与建议动作，禁止统一『失败』",ref:"需求 §10.2"},
+ {id:"R-G5",pg:"all",tp:"需求",txt:"实现阶段 UI 1:1 克隆本确认稿（布局/组件/状态/文案/交互）",ref:"用户裁决 2026-09-06；UI 计划 §8"},
+ {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；按支持名过滤；显示名称/RSSI；阈值与空名过滤；去重；点击连接",ref:"需求 §5.2；A-02/A-03"},
+ {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值设置页可调且真实生效；未识别名不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010"},
+ {id:"R-2",pg:"home",tp:"需求",txt:"DevEUI/扫码目标过滤 v1 不开放，禁用占位",ref:"Q4 裁决"},
+ {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
+ {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
+ {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
+ {id:"R-5",pg:"detail",tp:"需求",txt:"三家族状态字段全集按模板展示（只读）：UDS100 13 项 / DC200 6 项 / SVC100 9 项",ref:"需求 §7.1–7.3；Q2"},
+ {id:"SP-5",pg:"detail",tp:"规格",txt:"1s 轮询驱动数值刷新；多字节大端；温湿度 ×1000；单位来自字段描述符",ref:"FW-REF callback_BLEQuery/Search；TC-ST-002"},
+ {id:"R-6",pg:"detail",tp:"需求",txt:"断开提示+自动重连 3 次退避+手动重试；预期断开不触发自动重连",ref:"SD §9.5.2；A-06"},
+ {id:"R-7",pg:"detail",tp:"需求",txt:"轮询停摆→显示『最后更新 x 秒前』并保留最后有效值，不得显示假实时",ref:"S-1；SD §7.1"},
+ {id:"R-8",pg:"detail",tp:"需求",txt:"响应含未知类型→保留可解析前缀字段+数据异常横幅+日志，不崩溃不跳过",ref:"S-6（M3 修订）；TC-BC-011"},
+ {id:"R-9",pg:"detail",tp:"需求",txt:"OTA 中断后设备驻留升级模式：0xFF 无版本响应→专用恢复态引导重刷，不显示空状态页",ref:"S-5；SD §9.5.1；TC-BC-005"},
+ {id:"R-11",pg:"ota",tp:"需求",txt:"六阶段（选择/确认/传输/等待重启/重连/版本确认）逐一有界面反馈；100% 标注『尚未完成』",ref:"需求 §8.2/§8.3"},
+ {id:"R-12",pg:"ota",tp:"需求",txt:"显示固件名、大小、阶段、百分比、结果、重试入口",ref:"需求 §8.3；A-07"},
+ {id:"R-13",pg:"ota",tp:"需求",txt:"升级期间返回/取消触发返回保护弹窗，明示不可逆风险",ref:"SD §8"},
+ {id:"R-14",pg:"ota",tp:"需求",txt:"§8.5 十个异常场景全部有明确状态与恢复路径，不允许无响应界面",ref:"需求 §8.5；TC-BC-003~007"},
+ {id:"SP-11",pg:"ota",tp:"规格",txt:"文件校验（空/超大/后缀/型号弱校验强警告 Q7）；MTU≥160 前置；停等单包 3s、页写 16 包延迟、静默≥15s 失败、复位 ACK(1,0) 自动从包 0 重传≤2 次；成功判定=版本比对一致",ref:"SD §8.1/§8；TC-BC-001~004/007"},
+ {id:"R-15",pg:"ota",tp:"需求",txt:"成功/失败页生成可导出 OTA 升级报告（前后版本、阶段耗时、失败原因）",ref:"需求 §3.3-8；SD §9.4"},
+ {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
+ {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*"},
+ {id:"R-17",pg:"config",tp:"需求",txt:"上报周期 0 值（固件接受）的开放文案待产品裁决（§7.4）",ref:"需求 §7.4"},
+ {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
+ {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03=valve(0双/1/2)+state+时长秒(0=不自动结束)+pulse(3B)；忙=静默忽略→2s 超时提示『设备忙』；0x04=id(1-16)+起止分钟+repeat(≤0x7F，bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支；TX-SVC-TASK-001~003"},
+ {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
+ {id:"SP-19",pg:"debug",tp:"规格",txt:"隐藏入口：关于页连点版本 7 次开启；dev 构建默认开",ref:"Q3 裁决"},
+ {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语+应用内即时切换；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
+ {id:"R-21",pg:"settings",tp:"需求",txt:"关于页显示 App 版本号+构建号；隐私说明占位",ref:"Q10"},
+ {id:"R-22",pg:"log",tp:"需求",txt:"诊断日志覆盖九类事件（扫描/发现/连接/服务/订阅/写入/响应/OTA 阶段/错误恢复），导出 txt 带环境头",ref:"需求 §9.2；SD §9.4；A-09"},
+ {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准，期间禁其他命令；UI 是否开放待 Q1",ref:"需求 §7.2；TC-ST-006"},
+ {id:"R-24",pg:"perm",tp:"需求",txt:"权限四态引导：未请求/被拒/蓝牙关闭/不支持 BLE；授权后自动返回",ref:"需求 §9.4；A-01"},
+];
+let specView=false;
+function toggleSpec(){specView=!specView;render();}
+
+/* ═══════════ notes（需求/规格面板 + 规格总表） ═══════════ */
 function notes(){
   const zh=lang==="zh";
+  const head=`<h3>${specView?(zh?"规格总表 · 全部条目":"Spec master list"):zh?"本页 · 设计需求与实现规格":"This screen · requirements & spec"}</h3>`;
+  const tpBadge=tp=>tp==="需求"?`<span class="stagebadge" style="background:#1e3a5f;color:#8ecbff">需求</span>`:`<span class="stagebadge" style="background:#1e4032;color:#8ecb9f">规格</span>`;
+  const item=it=>`<div class="n"><span class="stagebadge">${it.id}</span>${tpBadge(it.tp)}<br>${it.txt}<br><span style="color:#8a8a96;font-size:11px">↳ ${it.ref}</span></div>`;
+  if(specView){
+    const order=["home","connecting","detail","ota","config","tasks","debug","settings","log","cal","perm","all"];
+    const names={home:"P-01 扫描",connecting:"P-02 连接",detail:"P-03 详情",ota:"P-04 OTA",config:"P-05 配置",tasks:"P-05b 阀门任务",debug:"P-06 Debug",settings:"P-07 设置",log:"诊断日志",cal:"P-09 校准",perm:"P-08 权限",all:"全局"};
+    let body="";
+    for(const pg of order){
+      const items=SPEC.filter(x=>x.pg===pg);
+      if(!items.length)continue;
+      body+=`<div class="n"><b style="color:#fff">${names[pg]} · ${items.length} 条</b></div>`+items.map(item).join("");
+    }
+    document.getElementById("notes").innerHTML=head+body+
+      `<div class="n" style="color:#8a8a96">同源清单：docs/ios/design/2026-09-06-ios-v1-requirements-spec-checklist.md（改则同改）</div>`;
+    return;
+  }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
-    detail:zh?"P-03：字段全集实时轮询（1s）；工具栏「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
+    detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
-    ota:zh?"P-04 全生命周期：选文件→确认弹窗→传输（每 16 包页写停顿）→等待重启→重连→版本确认→成功/报告。场景注入：静默复位重传、版本不符、蓝牙关闭。返回保护在传输后出现。100% 标注『尚未完成』。":"P-04 full lifecycle: pick→confirm→transfer (page-write stalls)→reboot→reconnect→verify→report. Scene injects: reset-restart, version mismatch, BT off. Guard appears once transferring. 100% marked not-done.",
-    config:zh?"P-05 参数配置（Q1 修订：进 v1）：三家族各自字段集+固件边界前置校验；保存=确认弹窗→0x02→ACK 回读；场景注入『UDS100 配置被静默拒绝』演示无 ACK 超时分支（TX-UDS-CFG-002）。":"P-05 config (Q1 revised: in v1): per-family fields + firmware-boundary pre-validation; save=confirm→0x02→ACK; Scene ▸ UDS100 silent-reject demo (TX-UDS-CFG-002).",
+    ota:zh?"P-04 全生命周期：选文件→确认→传输（每 16 包页写停顿）→等待重启→重连→版本确认→成功/报告。场景注入：静默复位重传、版本不符、蓝牙关闭。返回保护在传输后出现。100% 标注『尚未完成』。":"P-04 full lifecycle; scene injects reset-restart / mismatch / BT-off. 100% marked not-done.",
+    config:zh?"P-05 参数配置（Q1 修订：进 v1）：三家族各自字段集+固件边界前置校验；保存=确认弹窗→0x02→ACK 回读；场景注入『UDS100 配置被静默拒绝』演示无 ACK 超时分支（TX-UDS-CFG-002）。":"P-05 config (Q1 revised: in v1): per-family fields + firmware-boundary pre-validation; save=confirm→0x02→ACK; Scene ▸ UDS100 silent-reject demo.",
+    tasks:zh?"P-05b 阀门任务：实时任务（0x03，忙=静默忽略→2s 超时提示）+ 定时任务表 16 槽（0x04，repeat bit0=周一…bit6=周日）+ 删除（0x05，0xFF 全删，删执行中强制停止）；本地镜像明示（无 BLE 回读）。":"P-05b valve tasks: realtime (0x03, busy silent→2s timeout) + schedule table (0x04) + delete (0x05); local-mirror notice.",
     debug:zh?"P-06：原始收发流水（隐藏入口：关于页连点版本 7 次）。":"P-06: raw stream (hidden entry: 7 taps on version in About).",
     settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold really filters scan, 7-tap debug unlock.",
     log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
     cal:zh?"P-09 校准预案（Q1）：轮询驱动，无本地假倒计时。":"P-09 calibration draft (Q1): poll-driven, no fake countdown.",
     perm:zh?"P-08 权限/蓝牙引导：首启系统弹窗→拒绝→去设置→授权自动返回。":"P-08 permission gate: first-run dialog → denied → Settings → auto-return.",
   }[S.page]||"";
-  document.getElementById("notes").innerHTML=`<h3>${zh?"评审要点":"Review notes"}</h3><div class="n">${N}</div>
-    <div class="n">${zh?"<b>场景演示</b>下拉注入 9 类真实场景；实现阶段 UI 将 1:1 克隆本原型确认稿（布局/组件/状态/文案/交互）。":"<b>Scene ▾</b> injects 9 real scenarios; the confirmed prototype is the 1:1 clone source for implementation."}</div>`;
+  const items=SPEC.filter(x=>x.pg===S.page);
+  const itemsHtml=items.length?items.map(item).join(""):`<div class="n">${zh?"本页无独立条目，见规格总表。":"See master list."}</div>`;
+  document.getElementById("notes").innerHTML=head+`<div class="n">${N}</div>`+
+    (specView?"":itemsHtml)+
+    `<div class="n" style="color:#8a8a96">${zh?"确认本原型即同时确认以上需求与实现规格；实现阶段 1:1 克隆。":"Confirming this prototype confirms the requirements & specs above; implementation clones them 1:1."}</div>`;
 }
 render();
 </script>
