@@ -73,6 +73,7 @@ enum HKTResponseParser {
 public struct TLVEntry: Sendable { let type: UInt8; let value: Data }
 enum SignedValueDecoder { static func s24/s32/s16(_ v: Data) -> Int }     // 符号位规则，向量锁定；多字节一律大端
 enum CommandCode { static let query: UInt8 = 0xFF /* …0xFE/0xFD/0x02..0x06/0x01 */ }
+// 0x06 时间同步帧怪癖：len 字段=4（仅 data，非 cmd+data），固件卫语句 data[5]==4（三固件一致；Android 同款）；时间偏移 UDS100/DC200=固定 UTC+8，SVC100=按配置时区；stamp==0 静默忽略；成功均 ACK（traceability §2.1-10）
 ```
 
 M3 已按固件核实并落地 `ios/Package.swift`（CoreProtocol/CoreOTA/CoreDevice + 29 个 XCTest 全绿）：三家族类型定长表、ACK 记录 `0xFF 0xFF`、0xFF/0xFE/0xFD/0x01 的 4 字节填充载荷（电源字节在 payload[3]）、DC200Family 配置=周期(2B BE)+模式(0-2)、UDS100 配置=周期+GPS+低/高阈值（4×2B BE，非法整包静默拒绝）、SVC100 配置=电压+端口+稳定+自动电源+时区+周期（时区非法无 ACK）、时区编码 25=+03:30/26=+05:30。

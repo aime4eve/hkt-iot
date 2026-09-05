@@ -115,6 +115,13 @@ public enum HKTResponseParser {
 }
 
 /// Multi-byte protocol values are big-endian (all firmware setDataPackage cases shift >>8 first).
+extension FixedWidthInteger {
+    var dataBE: Data {
+        var v = self.bigEndian
+        return withUnsafeBytes(of: &v) { Data($0) }
+    }
+}
+
 public enum BEValue {
     public static func u16(_ data: Data) -> Int { Int(data[data.startIndex]) << 8 | Int(data[data.startIndex + 1]) }
     public static func u24(_ data: Data) -> Int {

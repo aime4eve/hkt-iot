@@ -164,10 +164,13 @@ def main():
         },
         {
             "id": "TX-SYNC-001", "device": "ALL", "cmd": "0x06",
-            "purpose": "time sync 4B BE unix stamp, firmware adds fixed UTC+8 (SVC uses tz)",
-            "request": tx_frame(0x00, 0x06, (1767139200).to_bytes(4, "big")),
+            "purpose": "time sync 4B BE unix stamp. QUIRK: declared len=4 (data only, NOT cmd+data) — "
+                       "all three firmwares guard on data[5]==4; stamp==0 silently ignored; "
+                       "UDS100/DC200 add fixed UTC+8, SVC100 adds configured timezone; all ACK",
+            "request": "686B74000004066954678017C8",
             "expectedAck": dev_response(0, [(0xFF, b"\xFF")]),
-            "firmwareReference": "*/communicate.c data[5]==4&&data[6]==6 branch",
+            "firmwareReference": "*/communicate.c data[5]==4&&data[6]==6 branch (stamp=data[7..10])",
+            "androidReference": "Communicate.kt streamDevice(0x06): dataLenString=%04X%4",
             "iosTest": "FrameCodecTests/testTimeSyncFrame",
         },
     ]

@@ -66,10 +66,10 @@ final class FrameCodecTests: XCTestCase {
                        "686B74000005FDFFFFFFFF104B")
     }
 
+    /// TX-SYNC-001: len field is 4 (data only) — firmware guards on data[5]==4.
     func testTimeSyncFrame() {
-        XCTAssertEqual(frame(packNum: 0, cmd: CommandCode.timeSync,
-                             data: Data([0x69, 0x54, 0x67, 0x80])),
-                       "686B74000005066954678017C8")
+        XCTAssertEqual(HKTFrameEncoder.timeSyncFrame(packNum: 0, stampBE: 0x69546780).hex,
+                       "686B74000004066954678017C8")
     }
 }
 
