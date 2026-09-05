@@ -38,6 +38,8 @@ final class DeviceRegistryTests: XCTestCase {
         let svc = DeviceRegistry.match(advertisedName: "SVC100")!
         XCTAssertTrue(svc.capabilities.contains(.svcTasks))
         XCTAssertTrue(svc.capabilities.contains(.valveControl))  // registered, never exposed (Q1)
+        XCTAssertFalse(svc.capabilities.contains(.calibration))  // SVC100 firmware has no 0xFD branch
+        XCTAssertTrue(uds.capabilities.contains(.calibration))   // UDS100 tilt calibration
 
         let mps = DeviceRegistry.match(advertisedName: "MPS100")!
         XCTAssertTrue(mps.capabilities.contains(.calibration))   // async magnetometer calibration

@@ -40,7 +40,10 @@ public enum DeviceRegistry {
 
     public static func match(advertisedName: String) -> DeviceProfile? {
         guard let family = familiesByAdvertisedName[advertisedName] else { return nil }
-        var capabilities: Set<DeviceCapability> = [.ota, .statusQuery, .powerControl, .calibration, .basicConfig, .timeSync, .targetedScan]
+        var capabilities: Set<DeviceCapability> = [.ota, .statusQuery, .powerControl, .basicConfig, .timeSync, .targetedScan]
+        if family != .svc100 {
+            capabilities.insert(.calibration)   // UDS100 accelerometer/tilt; DC200Family magnetometer (async)
+        }
         if family == .svc100 {
             capabilities.insert(.svcTasks)
             capabilities.insert(.valveControl)  // registered, never surfaced (Q1)

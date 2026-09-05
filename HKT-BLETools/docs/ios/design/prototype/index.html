@@ -186,6 +186,11 @@ const ZH={
   times:(a,b)=>`${a} → ${b}`,
   d1:"周一", d2:"周二", d3:"周三", d4:"周四", d5:"周五", d6:"周六", d7:"周日",
   pct:p=>`${p}%`,
+  tsTitle:"时间同步", tsHint:"将手机当前时间同步到设备", tsGo:"同步到设备",
+  tsSending:"正在同步…", tsDone:"✓ 设备时间已更新", power:"电源", offState:"已关机",
+  pwOffT:"确认关机？", pwOffB:"关机后设备停止上报与工作，之后可再次开机。",
+  calStart:"开始校准", calDone:"✓ 校准完成", calFinish:"完成", calForUDS:"将设备水平静止放置，然后开始校准",
+  calForDC:"将设备水平放置，缓慢匀速旋转两周", calElapsed:s=>`已用时 ${s} 秒`,
   tasks:"阀门任务", rt:"实时任务", sched:"定时任务表（1–16）", valve:"阀门", v1:"阀 1", v2:"阀 2", vBoth:"双阀",
   act:"动作", openV:"开阀", closeV:"关阀", dur:"持续时间", durHint:"0 = 不自动结束（须手动停止）",
   pulseN:"脉冲数", exec:"立即执行", busy:"设备忙（本地定时任务执行中），实时任务被静默忽略（无 ACK）",
@@ -246,6 +251,12 @@ const EN={
   times:(a,b)=>`${a} → ${b}`,
   d1:"Mon", d2:"Tue", d3:"Wed", d4:"Thu", d5:"Fri", d6:"Sat", d7:"Sun",
   pct:p=>`${p}%`,
+  tsTitle:"Time Sync", tsHint:"Sync the phone's current time to the device", tsGo:"Sync to Device",
+  tsSending:"Syncing…", tsDone:"✓ Device time updated", power:"Power", offState:"Powered off",
+  pwOffT:"Power off?", pwOffB:"The device stops reporting and working. You can power it on again.",
+  calStart:"Start Calibration", calDone:"✓ Calibration complete", calFinish:"Done",
+  calForUDS:"Place the device level and still, then start", calForDC:"Lay the device flat and rotate it slowly, twice",
+  calElapsed:s=>`Elapsed ${s}s`,
   tasks:"Valve Tasks", rt:"Realtime Task", sched:"Schedule Table (1–16)", valve:"Valve", v1:"Valve 1", v2:"Valve 2", vBoth:"Both",
   act:"Action", openV:"Open", closeV:"Close", dur:"Duration", durHint:"0 = no auto-stop (stop manually)",
   pulseN:"Pulse count", exec:"Run Now", busy:"Device busy (schedule running); realtime task silently ignored (no ACK)",
@@ -286,7 +297,7 @@ const S={
   device:"MPS100",phase:"idle",p3:"ready",staleSec:0,recon:0,
   pollTimer:null,lastPoll:Date.now(),
   ota:{stage:0,pct:0,pkt:0,wait:0,result:null,err:"",restarts:0,silence:false,report:null,t0:0,times:{}},
-  guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,
+  guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,
   radarOpen:false,
 };
 const PKTS=1284;
@@ -464,14 +475,44 @@ function P_detail(){
   if(S.p3==="abnormal")banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="nav('log')">${t("exportLog")}</span></div>`;
   if(S.p3==="disconnected")banner=`<div class="center" style="min-height:480px"><div style="font-size:44px">📵</div>
       <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retry")}</button></div>`;
+  if(!S.powerOn){
+    return statusbar()+navbar(S.device,"",true)+`<div class="center" style="min-height:600px">
+      <div style="font-size:46px">⏻</div><div class="big">${t("offState")}</div>
+      <button class="btn" style="width:auto;padding:12px 34px" onclick="togglePower()">${t("on")}</button></div>`;
+  }
+  const calEntry=(S.device==="SVC100")?"":`<button class="btn secondary" onclick="calOpen()">${t("cal")} ▸</button>`;
   const body=S.p3==="disconnected"?banner:
     `<div class="card hcard">${head}
       <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
      ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
+     <div class="section">${lang==="zh"?"设备操作":"Device actions"}</div>
+     <div class="row"><span class="label">${t("power")}</span>
+       <span class="switch ${S.powerOn?"on":""}" onclick="togglePower()"><i></i></span></div>
+     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("tsTitle")}</div>
+       <div style="font-size:24px;font-weight:600;margin-top:4px" id="liveClock">${liveClockStr()}</div>
+       <div class="kv" style="margin-top:2px">${t("tsHint")}</div>
+       ${S.tsState==="sending"?badge("info",t("tsSending")):S.tsState==="ok"?badge("",t("tsDone")):
+         `<button class="btn" style="margin:10px 0 0" onclick="doTimeSync()">${t("tsGo")}</button>`}</div>
+     ${calEntry}
      ${S.device==="SVC100"?`<div style="margin-top:14px"><button class="btn secondary" onclick="taskInit();nav('tasks')">${t("tasks")} ▸</button></div>`:""}
      <div style="margin-top:14px"><button class="btn secondary" onclick="cfgInit();nav('config')">${t("cfg")} ▸</button></div>`;
+  const pwConfirm=S.powerConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("pwOffT")}</div>
+      <div class="b">${t("pwOffB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.powerConfirm=false;render()">${t("cancel")}</button>
+      <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirm")}</button></div></div></div>`:"";
   return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
-    `<div class="body">${body}</div>`;
+    `<div class="body">${body}</div>`+pwConfirm;
+}
+function togglePower(){
+  if(S.powerOn){S.powerConfirm=true;render();return;}
+  S.powerOn=true;S.p3="ready";startPoll();log("0xFE","INFO","power on");render();
+}
+function liveClockStr(){const d=new Date();const q=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${q(d.getMonth()+1)}-${q(d.getDate())} ${q(d.getHours())}:${q(d.getMinutes())}:${q(d.getSeconds())}`;}
+function doTimeSync(){
+  S.tsState="sending";render();
+  setTimeout(()=>{S.tsState="ok";log("0x06","INFO","phone time -> device");render();
+    setTimeout(()=>{S.tsState=null;render();},2600);},700);
 }
 function reconnect(){S.p3="reconnecting";S.recon=1;render();
   setTimeout(()=>{S.p3="ready";S.recon=0;startPoll();render();},1600);}
@@ -921,12 +962,38 @@ function P_log(){
   return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true)+
     `<div class="body">${lines}</div>`;
 }
+function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};S.page="cal";render();}
+function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
+  clearInterval(S.calTimer);
+  S.calTimer=setInterval(()=>{S.cal.elapsed++;
+    if(S.cal.elapsed>=8){clearInterval(S.calTimer);S.cal.state="done";}
+    render();},1000);
+  render();}
 function P_cal(){
-  return statusbar()+navbar(t("cal"),"",true)+`<div class="body">
-    <div class="center" style="min-height:400px"><div style="font-size:46px">🧭</div>
-      <div class="kv" style="text-align:left;line-height:2.2">${t("cal1")}<br>${t("cal2")}</div></div>
-    <div class="card" style="text-align:center">${badge("info",t("calRun"))}<div class="kv" style="margin-top:6px">${t("calNote")}</div></div>
-    <button class="btn secondary" onclick="nav('detail')">${t("cancel")}</button></div>`;
+  if(!S.cal)S.cal={state:"idle",elapsed:0,confirm:false};
+  const dc=S.device!=="UDS100"; // UDS100=倾角校准；DC200Family=磁力计校准
+  const guide=dc?t("calForDC"):t("calForUDS");
+  const confirm=S.cal.confirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cal")}</div>
+      <div class="b">${guide}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.cal.confirm=false;render()">${t("cancel")}</button>
+      <button class="btn" style="margin:0" onclick="calBegin()">${t("calStart")}</button></div></div></div>`:"";
+  let mid;
+  if(S.cal.state==="idle"){
+    mid=`<div class="center" style="min-height:380px"><div style="font-size:46px">🧭</div>
+      <div class="kv" style="text-align:left;line-height:2.2">${dc?t("calForDC"):t("calForUDS")}</div></div>
+      <div class="card" style="text-align:center"><div class="kv">${t("calNote")}</div></div>
+      <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
+  } else if(S.cal.state==="running"){
+    mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
+      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}</div>
+      <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
+      <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
+  } else {
+    mid=`<div class="center" style="min-height:380px"><div style="font-size:46px;color:var(--ok)">✓</div>
+      <div class="big">${t("calDone")}</div>
+      <button class="btn" style="width:auto;padding:12px 40px" onclick="nav('detail')">${t("calFinish")}</button></div>`;
+  }
+  return statusbar()+navbar(t("cal"),"",true)+`<div class="body">${mid}</div>`+confirm;
 }
 function P_perm(kind){
   const m={ask:["🛡",t("permT"),t("permB"),[["secondary",t("dontAllow"),()=>{S.perm="denied";S.page="perm";render();}]],true],
@@ -1002,7 +1069,7 @@ const SPEC=[
  {id:"R-G5",pg:"all",tp:"需求",txt:"实现阶段 UI 1:1 克隆本确认稿（布局/组件/状态/文案/交互）",ref:"用户裁决 2026-09-06；UI 计划 §8"},
  {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；按支持名过滤；显示名称/RSSI；阈值与空名过滤；去重；点击连接",ref:"需求 §5.2；A-02/A-03"},
  {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值设置页可调且真实生效；未识别名不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010"},
- {id:"R-2",pg:"home",tp:"需求",txt:"DevEUI/扫码目标过滤 v1 不开放，禁用占位",ref:"Q4 裁决"},
+ {id:"R-2",pg:"home",tp:"需求",txt:"v1 不含 DevEUI/扫码目标过滤——界面不显示任何占位入口（非延后，是范围外）",ref:"Q4 裁决 2026-09-06"},
  {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
@@ -1012,6 +1079,7 @@ const SPEC=[
  {id:"R-7",pg:"detail",tp:"需求",txt:"轮询停摆→显示『最后更新 x 秒前』并保留最后有效值，不得显示假实时",ref:"S-1；SD §7.1"},
  {id:"R-8",pg:"detail",tp:"需求",txt:"响应含未知类型→保留可解析前缀字段+数据异常横幅+日志，不崩溃不跳过",ref:"S-6（M3 修订）；TC-BC-011"},
  {id:"R-9",pg:"detail",tp:"需求",txt:"OTA 中断后设备驻留升级模式：0xFF 无版本响应→专用恢复态引导重刷，不显示空状态页",ref:"S-5；SD §9.5.1；TC-BC-005"},
+ {id:"R-10",pg:"detail",tp:"需求",txt:"校准进 v1：UDS100 倾角校准、DC200Family 磁力计校准（长时运行流程页）；SVC100 无校准",ref:"Q1 三修 2026-09-06；需求 §7.2"},
  {id:"R-11",pg:"ota",tp:"需求",txt:"六阶段（选择/确认/传输/等待重启/重连/版本确认）逐一有界面反馈；100% 标注『尚未完成』",ref:"需求 §8.2/§8.3"},
  {id:"R-12",pg:"ota",tp:"需求",txt:"显示固件名、大小、阶段、百分比、结果、重试入口",ref:"需求 §8.3；A-07"},
  {id:"R-13",pg:"ota",tp:"需求",txt:"升级期间返回/取消触发返回保护弹窗，明示不可逆风险",ref:"SD §8"},
@@ -1020,7 +1088,7 @@ const SPEC=[
  {id:"R-15",pg:"ota",tp:"需求",txt:"成功/失败页生成可导出 OTA 升级报告（前后版本、阶段耗时、失败原因）",ref:"需求 §3.3-8；SD §9.4"},
  {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
  {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*"},
- {id:"R-17",pg:"config",tp:"需求",txt:"上报周期 0 值（固件接受）的开放文案待产品裁决（§7.4）",ref:"需求 §7.4"},
+ {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
  {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
  {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03=valve(0双/1/2)+state+时长秒(0=不自动结束)+pulse(3B)；忙=静默忽略→2s 超时提示『设备忙』；0x04=id(1-16)+起止分钟+repeat(≤0x7F，bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支；TX-SVC-TASK-001~003"},
  {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
@@ -1030,6 +1098,10 @@ const SPEC=[
  {id:"R-22",pg:"log",tp:"需求",txt:"诊断日志覆盖九类事件（扫描/发现/连接/服务/订阅/写入/响应/OTA 阶段/错误恢复），导出 txt 带环境头",ref:"需求 §9.2；SD §9.4；A-09"},
  {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准，期间禁其他命令；UI 是否开放待 Q1",ref:"需求 §7.2；TC-ST-006"},
  {id:"R-24",pg:"perm",tp:"需求",txt:"权限四态引导：未请求/被拒/蓝牙关闭/不支持 BLE；授权后自动返回",ref:"需求 §9.4；A-01"},
+ {id:"R-25",pg:"detail",tp:"需求",txt:"时间同步进 v1：页面实时显示手机当前时间（秒级），一键同步，无需用户输入数字",ref:"用户澄清 2026-09-06；SD §2.2"},
+ {id:"SP-25",pg:"detail",tp:"规格",txt:"0x06 帧 len 怪癖（=4）；发送手机 Unix 秒，App 不做时区换算；设备端 UDS/DC200 固定+8、SVC 按配置时区；无 ACK/空值视为失败",ref:"traceability §2.1-10；TX-SYNC-001"},
+ {id:"R-26",pg:"detail",tp:"需求",txt:"电源开关进 v1（0xFE 持久化）：关机需确认，关机后界面明确『已关机』并可再开机",ref:"Q1 三修 2026-09-06；需求 §6.2"},
+ {id:"SP-26",pg:"detail",tp:"规格",txt:"0xFE 载荷 4 字节、电源字节在 payload[3]；关机确认弹窗；关机→停轮询，开机→恢复轮询",ref:"TX-POWER-001"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
@@ -1054,7 +1126,7 @@ function notes(){
     return;
   }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动上下文恢复（S-7）。无 DevEUI/扫码入口（v1 范围外）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
     detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
@@ -1064,7 +1136,7 @@ function notes(){
     debug:zh?"P-06：原始收发流水（隐藏入口：关于页连点版本 7 次）。":"P-06: raw stream (hidden entry: 7 taps on version in About).",
     settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold really filters scan, 7-tap debug unlock.",
     log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
-    cal:zh?"P-09 校准预案（Q1）：轮询驱动，无本地假倒计时。":"P-09 calibration draft (Q1): poll-driven, no fake countdown.",
+    cal:zh?"P-09 校准（进 v1）：确认→校准中（已用时）→完成；以设备上报为准，期间禁其他命令。UDS100=倾角、DC200=磁力计。":"P-09 calibration (in v1): confirm → running (elapsed) → done; device-driven.",
     perm:zh?"P-08 权限/蓝牙引导：首启系统弹窗→拒绝→去设置→授权自动返回。":"P-08 permission gate: first-run dialog → denied → Settings → auto-return.",
   }[S.page]||"";
   const items=SPEC.filter(x=>x.pg===S.page);
@@ -1073,6 +1145,7 @@ function notes(){
     (specView?"":itemsHtml)+
     `<div class="n" style="color:#8a8a96">${zh?"确认本原型即同时确认以上需求与实现规格；实现阶段 1:1 克隆。":"Confirming this prototype confirms the requirements & specs above; implementation clones them 1:1."}</div>`;
 }
+setInterval(()=>{const el=document.getElementById("liveClock");if(el)el.textContent=liveClockStr();},1000);
 render();
 </script>
 </body>
