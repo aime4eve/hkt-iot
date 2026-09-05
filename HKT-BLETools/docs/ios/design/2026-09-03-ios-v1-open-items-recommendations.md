@@ -2,12 +2,16 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 文档版本 | v0.1 Review Draft |
-| 日期 | 2026-09-03 |
+| 文档版本 | v0.2 Adopted |
+| 日期 | 2026-09-03（v0.2 采纳 2026-09-05） |
 | 输入基线 | [iOS v1 研发需求说明](../2026-09-03-ios-v1-rd-requirements.md) 第 14 章（10 项） |
 | 追溯基线 | [firmware-traceability.md](../../../shared/devices/firmware-traceability.md)、main@54e199f |
-| 性质 | 裁决建议稿：每项给出推荐结论、依据与影响，供评审确认；未确认前不进入对应开发 |
-| 关联文档 | [UI 设计计划](2026-09-03-ios-v1-ui-design-plan.md)、[软件架构设计大纲](../architecture/2026-09-03-ios-v1-architecture-outline.md) |
+| 性质 | **M0 已关闭**：10 项推荐结论经设计评审（含 GLM-5.3 子智能体评审，P1 修正完成）后于 2026-09-05 采纳为工作决策；后续可按变更流程修订 |
+| 关联文档 | [UI 设计计划](2026-09-03-ios-v1-ui-design-plan.md)、[软件架构设计大纲](../architecture/2026-09-03-ios-v1-architecture-outline.md)、[《iOS 软件设计说明》](../architecture/2026-09-05-ios-v1-software-design-spec.md) |
+
+## 裁决结果（2026-09-05）
+
+10 项均按本文档推荐结论采纳，其中两项带增补：Q7 按 P1-7 增补"文件名弱校验 + 强警告二次确认"；Q8 判定规则采纳、".bin 内嵌版本解析"留 M3 核对。需求第 14 章随之闭合，需求版本 v0.6。
 
 ## 结论总览
 
