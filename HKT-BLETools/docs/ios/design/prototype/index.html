@@ -3,484 +3,727 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HKT BLETools iOS v1 — 高保真原型（D3/D4）</title>
+<title>HKT BLETools iOS v1 — 高保真场景原型 v2（D3/D4）</title>
 <style>
   :root{
     --bg:#f2f2f7; --card:#ffffff; --card2:#f7f7fa; --text:#111114; --text2:#6e6e76;
-    --line:#e3e3ea; --ok:#34c759; --warn:#ff9500; --err:#ff3b30; --info:#007aff;
-    --progress:var(--info); --fill:#ececf1;
-    --r-card:12px; --r-dialog:20px;
+    --line:#e3e3ea; --ok:#34c759; --warn:#ff9500; --err:#ff3b30; --info:#007aff; --fill:#ececf1;
+    --r-card:12px; --r-dialog:20px; --mono:ui-monospace,Menlo,monospace;
   }
   html[data-theme="dark"]{
-    --bg:#000000; --card:#1c1c1e; --card2:#2a2a2d; --text:#f2f2f5; --text2:#98989f;
+    --bg:#000; --card:#1c1c1e; --card2:#2a2a2d; --text:#f2f2f5; --text2:#98989f;
     --line:#38383e; --ok:#30d158; --warn:#ff9f0a; --err:#ff453a; --info:#0a84ff; --fill:#2c2c30;
   }
-  *{box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased}
-  body{font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
-       background:#c9c9d1; color:var(--text); font-size:15px}
-  html[data-lang="en"] body{font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif}
-
-  /* ── 工具栏 ── */
-  .toolbar{position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-           padding:10px 16px; background:#111116; color:#eee}
-  .toolbar .brand{font-weight:700; margin-right:8px}
-  .tb{border:1px solid #3a3a42; background:#22222a; color:#eee; border-radius:8px; padding:5px 10px; cursor:pointer; font-size:13px}
-  .tb.active{background:#0a84ff; border-color:#0a84ff}
-  .tb.warn{border-color:#ff9500; color:#ffb340}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  body{font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#c9c9d1;color:var(--text);font-size:15px}
+  .toolbar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 14px;background:#111116;color:#eee}
+  .toolbar .brand{font-weight:700;margin-right:6px;font-size:13px}
+  .tb{border:1px solid #3a3a42;background:#22222a;color:#eee;border-radius:8px;padding:4px 9px;cursor:pointer;font-size:12px}
+  .tb.active{background:#0a84ff;border-color:#0a84ff}
   .spacer{flex:1}
-
-  /* ── 舞台与手机壳 ── */
-  .stage{display:flex; gap:24px; padding:24px; justify-content:center; align-items:flex-start; flex-wrap:wrap}
-  .phone{width:390px; height:844px; border-radius:44px; padding:12px; background:#0c0c0f; box-shadow:0 18px 60px rgba(0,0,0,.4)}
-  .screen{position:relative; width:100%; height:100%; border-radius:34px; overflow:hidden; background:var(--bg);
-          display:flex; flex-direction:column; transition:background .2s}
-  .notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:120px; height:26px;
-         border-radius:14px; background:#0c0c0f; z-index:9}
-  .page{flex:1; display:flex; flex-direction:column; overflow:hidden}
-
-  /* ── 通用组件 ── */
-  .navbar{display:flex; align-items:center; gap:8px; padding:44px 16px 10px; font-size:20px; font-weight:700}
-  .navbar .back{font-size:15px; color:var(--info); font-weight:400; cursor:pointer}
+  .stage{display:flex;gap:22px;padding:20px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+  .phone{width:390px;height:844px;border-radius:44px;padding:12px;background:#0c0c0f;box-shadow:0 18px 60px rgba(0,0,0,.4);flex:none}
+  .screen{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+  .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:120px;height:26px;border-radius:14px;background:#0c0c0f;z-index:9}
+  .page{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .statusbar{display:flex;justify-content:space-between;padding:14px 24px 0;font-size:13px;font-weight:600}
+  .navbar{display:flex;align-items:center;gap:8px;padding:40px 16px 10px;font-size:20px;font-weight:700}
+  .navbar.small{font-size:17px;padding-bottom:6px}
+  .navbar .back{font-size:15px;color:var(--info);font-weight:400;cursor:pointer}
   .navbar .navright{margin-left:auto}
-  .navbar.small{font-size:17px; padding-bottom:6px}
-  .linkbtn{color:var(--info); background:none; border:none; font-size:15px; cursor:pointer}
-  .body{flex:1; overflow-y:auto; padding:0 16px 24px}
-  .statusbar{display:flex; justify-content:space-between; padding:14px 24px 0; font-size:13px; font-weight:600}
-  .card{background:var(--card); border-radius:var(--r-card); padding:14px; margin-bottom:12px}
-  .hcard{display:flex; align-items:center; gap:12px}
-  .badge{display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px; border-radius:999px;
-         background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok); font-weight:600}
-  .badge.warn{background:color-mix(in srgb, var(--warn) 15%, transparent); color:var(--warn)}
-  .badge.err{background:color-mix(in srgb, var(--err) 15%, transparent); color:var(--err)}
-  .badge.info{background:color-mix(in srgb, var(--info) 15%, transparent); color:var(--info)}
-  .dot{width:7px; height:7px; border-radius:50%; background:currentColor}
-  .section{font-size:13px; color:var(--text2); margin:14px 4px 8px; font-weight:600}
-  .fieldgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-  .field{background:var(--card); border-radius:var(--r-card); padding:10px 12px}
-  .field .k{font-size:12px; color:var(--text2)}
-  .field .v{font-size:17px; font-weight:600; margin-top:2px}
-  .field .v .unit{font-size:12px; color:var(--text2); font-weight:400; margin-left:2px}
-  .row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--card);
-       border-radius:var(--r-card); margin-bottom:10px}
+  .linkbtn{color:var(--info);background:none;border:none;font-size:15px;cursor:pointer;padding:0}
+  .body{flex:1;overflow-y:auto;padding:0 16px 24px}
+  .card{background:var(--card);border-radius:var(--r-card);padding:13px 14px;margin-bottom:11px}
+  .hcard{display:flex;align-items:center;gap:12px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:999px;font-weight:600;
+         background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .badge.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+  .badge.err{background:color-mix(in srgb,var(--err) 15%,transparent);color:var(--err)}
+  .badge.info{background:color-mix(in srgb,var(--info) 15%,transparent);color:var(--info)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .section{font-size:13px;color:var(--text2);margin:14px 4px 8px;font-weight:600}
+  .fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .field{background:var(--card);border-radius:var(--r-card);padding:9px 12px}
+  .field .k{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .field .v{font-size:17px;font-weight:600;margin-top:2px;white-space:nowrap}
+  .field .v .unit{font-size:11px;color:var(--text2);font-weight:400;margin-left:2px}
+  .field .v.err{color:var(--err);font-size:13px}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);border-radius:var(--r-card);margin-bottom:9px}
   .row .label{font-size:15px}
-  .row .value{color:var(--text2); font-size:14px; display:flex; align-items:center; gap:6px}
-  .btn{display:block; width:100%; padding:14px; border:none; border-radius:12px; background:var(--info);
-       color:#fff; font-size:16px; font-weight:600; text-align:center; cursor:pointer; margin-top:12px}
-  .btn.secondary{background:var(--fill); color:var(--text)}
-  .btn.danger{background:color-mix(in srgb, var(--err) 12%, transparent); color:var(--err)}
-  .btn:disabled{opacity:.4; cursor:not-allowed}
-  .banner{display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:10px; font-size:13px;
-          margin-bottom:12px}
-  .banner.err{background:color-mix(in srgb, var(--err) 12%, transparent); color:var(--err)}
-  .banner.warn{background:color-mix(in srgb, var(--warn) 12%, transparent); color:var(--warn)}
-  .banner .act{margin-left:auto; white-space:nowrap; font-weight:600; cursor:pointer}
-  .center{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0 32px; text-align:center}
-  .center .big{font-size:17px; font-weight:600}
-  .center .sub{font-size:13px; color:var(--text2); line-height:1.5}
-  .progress{height:8px; border-radius:4px; background:var(--fill); overflow:hidden; margin:10px 0}
-  .progress i{display:block; height:100%; background:var(--progress); border-radius:4px; transition:width .3s}
-  .rssi{display:inline-flex; align-items:flex-end; gap:2px; height:14px}
-  .rssi i{width:3px; background:var(--ok); border-radius:1px}
+  .row .value{color:var(--text2);font-size:14px;display:flex;align-items:center;gap:6px}
+  .btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;background:var(--info);color:#fff;font-size:16px;font-weight:600;text-align:center;cursor:pointer;margin-top:12px}
+  .btn.secondary{background:var(--fill);color:var(--text)}
+  .btn.danger{background:color-mix(in srgb,var(--err) 12%,transparent);color:var(--err)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .banner{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:11px;line-height:1.4}
+  .banner.err{background:color-mix(in srgb,var(--err) 12%,transparent);color:var(--err)}
+  .banner.warn{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn)}
+  .banner.info{background:color-mix(in srgb,var(--info) 12%,transparent);color:var(--info)}
+  .banner .act{margin-left:auto;white-space:nowrap;font-weight:600;cursor:pointer}
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 32px;text-align:center}
+  .center .big{font-size:17px;font-weight:600}
+  .center .sub{font-size:13px;color:var(--text2);line-height:1.5}
+  .progress{height:8px;border-radius:4px;background:var(--fill);overflow:hidden;margin:10px 0}
+  .progress i{display:block;height:100%;background:var(--info);border-radius:4px;transition:width .25s}
+  .rssi{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
+  .rssi i{width:3px;background:var(--ok);border-radius:1px}
   .rssi i:nth-child(1){height:4px}.rssi i:nth-child(2){height:7px}.rssi i:nth-child(3){height:10px}.rssi i:nth-child(4){height:14px}
-  .rssi.s2 i:nth-child(3),.rssi.s2 i:nth-child(4){background:var(--fill)}
-  .rssi.s1 i:nth-child(2),.rssi.s2 i:nth-child(3),.rssi.s1 i:nth-child(4){background:var(--fill)}
-  .dialog-mask{position:absolute; inset:0; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; z-index:20}
-  .dialog{width:290px; background:var(--card); border-radius:var(--r-dialog); padding:20px 18px; text-align:center}
-  .dialog .t{font-size:16px; font-weight:700; margin-bottom:8px}
-  .dialog .b{font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:14px}
-  .dialog .btns{display:flex; gap:10px}
-  .overlay{position:absolute; inset:0; background:var(--bg); z-index:15; display:flex; flex-direction:column}
-  .steps{display:flex; gap:6px; justify-content:center; margin:8px 0}
-  .steps i{width:22px; height:5px; border-radius:3px; background:var(--fill)}
+  .rssi.s2 i:nth-child(4){background:var(--fill)}
+  .rssi.s1 i:nth-child(3),.rssi.s1 i:nth-child(4){background:var(--fill)}
+  .dialog-mask{position:absolute;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;z-index:20}
+  .dialog{width:296px;background:var(--card);border-radius:var(--r-dialog);padding:20px 18px;text-align:center}
+  .dialog .t{font-size:16px;font-weight:700;margin-bottom:8px}
+  .dialog .b{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px;text-align:left}
+  .dialog .b.center{text-align:center}
+  .dialog .btns{display:flex;gap:10px}
+  .overlay{position:absolute;inset:0;background:var(--bg);z-index:15;display:flex;flex-direction:column}
+  .steps{display:flex;gap:6px;justify-content:center;margin:8px 0}
+  .steps i{width:24px;height:5px;border-radius:3px;background:var(--fill)}
   .steps i.on{background:var(--info)}
-  .hexlog{font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.7; background:var(--card);
-          border-radius:10px; padding:10px 12px; overflow:auto; flex:1}
-  .hexlog .tx{color:var(--info)} .hexlog .rx{color:var(--ok)} .hexlog .ts{color:var(--text2); margin-right:6px}
-  .tabbar{display:flex; gap:6px; flex-wrap:wrap; padding:4px 0}
-  .kv{font-size:13px; color:var(--text2); line-height:1.6}
+  .hexlog{font-family:var(--mono);font-size:11px;line-height:1.7;background:var(--card);border-radius:10px;padding:10px 12px;overflow:auto;flex:1}
+  .hexlog .tx{color:var(--info);font-weight:700}.hexlog .rx{color:var(--ok);font-weight:700}.hexlog .ts{color:var(--text2);margin-right:6px}
+  .notes{width:350px;background:#15151b;color:#ddd;border-radius:16px;padding:18px;font-size:13px;line-height:1.7}
+  .notes h3{font-size:14px;margin-bottom:8px;color:#fff}
+  .notes .n{padding:8px 0;border-top:1px solid #2a2a33}
+  .toast{position:absolute;left:20px;right:20px;bottom:30px;background:rgba(20,20,26,.92);color:#fff;border-radius:12px;
+         padding:11px 14px;font-size:13px;z-index:40;display:none;line-height:1.4}
+  .kv{font-size:13px;color:var(--text2);line-height:1.6}
   .kv b{color:var(--text)}
-  .notes{width:340px; background:#15151b; color:#ddd; border-radius:16px; padding:18px; font-size:13px; line-height:1.7}
-  .notes h3{font-size:14px; margin-bottom:8px; color:#fff}
-  .notes .n{padding:8px 0; border-top:1px solid #2a2a33}
-  .stagebadge{font-size:12px; padding:2px 8px; border-radius:6px; background:#26262e; margin-right:6px; display:inline-block}
-  .check{color:#8ecb9f}
-  textarea,select,input{font:inherit; color:var(--text)}
-  .input{width:100%; background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px}
+  .input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:var(--mono)}
+  .logline{font-family:var(--mono);font-size:11px;line-height:1.8;border-bottom:1px solid var(--line);padding:2px 0}
+  .logline .lv{display:inline-block;width:44px;font-weight:700}
+  .report td{padding:4px 8px;font-size:12px;border-bottom:1px solid var(--line)}
+  .report{width:100%;border-collapse:collapse}
+  table.props{width:100%;font-size:13px;border-collapse:collapse}
+  table.props td{padding:5px 4px;border-bottom:1px solid var(--line)}
+  table.props td:first-child{color:var(--text2);width:42%}
+  .switch{width:44px;height:26px;border-radius:13px;background:var(--fill);position:relative;cursor:pointer;transition:.2s}
+  .switch.on{background:var(--ok)}
+  .switch i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on i{left:20px}
+  .slider{width:110px;accent-color:var(--info)}
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <span class="brand">HKT BLETools · iOS v1 原型</span>
-  <button class="tb" data-nav="p01">P-01 扫描</button>
-  <button class="tb" data-nav="p02">P-02 连接</button>
-  <button class="tb" data-nav="p03">P-03 详情</button>
-  <button class="tb" data-nav="p04">P-04 OTA</button>
-  <button class="tb" data-nav="p05">P-05 配置</button>
-  <button class="tb" data-nav="p06">P-06 Debug</button>
-  <button class="tb" data-nav="p07">P-07 设置</button>
-  <button class="tb" data-nav="p08">P-08 权限</button>
-  <button class="tb" data-nav="p09">P-09 校准</button>
+  <span class="brand">HKT BLETools · 场景原型 v2</span>
+  <button class="tb" data-nav="home">扫描</button>
+  <button class="tb" data-nav="detail">详情</button>
+  <button class="tb" data-nav="ota">OTA</button>
+  <button class="tb" data-nav="config">配置</button>
+  <button class="tb" data-nav="debug">Debug</button>
+  <button class="tb" data-nav="settings">设置</button>
+  <button class="tb" data-nav="log">日志</button>
+  <button class="tb" data-nav="cal">校准</button>
   <span class="spacer"></span>
-  <button class="tb" id="themeBtn">🌗 深色</button>
+  <select class="tb" id="sceneSel" title="场景注入">
+    <option value="">场景演示 ▾</option>
+    <option value="perm">首次启动 · 权限流程</option>
+    <option value="weak">弱信号连接失败→重试</option>
+    <option value="abnormal">响应数据异常</option>
+    <option value="pollStall">轮询停摆 4 秒→恢复</option>
+    <option value="otaReset">OTA 静默→设备复位重传</option>
+    <option value="otaMismatch">OTA 版本不符→失败</option>
+    <option value="otaBtOff">OTA 中蓝牙关闭</option>
+    <option value="upgradeMode">连接处于升级模式的设备</option>
+    <option value="switchDevice">会话切换 A→B</option>
+  </select>
+  <button class="tb" id="themeBtn">🌗</button>
   <button class="tb" id="langBtn">EN</button>
 </div>
-
 <div class="stage">
-  <div class="phone"><div class="notch"></div><div class="screen" id="screen"></div></div>
+  <div class="phone"><div class="notch"></div><div class="screen" id="screen"></div>
+    <div class="toast" id="toast"></div></div>
   <div class="notes" id="notes"></div>
 </div>
-
 <script>
-/* ─────────── i18n ─────────── */
-const L = {
-  zh:{
-    appTitle:"HKT BLETools", settings:"设置", scanning:(n)=>`扫描中… 已发现 ${n} 台`,
-    scanDone:(n)=>`扫描完成 · ${n} 台`, rescan:"重新扫描", stop:"停止",
-    empty:"未发现支持设备", emptySub:"请确认设备已上电并在附近", recent:"上次连接",
-    connecting:"正在连接", dServices:"正在发现服务…", dSub:"正在建立通知…",
-    connected:"已连接 · 轮询正常", stale:(s)=>`最后更新 ${s} 秒前 · 正在重试`,
-    abnormal:"数据格式异常，已显示上次有效值", disconnected:"连接已断开",
-    reconnecting:(a,b)=>`重连中（第 ${a}/${b} 次）`, upgradeMode:"设备处于升级模式：上次升级未完成，请重新执行固件升级",
-    gotoUpgrade:"去升级", ota:"固件升级", firmware:"固件", battery:"电量", parking:"车位状态",
-    mode:"工作模式", tamper:"防拆状态", period:"上报周期", mag:"地磁 X/Y/Z", radar:"雷达频谱",
-    minutes:"分钟", temp:"温度", hum:"湿度", distance:"距离", overflow:"满溢状态",
-    config:"参数配置", comingSoon:"即将开放", pick:"选择固件文件…",
-    confirmTitle:"确认升级？", confirmBody:"升级中请保持 App 前台，勿断开设备",
-    cancel:"取消", confirmUp:"确认升级", start:"开始升级", expectVer:"期望版本",
-    transferring:"阶段 3/6 · 数据传输中", keepFront:"请保持 App 前台，勿离开此页面",
-    cancelUp:"取消升级", notDone:"尚未完成", waitReboot:"正在等待设备重启…",
-    waitAdv:"正在等待设备重新广播…", waitConn:"正在重新连接…", waitVer:"正在确认新版本…",
-    waited:(s)=>`已等待 ${s} 秒`, leaveT:"升级正在进行",
-    leaveB:"中断可能导致设备无法正常工作。确定要离开吗？", stay:"继续升级", leave:"仍然离开",
-    ok:"升级成功", took:"全程", viewReport:"查看升级报告", done:"完成",
-    fail:"升级失败", retry:"重试", exportLog:"导出日志", ret:"返回",
-    reason:"原因", noResp:"设备失去响应",
-    debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制",
-    language:"语言", sys:"跟随系统", diagLog:"诊断日志", view:"查看 ▸",
-    rssiTh:"信号强度阈值", hideUnnamed:"过滤无名称设备", about:"关于", version:"版本",
-    privacy:"隐私说明", permDenied:"需要蓝牙权限才能查找和连接附近设备",
-    goSettings:"去系统设置", autoBack:"权限开启后自动返回",
-    btOff:"蓝牙已关闭，请开启后重试", btOpen:"开启蓝牙",
-    unsupported:"此设备不支持蓝牙低功耗",
-    cal:"地磁校准", calStep1:"1. 远离铁磁物体", calStep2:"2. 将设备水平缓慢旋转两周",
-    calRunning:"校准进行中…（轮询驱动）", calNote:"期间其他操作已禁用",
-    prev:"‹ 返回", picked:"已选：", size:"大小", curVer:"当前版本", targetVer:"目标版本",
-    pkg:(a,b)=>`包 ${a}/${b}`, pct:(p)=>`${p}%`,
-  },
-  en:{
-    appTitle:"HKT BLETools", settings:"Settings", scanning:(n)=>`Scanning… ${n} found`,
-    scanDone:(n)=>`Scan finished · ${n} found`, rescan:"Rescan", stop:"Stop",
-    empty:"No supported devices found", emptySub:"Make sure the device is powered on and nearby", recent:"Last connected",
-    connecting:"Connecting", dServices:"Discovering services…", dSub:"Subscribing to notifications…",
-    connected:"Connected · polling", stale:(s)=>`Updated ${s}s ago · retrying`,
-    abnormal:"Data format abnormal; showing last valid values", disconnected:"Disconnected",
-    reconnecting:(a,b)=>`Reconnecting (attempt ${a} of ${b})`, upgradeMode:"Device is in upgrade mode: the last update didn't finish. Please run the firmware update again",
-    gotoUpgrade:"Update Firmware", ota:"Firmware Update", firmware:"Firmware", battery:"Battery", parking:"Parking",
-    mode:"Work mode", tamper:"Tamper", period:"Report period", mag:"Mag X/Y/Z", radar:"Radar spectrum",
-    minutes:"min", temp:"Temperature", hum:"Humidity", distance:"Distance", overflow:"Overflow",
-    config:"Configuration", comingSoon:"Coming soon", pick:"Select firmware file…",
-    confirmTitle:"Start update?", confirmBody:"Keep the app in the foreground and don't disconnect the device",
-    cancel:"Cancel", confirmUp:"Update", start:"Start update", expectVer:"Expected version",
-    transferring:"Stage 3/6 · Transferring data", keepFront:"Keep the app in the foreground",
-    cancelUp:"Cancel update", notDone:"not done yet", waitReboot:"Waiting for the device to restart…",
-    waitAdv:"Waiting for the device to re-advertise…", waitConn:"Reconnecting…", waitVer:"Verifying the new version…",
-    waited:(s)=>`Waited ${s}s`, leaveT:"Update in progress",
-    leaveB:"Interrupting may leave the device unusable. Leave anyway?", stay:"Keep updating", leave:"Leave",
-    ok:"Update succeeded", took:"took", viewReport:"View update report", done:"Done",
-    fail:"Update failed", retry:"Retry", exportLog:"Export Log", ret:"Back",
-    reason:"Reason", noResp:"The device stopped responding",
-    debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy",
-    language:"Language", sys:"Follow System", diagLog:"Diagnostic Log", view:"View ▸",
-    rssiTh:"Signal threshold", hideUnnamed:"Hide unnamed devices", about:"About", version:"Version",
-    privacy:"Privacy", permDenied:"Bluetooth permission is required to find and connect devices",
-    goSettings:"Open Settings", autoBack:"Returns automatically once granted",
-    btOff:"Bluetooth is off. Turn it on and try again", btOpen:"Turn On Bluetooth",
-    unsupported:"This device doesn't support Bluetooth Low Energy",
-    cal:"Magnetometer Calibration", calStep1:"1. Keep away from ferrous objects",
-    calStep2:"2. Rotate the device horizontally, slowly, twice",
-    calRunning:"Calibrating… (poll-driven)", calNote:"Other actions are disabled during calibration",
-    prev:"‹ Back", picked:"Selected:", size:"Size", curVer:"Current", targetVer:"Target",
-    pkg:(a,b)=>`Packet ${a}/${b}`, pct:(p)=>`${p}%`,
-  }
+"use strict";
+/* ═══════════ i18n ═══════════ */
+const ZH={
+  prev:"‹ 返回", app:"HKT BLETools", settings:"设置", scanning:n=>`扫描中… 已发现 ${n} 台`, scanDone:n=>`扫描完成 · ${n} 台`,
+  stop:"停止", rescan:"重新扫描", empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
+  recent:"最近设备", yesterday:"昨天", filter:"目标设备过滤", coming:"即将开放",
+  conn:"正在连接", dSvc:"正在发现服务…", dSub:"正在订阅通知…", cancel:"取消",
+  connected:"已连接 · 轮询正常", stale:s=>`最后更新 ${s} 秒前 · 正在重试`,
+  abnormal:"响应数据异常（未知类型），已显示可解析字段", disconnected:"连接已断开",
+  recon:(a,b)=>`自动重连中（第 ${a}/${b} 次）`, upMode:"设备处于升级模式", upModeB:"上次升级未完成。请重新执行固件升级，升级完成后设备才能恢复正常工作。",
+  gotoUp:"去重新升级", fw:"固件", batt:"电量", ota:"固件升级",
+  f_name:"名称", f_ver:"版本", f_temp:"温度", f_hum:"湿度", f_dist:"距离", f_ovf:"满溢状态",
+  f_low:"低阈值", f_high:"高阈值", f_lat:"纬度", f_lon:"经度", f_gps:"GPS 周期",
+  f_park:"车位状态", f_modeL:"工作模式", f_tamper:"防拆状态", f_period:"上报周期", f_mag:"地磁 X/Y/Z", f_radar:"雷达频谱",
+  f_valve:"阀状态", f_insert:"插入检测", f_pulse:"脉冲计数", f_volt:"输出电压档", f_port:"端口功能",
+  f_stable:"稳定时长", f_smart:"智能电源", f_tz:"时区", f_angle:"倾角", f_slant:"倾斜", f_alarm:"温湿告警",
+  occupied:"有车", vacant:"空位", normal:"正常", triggered:"已触发", on:"开启", off:"关闭",
+  yes:"是", no:"否", auto:"自动", manual:"手动", fusion:"融合模式", magOnly:"仅地磁", radarFirst:"雷达优先",
+  portPwm:"PWM 控制", portSwitch:"开关控制", view:"查看", minutes:"分钟", mm:"mm", deg:"°",
+  cfg:"参数配置", coming:"即将开放", comingSub:"v1 后期开放：UDS100 阈值/周期 · DC200 周期/工作模式 · SVC100 电压/端口/时区/周期",
+  debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制", waiting:"等待设备响应…",
+  lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值", hideUn:"过滤无名称设备",
+  about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
+  dbgOn:"已开启调试模式", permT:"允许“HKT BLETools”使用蓝牙？", permB:"用于查找和连接附近的 HKT 设备",
+  dontAllow:"不允许", allow:"允许", deniedT:"蓝牙权限未开启", deniedB:"需要在系统设置中允许蓝牙权限，才能扫描和连接设备。",
+  goSet:"去系统设置", autoBack:"授权后自动返回", btOffT:"蓝牙已关闭", btOffB:"开启蓝牙后即可扫描附近设备。", btOn:"打开蓝牙",
+  unsupT:"设备不支持蓝牙", unsupB:"此 iPhone 不支持低功耗蓝牙（BLE）。",
+  pick:"选择固件文件…", pickedF:"mps100_v1.28_full.bin", fsize:"164,352 B", expVer:"期望版本",
+  curVer:"当前版本", tgtVer:"目标版本", start:"开始升级", confirmT:"确认升级？",
+  confirmB:"设备 MPS100 …9C01 将从 v1.26 升级到 v1.28。升级期间请保持 App 前台、蓝牙开启，勿离开此页面。",
+  confirm:"确认升级", st1:"选择固件", st2:"确认", st3:"数据传输", st4:"等待重启", st5:"重连", st6:"版本确认",
+  transferring:"数据传输中", done_: "数据发送完成", waitReboot:"等待设备重启…", waitAdv:"等待设备重新广播…",
+  waitConn:"正在重新连接设备…", waitVer:"正在读取新固件版本…", notDone:"尚未完成",
+  pkt:(a,b)=>`包 ${a.toLocaleString()} / ${b.toLocaleString()}`, pageWrite:"页写入中…",
+  keepFront:"升级期间请保持 App 前台、勿锁屏", resetBanner:(n)=>`设备超时复位，已自动从包 0 重传（第 ${n}/2 次）`,
+  leaveT:"升级正在进行", leaveB:"现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？",
+  stay:"继续升级", leave:"仍然离开", cancelUp:"取消升级",
+  okT:"升级成功", report:"查看升级报告", done:"完成", failT:"升级失败", retry:"重新升级",
+  reason:"原因", rConnLost:"蓝牙连接丢失", rBtOff:"蓝牙已被关闭", rMismatch:"读到版本 v1.26，与期望 v1.28 不符", rNoResp:"设备长时间无响应",
+  exportLog:"导出日志", back:"返回",
+  rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
+  rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
+  times:(a,b)=>`${a} → ${b}`,
+  cfgT:"参数配置", cal:"地磁校准", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
+  calRun:"校准进行中…（以设备上报为准）", calNote:"校准为长时操作，期间其他命令已禁用",
+  dTarget:"目标", waiting1:"（等待设备响应）", clearHex:"流水已清空", protoTx:"发送一条命令查看原始收发流水",
+  logT:"诊断日志", logExport:"导出", logClear:"清空", logEmpty:"暂无日志",
+  scanStart:"扫描启动", scanStop:"扫描停止", disc:"发现设备", connPhase:"连接", pollErr:"轮询异常",
+  otaStageEv:"OTA 阶段", recovered:"已恢复",
 };
-let lang = "zh";
-const t = k => L[lang][k];
-
-/* ─────────── 状态 ─────────── */
-const S = {
-  page:"p01", theme:"light",
-  found:[], scanning:false, scanTimer:null,
-  connStep:0, p3state:"ready", // ready|stale|abnormal|disconnected|reconnecting|upgradeMode
-  otaStage:0, otaPct:0, otaTimer:null, otaResult:null, otaWait:0, otaError:"",
-  guard:false,
+const EN={
+  prev:"‹ Back", app:"HKT BLETools", settings:"Settings", scanning:n=>`Scanning… ${n} found`, scanDone:n=>`Scan finished · ${n} found`,
+  stop:"Stop", rescan:"Rescan", empty:"No supported devices found", emptySub:"Make sure devices are powered and nearby",
+  recent:"Recent", yesterday:"Yesterday", filter:"Target device filter", coming:"Coming soon",
+  conn:"Connecting", dSvc:"Discovering services…", dSub:"Subscribing to notifications…", cancel:"Cancel",
+  connected:"Connected · polling", stale:s=>`Updated ${s}s ago · retrying`,
+  abnormal:"Response abnormal (unknown type); parsed fields shown", disconnected:"Disconnected",
+  recon:(a,b)=>`Reconnecting (attempt ${a}/${b})`, upMode:"Device is in upgrade mode", upModeB:"The last update didn't finish. Run the firmware update again; the device resumes normal operation only after completion.",
+  gotoUp:"Update Firmware", fw:"Firmware", batt:"Battery", ota:"Firmware Update",
+  f_name:"Name", f_ver:"Version", f_temp:"Temperature", f_hum:"Humidity", f_dist:"Distance", f_ovf:"Overflow",
+  f_low:"Low threshold", f_high:"High threshold", f_lat:"Latitude", f_lon:"Longitude", f_gps:"GPS period",
+  f_park:"Parking", f_modeL:"Work mode", f_tamper:"Tamper", f_period:"Report period", f_mag:"Mag X/Y/Z", f_radar:"Radar spectrum",
+  f_valve:"Valve state", f_insert:"Insert detect", f_pulse:"Pulse count", f_volt:"Voltage level", f_port:"Port function",
+  f_stable:"Stable time", f_smart:"Smart power", f_tz:"Time zone", f_angle:"Tilt angle", f_slant:"Slant", f_alarm:"HT alarm",
+  occupied:"Occupied", vacant:"Vacant", normal:"Normal", triggered:"Triggered", on:"On", off:"Off",
+  yes:"Yes", no:"No", auto:"Auto", manual:"Manual", fusion:"Fusion", magOnly:"Mag only", radarFirst:"Radar first",
+  portPwm:"PWM control", portSwitch:"Switch control", view:"View", minutes:"min", mm:"mm", deg:"°",
+  cfg:"Configuration", coming:"Coming soon", comingSub:"Later in v1: UDS100 thresholds/period · DC200 period/mode · SVC100 voltage/ports/timezone/period",
+  debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy", waiting:"(waiting for device)",
+  lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold", hideUn:"Hide unnamed devices",
+  about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
+  dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
+  dontAllow:"Don't Allow", allow:"Allow", deniedT:"Bluetooth permission is off", deniedB:"Enable Bluetooth permission in Settings to scan and connect devices.",
+  goSet:"Open Settings", autoBack:"Returns automatically once granted", btOffT:"Bluetooth is off", btOffB:"Turn Bluetooth on to scan nearby devices.", btOn:"Turn On Bluetooth",
+  unsupT:"Bluetooth unsupported", unsupB:"This iPhone doesn't support Bluetooth Low Energy.",
+  pick:"Select firmware file…", pickedF:"mps100_v1.28_full.bin", fsize:"164,352 B", expVer:"Expected version",
+  curVer:"Current", tgtVer:"Target", start:"Start Update", confirmT:"Start update?",
+  confirmB:"Device MPS100 …9C01 will update from v1.26 to v1.28. Keep the app in the foreground, keep Bluetooth on, and stay on this screen.",
+  confirm:"Update", st1:"Select", st2:"Confirm", st3:"Transfer", st4:"Reboot", st5:"Reconnect", st6:"Verify",
+  transferring:"Transferring data", done_:"Transfer finished", waitReboot:"Waiting for the device to restart…", waitAdv:"Waiting for the device to re-advertise…",
+  waitConn:"Reconnecting to the device…", waitVer:"Reading the new firmware version…", notDone:"not done yet",
+  pkt:(a,b)=>`Packet ${a.toLocaleString()} / ${b.toLocaleString()}`, pageWrite:"page writing…",
+  keepFront:"Keep the app in the foreground; don't lock the screen", resetBanner:n=>`Device timed out and reset; restarted from packet 0 (attempt ${n}/2)`,
+  leaveT:"Update in progress", leaveB:"Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?",
+  stay:"Keep Updating", leave:"Leave", cancelUp:"Cancel Update",
+  okT:"Update succeeded", report:"View update report", done:"Done", failT:"Update failed", retry:"Retry Update",
+  reason:"Reason", rConnLost:"Bluetooth connection lost", rBtOff:"Bluetooth was turned off", rMismatch:"Read v1.26 but expected v1.28", rNoResp:"The device stopped responding",
+  exportLog:"Export Log", back:"Back",
+  rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
+  rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
+  times:(a,b)=>`${a} → ${b}`,
+  cfgT:"Configuration", cal:"Magnetometer Calibration", cal1:"1. Keep away from ferrous objects and strong magnets",
+  cal2:"2. Lay the device flat and rotate it slowly, twice", calRun:"Calibrating… (as reported by the device)",
+  calNote:"Long-running operation; other commands are disabled meanwhile",
+  dTarget:"Target", waiting1:"(waiting for device)", clearHex:"Stream cleared", protoTx:"Send a command to see the raw stream",
+  logT:"Diagnostic Log", logExport:"Export", logClear:"Clear", logEmpty:"No entries yet",
+  scanStart:"Scan started", scanStop:"Scan stopped", disc:"Discovered", connPhase:"Connect", pollErr:"Poll anomaly",
+  otaStageEv:"OTA stage", recovered:"recovered",
 };
+const L={zh:ZH,en:EN};
+let lang="zh"; const t=k=>L[lang][k];
 
-/* ─────────── 骨架 ─────────── */
-function statusbar(){
-  return `<div class="statusbar"><span>9:41</span><span>●●● ⌾ ▮</span></div>`;
-}
-function navbar(title, right="", back=""){
-  return `<div class="navbar small">${back?`<span class="back" onclick="nav('p01')">${t("prev")}</span>`:""}
-          <span>${title}</span><span class="navright">${right}</span></div>`;
-}
-function deviceCard(name, id, rssiBars, dbm){
-  return `<div class="card hcard" style="cursor:pointer" onclick="S.device='${name}';nav('p02');startConn()">
-    <div style="flex:1"><div style="font-weight:700">${name}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${id} · ${dbm} dBm</div></div>
-    <span class="rssi s${rssiBars}"><i></i><i></i><i></i><i></i></span></div>`;
-}
-function otaStageList(active){
-  const names = lang==="zh"
-    ? ["选择固件","确认","传输","等待重启","重连","版本确认"]
-    : ["Select","Confirm","Transfer","Reboot","Reconnect","Verify"];
-  return `<div style="display:flex;gap:4px;margin-bottom:12px">` + names.map((n,i)=>
-    `<div style="flex:1;text-align:center;font-size:10px;color:${i===active?"var(--info)":i<active?"var(--ok)":"var(--text2)"}">
-      <div style="height:4px;border-radius:2px;margin-bottom:4px;background:${i===active?"var(--info)":i<active?"var(--ok)":"var(--fill)"}"></div>${n}</div>`).join("") + `</div>`;
-}
+/* ═══════════ 设备仿真数据（字段全集 = 需求 §7.1–7.3） ═══════════ */
+const SIM={
+  MPS100:{fw:"v1.28",batt:87,park:1,modeL:0,tamper:0,period:30,mag:[120,-120,400],
+    radar:[12,28,45,66,80,120,90,60,34,18],fields:["f_park","f_modeL","f_tamper","f_period","f_mag","f_radar"]},
+  EPS100:{fw:"v1.0C",batt:64,park:0,modeL:1,tamper:0,period:20,mag:[-40,66,210],radar:[5,9,14,22,30,26,18,12,7,3]},
+  UDS100:{fw:"v1.10",batt:72,temp:25040,hum:58600,dist:1082,ovf:0,low:400,high:3000,lat:31.2304,lon:121.4737,gps:60,period:30,
+    angle:24,slant:0,alarm:0},
+  SVC100:{fw:"v1.13",batt:93,v1:0,v1i:1,p1:118,v2:1,v2i:1,p2:502,vol:2,port:1,stable:5,smart:1,tz:25,period:60},
+};
+let jitterSeed=1;
+function jit(base,amp){jitterSeed=(jitterSeed*9301+49297)%233280;const r=jitterSeed/233280-0.5;return base+Math.round(r*2*amp);}
 
-/* ─────────── P-01 扫描 ─────────── */
-function P01(){
-  const head = `<div class="navbar">${t("appTitle")}<span class="navright"><button class="linkbtn" onclick="nav('p07')">⚙︎ ${lang==="zh"?"":"Settings"}</button></span></div>`;
-  const statusbar0 = `<div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
-      <button class="linkbtn" onclick="toggleScan()">${S.scanning?t("stop"):t("rescan")}</button></div>`;
-  let list = S.found.map(d=>deviceCard(d.n,d.i,d.b,d.r)).join("");
-  if(!S.scanning && S.found.length===0)
-    list = `<div class="center" style="min-height:300px"><div style="font-size:44px">📡</div>
-      <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
-      <button class="btn secondary" style="width:auto;padding:10px 24px" onclick="toggleScan()">${t("rescan")}</button></div>`;
-  const recent = (!S.scanning) ? `<div class="section">${t("recent")}</div>
-      <div class="card hcard" style="cursor:pointer" onclick="nav('p02');startConn()">
-        <div style="flex:1"><div style="font-weight:700">UDS100</div>
-        <div style="font-size:12px;color:var(--text2)">ID …8C3F2A · 昨天</div></div>
-        <button class="linkbtn">↻</button></div>` : "";
-  return statusbar()+head+`<div class="body">${statusbar0}${list}${recent}
-    <div class="section">${lang==="zh"?"目标设备过滤":"Target filter"}</div>
-    <div class="row"><span class="label" style="color:var(--text2)">DevEUI / ${lang==="zh"?"扫码":"Scan code"}</span>
-      <span class="value">${t("comingSoon")}</span></div></div>`;
-}
+/* ═══════════ 全局状态 ═══════════ */
+const S={
+  page:"home",theme:"light",perm:"granted",btOn:true,
+  found:[],scanning:false,rssiTh:-80,hideUn:false,
+  device:"MPS100",phase:"idle",p3:"ready",staleSec:0,recon:0,
+  pollTimer:null,lastPoll:Date.now(),
+  ota:{stage:0,pct:0,pkt:0,wait:0,result:null,err:"",restarts:0,silence:false,report:null,t0:0,times:{}},
+  guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,
+  radarOpen:false,
+};
+const PKTS=1284;
+const clock=()=>{const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
+function log(ev,lv,detail){S.logs.unshift({ts:clock(),ev,lv:lv||"INFO",detail:detail||""});if(S.logs.length>200)S.logs.pop();}
+function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";
+  clearTimeout(S.toastTimer);S.toastTimer=setTimeout(()=>el.style.display="none",2600);}
+
+/* ═══════════ UI 原语 ═══════════ */
+const statusbar=()=>`<div class="statusbar"><span>9:41</span><span>●●● ⌾ ▮</span></div>`;
+const navbar=(title,right,back)=>`<div class="navbar small">${back?`<span class="back" data-act="back">${t("prev")}</span>`:""}<span>${title}</span><span class="navright">${right||""}</span></div>`;
+const rssi=b=>`<span class="rssi s${b}"><i></i><i></i><i></i><i></i></span>`;
+const badge=(cls,txt)=>`<span class="badge ${cls||""}"><span class="dot"></span>${txt}</span>`;
+const field=(k,v,u,err)=>`<div class="field"><div class="k">${k}</div><div class="v ${err?"err":""}">${v}${u&&!err?`<span class="unit">${u}</span>`:""}</div></div>`;
+const steps=n=>`<div class="steps">${[0,1,2,3].slice(0,n).map((_,i,a)=>`<i class="${i<=(S.connStep||0)?"on":""}"></i>`).join("")}</div>`;
+
+/* ═══════════ P-首页：扫描 ═══════════ */
+const CANDIDATES=[
+  {n:"MPS100",id:"…9C01",rssi:-63},{n:"UDS100",id:"…3F2A",rssi:-58},
+  {n:"SVC100",id:"…B4D2",rssi:-70},{n:"EPS100",id:"…77AA",rssi:-91},
+];
 function toggleScan(){
-  S.scanning=!S.scanning; S.found=[];
-  if(S.scanning){
-    const feed=[["MPS100","…9C01",2,-76],["UDS100","…3F2A",3,-58],["SVC100","…B4D2",3,-63],["EPS100","…77AA",1,-88]];
-    render(); S.scanTimer=setInterval(()=>{
-      if(feed.length) S.found.push(feed.shift()); else clearInterval(S.scanTimer), S.scanning=false;
-      render();
-    }, 900);
-  } else render();
+  if(S.scanning){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();return;}
+  S.scanning=true;S.found=[];log(t("scanStart"),"INFO","3 cycles × 10 s");render();
+  let i=0;
+  S.scanTimer=setInterval(()=>{
+    if(i<CANDIDATES.length){
+      const c=CANDIDATES[i++];
+      if(c.rssi>=S.rssiTh){S.found.push({...c});log(t("disc"),"INFO",`${c.n} ${c.rssi}dBm`);}
+    } else {
+      // RSSI 波动 + 弱信号设备偶发丢失
+      S.found.forEach(d=>{d.rssi=jit(d.rssi,6);d.b=d.rssi>-70?3:d.rssi>-85?2:1;});
+      S.found=S.found.filter(d=>d.n!=="EPS100"||Math.random()>0.25);
+    }
+    render();
+    if(!S.scanning)clearInterval(S.scanTimer);
+  },800);
+  setTimeout(()=>{if(S.scanning&&i>=CANDIDATES.length){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();}},7000);
 }
-
-/* ─────────── P-02 连接 ─────────── */
-function P02(){
-  const names=[t("connecting"), t("dServices"), t("dSub")];
-  return statusbar()+`<div class="page"><div class="overlay" style="position:relative">
-    <div class="center">
-      <div style="font-size:44px">🔗</div>
-      <div class="big">MPS100 …9C01</div>
-      <div class="steps">${[0,1,2].map(i=>`<i class="${i<=S.connStep?"on":""}"></i>`).join("")}</div>
-      <div class="sub">${names[S.connStep]}</div>
-    </div>
-    <div style="padding:24px"><button class="btn secondary" onclick="nav('p01')">${t("cancel")}</button></div>
-  </div></div>`;
-}
-function startConn(){
-  clearInterval(S.connTimer); S.connStep=0;
-  S.connTimer=setInterval(()=>{ S.connStep++;
-    if(S.connStep>=3){clearInterval(S.connTimer); nav("p03");} else render();
-  }, 800);
-}
-
-/* ─────────── P-03 详情 ─────────── */
-function P03(){
-  let badge, fields;
-  const grid = (rows)=>`<div class="fieldgrid">`+rows.map(([k,v,u])=>
-      `<div class="field"><div class="k">${k}</div><div class="v">${v}${u?`<span class="unit">${u}</span>`:""}</div></div>`).join("")+`</div>`;
-  const dc = [[t("parking"), lang==="zh"?"有车":"Occupied"],[t("mode"), lang==="zh"?"融合模式":"Fusion"],
-              [t("tamper"), lang==="zh"?"正常":"OK"],[t("period"),"30",t("minutes")],
-              [t("mag"),"+120 / −120 / +400"],[t("radar"), lang==="zh"?"查看 ▸":"View ▸"]];
-  const uds=[[t("temp"),"25.000","°C"],[t("hum"),"12.000","%"],[t("distance"),"1080","mm"],
-             [t("overflow"), lang==="zh"?"未满":"Empty"],[t("period"),"30",t("minutes")],[t("battery"),"4000","mV"]];
-  const tpl = S.device==="UDS100"?uds:dc;
-  fields=grid(tpl);
-  if(S.p3state==="ready") badge=`<span class="badge"><span class="dot"></span>${t("connected")}</span>`;
-  if(S.p3state==="stale"){badge=`<span class="badge warn"><span class="dot"></span>${t("stale")(3)}</span>`;}
-  if(S.p3state==="abnormal") badge=`<span class="badge err"><span class="dot"></span>${t("abnormal")}</span>`;
-  if(S.p3state==="disconnected") badge=`<span class="badge err"><span class="dot"></span>${t("disconnected")}</span>`;
-  if(S.p3state==="reconnecting") badge=`<span class="badge warn"><span class="dot"></span>${t("reconnecting")(1,3)}</span>`;
-  if(S.p3state==="upgradeMode"){
-    return statusbar()+navbar(S.device||"MPS100","", true)+
-      `<div class="center" style="min-height:520px"><div style="font-size:44px">⏫</div>
-       <div class="big">${lang==="zh"?"设备处于升级模式":"Device in upgrade mode"}</div>
-       <div class="sub">${t("upgradeMode")}</div>
-       <button class="btn" style="width:auto;padding:12px 28px" onclick="nav('p04')">${t("gotoUpgrade")}</button></div>`;
-  }
-  let banner="";
-  if(S.p3state==="abnormal") banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="alert('导出诊断日志')">${t("exportLog")}</span></div>`;
-  return statusbar()+navbar(S.device||"MPS100", `<button class="linkbtn" onclick="nav('p04')">${t("ota")} ▸</button>`, true)+
-    `<div class="body">${banner}
-      <div class="card hcard"><span class="badge">${badge}</span>
-        <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("firmware")} v1.28 · ${t("battery")} 87%</div></div>
-      <div class="section">${lang==="zh"?"状态":"Status"}</div>${fields}
-      <div style="margin-top:16px"><button class="btn secondary" disabled>${t("config")} · ${t("comingSoon")}</button></div>
+function P_home(){
+  const list=S.found.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="connectTo('${d.n}','${d.id}',${d.rssi})">
+      <div style="flex:1"><div style="font-weight:700">${d.n}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${d.id} · ${d.rssi} dBm</div></div>${rssi(d.b||3)}</div>`).join("");
+  const empty=(!S.scanning&&S.found.length===0)?`<div class="center" style="min-height:320px"><div style="font-size:44px">📡</div>
+      <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
+      <button class="btn secondary" style="width:auto;padding:10px 26px" onclick="toggleScan()">${t("rescan")}</button></div>`:"";
+  const recent=S.found.length===0?`<div class="section">${t("recent")}</div>
+      <div class="card hcard" style="cursor:pointer" onclick="connectTo('UDS100','…3F2A',-58)">
+        <div style="flex:1"><div style="font-weight:700">UDS100</div>
+        <div style="font-size:12px;color:var(--text2)">ID …8C3F2A · ${t("yesterday")}</div></div><button class="linkbtn">↻</button></div>`:"";
+  return statusbar()+`<div class="navbar">${t("app")}<span class="navright"><button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
+    <div class="body">
+      <div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
+        <button class="linkbtn" data-act="toggle-scan">${S.scanning?t("stop"):t("rescan")}</button></div>
+      ${list}${empty}${recent}
+      <div class="section">${t("filter")}</div>
+      <div class="row"><span class="label" style="color:var(--text2)">DevEUI / QR</span><span class="value">${t("coming")}</span></div>
     </div>`;
 }
+function toggleScanAct(){toggleScan();}
 
-/* ─────────── P-04 OTA ─────────── */
-function P04(){
-  const guard = S.guard?`<div class="dialog-mask"><div class="dialog">
-      <div class="t">⚠︎ ${t("leaveT")}</div><div class="b">${t("leaveB")}</div>
-      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.guard=false;render()">${t("stay")}</button>
-      <button class="btn danger" style="margin:0" onclick="abortOTA();nav('p03')">${t("leave")}</button></div></div></div>`:"";
-  let inner;
-  if(S.otaStage===0){
-    inner=`${otaStageList(0)}
-      <div class="row" style="cursor:pointer" onclick="filePicked()"><span class="label">📄 ${t("pick")}</span><span class="value">▸</span></div>
-      <div id="fileinfo"></div>
-      <button class="btn" id="startbtn" disabled onclick="startOTA()">${t("start")}</button>
-      <div class="kv" style="margin-top:10px">${lang==="zh"?"提示：升级期间请保持 App 前台，勿断开设备。":"Keep the app foreground; don't disconnect during the update."}</div>`;
-  } else if(S.otaStage<6 && !S.otaResult){
-    const stageMsg=[t("transferring"),t("transferring"),t("transferring"),t("waitReboot"),t("waitAdv"),t("waitVer")][S.otaStage-1];
-    const stageIdx=Math.min(S.otaStage-1,5);
-    const waitRow=(S.otaStage>=4)?`<div class="kv" style="text-align:center">${t("waited")(S.otaWait)}</div>`:"";
-    const notDone=(S.otaStage>=4)?` <span class="badge warn">${t("notDone")}</span>`:"";
-    inner=`${otaStageList(stageIdx)}
-      <div class="card"><div style="font-weight:600">${stageMsg}${notDone}</div>
-        <div class="progress"><i style="width:${S.otaPct}%"></i></div>
-        <div class="kv" style="display:flex;justify-content:space-between">
-          <span>${t("pkg")(S.otaPkt,1288)}</span><span>${t("pct")(S.otaPct)}</span></div></div>
-      ${S.otaStage<=3?`<div class="banner warn">⚠︎ ${t("keepFront")}</div>`:""}
-      <div class="kv" style="text-align:center">${waitRow}</div>
-      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>`;
-  } else if(S.otaResult==="ok"){
-    inner=`<div class="center" style="min-height:460px"><div style="font-size:48px;color:var(--ok)">✓</div>
-      <div class="big">${t("ok")} 1.26 → 1.28</div><div class="sub">${t("took")} 4:12</div>
-      <button class="btn secondary" style="width:auto;padding:10px 22px" onclick="alert('OTA 升级报告\\n设备 MPS100 …9C01\\n1.26 → 1.28 · 传输 1288 包\\n各阶段耗时见报告')">${t("viewReport")}</button>
-      <button class="btn" style="width:auto;padding:12px 36px" onclick="nav('p03')">${t("done")}</button></div>`;
-  } else {
-    inner=`<div class="center" style="min-height:460px"><div style="font-size:48px;color:var(--err)">✕</div>
-      <div class="big">${t("fail")}</div>
-      <div class="sub">${t("reason")}: ${S.otaError||t("noResp")}</div>
-      <button class="btn" style="width:auto;padding:12px 36px" onclick="resetOTA()">${t("retry")}</button>
-      <button class="btn secondary" style="width:auto;padding:10px 22px" onclick="alert('导出诊断日志+升级报告')">${t("exportLog")}</button>
-      <button class="linkbtn" onclick="nav('p03')">${t("ret")}</button></div>`;
+/* ═══════════ 连接 ═══════════ */
+function connectTo(name,id,rssi){
+  if(S.phase==="ready"&&S.device!==name){toast(lang==="zh"?`已释放 ${S.device} 旧会话（停轮询/断开/清定时器）`:`Released old ${S.device} session`);stopPoll();}
+  S.device=name;S.page="connecting";S.connStep=0;S.connPhase=0;render();
+  log(t("connPhase"),"INFO",name);
+  const stepsMs=[700,900,800];
+  S.connTimer=setInterval(()=>{
+    S.connStep++;
+    if(S.connStep>=3){
+      clearInterval(S.connTimer);
+      S.phase="ready";S.p3="ready";S.staleSec=0;startPoll();
+      if(name==="SVC100"&&Scene.upgradeModeDevice){S.p3="upgradeMode";}
+      S.page="detail";log(t("connected"),undefined,name);render();
+    } else render();
+  }, stepsMs[S.connStep]||700);
+}
+function P_connecting(){
+  const names=[t("conn"),t("dSvc"),t("dSub")];
+  return statusbar()+`<div class="overlay" style="position:relative">
+    <div class="center"><div style="font-size:44px">🔗</div><div class="big">${S.device} …${(S.id||"9C01").slice(-4)}</div>
+    ${steps(3)}<div class="sub">${names[Math.min(S.connStep,2)]}</div></div>
+    <div style="padding:24px"><button class="btn secondary" onclick="cancelConn()">${t("cancel")}</button></div></div>`;
+}
+function cancelConn(){clearInterval(S.connTimer);S.phase="idle";nav("home");}
+
+/* ═══════════ 轮询 ═══════════ */
+function startPoll(){
+  stopPoll();
+  S.pollTimer=setInterval(()=>{
+    if(S.p3==="upgradeMode")return;
+    if(Scene.pollStall&&S.staleSec<4){S.staleSec++;if(S.staleSec===4)log(t("pollErr"),"WARN","0xFF timeout");return;}
+    if(Scene.pollStall&&S.staleSec>=4){S.staleSec=0;Scene.pollStall=false;log(t("recovered"),"INFO","0xFF");}
+    S.lastPoll=Date.now();if(S.p3==="stale"||S.p3==="abnormal"){S.p3="ready";}
+    bumpSim();
+  },1000);
+}
+function stopPoll(){clearInterval(S.pollTimer);}
+function bumpSim(){
+  const d=SIM[S.device];if(!d)return;
+  if(d.mag)d.mag=d.mag.map(v=>jit(v,4));
+  if(d.radar)d.radar=d.radar.map(v=>Math.max(2,jit(v,6)));
+  if(d.temp!==undefined)d.temp=jit(d.temp,80);
+  if(d.hum!==undefined)d.hum=jit(d.hum,150);
+  if(d.dist!==undefined)d.dist=jit(d.dist,25);
+  if(S.device==="MPS100"||S.device==="EPS100")d.park=Math.random()>0.85?1-d.park:d.park;
+}
+
+/* ═══════════ P-详情 ═══════════ */
+function fmtTemp(v){return (v/1000).toFixed(3);}
+function fval(key){
+  const d=SIM[S.device];if(!d)return"—";
+  const zh=lang==="zh";
+  switch(key){
+    case "f_park":return d.park?t("occupied"):t("vacant");
+    case "f_modeL":return [t("fusion"),t("magOnly"),t("radarFirst")][d.modeL];
+    case "f_tamper":return d.tamper?t("triggered"):t("normal");
+    case "f_period":return `${d.period} ${t("minutes")}`;
+    case "f_mag":return d.mag.map(v=>(v>0?"+":"")+v).join(" / ");
+    case "f_radar":return t("view");
+    case "f_temp":return fmtTemp(d.temp);
+    case "f_hum":return fmtTemp(d.hum);
+    case "f_dist":return `${d.dist}`;
+    case "f_ovf":return d.ovf?t("triggered"):t("vacant");
+    case "f_low":return `${d.low}`;
+    case "f_high":return `${d.high}`;
+    case "f_lat":return d.lat.toFixed(4);
+    case "f_lon":return d.lon.toFixed(4);
+    case "f_gps":return `${d.gps} ${t("minutes")}`;
+    case "f_angle":return `${(d.angle/10).toFixed(1)}`;
+    case "f_slant":return d.slant?t("yes"):t("no");
+    case "f_alarm":return d.alarm?t("triggered"):t("normal");
+    case "f_valve":return lang==="zh"?`阀1 ${d.v1?t("on"):t("off")} · 阀2 ${d.v2?t("on"):t("off")}`:`V1 ${d.v1?"On":"Off"} · V2 ${d.v2?"On":"Off"}`;
+    case "f_insert":return lang==="zh"?`阀1 ${d.v1i?t("yes"):t("no")} · 阀2 ${d.v2i?t("yes"):t("no")}`:`V1 ${d.v1i?"Y":"N"} · V2 ${d.v2i?"Y":"N"}`;
+    case "f_pulse":return `${d.p1} / ${d.p2}`;
+    case "f_volt":return `${d.vol*3.3} V`;
+    case "f_port":return d.port?t("portPwm"):t("portSwitch");
+    case "f_stable":return `${d.stable} s`;
+    case "f_smart":return d.smart?t("auto"):t("manual");
+    case "f_tz":return d.tz===25?"UTC+03:30":d.tz===26?"UTC+05:30":d.tz<13?`UTC+${d.tz}`:`UTC−${d.tz-12}`;
+    default:return"—";
   }
-  return statusbar()+navbar(t("ota"),"",true)+`<div class="body">${inner}</div>`+guard;
 }
-function filePicked(){
-  document.getElementById("fileinfo").innerHTML=
-    `<div class="card"><div class="kv">📄 <b>mps100_v128_full.bin</b></div>
-     <div class="kv">${t("size")}: 164,352 B · CRC OK</div>
-     <div class="kv" style="margin-top:4px">${t("curVer")}: 1.26 → ${t("expectVer")}: <b>1.28</b> ✎</div></div>`;
-  document.getElementById("startbtn").disabled=false;
+function fieldRows(){
+  const fam=S.device==="UDS100"?"uds":S.device==="SVC100"?"svc":"dc";
+  const d=SIM[S.device];
+  const defs={
+    dc:[["f_park","f_park",0],["f_modeL","f_modeL",0],["f_tamper","f_tamper",0],["f_period","f_period",0],
+        ["f_mag","f_mag",0],["f_radar","f_radar",0]],
+    uds:[["f_temp","f_temp","°C"],["f_hum","f_hum","%"],["f_dist","f_dist","mm"],["f_ovf","f_ovf",0],
+         ["f_low","f_low","mm"],["f_high","f_high","mm"],["f_angle","f_angle","°"],["f_slant","f_slant",0],
+         ["f_alarm","f_alarm",0],["f_gps","f_gps",0],["f_period","f_period",0],["f_lat","f_lat",0],["f_lon","f_lon",0]],
+    svc:[["f_valve","f_valve",0],["f_insert","f_insert",0],["f_pulse","f_pulse",0],["f_volt","f_volt",0],
+         ["f_port","f_port",0],["f_stable","f_stable","s"],["f_smart","f_smart",0],["f_tz","f_tz",0],["f_period","f_period",0]],
+  }[fam];
+  return `<div class="fieldgrid">`+defs.map(([k,src,u])=>{
+    const unknownTail=S.p3==="abnormal"&&k===defs[defs.length-1][0];
+    return field(t(k),unknownTail?"…":fval(k),typeof u==="string"?u:"",false);
+  }).join("")+`</div>`;
 }
-function startOTA(){
-  S.otaStage=1; S.otaPct=0; S.otaPkt=0; S.otaWait=0; S.otaResult=null; render();
-  clearInterval(S.otaTimer);
-  S.otaTimer=setInterval(()=>{
-    if(S.otaStage<=3){ S.otaPct=Math.min(100,S.otaPct+7); S.otaPkt=Math.round(1288*S.otaPct/100);
-      if(S.otaPct>=100){S.otaStage=4;}
-    } else if(S.otaStage===4){ S.otaWait+=1; if(S.otaWait>3) S.otaStage=5, S.otaWait=0; }
-    else if(S.otaStage===5){ S.otaWait+=1; if(S.otaWait>3) S.otaStage=6, S.otaWait=0; }
-    else if(S.otaStage===6){ clearInterval(S.otaTimer); S.otaResult="ok"; }
-    render();
-  }, 420);
+function P_detail(){
+  if(S.p3==="upgradeMode"){
+    return statusbar()+navbar(S.device,"",true)+`<div class="center" style="min-height:520px">
+      <div style="font-size:44px">⏫</div><div class="big">${t("upMode")}</div>
+      <div class="sub">${t("upModeB")}</div>
+      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('ota')">${t("gotoUp")}</button></div>`;
+  }
+  let head="";
+  if(S.p3==="ready")head=badge("",t("connected"));
+  if(S.p3==="stale")head=badge("warn",t("stale")(S.staleSec||3));
+  if(S.p3==="abnormal")head=badge("err",t("abnormal"));
+  if(S.p3==="disconnected")head=badge("err",t("disconnected"));
+  if(S.p3==="reconnecting")head=badge("warn",t("recon")(S.recon||1,3));
+  let banner="";
+  if(S.p3==="abnormal")banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="nav('log')">${t("exportLog")}</span></div>`;
+  if(S.p3==="disconnected")banner=`<div class="center" style="min-height:480px"><div style="font-size:44px">📵</div>
+      <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retry")}</button></div>`;
+  const body=S.p3==="disconnected"?banner:
+    `<div class="card hcard">${head}
+      <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
+     ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
+     <div style="margin-top:14px"><button class="btn secondary" disabled>${t("cfg")} · ${t("coming")}</button></div>`;
+  return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
+    `<div class="body">${body}</div>`;
 }
-function askGuard(){ if(S.otaStage>=3&&S.otaStage<6&&!S.otaResult){S.guard=true;render();} else abortOTA(),nav("p03"); }
-function abortOTA(){clearInterval(S.otaTimer); S.otaResult="fail"; S.otaError=t("noResp");}
-function resetOTA(){S.otaStage=0;S.otaResult=null;S.otaPct=0;render();}
+function reconnect(){S.p3="reconnecting";S.recon=1;render();
+  setTimeout(()=>{S.p3="ready";S.recon=0;startPoll();render();},1600);}
+let radarTimer=null;
+document.addEventListener("click",e=>{
+  if(e.target.textContent===t("view")&&S.page==="detail"){
+    S.page="radar";render();
+  }
+});
+function P_radar(){
+  const bars=SIM[S.device].radar.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:150px">
+    <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.min(100,v)}%"></div>
+    <div style="font-size:9px;color:var(--text2);margin-top:4px">${i+1}</div></div>`).join("");
+  return statusbar()+navbar(`${t("f_radar")} · ${S.device}`,`<button class="linkbtn" onclick="S.page='detail';render()">✕</button>`,true)+
+    `<div class="body"><div class="card" style="display:flex;gap:5px;align-items:flex-end;height:180px">${bars}</div>
+     <div class="kv">${lang==="zh"?"10 × uint16（TLV 0x60，20 字节，大端）":"10 × uint16 (TLV 0x60, 20 bytes, big-endian)"}</div></div>`;
+}
 
-/* ─────────── P-05~P-09 ─────────── */
-function P05(){
-  return statusbar()+navbar(t("config"),"",true)+`<div class="body">
-    <div class="center" style="min-height:500px"><div style="font-size:44px">🎛</div>
-    <div class="big">${t("comingSoon")}</div>
-    <div class="sub">${lang==="zh"?"参数配置将在 v1 后期开放（UDS100 / DC200Family / SVC100 模板）":"Configuration opens later in v1 (UDS100 / DC200Family / SVC100 templates)"}</div></div></div>`;
+/* ═══════════ OTA ═══════════ */
+function openOTA(){
+  S.page="ota";const o=S.ota;
+  if(o.stage===0){o.pct=0;o.pkt=0;o.result=null;o.restarts=0;o.err="";o.picked=false;o.confirmed=false;o.times={};o.t0=null;}
+  render();
 }
-function P06(){
+function P_ota(){
+  const o=S.ota;
+  const guard=o.guard?`<div class="dialog-mask"><div class="dialog"><div class="t">⚠︎ ${t("leaveT")}</div>
+      <div class="b">${t("leaveB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.ota.guard=false;render()">${t("stay")}</button>
+      <button class="btn danger" style="margin:0" onclick="forceAbort()">${t("leave")}</button></div></div></div>`:"";
+  let inner="";
+  if(o.stage===0){
+    inner=`<div class="row" style="cursor:pointer" onclick="pickFile()"><span class="label">📄 ${t("pick")}</span><span class="value">▸</span></div>
+      <div id="fi">${o.picked?fileinfo():""}</div>
+      <button class="btn" id="startbtn" ${o.picked?"":"disabled"} onclick="confirmDialog()">${t("start")}</button>
+      <div class="kv" style="margin-top:10px">⚠︎ ${t("keepFront")}</div>`;
+  } else if(o.stage===1){
+    inner=`<div class="dialog-mask"><div class="dialog"><div class="t">${t("confirmT")}</div>
+      <div class="b">${t("confirmB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.ota.stage=0;S.ota.picked=false;render()">${t("cancel")}</button>
+      <button class="btn" style="margin:0" onclick="runOTA()">${t("confirm")}</button></div></div></div>`;
+  } else if(!o.result){
+    const msgs=[t("transferring"),t("done_"),t("waitReboot"),t("waitAdv"),t("waitConn"),t("waitVer")];
+    const idx=Math.max(0,Math.min(o.stage-2,5));
+    const nd=o.stage>=4?` <span class="badge warn">${t("notDone")}</span>`:"";
+    const page=(o.stage===2&&o.pageWrite)?` · ${t("pageWrite")}`:"";
+    let inject="";
+    if(o.resetBanner)inject=`<div class="banner warn">↻ ${t("resetBanner")(o.restarts)}</div>`;
+    if(o.stage>=4)inject+=`<div class="kv" style="text-align:center">⏱ ${o.wait} s</div>`;
+    inner=`${stageList(idx)}
+      <div class="card"><div style="font-weight:600">${msgs[idx]}${nd}${page}</div>
+        <div class="progress"><i style="width:${o.stage>=4?100:o.pct}%"></i></div>
+        <div class="kv" style="display:flex;justify-content:space-between"><span>${t("pkt")(o.pkt,PKTS)}</span>
+        <span>${o.stage<=3?t("pct")(Math.round(o.pkt/PKTS*100)):""}</span></div></div>
+      ${o.stage<=3?`<div class="banner warn">⚠︎ ${t("keepFront")}</div>`:""}${inject}
+      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>`;
+  } else if(o.result==="ok"){
+    inner=`<div class="center" style="min-height:430px"><div style="font-size:48px;color:var(--ok)">✓</div>
+      <div class="big">${t("okT")} 1.26 → 1.28</div><div class="sub">⏱ ${o.report.total}</div>
+      <button class="btn secondary" style="width:auto;padding:10px 24px" onclick="o.showReport=true;render()">${t("report")}</button>
+      <button class="btn" style="width:auto;padding:12px 40px" onclick="nav('detail')">${t("done")}</button></div>`;
+  } else {
+    inner=`<div class="center" style="min-height:430px"><div style="font-size:48px;color:var(--err)">✕</div>
+      <div class="big">${t("failT")}</div><div class="sub">${t("reason")}: ${o.err}</div>
+      <button class="btn" style="width:auto;padding:12px 34px" onclick="openOTA()">${t("retry")}</button>
+      <button class="btn secondary" style="width:auto;padding:10px 22px" onclick="nav('log')">${t("exportLog")}</button>
+      <button class="linkbtn" onclick="nav('detail')">${t("back")}</button></div>`;
+  }
+  const report=(o.showReport&&o.report)?`<div class="dialog-mask" onclick="S.ota.showReport=false;render()">
+    <div class="dialog" style="width:330px;text-align:left" onclick="event.stopPropagation()">
+    <div class="t">${t("rpTitle")}</div>
+    <table class="props">
+      <tr><td>${t("rpDev")}</td><td><b>${S.device} …9C01</b></td></tr>
+      <tr><td>${t("rpOld")} / ${t("rpAct")}</td><td><b>${o.report.old} → ${o.report.actual}</b></td></tr>
+      <tr><td>${t("rpExp")}</td><td>${o.report.expected}</td></tr>
+      <tr><td>${t("rpStages")}</td><td>${Object.entries(o.report.times).map(([k,v])=>`${k} ${v}s`).join(" · ")}</td></tr>
+      <tr><td>${t("rpPkt")}</td><td>${o.report.packets.toLocaleString()} / ${PKTS.toLocaleString()}</td></tr>
+      <tr><td>${t("rpReset")}</td><td>${o.report.restarts}</td></tr>
+      <tr><td>${t("rpResult")}</td><td style="color:var(--ok)"><b>✓ 1.26 → 1.28</b></td></tr>
+      <tr><td>${t("rpTime")}</td><td>${o.report.total}</td></tr>
+    </table>
+    <button class="btn" onclick="S.ota.showReport=false;render()">${t("done")}</button></div></div>`:"";
+  return statusbar()+navbar(t("ota"),"",true)+`<div class="body">${inner}</div>`+guard+report;
+}
+function stageList(active){
+  const names=[t("st1"),t("st2"),t("st3"),t("st4"),t("st5"),t("st6")];
+  return `<div style="display:flex;gap:4px;margin-bottom:12px">`+names.map((n,i)=>
+    `<div style="flex:1;text-align:center;font-size:10px;color:${i===active?"var(--info)":i<active?"var(--ok)":"var(--text2)"}">
+     <div style="height:4px;border-radius:2px;margin-bottom:4px;background:${i===active?"var(--info)":i<active?"var(--ok)":"var(--fill)"}"></div>${n}</div>`).join("")+`</div>`;
+}
+function pickFile(){S.ota.picked=true;render();}
+function fileinfo(){return `<div class="card"><div class="kv">📄 <b>${t("pickedF")}</b></div>
+  <div class="kv">${t("fsize")} · CRC ✓</div>
+  <div class="kv" style="margin-top:4px">${t("curVer")} v1.26 → ${t("expVer")}: <b>1.28</b> ✎</div></div>`;}
+function confirmDialog(){S.ota.stage=1;render();}
+function runOTA(){
+  const o=S.ota;o.stage=2;o.pct=0;o.pkt=0;o.restarts=0;o.result=null;o.wait=0;
+  o.report={old:"v1.26",expected:"v1.28",actual:"v1.28",packets:0, restarts:0,times:{},total:""};
+  o.t0=Date.now();o.times={};
+  log(t("otaStageEv"),"INFO","transfer start");render();
+  clearInterval(o.timer);
+  let pagePause=0,silence=0;
+  o.timer=setInterval(()=>{
+    if(o.stage===2){
+      if(o.pkt>=PKTS){o.stage=3;o.times[t("st3")]=Math.round((Date.now()-o.t0)/1000);log(t("otaStageEv"),"INFO","transfer done");}
+      else{
+        if(pagePause>0){pagePause--;o.pageWrite=true;}
+        else{
+          o.pageWrite=false;
+          const step=4+Math.floor(Math.random()*5);
+          o.pkt=Math.min(PKTS,o.pkt+step);
+          if(o.pkt%16<step){pagePause=1;}          // 每 16 包 2KB 页写延迟
+          o.pct=o.pkt/PKTS*100;
+          if(Scene.otaReset&&o.pkt>320){
+            silence++;
+            if(silence>=8&&o.restarts<2){           // ~8s 静默 → 设备复位 ACK(1,0)
+              o.restarts++;o.report.restarts=o.restarts;o.pkt=0;o.pct=0;silence=0;
+              o.resetBanner=true;log(t("otaStageEv"),"WARN","device reset -> restart from packet 0");
+              setTimeout(()=>{o.resetBanner=false;render();},2600);
+            }
+            if(silence>=12&&o.restarts>=2){failOTA(t("rNoResp"));return;}
+          }
+        }
+      }
+    } else if(o.stage===3){o.stage=4;o.wait=0;log(t("otaStageEv"),"INFO","waiting reboot");}
+    else if(o.stage===4){o.wait++;if(o.wait>=4){o.stage=5;o.wait=0;o.times[t("st4")]=4;log(t("otaStageEv"),"INFO","re-advertise seen");}}
+    else if(o.stage===5){o.wait++;if(o.wait>=3){o.stage=6;o.wait=0;o.times[t("st5")]=3;log(t("otaStageEv"),"INFO","reconnected");}}
+    else if(o.stage===7){
+      o.wait++;
+      if(o.wait>=2){
+        clearInterval(o.timer);
+        o.times[t("st6")]=2;
+        if(Scene.otaMismatch){o.report.actual="v1.26";failOTA(t("rMismatch"));}
+        else{
+          o.result="ok";const total=Math.round((Date.now()-o.t0)/1000);
+          o.report.total=`${Math.floor(total/60)}m ${total%60}s`;o.report.packets=PKTS;
+          log(t("otaStageEv"),"INFO",`success v1.28`);
+        }
+      }
+    }
+    render();
+  },380);
+}
+function failOTA(msg){clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=msg;log(t("otaStageEv"),"ERR",msg);render();}
+function forceAbort(){S.ota.guard=false;clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=t("rConnLost");S.ota.stage=0;nav("detail");}
+function askGuard(){const o=S.ota;if(o.stage>=2&&o.stage<7&&!o.result){o.guard=true;render();}else{nav("detail");}}
+
+/* ═══════════ 配置 / Debug / 设置 / 日志 / 校准 ═══════════ */
+function P_config(){
+  return statusbar()+navbar(t("cfg"),"",true)+`<div class="center" style="min-height:520px">
+    <div style="font-size:44px">🎛</div><div class="big">${t("coming")}</div><div class="sub">${t("comingSub")}</div></div>`;
+}
+function P_debug(){
   return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
-    <div class="row"><span class="label">${t("target")}: MPS100 …9C01</span><span class="badge"><span class="dot"></span>●</span></div>
-    <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3" style="font-family:ui-monospace,monospace;font-size:12px">
-    <div class="tabbar" style="margin:10px 0">
-      <button class="tb" onclick="sendHex()" style="background:var(--info);border-color:var(--info);color:#fff">${t("send")}</button>
-      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="render()">${t("clear")}</button>
-      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="alert('复制')">${t("copy")}</button></div>
-    <div class="hexlog" id="hexlog"><div class="kv" style="text-align:center;padding:20px">${lang==="zh"?"发送一条命令以查看原始收发流水":"Send a command to see the raw stream"}</div></div></div>`;
+    <div class="row"><span class="label">${t("target")}: ${S.device} …9C01</span>${badge(S.phase==="ready"?"":"err",S.phase==="ready"?"● "+t("on"):"○ "+t("off"))}</div>
+    <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3">
+    <div style="display:flex;gap:7px;margin:10px 0">
+      <button class="tb" style="background:var(--info);border-color:var(--info);color:#fff" onclick="sendHex()">${t("send")}</button>
+      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="S.hex=[];render()">${t("clear")}</button>
+      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="toast('${t("copy")} ✓')">${t("copy")}</button></div>
+    <div class="hexlog" id="hexlog">${S.hex.length?S.hex.join(""):`<div class="kv" style="text-align:center;padding:20px">${t("protoTx")}</div>`}</div></div>`;
 }
-let hexSent=false;
 function sendHex(){
-  document.getElementById("hexlog").innerHTML=
-    `<div><span class="ts">14:32:01.204</span><span class="tx">TX</span> 686B74 00 0005 FF FFFFFFFFFF 06C3</div>
-     <div><span class="ts">14:32:01.281</span><span class="rx">RX</span> 686B74 00 01 010B1C 8D01 0357 3A01 3B00 8400 860014 …</div>
-     <div><span class="ts">14:32:01.281</span> ✔ 11 records · 77 ms</div>`;
+  const now=clock();
+  S.hex.unshift(`<div><span class="ts">${now}.204</span><span class="tx">TX</span> 686B74 00 0005 FFFFFFFFFF 06C3</div>`);
+  S.hex.unshift(`<div><span class="ts">${now}.281</span><span class="rx">RX</span> 686B74 00 01 010B1C 8D01 0357 3A01 3B00 8400 860014 5D0078 5EFF88 5F0190 60…</div>`);
+  S.hex.unshift(`<div><span class="ts">${now}.281</span> ✔ 11 records · 77 ms</div>`);
+  render();
 }
-function P07(){
+function P_settings(){
   return statusbar()+navbar(t("settings"),"",true)+`<div class="body">
-    <div class="section">${t("language")}</div>
-    <div class="row"><span class="label">${t("language")}</span><span class="value">${t("sys")} ▸</span></div>
-    <div class="section">${t("diagLog")}</div>
-    <div class="row"><span class="label">${t("diagLog")}</span><span class="value">${t("view")}</span></div>
+    <div class="section">${t("lang")}</div>
+    <div class="row"><span class="label">${t("lang")}</span><span class="value">${t("sys")} ▸</span></div>
+    <div class="row"><span class="label">${t("lang")} (EN)</span><button class="linkbtn" onclick="setLang('en')">English</button></div>
+    <div class="row"><span class="label">${t("lang")} (zh)</span><button class="linkbtn" onclick="setLang('zh')">简体中文</button></div>
+    <div class="section">${t("diag")}</div>
+    <div class="row"><span class="label">${t("diag")}</span><span class="value" style="cursor:pointer" onclick="nav('log')">${t("view")}</span></div>
     <div class="section">${lang==="zh"?"扫描过滤":"Scan filter"}</div>
-    <div class="row"><span class="label">${t("rssiTh")}</span><span class="value">-75 dBm</span></div>
-    <div class="row"><span class="label">${t("hideUnnamed")}</span><span class="value">●</span></div>
+    <div class="row"><span class="label">${t("rssiTh")}</span>
+      <span class="value"><input type="range" class="slider" min="-95" max="-40" step="5" value="${S.rssiTh}" oninput="S.rssiTh=+this.value;this.nextElementSibling.textContent=this.value+' dBm'"><span>${S.rssiTh} dBm</span></span></div>
+    <div class="row"><span class="label">${t("hideUn")}</span>
+      <span class="switch ${S.hideUn?"on":""}" onclick="S.hideUn=!S.hideUn;render()"><i></i></span></div>
     <div class="section">${t("about")}</div>
-    <div class="row" id="verRow" style="cursor:pointer" onclick="debugTaps()"><span class="label">${t("version")}</span>
+    <div class="row" style="cursor:pointer" onclick="taps()"><span class="label">${t("ver")}</span>
       <span class="value" id="verVal">1.0.0 (123)</span></div>
     <div class="row"><span class="label">${t("privacy")}</span><span class="value">▸</span></div>
     <div class="kv" id="taps" style="text-align:center;margin-top:6px"></div></div>`;
 }
-let taps=0;
-function debugTaps(){ taps++; document.getElementById("verVal").textContent=`1.0.0 (123) · ${taps}`;
-  if(taps>=7){document.getElementById("taps").innerHTML=`<span style="color:var(--ok)">${lang==="zh"?"已开启调试模式 · Debug 入口出现在设置":"Debug mode enabled"}</span>`;} }
-function P08(kind){
-  const map={
-    denied:["🔒",t("permDenied"),t("goSettings")],
-    btoff:["📶",t("btOff"),t("btOpen")],
-    unsup:["⚠︎",t("unsupported"),""]};
-  const m=map[kind||"denied"];
-  return statusbar()+`<div class="center" style="min-height:700px">
-    <div style="font-size:52px">${m[0]}</div><div class="big">${m[1]}</div>
-    <div class="sub">${t("autoBack")}</div>
-    <button class="btn" style="width:auto;padding:12px 30px;${m[2]?"":"display:none"}">${m[2]}</button></div>`;
+function setLang(l){lang=l;render();}
+function taps(){S.taps++;const el=document.getElementById("verVal");
+  if(el)el.innerHTML=`1.0.0 (123) ${S.taps>0&&S.taps<7?`· ${t("taps")(S.taps)}`:""}`;
+  if(S.taps>=7){S.debugOn=true;document.getElementById("taps").innerHTML=`<span style="color:var(--ok)">${t("dbgOn")}</span>`;
+    document.querySelectorAll("[data-nav]")[4].style.display="";}}
+function P_log(){
+  const lines=S.logs.length?S.logs.map(l=>`<div class="logline"><span class="ts">${l.ts}</span><span class="lv" style="color:${l.lv==="ERR"?"var(--err)":l.lv==="WARN"?"var(--warn)":"var(--info)"}">${l.lv}</span>${l.ev} ${l.detail}</div>`).join("")
+    :`<div class="kv" style="text-align:center;padding:30px">${t("logEmpty")}</div>`;
+  return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true)+
+    `<div class="body">${lines}</div>`;
 }
-function P09(){
+function P_cal(){
   return statusbar()+navbar(t("cal"),"",true)+`<div class="body">
-    <div class="center" style="min-height:420px"><div style="font-size:48px">🧭</div>
-      <div class="kv" style="text-align:left;line-height:2">${t("calStep1")}<br>${t("calStep2")}</div></div>
-    <div class="card" style="text-align:center"><span class="badge info"><span class="dot"></span>${t("calRunning")}</span>
-      <div class="kv" style="margin-top:6px">${t("calNote")}</div></div>
-    <button class="btn secondary" onclick="nav('p03')">${t("cancel")}</button></div>`;
+    <div class="center" style="min-height:400px"><div style="font-size:46px">🧭</div>
+      <div class="kv" style="text-align:left;line-height:2.2">${t("cal1")}<br>${t("cal2")}</div></div>
+    <div class="card" style="text-align:center">${badge("info",t("calRun"))}<div class="kv" style="margin-top:6px">${t("calNote")}</div></div>
+    <button class="btn secondary" onclick="nav('detail')">${t("cancel")}</button></div>`;
+}
+function P_perm(kind){
+  const m={ask:["🛡",t("permT"),t("permB"),[["secondary",t("dontAllow"),()=>{S.perm="denied";S.page="perm";render();}]],true],
+           denied:["🔒",t("deniedT"),t("deniedB"),[["btn",t("goSet"),()=>{S.perm="granted";nav("home");toggleScan();}]]],
+           btoff:["📶",t("btOffT"),t("btOffB"),[["btn",t("btOn"),()=>{S.btOn=true;nav("home");toggleScan();}]]],
+           unsup:["⚠︎",t("unsupT"),t("unsupB"),[]]}[kind];
+  const sysDialog=kind==="ask"?`<div class="dialog-mask"><div class="dialog"><div class="t" style="font-size:14px">${m[1]}</div>
+      <div class="b center">${m[2]}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick='S.perm="denied";S.page="perm";render()'>${t("dontAllow")}</button>
+      <button class="btn" style="margin:0" onclick='S.perm="granted";S.page="home";toggleScan()'>${t("allow")}</button></div></div></div>`:"";
+  return statusbar()+`<div class="center" style="min-height:640px"><div style="font-size:52px">${m[0]}</div>
+    <div class="big">${m[1]}</div><div class="sub">${m[2]}</div>
+    ${m[3].map(([cls,label,fn])=>`<button class="${cls}" style="width:auto;padding:12px 30px;margin:0" onclick="${fn}">${label}</button>`).join("")}
+    <div class="sub">${t("autoBack")}</div></div>`+sysDialog;
 }
 
-/* ─────────── 路由与渲染 ─────────── */
-const RENDER={p01:P01,p02:P02,p03:P03,p04:P04,p05:P05,p06:P06,p07:P07,p08:()=>P08(S.p8kind),p09:P09};
+/* ═══════════ 路由 ═══════════ */
+const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,radar:P_radar,ota:P_ota,config:P_config,
+  debug:P_debug,settings:P_settings,log:P_log,cal:P_cal,
+  perm:()=>P_perm(S.perm==="denied"?"denied":S.perm==="btoff"?"btoff":S.perm==="unsup"?"unsup":"ask")};
 function render(){
   document.documentElement.dataset.lang=lang;
   document.documentElement.dataset.theme=S.theme;
-  document.getElementById("screen").innerHTML=RENDER[S.page]();
-  document.getElementById("themeBtn").textContent=S.theme==="light"?"🌗 深色":"☀️ 浅色";
+  const page=S.perm!=="granted"&&["home","detail","ota"].includes(S.page)?P_perm(S.perm==="denied"?"denied":"btoff"):RENDER[S.page]();
+  document.getElementById("screen").innerHTML=page;
+  document.getElementById("themeBtn").textContent=S.theme==="light"?"🌗":"☀️";
   document.getElementById("langBtn").textContent=lang==="zh"?"EN":"中文";
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
+  document.querySelectorAll("[data-act]").forEach(b=>{
+    b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":()=>nav(S.page==="radar"?"detail":"home") }[b.dataset.act];
+  });
   notes();
 }
-function nav(p){ S.page=p; render(); }
-document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>nav(b.dataset.nav));
+function nav(p){S.page=p;render();}
+document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{S.page=b.dataset.nav;if(b.dataset.nav==="detail"&&S.phase!=="ready"){S.phase="ready";S.device=S.device||"MPS100";S.p3="ready";startPoll();}render();});
 document.getElementById("themeBtn").onclick=()=>{S.theme=S.theme==="light"?"dark":"light";render();};
 document.getElementById("langBtn").onclick=()=>{lang=lang==="zh"?"en":"zh";render();};
+document.getElementById("sceneSel").onchange=e=>{runScene(e.target.value);e.target.value="";};
 
+/* ═══════════ 场景注入 ═══════════ */
+const Scene={pollStall:false,otaReset:false,otaMismatch:false,upgradeModeDevice:false};
+function runScene(id){
+  if(!id)return;
+  if(id==="perm"){S.perm="ask";S.page="perm";render();}
+  if(id==="weak"){S.page="connecting";S.connStep=0;S.device="EPS100";render();
+    clearInterval(S.connTimer);
+    S.connTimer=setTimeout(()=>{S.page="detail";S.p3="disconnected";stopPoll();render();},1500);}
+  if(id==="abnormal"){if(S.phase!=="ready"){S.phase="ready";S.device="MPS100";}S.p3="abnormal";S.page="detail";
+    log(t("pollErr"),"ERR","unknown type 0x77 -> unknownTail");render();}
+  if(id==="pollStall"){if(S.phase!=="ready"){S.phase="ready";S.device="MPS100";S.page="detail";startPoll();}Scene.pollStall=true;toast(lang==="zh"?"轮询停摆 4 秒…":"Poll stalling 4s…");}
+  if(id==="otaReset"){Scene.otaReset=true;Scene.otaMismatch=false;S.device="MPS100";openOTA();pickFile();setTimeout(()=>{runOTA();},100);}
+  if(id==="otaMismatch"){Scene.otaMismatch=true;Scene.otaReset=false;S.device="MPS100";openOTA();pickFile();setTimeout(()=>{runOTA();},100);}
+  if(id==="otaBtOff"){if(S.ota.stage>=2&&S.ota.stage<7){failOTA(t("rBtOff"));}else toast(lang==="zh"?"请先在 OTA 页开始升级":"Start an OTA run first");}
+  if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
+  if(id==="switchDevice"){connectTo("UDS100","…3F2A",-58);toast(lang==="zh"?"旧会话 MPS100 已释放（停轮询/断开/清看门狗）":"Old MPS100 session released");}
+  notes();
+}
+
+/* ═══════════ notes ═══════════ */
 function notes(){
+  const zh=lang==="zh";
   const N={
-    p01:"P-01 设备列表：状态⑤⑥⑦⑧齐全；最近设备=冷启动上下文恢复（S-7）；DevEUI/扫码为禁用占位（Q4）。",
-    p02:"P-02 连接覆盖层：三阶段步骤点+取消；失败态替换中部为原因+建议动作+重试。",
-    p03:"P-03 详情：工具栏可切 ①就绪 ②暂无响应 ②b数据异常 ③已断开 ③重连中 ⑤升级模式；字段网格由 DeviceRegistry 模板驱动（UDS100/MPS100 两套示例）。",
-    p04:"P-04 OTA：点「开始升级」自动演示六阶段；阶段④起进度条 100% 标注『尚未完成』；阶段③起返回/取消触发返回保护；升级报告含前后版本与阶段耗时。",
-    p05:"P-05 配置：v1 禁用占位，M8 按 Q1 裁决开放。",
-    p06:"P-06 Debug：原始 hex 收发流水；隐藏入口（关于页连点版本 7 次）。",
-    p07:"P-07 设置：语言切换、诊断日志、过滤设置、版本号+连点 7 次开 Debug。",
-    p08:"P-08 权限/蓝牙引导：denied / btoff / unsup 三态（工具栏切 P-08 后可在 notes 提示下组合主题与语言评审）。",
-    p09:"P-09 校准（预案）：轮询驱动的进行中状态，无本地倒计时假状态；是否进 v1 待 Q1。",
-  }[S.page];
-  const extra = S.page==="p04" ? `<div class="n">异常注入（评审用）：在传输阶段点「取消升级」→ 失败态；模拟 10s 静默 → 设备复位 ACK(1,0) → 自动从包 0 重传 ≤2 次（TC-BC-003）。成功判定=版本确认，进度 100% 不算成功（ADR-006）。</div>` : "";
-  document.getElementById("notes").innerHTML=`<h3>${lang==="zh"?"评审要点（当前页）":"Review notes"}</h3><div class="n">${N}${extra}</div>
-    <div class="n">${lang==="zh"?"约定：所有文案走 String Catalog；浅/深与中/英自由组合核对；页面不出现协议术语（P-06 除外）。":"All copy from String Catalog; review any theme/language mix; no protocol jargon outside P-06."}</div>`;
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
+    connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
+    detail:zh?"P-03：字段全集实时轮询（1s）；工具栏「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
+    radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
+    ota:zh?"P-04 全生命周期：选文件→确认弹窗→传输（每 16 包页写停顿）→等待重启→重连→版本确认→成功/报告。场景注入：静默复位重传、版本不符、蓝牙关闭。返回保护在传输后出现。100% 标注『尚未完成』。":"P-04 full lifecycle: pick→confirm→transfer (page-write stalls)→reboot→reconnect→verify→report. Scene injects: reset-restart, version mismatch, BT off. Guard appears once transferring. 100% marked not-done.",
+    config:zh?"P-05：v1 禁用占位（Q1/M8）。":"P-05: disabled placeholder (Q1/M8).",
+    debug:zh?"P-06：原始收发流水（隐藏入口：关于页连点版本 7 次）。":"P-06: raw stream (hidden entry: 7 taps on version in About).",
+    settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold really filters scan, 7-tap debug unlock.",
+    log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
+    cal:zh?"P-09 校准预案（Q1）：轮询驱动，无本地假倒计时。":"P-09 calibration draft (Q1): poll-driven, no fake countdown.",
+    perm:zh?"P-08 权限/蓝牙引导：首启系统弹窗→拒绝→去设置→授权自动返回。":"P-08 permission gate: first-run dialog → denied → Settings → auto-return.",
+  }[S.page]||"";
+  document.getElementById("notes").innerHTML=`<h3>${zh?"评审要点":"Review notes"}</h3><div class="n">${N}</div>
+    <div class="n">${zh?"<b>场景演示</b>下拉注入 9 类真实场景；实现阶段 UI 将 1:1 克隆本原型确认稿（布局/组件/状态/文案/交互）。":"<b>Scene ▾</b> injects 9 real scenarios; the confirmed prototype is the 1:1 clone source for implementation."}</div>`;
 }
 render();
 </script>
