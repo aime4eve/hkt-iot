@@ -183,6 +183,8 @@ const ZH={
   rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
   rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
   times:(a,b)=>`${a} → ${b}`,
+  d1:"周一", d2:"周二", d3:"周三", d4:"周四", d5:"周五", d6:"周六", d7:"周日",
+  pct:p=>`${p}%`,
   tasks:"阀门任务", rt:"实时任务", sched:"定时任务表（1–16）", valve:"阀门", v1:"阀 1", v2:"阀 2", vBoth:"双阀",
   act:"动作", openV:"开阀", closeV:"关阀", dur:"持续时间", durHint:"0 = 不自动结束（须手动停止）",
   pulseN:"脉冲数", exec:"立即执行", busy:"设备忙（本地定时任务执行中），实时任务被静默忽略（无 ACK）",
@@ -241,6 +243,8 @@ const EN={
   rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
   rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
   times:(a,b)=>`${a} → ${b}`,
+  d1:"Mon", d2:"Tue", d3:"Wed", d4:"Thu", d5:"Fri", d6:"Sat", d7:"Sun",
+  pct:p=>`${p}%`,
   tasks:"Valve Tasks", rt:"Realtime Task", sched:"Schedule Table (1–16)", valve:"Valve", v1:"Valve 1", v2:"Valve 2", vBoth:"Both",
   act:"Action", openV:"Open", closeV:"Close", dur:"Duration", durHint:"0 = no auto-stop (stop manually)",
   pulseN:"Pulse count", exec:"Run Now", busy:"Device busy (schedule running); realtime task silently ignored (no ACK)",
@@ -594,6 +598,7 @@ function runOTA(){
     } else if(o.stage===3){o.stage=4;o.wait=0;log(t("otaStageEv"),"INFO","waiting reboot");}
     else if(o.stage===4){o.wait++;if(o.wait>=4){o.stage=5;o.wait=0;o.times[t("st4")]=4;log(t("otaStageEv"),"INFO","re-advertise seen");}}
     else if(o.stage===5){o.wait++;if(o.wait>=3){o.stage=6;o.wait=0;o.times[t("st5")]=3;log(t("otaStageEv"),"INFO","reconnected");}}
+    else if(o.stage===6){o.stage=7;o.wait=0;}
     else if(o.stage===7){
       o.wait++;
       if(o.wait>=2){
@@ -802,13 +807,14 @@ function P_tasks(){
 }
 function taskEditNew(){
   S.task.mode="edit";
-  S.task.draft={id:nextTaskId(),valve:1,state:1,pulse:100,sh:8,sm:0,eh:18,em:30,
+  // spread-merge 保留实时任务卡的 rt* 草稿字段，避免编辑表单覆盖后渲染 undefined
+  S.task.draft={...S.task.draft,id:nextTaskId(),valve:1,state:1,pulse:100,sh:8,sm:0,eh:18,em:30,
                 days:[true,true,true,true,true,false,false],editing:null};
   render();
 }
 function taskEditExisting(tk){
   S.task.mode="edit";
-  S.task.draft={...tk,editing:tk.id};
+  S.task.draft={...S.task.draft,...tk,editing:tk.id};
   render();
 }
 function nextTaskId(){const used=S.tasks.map(x=>x.id);for(let i=1;i<=16;i++)if(!used.includes(i))return i;return 1;}
