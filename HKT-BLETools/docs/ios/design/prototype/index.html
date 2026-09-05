@@ -111,6 +111,7 @@
   <button class="tb" data-nav="detail">详情</button>
   <button class="tb" data-nav="ota">OTA</button>
   <button class="tb" data-nav="config">配置</button>
+  <button class="tb" data-nav="tasks">阀门任务</button>
   <button class="tb" data-nav="debug">Debug</button>
   <button class="tb" data-nav="settings">设置</button>
   <button class="tb" data-nav="log">日志</button>
@@ -128,6 +129,7 @@
     <option value="upgradeMode">连接处于升级模式的设备</option>
     <option value="switchDevice">会话切换 A→B</option>
     <option value="cfgReject">UDS100 配置被静默拒绝</option>
+    <option value="svcBusy">SVC100 实时任务被忙拒绝</option>
   </select>
   <button class="tb" id="themeBtn">🌗</button>
   <button class="tb" id="langBtn">EN</button>
@@ -181,6 +183,12 @@ const ZH={
   rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
   rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
   times:(a,b)=>`${a} → ${b}`,
+  tasks:"阀门任务", rt:"实时任务", sched:"定时任务表（1–16）", valve:"阀门", v1:"阀 1", v2:"阀 2", vBoth:"双阀",
+  act:"动作", openV:"开阀", closeV:"关阀", dur:"持续时间", durHint:"0 = 不自动结束（须手动停止）",
+  pulseN:"脉冲数", exec:"立即执行", busy:"设备忙（本地定时任务执行中），实时任务被静默忽略（无 ACK）",
+  addTask:"新建定时任务", delAll:"全部删除", del:"删除", days:"重复",
+  startT:"开始", endT:"结束", noTasks:"暂无定时任务", localMirror:"设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D）",
+  forceStopNote:"删除执行中的任务将强制停止阀门动作", invalidTime:"时间无效", needDay:"至少选择一天",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
   hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
@@ -233,6 +241,12 @@ const EN={
   rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
   rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
   times:(a,b)=>`${a} → ${b}`,
+  tasks:"Valve Tasks", rt:"Realtime Task", sched:"Schedule Table (1–16)", valve:"Valve", v1:"Valve 1", v2:"Valve 2", vBoth:"Both",
+  act:"Action", openV:"Open", closeV:"Close", dur:"Duration", durHint:"0 = no auto-stop (stop manually)",
+  pulseN:"Pulse count", exec:"Run Now", busy:"Device busy (schedule running); realtime task silently ignored (no ACK)",
+  addTask:"New Task", delAll:"Delete All", del:"Delete", days:"Repeat",
+  startT:"Start", endT:"End", noTasks:"No scheduled tasks", localMirror:"No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only)",
+  forceStopNote:"Deleting a running task force-stops the valve", invalidTime:"Invalid time", needDay:"Pick at least one day",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
   hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
@@ -449,6 +463,7 @@ function P_detail(){
     `<div class="card hcard">${head}
       <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
      ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
+     ${S.device==="SVC100"?`<div style="margin-top:14px"><button class="btn secondary" onclick="taskInit();nav('tasks')">${t("tasks")} ▸</button></div>`:""}
      <div style="margin-top:14px"><button class="btn secondary" onclick="cfgInit();nav('config')">${t("cfg")} ▸</button></div>`;
   return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
     `<div class="body">${body}</div>`;
@@ -729,6 +744,129 @@ function cfgWrite(){
     render();
   },900);
 }
+/* ═══════════ SVC100 阀门任务（0x03 实时 / 0x04 定时 / 0x05 删除） ═══════════
+   固件契约（SVC communicate.c 已核实）：
+   - 0x03 len7：valve(0双/1/2)+state(0关/1开)+time(2B BE, 秒, 0=不自动结束)+pulse(3B BE)；
+     本地定时任务执行中 → 整个分支被跳过：无 ACK、无错误（静默忙拒绝）
+   - 0x04 len11：id(1-16)+valve(0-2)+state(0-1)+pulse(2B BE)+start分钟(2B)+end分钟(2B)+repeat(≤0x7F)；
+     任一非法 → return 静默；合法 → 存 flash + ACK
+   - 0x05 len2：id 1-16 单删；0xFF 全删；删除执行中任务强制停止；删除后 ACK
+   - repeat 位序：bit0=周一 … bit5=周六，bit6=周日（(wday?wday:7)-1）
+   - 任务表无 BLE 回读（0x3D 仅走 LoRa 平台侧）→ App 本地镜像 + UI 明示 */
+S.tasks=[];S.task={mode:"list",draft:null,busy:false};
+const DAY_KEYS=["d1","d2","d3","d4","d5","d6","d7"];
+function taskInit(){S.task.mode="list";S.task.busy=false;
+  if(!S.task.draft)S.task.draft={rtValve:1,rtState:1,rtDur:300,rtPulse:100};
+  render();}
+function P_tasks(){
+  if(S.phase!=="ready"||S.device!=="SVC100")return statusbar()+navbar(t("tasks"),"",true)+
+    `<div class="center" style="min-height:480px"><div style="font-size:44px">🔌</div>
+     <div class="big">${lang==="zh"?"请先连接 SVC100":"Connect an SVC100 first"}</div>
+     <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
+  const vlabel=v=>v===1?t("v1"):v===2?t("v2"):t("vBoth");
+  const dayNames=DAY_KEYS.map(k=>t(k));
+  if(S.task.mode==="edit")return P_taskEdit(dayNames);
+  let rtCard=`<div class="card"><div style="font-weight:700;margin-bottom:8px">${t("rt")} · 0x03</div>
+    <div class="fieldgrid">
+      <div class="field"><div class="k">${t("valve")}</div><div class="v" style="font-size:14px">${[t("vBoth"),t("v1"),t("v2")][S.task.draft.rtValve]}</div>
+        <div style="display:flex;gap:4px;margin-top:6px">${[0,1,2].map((v,i)=>`<div style="flex:1;text-align:center;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;background:${S.task.draft.rtValve===v?"var(--info)":"var(--card2)"};color:${S.task.draft.rtValve===v?"#fff":"var(--text2)"}" onclick="S.task.draft.rtValve=${v};render()">${vlabel(v)}</div>`).join("")}</div></div>
+      <div class="field"><div class="k">${t("act")}</div><div class="v" style="font-size:14px">${S.task.draft.rtState?t("openV"):t("closeV")}</div>
+        <div style="display:flex;gap:4px;margin-top:6px">${[1,0].map(v=>`<div style="flex:1;text-align:center;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;background:${S.task.draft.rtState===v?"var(--info)":"var(--card2)"};color:${S.task.draft.rtState===v?"#fff":"var(--text2)"}" onclick="S.task.draft.rtState=${v};render()">${v?t("openV"):t("closeV")}</div>`).join("")}</div></div>
+    </div>
+    <div style="display:flex;gap:9px;margin-top:9px">
+      <div class="field" style="flex:1"><div class="k">${t("dur")}(s)</div>
+        <input class="input" style="margin-top:4px" inputmode="numeric" value="${S.task.draft.rtDur}" oninput="S.task.draft.rtDur=this.value">
+        <div class="kv" style="font-size:11px;margin-top:2px">${t("durHint")}</div></div>
+      <div class="field" style="flex:1"><div class="k">${t("pulseN")}</div>
+        <input class="input" style="margin-top:4px" inputmode="numeric" value="${S.task.draft.rtPulse}" oninput="S.task.draft.rtPulse=this.value"></div>
+    </div>
+    ${S.task.busy?`<div class="banner err" style="margin-top:9px">⏱ ${t("busy")}</div>`:""}
+    <button class="btn" onclick="execRT()">${t("exec")}</button></div>`;
+  const list=S.tasks.length?S.tasks.map(tk=>`<div class="card">
+      <div style="display:flex;align-items:center"><b>#${tk.id}</b>
+        <span class="badge info" style="margin-left:8px">${vlabel(tk.valve)} · ${tk.state?t("openV"):t("closeV")}</span>
+        <button class="linkbtn" style="margin-left:auto;color:var(--err)" onclick="delTask(${tk.id})">${t("del")}</button></div>
+      <div class="kv" style="margin-top:6px">⏰ ${tk.sh}:${String(tk.sm).padStart(2,"0")} – ${tk.eh}:${String(tk.em).padStart(2,"0")} · ${t("pulseN")} ${tk.pulse}</div>
+      <div style="display:flex;gap:4px;margin-top:6px">${DAY_KEYS.map((k,i)=>tk.days[i]?`<span class="badge info" style="padding:2px 7px">${dayNames[i]}</span>`:"").join("")}</div>
+    </div>`).join("")
+    :`<div class="card" style="text-align:center;color:var(--text2);padding:24px">${t("noTasks")}</div>`;
+  return statusbar()+navbar(t("tasks"),`<button class="linkbtn" onclick="taskEditNew()">＋ ${t("addTask")}</button>`,true)+
+    `<div class="body">
+    ${rtCard}
+    <div class="section">${t("sched")} · 0x04 / 0x05</div>
+    <div class="banner info">ℹ︎ ${t("localMirror")}</div>
+    ${list}
+    ${S.tasks.length?`<button class="btn danger" onclick="delAllTasks()">${t("delAll")} (0xFF)</button>
+      <div class="kv" style="text-align:center;margin-top:6px">${t("forceStopNote")}</div>`:""}
+  </div>`;
+}
+function taskEditNew(){
+  S.task.mode="edit";
+  S.task.draft={id:nextTaskId(),valve:1,state:1,pulse:100,sh:8,sm:0,eh:18,em:30,
+                days:[true,true,true,true,true,false,false],editing:null};
+  render();
+}
+function taskEditExisting(tk){
+  S.task.mode="edit";
+  S.task.draft={...tk,editing:tk.id};
+  render();
+}
+function nextTaskId(){const used=S.tasks.map(x=>x.id);for(let i=1;i<=16;i++)if(!used.includes(i))return i;return 1;}
+function P_taskEdit(dayNames){
+  const d=S.task.draft;
+  const timeSel=(key,key2)=>`<div style="display:flex;gap:6px">
+      <select class="input" style="flex:1" onchange="S.task.draft['${key}']=+this.value;render()">${
+        Array.from({length:24},(_,i)=>`<option ${d[key]===i?"selected":""}>${String(i).padStart(2,"0")}</option>`).join("")}</select>:
+      <select class="input" style="flex:1" onchange="S.task.draft['${key2}']=+this.value;render()">${
+        Array.from({length:60},(_,i)=>`<option ${d[key2]===i?"selected":""}>${String(i).padStart(2,"0")}</option>`).join("")}</select></div>`;
+  return statusbar()+navbar(t("addTask"),"",true)+`<div class="body">
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("valve")}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">${[1,2].map(v=>`<div style="flex:1;text-align:center;padding:9px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.valve===v?"var(--info)":"var(--card2)"};color:${d.valve===v?"#fff":"var(--text2)"}" onclick="S.task.draft.valve=${v};render()">${v===1?t("v1"):t("v2")}</div>`).join("")}</div></div>
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("act")}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">${[1,0].map(v=>`<div style="flex:1;text-align:center;padding:9px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.state===v?"var(--info)":"var(--card2)"};color:${d.state===v?"#fff":"var(--text2)"}" onclick="S.task.draft.state=${v};render()">${v?t("openV"):t("closeV")}</div>`).join("")}</div></div>
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("pulseN")}</div>
+      <input class="input" style="margin-top:6px" inputmode="numeric" value="${d.pulse}" oninput="S.task.draft.pulse=this.value"></div>
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("startT")} / ${t("endT")}</div>
+      <div style="margin-top:8px">${timeSel("sh","sm")}<div class="kv" style="text-align:center;margin:4px 0">↓</div>${timeSel("eh","em")}</div></div>
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("days")}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${DAY_KEYS.map((k,i)=>
+        `<div style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.days[i]?"var(--info)":"var(--card2)"};color:${d.days[i]?"#fff":"var(--text2)"}" onclick="S.task.draft.days[${i}]=!S.task.draft.days[${i}];render()">${dayNames[i]}</div>`).join("")}</div></div>
+    <button class="btn" onclick="saveTask()">${t("cfgSave")}</button>
+    <button class="btn secondary" onclick="S.task.mode='list';render()">${t("cancel")}</button></div>`;
+}
+function saveTask(){
+  const d=S.task.draft;
+  if(!(d.sh<24&&d.sm<60&&d.eh<24&&d.em<60)){toast(t("invalidTime"));return;}
+  if(!d.days.some(x=>x)){toast(t("needDay"));return;}
+  const rec={id:d.editing||d.id,valve:d.valve,state:d.state,pulse:+d.pulse||0,
+             sh:+d.sh,sm:+d.sm,eh:+d.eh,em:+d.em,days:[...d.days]};
+  const i=S.tasks.findIndex(x=>x.id===rec.id);
+  if(i>=0)S.tasks[i]=rec;else S.tasks.push(rec);
+  S.tasks.sort((a,b)=>a.id-b.id);
+  S.task.mode="list";
+  log("0x04","INFO",`task #${rec.id} ACK`);
+  render();
+}
+function delTask(id){
+  const tk=S.tasks.find(x=>x.id===id);
+  S.tasks=S.tasks.filter(x=>x.id!==id);
+  log("0x05","INFO",`delete task #${id}${tk&&tk.running?" (force stop)":""}`);
+  render();
+}
+function delAllTasks(){
+  S.tasks=[];log("0x05","INFO","delete ALL (0xFF)");render();
+}
+function execRT(){
+  if(Scene.svcBusy){
+    S.task.busy=true;log("0x03","ERR","busy: local schedule running, silently ignored");
+    setTimeout(()=>{S.task.busy=false;render();},2600);render();return;
+  }
+  const d=SIM.SVC100;
+  if(S.task.draft.rtValve===0||S.task.draft.rtValve===1)d.v1=S.task.draft.rtState;
+  if(S.task.draft.rtValve===0||S.task.draft.rtValve===2)d.v2=S.task.draft.rtState;
+  log("0x03","INFO",`exec valve=${S.task.draft.rtValve} state=${S.task.draft.rtState}`);
+  toast("ACK ✓");render();
+}
 function P_debug(){
   return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
     <div class="row"><span class="label">${t("target")}: ${S.device} …9C01</span>${badge(S.phase==="ready"?"":"err",S.phase==="ready"?"● "+t("on"):"○ "+t("off"))}</div>
@@ -799,7 +937,7 @@ function P_perm(kind){
 }
 
 /* ═══════════ 路由 ═══════════ */
-const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,radar:P_radar,ota:P_ota,config:P_config,
+const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,radar:P_radar,ota:P_ota,config:P_config,tasks:P_tasks,
   debug:P_debug,settings:P_settings,log:P_log,cal:P_cal,
   perm:()=>P_perm(S.perm==="denied"?"denied":S.perm==="btoff"?"btoff":S.perm==="unsup"?"unsup":"ask")};
 function render(){
@@ -837,6 +975,10 @@ function runScene(id){
   if(id==="otaBtOff"){if(S.ota.stage>=2&&S.ota.stage<7){failOTA(t("rBtOff"));}else toast(lang==="zh"?"请先在 OTA 页开始升级":"Start an OTA run first");}
   if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
   if(id==="switchDevice"){connectTo("UDS100","…3F2A",-58);toast(lang==="zh"?"旧会话 MPS100 已释放（停轮询/断开/清看门狗）":"Old MPS100 session released");}
+  if(id==="svcBusy"){Scene.svcBusy=true;connectTo("SVC100","…B4D2",-70);
+    setTimeout(()=>{taskInit();S.page="tasks";
+      S.task.draft={valve:1,state:1,dur:300,pulse:100};
+      toast(lang==="zh"?"固件正持有本地定时任务——点『立即执行』观察静默忙拒绝（2s 超时）":"Firmware holds a local task — press Run Now to see busy silent-reject");render();},1600);}
   if(id==="cfgReject"){Scene.cfgReject=true;connectTo("UDS100","…3F2A",-58);
     setTimeout(()=>{cfgInit();S.page="config";
       S.cfg.draft.low=29;toast(lang==="zh"?"已把低阈值改为 29（越界）——保存后观察静默拒绝流程":"low=29 out of range — save to see silent-reject flow");render();},1600);}

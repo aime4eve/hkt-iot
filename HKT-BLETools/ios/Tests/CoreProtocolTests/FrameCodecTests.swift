@@ -36,9 +36,23 @@ final class FrameCodecTests: XCTestCase {
     }
 
     func testSVC100RealtimeTask() {
+        // valve 1 + open + duration 5 s (2B BE) + pulse 100 (3B BE); busy → silently ignored (no ACK)
         XCTAssertEqual(frame(packNum: 0, cmd: 0x03,
                              data: Data([0x01, 0x01, 0x00, 0x05, 0x00, 0x64])),
                        "686B7400000703010100050064BB9E")
+    }
+
+    /// TX-SVC-TASK-002: id 1 + valve 1 + open + pulse 100 + 08:00–18:30 + repeat 0x7F (bit0=Mon…bit6=Sun)
+    func testSVC100TimedTask() {
+        XCTAssertEqual(frame(packNum: 0, cmd: 0x04,
+                             data: Data([0x01, 0x01, 0x01, 0x00, 0x64, 0x01, 0xE0, 0x04, 0x56, 0x7F])),
+                       "686B7400000B04010101006401E004567FF9D5")
+    }
+
+    /// TX-SVC-TASK-003: delete-all is id 0xFF; deleting a running task force-stops it; ACK always.
+    func testSVC100DeleteAllTasks() {
+        XCTAssertEqual(frame(packNum: 0, cmd: 0x05, data: Data([0xFF])),
+                       "686B7400000205FF71C0")
     }
 
     func testPowerFrame() {

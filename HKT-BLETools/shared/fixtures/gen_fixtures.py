@@ -11,6 +11,7 @@ Run from inside shared/fixtures/:  python3 gen_fixtures.py (writes next to itsel
 """
 import json
 import os
+from pathlib import Path
 
 BOOTLOAD = bytes.fromhex("626F6F746C6F6164")
 
@@ -121,11 +122,28 @@ def main():
         },
         {
             "id": "TX-SVC-TASK-001", "device": "SVC100", "cmd": "0x03",
-            "purpose": "realtime task: valve 1 + state 1 + run 5s + pulse 100 (len=7, data 6)",
+            "purpose": "realtime task: valve 1 + state 1 + duration 5 s (2B BE, 0=no auto-stop) + pulse 100 (3B BE); "
+                       "silently ignored (no ACK) while a local schedule task is running",
             "request": tx_frame(0x00, 0x03, bytes([0x01, 0x01, 0x00, 0x05, 0x00, 0x64])),
-            "expectedAck": None,
-            "firmwareReference": "SVC communicate.c data[5]==7&&data[6]==3 branch",
+            "expectedAck": dev_response(0, [(0xFF, b"\xFF")]),
+            "firmwareReference": "SVC communicate.c data[5]==7&&data[6]==3 branch; busy -> branch skipped silently",
             "iosTest": "FrameCodecTests/testSVC100RealtimeTask",
+        },
+        {
+            "id": "TX-SVC-TASK-002", "device": "SVC100", "cmd": "0x04",
+            "purpose": "timed task: id 1 + valve 1 + state 1 + pulse 100 + 08:00-18:30 (minute-of-day BE) + repeat 0x7F (bit0=Mon..bit6=Sun)",
+            "request": tx_frame(0x00, 0x04, bytes([0x01, 0x01, 0x01, 0x00, 0x64, 0x01, 0xE0, 0x04, 0x56, 0x7F])),
+            "expectedAck": dev_response(0, [(0xFF, b"\xFF")]),
+            "firmwareReference": "SVC communicate.c data[5]==11&&data[6]==4 branch; invalid id/valve/state/time/repeat -> silent return",
+            "iosTest": "FrameCodecTests/testSVC100TimedTask",
+        },
+        {
+            "id": "TX-SVC-TASK-003", "device": "SVC100", "cmd": "0x05",
+            "purpose": "delete all tasks (0xFF); single delete = id 1-16; deleting a running task force-stops it; ACK always",
+            "request": tx_frame(0x00, 0x05, bytes([0xFF])),
+            "expectedAck": dev_response(0, [(0xFF, b"\xFF")]),
+            "firmwareReference": "SVC communicate.c data[5]==2&&data[6]==5 branch",
+            "iosTest": "FrameCodecTests/testSVC100DeleteAllTasks",
         },
         {
             "id": "TX-POWER-001", "device": "ALL", "cmd": "0xFE",
