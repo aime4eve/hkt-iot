@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HKT BLETools iOS v1 — 高保真原型（D3/D4）</title>
+<style>
+  :root{
+    --bg:#f2f2f7; --card:#ffffff; --card2:#f7f7fa; --text:#111114; --text2:#6e6e76;
+    --line:#e3e3ea; --ok:#34c759; --warn:#ff9500; --err:#ff3b30; --info:#007aff;
+    --progress:var(--info); --fill:#ececf1;
+    --r-card:12px; --r-dialog:20px;
+  }
+  html[data-theme="dark"]{
+    --bg:#000000; --card:#1c1c1e; --card2:#2a2a2d; --text:#f2f2f5; --text2:#98989f;
+    --line:#38383e; --ok:#30d158; --warn:#ff9f0a; --err:#ff453a; --info:#0a84ff; --fill:#2c2c30;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased}
+  body{font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+       background:#c9c9d1; color:var(--text); font-size:15px}
+  html[data-lang="en"] body{font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif}
+
+  /* ── 工具栏 ── */
+  .toolbar{position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+           padding:10px 16px; background:#111116; color:#eee}
+  .toolbar .brand{font-weight:700; margin-right:8px}
+  .tb{border:1px solid #3a3a42; background:#22222a; color:#eee; border-radius:8px; padding:5px 10px; cursor:pointer; font-size:13px}
+  .tb.active{background:#0a84ff; border-color:#0a84ff}
+  .tb.warn{border-color:#ff9500; color:#ffb340}
+  .spacer{flex:1}
+
+  /* ── 舞台与手机壳 ── */
+  .stage{display:flex; gap:24px; padding:24px; justify-content:center; align-items:flex-start; flex-wrap:wrap}
+  .phone{width:390px; height:844px; border-radius:44px; padding:12px; background:#0c0c0f; box-shadow:0 18px 60px rgba(0,0,0,.4)}
+  .screen{position:relative; width:100%; height:100%; border-radius:34px; overflow:hidden; background:var(--bg);
+          display:flex; flex-direction:column; transition:background .2s}
+  .notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:120px; height:26px;
+         border-radius:14px; background:#0c0c0f; z-index:9}
+  .page{flex:1; display:flex; flex-direction:column; overflow:hidden}
+
+  /* ── 通用组件 ── */
+  .navbar{display:flex; align-items:center; gap:8px; padding:44px 16px 10px; font-size:20px; font-weight:700}
+  .navbar .back{font-size:15px; color:var(--info); font-weight:400; cursor:pointer}
+  .navbar .navright{margin-left:auto}
+  .navbar.small{font-size:17px; padding-bottom:6px}
+  .linkbtn{color:var(--info); background:none; border:none; font-size:15px; cursor:pointer}
+  .body{flex:1; overflow-y:auto; padding:0 16px 24px}
+  .statusbar{display:flex; justify-content:space-between; padding:14px 24px 0; font-size:13px; font-weight:600}
+  .card{background:var(--card); border-radius:var(--r-card); padding:14px; margin-bottom:12px}
+  .hcard{display:flex; align-items:center; gap:12px}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 9px; border-radius:999px;
+         background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok); font-weight:600}
+  .badge.warn{background:color-mix(in srgb, var(--warn) 15%, transparent); color:var(--warn)}
+  .badge.err{background:color-mix(in srgb, var(--err) 15%, transparent); color:var(--err)}
+  .badge.info{background:color-mix(in srgb, var(--info) 15%, transparent); color:var(--info)}
+  .dot{width:7px; height:7px; border-radius:50%; background:currentColor}
+  .section{font-size:13px; color:var(--text2); margin:14px 4px 8px; font-weight:600}
+  .fieldgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .field{background:var(--card); border-radius:var(--r-card); padding:10px 12px}
+  .field .k{font-size:12px; color:var(--text2)}
+  .field .v{font-size:17px; font-weight:600; margin-top:2px}
+  .field .v .unit{font-size:12px; color:var(--text2); font-weight:400; margin-left:2px}
+  .row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--card);
+       border-radius:var(--r-card); margin-bottom:10px}
+  .row .label{font-size:15px}
+  .row .value{color:var(--text2); font-size:14px; display:flex; align-items:center; gap:6px}
+  .btn{display:block; width:100%; padding:14px; border:none; border-radius:12px; background:var(--info);
+       color:#fff; font-size:16px; font-weight:600; text-align:center; cursor:pointer; margin-top:12px}
+  .btn.secondary{background:var(--fill); color:var(--text)}
+  .btn.danger{background:color-mix(in srgb, var(--err) 12%, transparent); color:var(--err)}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+  .banner{display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:10px; font-size:13px;
+          margin-bottom:12px}
+  .banner.err{background:color-mix(in srgb, var(--err) 12%, transparent); color:var(--err)}
+  .banner.warn{background:color-mix(in srgb, var(--warn) 12%, transparent); color:var(--warn)}
+  .banner .act{margin-left:auto; white-space:nowrap; font-weight:600; cursor:pointer}
+  .center{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0 32px; text-align:center}
+  .center .big{font-size:17px; font-weight:600}
+  .center .sub{font-size:13px; color:var(--text2); line-height:1.5}
+  .progress{height:8px; border-radius:4px; background:var(--fill); overflow:hidden; margin:10px 0}
+  .progress i{display:block; height:100%; background:var(--progress); border-radius:4px; transition:width .3s}
+  .rssi{display:inline-flex; align-items:flex-end; gap:2px; height:14px}
+  .rssi i{width:3px; background:var(--ok); border-radius:1px}
+  .rssi i:nth-child(1){height:4px}.rssi i:nth-child(2){height:7px}.rssi i:nth-child(3){height:10px}.rssi i:nth-child(4){height:14px}
+  .rssi.s2 i:nth-child(3),.rssi.s2 i:nth-child(4){background:var(--fill)}
+  .rssi.s1 i:nth-child(2),.rssi.s2 i:nth-child(3),.rssi.s1 i:nth-child(4){background:var(--fill)}
+  .dialog-mask{position:absolute; inset:0; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; z-index:20}
+  .dialog{width:290px; background:var(--card); border-radius:var(--r-dialog); padding:20px 18px; text-align:center}
+  .dialog .t{font-size:16px; font-weight:700; margin-bottom:8px}
+  .dialog .b{font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:14px}
+  .dialog .btns{display:flex; gap:10px}
+  .overlay{position:absolute; inset:0; background:var(--bg); z-index:15; display:flex; flex-direction:column}
+  .steps{display:flex; gap:6px; justify-content:center; margin:8px 0}
+  .steps i{width:22px; height:5px; border-radius:3px; background:var(--fill)}
+  .steps i.on{background:var(--info)}
+  .hexlog{font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.7; background:var(--card);
+          border-radius:10px; padding:10px 12px; overflow:auto; flex:1}
+  .hexlog .tx{color:var(--info)} .hexlog .rx{color:var(--ok)} .hexlog .ts{color:var(--text2); margin-right:6px}
+  .tabbar{display:flex; gap:6px; flex-wrap:wrap; padding:4px 0}
+  .kv{font-size:13px; color:var(--text2); line-height:1.6}
+  .kv b{color:var(--text)}
+  .notes{width:340px; background:#15151b; color:#ddd; border-radius:16px; padding:18px; font-size:13px; line-height:1.7}
+  .notes h3{font-size:14px; margin-bottom:8px; color:#fff}
+  .notes .n{padding:8px 0; border-top:1px solid #2a2a33}
+  .stagebadge{font-size:12px; padding:2px 8px; border-radius:6px; background:#26262e; margin-right:6px; display:inline-block}
+  .check{color:#8ecb9f}
+  textarea,select,input{font:inherit; color:var(--text)}
+  .input{width:100%; background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="brand">HKT BLETools · iOS v1 原型</span>
+  <button class="tb" data-nav="p01">P-01 扫描</button>
+  <button class="tb" data-nav="p02">P-02 连接</button>
+  <button class="tb" data-nav="p03">P-03 详情</button>
+  <button class="tb" data-nav="p04">P-04 OTA</button>
+  <button class="tb" data-nav="p05">P-05 配置</button>
+  <button class="tb" data-nav="p06">P-06 Debug</button>
+  <button class="tb" data-nav="p07">P-07 设置</button>
+  <button class="tb" data-nav="p08">P-08 权限</button>
+  <button class="tb" data-nav="p09">P-09 校准</button>
+  <span class="spacer"></span>
+  <button class="tb" id="themeBtn">🌗 深色</button>
+  <button class="tb" id="langBtn">EN</button>
+</div>
+
+<div class="stage">
+  <div class="phone"><div class="notch"></div><div class="screen" id="screen"></div></div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<script>
+/* ─────────── i18n ─────────── */
+const L = {
+  zh:{
+    appTitle:"HKT BLETools", settings:"设置", scanning:(n)=>`扫描中… 已发现 ${n} 台`,
+    scanDone:(n)=>`扫描完成 · ${n} 台`, rescan:"重新扫描", stop:"停止",
+    empty:"未发现支持设备", emptySub:"请确认设备已上电并在附近", recent:"上次连接",
+    connecting:"正在连接", dServices:"正在发现服务…", dSub:"正在建立通知…",
+    connected:"已连接 · 轮询正常", stale:(s)=>`最后更新 ${s} 秒前 · 正在重试`,
+    abnormal:"数据格式异常，已显示上次有效值", disconnected:"连接已断开",
+    reconnecting:(a,b)=>`重连中（第 ${a}/${b} 次）`, upgradeMode:"设备处于升级模式：上次升级未完成，请重新执行固件升级",
+    gotoUpgrade:"去升级", ota:"固件升级", firmware:"固件", battery:"电量", parking:"车位状态",
+    mode:"工作模式", tamper:"防拆状态", period:"上报周期", mag:"地磁 X/Y/Z", radar:"雷达频谱",
+    minutes:"分钟", temp:"温度", hum:"湿度", distance:"距离", overflow:"满溢状态",
+    config:"参数配置", comingSoon:"即将开放", pick:"选择固件文件…",
+    confirmTitle:"确认升级？", confirmBody:"升级中请保持 App 前台，勿断开设备",
+    cancel:"取消", confirmUp:"确认升级", start:"开始升级", expectVer:"期望版本",
+    transferring:"阶段 3/6 · 数据传输中", keepFront:"请保持 App 前台，勿离开此页面",
+    cancelUp:"取消升级", notDone:"尚未完成", waitReboot:"正在等待设备重启…",
+    waitAdv:"正在等待设备重新广播…", waitConn:"正在重新连接…", waitVer:"正在确认新版本…",
+    waited:(s)=>`已等待 ${s} 秒`, leaveT:"升级正在进行",
+    leaveB:"中断可能导致设备无法正常工作。确定要离开吗？", stay:"继续升级", leave:"仍然离开",
+    ok:"升级成功", took:"全程", viewReport:"查看升级报告", done:"完成",
+    fail:"升级失败", retry:"重试", exportLog:"导出日志", ret:"返回",
+    reason:"原因", noResp:"设备失去响应",
+    debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制",
+    language:"语言", sys:"跟随系统", diagLog:"诊断日志", view:"查看 ▸",
+    rssiTh:"信号强度阈值", hideUnnamed:"过滤无名称设备", about:"关于", version:"版本",
+    privacy:"隐私说明", permDenied:"需要蓝牙权限才能查找和连接附近设备",
+    goSettings:"去系统设置", autoBack:"权限开启后自动返回",
+    btOff:"蓝牙已关闭，请开启后重试", btOpen:"开启蓝牙",
+    unsupported:"此设备不支持蓝牙低功耗",
+    cal:"地磁校准", calStep1:"1. 远离铁磁物体", calStep2:"2. 将设备水平缓慢旋转两周",
+    calRunning:"校准进行中…（轮询驱动）", calNote:"期间其他操作已禁用",
+    prev:"‹ 返回", picked:"已选：", size:"大小", curVer:"当前版本", targetVer:"目标版本",
+    pkg:(a,b)=>`包 ${a}/${b}`, pct:(p)=>`${p}%`,
+  },
+  en:{
+    appTitle:"HKT BLETools", settings:"Settings", scanning:(n)=>`Scanning… ${n} found`,
+    scanDone:(n)=>`Scan finished · ${n} found`, rescan:"Rescan", stop:"Stop",
+    empty:"No supported devices found", emptySub:"Make sure the device is powered on and nearby", recent:"Last connected",
+    connecting:"Connecting", dServices:"Discovering services…", dSub:"Subscribing to notifications…",
+    connected:"Connected · polling", stale:(s)=>`Updated ${s}s ago · retrying`,
+    abnormal:"Data format abnormal; showing last valid values", disconnected:"Disconnected",
+    reconnecting:(a,b)=>`Reconnecting (attempt ${a} of ${b})`, upgradeMode:"Device is in upgrade mode: the last update didn't finish. Please run the firmware update again",
+    gotoUpgrade:"Update Firmware", ota:"Firmware Update", firmware:"Firmware", battery:"Battery", parking:"Parking",
+    mode:"Work mode", tamper:"Tamper", period:"Report period", mag:"Mag X/Y/Z", radar:"Radar spectrum",
+    minutes:"min", temp:"Temperature", hum:"Humidity", distance:"Distance", overflow:"Overflow",
+    config:"Configuration", comingSoon:"Coming soon", pick:"Select firmware file…",
+    confirmTitle:"Start update?", confirmBody:"Keep the app in the foreground and don't disconnect the device",
+    cancel:"Cancel", confirmUp:"Update", start:"Start update", expectVer:"Expected version",
+    transferring:"Stage 3/6 · Transferring data", keepFront:"Keep the app in the foreground",
+    cancelUp:"Cancel update", notDone:"not done yet", waitReboot:"Waiting for the device to restart…",
+    waitAdv:"Waiting for the device to re-advertise…", waitConn:"Reconnecting…", waitVer:"Verifying the new version…",
+    waited:(s)=>`Waited ${s}s`, leaveT:"Update in progress",
+    leaveB:"Interrupting may leave the device unusable. Leave anyway?", stay:"Keep updating", leave:"Leave",
+    ok:"Update succeeded", took:"took", viewReport:"View update report", done:"Done",
+    fail:"Update failed", retry:"Retry", exportLog:"Export Log", ret:"Back",
+    reason:"Reason", noResp:"The device stopped responding",
+    debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy",
+    language:"Language", sys:"Follow System", diagLog:"Diagnostic Log", view:"View ▸",
+    rssiTh:"Signal threshold", hideUnnamed:"Hide unnamed devices", about:"About", version:"Version",
+    privacy:"Privacy", permDenied:"Bluetooth permission is required to find and connect devices",
+    goSettings:"Open Settings", autoBack:"Returns automatically once granted",
+    btOff:"Bluetooth is off. Turn it on and try again", btOpen:"Turn On Bluetooth",
+    unsupported:"This device doesn't support Bluetooth Low Energy",
+    cal:"Magnetometer Calibration", calStep1:"1. Keep away from ferrous objects",
+    calStep2:"2. Rotate the device horizontally, slowly, twice",
+    calRunning:"Calibrating… (poll-driven)", calNote:"Other actions are disabled during calibration",
+    prev:"‹ Back", picked:"Selected:", size:"Size", curVer:"Current", targetVer:"Target",
+    pkg:(a,b)=>`Packet ${a}/${b}`, pct:(p)=>`${p}%`,
+  }
+};
+let lang = "zh";
+const t = k => L[lang][k];
+
+/* ─────────── 状态 ─────────── */
+const S = {
+  page:"p01", theme:"light",
+  found:[], scanning:false, scanTimer:null,
+  connStep:0, p3state:"ready", // ready|stale|abnormal|disconnected|reconnecting|upgradeMode
+  otaStage:0, otaPct:0, otaTimer:null, otaResult:null, otaWait:0, otaError:"",
+  guard:false,
+};
+
+/* ─────────── 骨架 ─────────── */
+function statusbar(){
+  return `<div class="statusbar"><span>9:41</span><span>●●● ⌾ ▮</span></div>`;
+}
+function navbar(title, right="", back=""){
+  return `<div class="navbar small">${back?`<span class="back" onclick="nav('p01')">${t("prev")}</span>`:""}
+          <span>${title}</span><span class="navright">${right}</span></div>`;
+}
+function deviceCard(name, id, rssiBars, dbm){
+  return `<div class="card hcard" style="cursor:pointer" onclick="S.device='${name}';nav('p02');startConn()">
+    <div style="flex:1"><div style="font-weight:700">${name}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${id} · ${dbm} dBm</div></div>
+    <span class="rssi s${rssiBars}"><i></i><i></i><i></i><i></i></span></div>`;
+}
+function otaStageList(active){
+  const names = lang==="zh"
+    ? ["选择固件","确认","传输","等待重启","重连","版本确认"]
+    : ["Select","Confirm","Transfer","Reboot","Reconnect","Verify"];
+  return `<div style="display:flex;gap:4px;margin-bottom:12px">` + names.map((n,i)=>
+    `<div style="flex:1;text-align:center;font-size:10px;color:${i===active?"var(--info)":i<active?"var(--ok)":"var(--text2)"}">
+      <div style="height:4px;border-radius:2px;margin-bottom:4px;background:${i===active?"var(--info)":i<active?"var(--ok)":"var(--fill)"}"></div>${n}</div>`).join("") + `</div>`;
+}
+
+/* ─────────── P-01 扫描 ─────────── */
+function P01(){
+  const head = `<div class="navbar">${t("appTitle")}<span class="navright"><button class="linkbtn" onclick="nav('p07')">⚙︎ ${lang==="zh"?"":"Settings"}</button></span></div>`;
+  const statusbar0 = `<div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
+      <button class="linkbtn" onclick="toggleScan()">${S.scanning?t("stop"):t("rescan")}</button></div>`;
+  let list = S.found.map(d=>deviceCard(d.n,d.i,d.b,d.r)).join("");
+  if(!S.scanning && S.found.length===0)
+    list = `<div class="center" style="min-height:300px"><div style="font-size:44px">📡</div>
+      <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
+      <button class="btn secondary" style="width:auto;padding:10px 24px" onclick="toggleScan()">${t("rescan")}</button></div>`;
+  const recent = (!S.scanning) ? `<div class="section">${t("recent")}</div>
+      <div class="card hcard" style="cursor:pointer" onclick="nav('p02');startConn()">
+        <div style="flex:1"><div style="font-weight:700">UDS100</div>
+        <div style="font-size:12px;color:var(--text2)">ID …8C3F2A · 昨天</div></div>
+        <button class="linkbtn">↻</button></div>` : "";
+  return statusbar()+head+`<div class="body">${statusbar0}${list}${recent}
+    <div class="section">${lang==="zh"?"目标设备过滤":"Target filter"}</div>
+    <div class="row"><span class="label" style="color:var(--text2)">DevEUI / ${lang==="zh"?"扫码":"Scan code"}</span>
+      <span class="value">${t("comingSoon")}</span></div></div>`;
+}
+function toggleScan(){
+  S.scanning=!S.scanning; S.found=[];
+  if(S.scanning){
+    const feed=[["MPS100","…9C01",2,-76],["UDS100","…3F2A",3,-58],["SVC100","…B4D2",3,-63],["EPS100","…77AA",1,-88]];
+    render(); S.scanTimer=setInterval(()=>{
+      if(feed.length) S.found.push(feed.shift()); else clearInterval(S.scanTimer), S.scanning=false;
+      render();
+    }, 900);
+  } else render();
+}
+
+/* ─────────── P-02 连接 ─────────── */
+function P02(){
+  const names=[t("connecting"), t("dServices"), t("dSub")];
+  return statusbar()+`<div class="page"><div class="overlay" style="position:relative">
+    <div class="center">
+      <div style="font-size:44px">🔗</div>
+      <div class="big">MPS100 …9C01</div>
+      <div class="steps">${[0,1,2].map(i=>`<i class="${i<=S.connStep?"on":""}"></i>`).join("")}</div>
+      <div class="sub">${names[S.connStep]}</div>
+    </div>
+    <div style="padding:24px"><button class="btn secondary" onclick="nav('p01')">${t("cancel")}</button></div>
+  </div></div>`;
+}
+function startConn(){
+  clearInterval(S.connTimer); S.connStep=0;
+  S.connTimer=setInterval(()=>{ S.connStep++;
+    if(S.connStep>=3){clearInterval(S.connTimer); nav("p03");} else render();
+  }, 800);
+}
+
+/* ─────────── P-03 详情 ─────────── */
+function P03(){
+  let badge, fields;
+  const grid = (rows)=>`<div class="fieldgrid">`+rows.map(([k,v,u])=>
+      `<div class="field"><div class="k">${k}</div><div class="v">${v}${u?`<span class="unit">${u}</span>`:""}</div></div>`).join("")+`</div>`;
+  const dc = [[t("parking"), lang==="zh"?"有车":"Occupied"],[t("mode"), lang==="zh"?"融合模式":"Fusion"],
+              [t("tamper"), lang==="zh"?"正常":"OK"],[t("period"),"30",t("minutes")],
+              [t("mag"),"+120 / −120 / +400"],[t("radar"), lang==="zh"?"查看 ▸":"View ▸"]];
+  const uds=[[t("temp"),"25.000","°C"],[t("hum"),"12.000","%"],[t("distance"),"1080","mm"],
+             [t("overflow"), lang==="zh"?"未满":"Empty"],[t("period"),"30",t("minutes")],[t("battery"),"4000","mV"]];
+  const tpl = S.device==="UDS100"?uds:dc;
+  fields=grid(tpl);
+  if(S.p3state==="ready") badge=`<span class="badge"><span class="dot"></span>${t("connected")}</span>`;
+  if(S.p3state==="stale"){badge=`<span class="badge warn"><span class="dot"></span>${t("stale")(3)}</span>`;}
+  if(S.p3state==="abnormal") badge=`<span class="badge err"><span class="dot"></span>${t("abnormal")}</span>`;
+  if(S.p3state==="disconnected") badge=`<span class="badge err"><span class="dot"></span>${t("disconnected")}</span>`;
+  if(S.p3state==="reconnecting") badge=`<span class="badge warn"><span class="dot"></span>${t("reconnecting")(1,3)}</span>`;
+  if(S.p3state==="upgradeMode"){
+    return statusbar()+navbar(S.device||"MPS100","", true)+
+      `<div class="center" style="min-height:520px"><div style="font-size:44px">⏫</div>
+       <div class="big">${lang==="zh"?"设备处于升级模式":"Device in upgrade mode"}</div>
+       <div class="sub">${t("upgradeMode")}</div>
+       <button class="btn" style="width:auto;padding:12px 28px" onclick="nav('p04')">${t("gotoUpgrade")}</button></div>`;
+  }
+  let banner="";
+  if(S.p3state==="abnormal") banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="alert('导出诊断日志')">${t("exportLog")}</span></div>`;
+  return statusbar()+navbar(S.device||"MPS100", `<button class="linkbtn" onclick="nav('p04')">${t("ota")} ▸</button>`, true)+
+    `<div class="body">${banner}
+      <div class="card hcard"><span class="badge">${badge}</span>
+        <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("firmware")} v1.28 · ${t("battery")} 87%</div></div>
+      <div class="section">${lang==="zh"?"状态":"Status"}</div>${fields}
+      <div style="margin-top:16px"><button class="btn secondary" disabled>${t("config")} · ${t("comingSoon")}</button></div>
+    </div>`;
+}
+
+/* ─────────── P-04 OTA ─────────── */
+function P04(){
+  const guard = S.guard?`<div class="dialog-mask"><div class="dialog">
+      <div class="t">⚠︎ ${t("leaveT")}</div><div class="b">${t("leaveB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.guard=false;render()">${t("stay")}</button>
+      <button class="btn danger" style="margin:0" onclick="abortOTA();nav('p03')">${t("leave")}</button></div></div></div>`:"";
+  let inner;
+  if(S.otaStage===0){
+    inner=`${otaStageList(0)}
+      <div class="row" style="cursor:pointer" onclick="filePicked()"><span class="label">📄 ${t("pick")}</span><span class="value">▸</span></div>
+      <div id="fileinfo"></div>
+      <button class="btn" id="startbtn" disabled onclick="startOTA()">${t("start")}</button>
+      <div class="kv" style="margin-top:10px">${lang==="zh"?"提示：升级期间请保持 App 前台，勿断开设备。":"Keep the app foreground; don't disconnect during the update."}</div>`;
+  } else if(S.otaStage<6 && !S.otaResult){
+    const stageMsg=[t("transferring"),t("transferring"),t("transferring"),t("waitReboot"),t("waitAdv"),t("waitVer")][S.otaStage-1];
+    const stageIdx=Math.min(S.otaStage-1,5);
+    const waitRow=(S.otaStage>=4)?`<div class="kv" style="text-align:center">${t("waited")(S.otaWait)}</div>`:"";
+    const notDone=(S.otaStage>=4)?` <span class="badge warn">${t("notDone")}</span>`:"";
+    inner=`${otaStageList(stageIdx)}
+      <div class="card"><div style="font-weight:600">${stageMsg}${notDone}</div>
+        <div class="progress"><i style="width:${S.otaPct}%"></i></div>
+        <div class="kv" style="display:flex;justify-content:space-between">
+          <span>${t("pkg")(S.otaPkt,1288)}</span><span>${t("pct")(S.otaPct)}</span></div></div>
+      ${S.otaStage<=3?`<div class="banner warn">⚠︎ ${t("keepFront")}</div>`:""}
+      <div class="kv" style="text-align:center">${waitRow}</div>
+      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>`;
+  } else if(S.otaResult==="ok"){
+    inner=`<div class="center" style="min-height:460px"><div style="font-size:48px;color:var(--ok)">✓</div>
+      <div class="big">${t("ok")} 1.26 → 1.28</div><div class="sub">${t("took")} 4:12</div>
+      <button class="btn secondary" style="width:auto;padding:10px 22px" onclick="alert('OTA 升级报告\\n设备 MPS100 …9C01\\n1.26 → 1.28 · 传输 1288 包\\n各阶段耗时见报告')">${t("viewReport")}</button>
+      <button class="btn" style="width:auto;padding:12px 36px" onclick="nav('p03')">${t("done")}</button></div>`;
+  } else {
+    inner=`<div class="center" style="min-height:460px"><div style="font-size:48px;color:var(--err)">✕</div>
+      <div class="big">${t("fail")}</div>
+      <div class="sub">${t("reason")}: ${S.otaError||t("noResp")}</div>
+      <button class="btn" style="width:auto;padding:12px 36px" onclick="resetOTA()">${t("retry")}</button>
+      <button class="btn secondary" style="width:auto;padding:10px 22px" onclick="alert('导出诊断日志+升级报告')">${t("exportLog")}</button>
+      <button class="linkbtn" onclick="nav('p03')">${t("ret")}</button></div>`;
+  }
+  return statusbar()+navbar(t("ota"),"",true)+`<div class="body">${inner}</div>`+guard;
+}
+function filePicked(){
+  document.getElementById("fileinfo").innerHTML=
+    `<div class="card"><div class="kv">📄 <b>mps100_v128_full.bin</b></div>
+     <div class="kv">${t("size")}: 164,352 B · CRC OK</div>
+     <div class="kv" style="margin-top:4px">${t("curVer")}: 1.26 → ${t("expectVer")}: <b>1.28</b> ✎</div></div>`;
+  document.getElementById("startbtn").disabled=false;
+}
+function startOTA(){
+  S.otaStage=1; S.otaPct=0; S.otaPkt=0; S.otaWait=0; S.otaResult=null; render();
+  clearInterval(S.otaTimer);
+  S.otaTimer=setInterval(()=>{
+    if(S.otaStage<=3){ S.otaPct=Math.min(100,S.otaPct+7); S.otaPkt=Math.round(1288*S.otaPct/100);
+      if(S.otaPct>=100){S.otaStage=4;}
+    } else if(S.otaStage===4){ S.otaWait+=1; if(S.otaWait>3) S.otaStage=5, S.otaWait=0; }
+    else if(S.otaStage===5){ S.otaWait+=1; if(S.otaWait>3) S.otaStage=6, S.otaWait=0; }
+    else if(S.otaStage===6){ clearInterval(S.otaTimer); S.otaResult="ok"; }
+    render();
+  }, 420);
+}
+function askGuard(){ if(S.otaStage>=3&&S.otaStage<6&&!S.otaResult){S.guard=true;render();} else abortOTA(),nav("p03"); }
+function abortOTA(){clearInterval(S.otaTimer); S.otaResult="fail"; S.otaError=t("noResp");}
+function resetOTA(){S.otaStage=0;S.otaResult=null;S.otaPct=0;render();}
+
+/* ─────────── P-05~P-09 ─────────── */
+function P05(){
+  return statusbar()+navbar(t("config"),"",true)+`<div class="body">
+    <div class="center" style="min-height:500px"><div style="font-size:44px">🎛</div>
+    <div class="big">${t("comingSoon")}</div>
+    <div class="sub">${lang==="zh"?"参数配置将在 v1 后期开放（UDS100 / DC200Family / SVC100 模板）":"Configuration opens later in v1 (UDS100 / DC200Family / SVC100 templates)"}</div></div></div>`;
+}
+function P06(){
+  return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
+    <div class="row"><span class="label">${t("target")}: MPS100 …9C01</span><span class="badge"><span class="dot"></span>●</span></div>
+    <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3" style="font-family:ui-monospace,monospace;font-size:12px">
+    <div class="tabbar" style="margin:10px 0">
+      <button class="tb" onclick="sendHex()" style="background:var(--info);border-color:var(--info);color:#fff">${t("send")}</button>
+      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="render()">${t("clear")}</button>
+      <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="alert('复制')">${t("copy")}</button></div>
+    <div class="hexlog" id="hexlog"><div class="kv" style="text-align:center;padding:20px">${lang==="zh"?"发送一条命令以查看原始收发流水":"Send a command to see the raw stream"}</div></div></div>`;
+}
+let hexSent=false;
+function sendHex(){
+  document.getElementById("hexlog").innerHTML=
+    `<div><span class="ts">14:32:01.204</span><span class="tx">TX</span> 686B74 00 0005 FF FFFFFFFFFF 06C3</div>
+     <div><span class="ts">14:32:01.281</span><span class="rx">RX</span> 686B74 00 01 010B1C 8D01 0357 3A01 3B00 8400 860014 …</div>
+     <div><span class="ts">14:32:01.281</span> ✔ 11 records · 77 ms</div>`;
+}
+function P07(){
+  return statusbar()+navbar(t("settings"),"",true)+`<div class="body">
+    <div class="section">${t("language")}</div>
+    <div class="row"><span class="label">${t("language")}</span><span class="value">${t("sys")} ▸</span></div>
+    <div class="section">${t("diagLog")}</div>
+    <div class="row"><span class="label">${t("diagLog")}</span><span class="value">${t("view")}</span></div>
+    <div class="section">${lang==="zh"?"扫描过滤":"Scan filter"}</div>
+    <div class="row"><span class="label">${t("rssiTh")}</span><span class="value">-75 dBm</span></div>
+    <div class="row"><span class="label">${t("hideUnnamed")}</span><span class="value">●</span></div>
+    <div class="section">${t("about")}</div>
+    <div class="row" id="verRow" style="cursor:pointer" onclick="debugTaps()"><span class="label">${t("version")}</span>
+      <span class="value" id="verVal">1.0.0 (123)</span></div>
+    <div class="row"><span class="label">${t("privacy")}</span><span class="value">▸</span></div>
+    <div class="kv" id="taps" style="text-align:center;margin-top:6px"></div></div>`;
+}
+let taps=0;
+function debugTaps(){ taps++; document.getElementById("verVal").textContent=`1.0.0 (123) · ${taps}`;
+  if(taps>=7){document.getElementById("taps").innerHTML=`<span style="color:var(--ok)">${lang==="zh"?"已开启调试模式 · Debug 入口出现在设置":"Debug mode enabled"}</span>`;} }
+function P08(kind){
+  const map={
+    denied:["🔒",t("permDenied"),t("goSettings")],
+    btoff:["📶",t("btOff"),t("btOpen")],
+    unsup:["⚠︎",t("unsupported"),""]};
+  const m=map[kind||"denied"];
+  return statusbar()+`<div class="center" style="min-height:700px">
+    <div style="font-size:52px">${m[0]}</div><div class="big">${m[1]}</div>
+    <div class="sub">${t("autoBack")}</div>
+    <button class="btn" style="width:auto;padding:12px 30px;${m[2]?"":"display:none"}">${m[2]}</button></div>`;
+}
+function P09(){
+  return statusbar()+navbar(t("cal"),"",true)+`<div class="body">
+    <div class="center" style="min-height:420px"><div style="font-size:48px">🧭</div>
+      <div class="kv" style="text-align:left;line-height:2">${t("calStep1")}<br>${t("calStep2")}</div></div>
+    <div class="card" style="text-align:center"><span class="badge info"><span class="dot"></span>${t("calRunning")}</span>
+      <div class="kv" style="margin-top:6px">${t("calNote")}</div></div>
+    <button class="btn secondary" onclick="nav('p03')">${t("cancel")}</button></div>`;
+}
+
+/* ─────────── 路由与渲染 ─────────── */
+const RENDER={p01:P01,p02:P02,p03:P03,p04:P04,p05:P05,p06:P06,p07:P07,p08:()=>P08(S.p8kind),p09:P09};
+function render(){
+  document.documentElement.dataset.lang=lang;
+  document.documentElement.dataset.theme=S.theme;
+  document.getElementById("screen").innerHTML=RENDER[S.page]();
+  document.getElementById("themeBtn").textContent=S.theme==="light"?"🌗 深色":"☀️ 浅色";
+  document.getElementById("langBtn").textContent=lang==="zh"?"EN":"中文";
+  document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
+  notes();
+}
+function nav(p){ S.page=p; render(); }
+document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>nav(b.dataset.nav));
+document.getElementById("themeBtn").onclick=()=>{S.theme=S.theme==="light"?"dark":"light";render();};
+document.getElementById("langBtn").onclick=()=>{lang=lang==="zh"?"en":"zh";render();};
+
+function notes(){
+  const N={
+    p01:"P-01 设备列表：状态⑤⑥⑦⑧齐全；最近设备=冷启动上下文恢复（S-7）；DevEUI/扫码为禁用占位（Q4）。",
+    p02:"P-02 连接覆盖层：三阶段步骤点+取消；失败态替换中部为原因+建议动作+重试。",
+    p03:"P-03 详情：工具栏可切 ①就绪 ②暂无响应 ②b数据异常 ③已断开 ③重连中 ⑤升级模式；字段网格由 DeviceRegistry 模板驱动（UDS100/MPS100 两套示例）。",
+    p04:"P-04 OTA：点「开始升级」自动演示六阶段；阶段④起进度条 100% 标注『尚未完成』；阶段③起返回/取消触发返回保护；升级报告含前后版本与阶段耗时。",
+    p05:"P-05 配置：v1 禁用占位，M8 按 Q1 裁决开放。",
+    p06:"P-06 Debug：原始 hex 收发流水；隐藏入口（关于页连点版本 7 次）。",
+    p07:"P-07 设置：语言切换、诊断日志、过滤设置、版本号+连点 7 次开 Debug。",
+    p08:"P-08 权限/蓝牙引导：denied / btoff / unsup 三态（工具栏切 P-08 后可在 notes 提示下组合主题与语言评审）。",
+    p09:"P-09 校准（预案）：轮询驱动的进行中状态，无本地倒计时假状态；是否进 v1 待 Q1。",
+  }[S.page];
+  const extra = S.page==="p04" ? `<div class="n">异常注入（评审用）：在传输阶段点「取消升级」→ 失败态；模拟 10s 静默 → 设备复位 ACK(1,0) → 自动从包 0 重传 ≤2 次（TC-BC-003）。成功判定=版本确认，进度 100% 不算成功（ADR-006）。</div>` : "";
+  document.getElementById("notes").innerHTML=`<h3>${lang==="zh"?"评审要点（当前页）":"Review notes"}</h3><div class="n">${N}${extra}</div>
+    <div class="n">${lang==="zh"?"约定：所有文案走 String Catalog；浅/深与中/英自由组合核对；页面不出现协议术语（P-06 除外）。":"All copy from String Catalog; review any theme/language mix; no protocol jargon outside P-06."}</div>`;
+}
+render();
+</script>
+</body>
+</html>
