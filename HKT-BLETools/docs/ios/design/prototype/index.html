@@ -127,6 +127,7 @@
     <option value="otaBtOff">OTA 中蓝牙关闭</option>
     <option value="upgradeMode">连接处于升级模式的设备</option>
     <option value="switchDevice">会话切换 A→B</option>
+    <option value="cfgReject">UDS100 配置被静默拒绝</option>
   </select>
   <button class="tb" id="themeBtn">🌗</button>
   <button class="tb" id="langBtn">EN</button>
@@ -180,6 +181,10 @@ const ZH={
   rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
   rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
   times:(a,b)=>`${a} → ${b}`,
+  cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
+  cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
+  hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
+  errRange:"超出范围", errGps:"合法值：0 或 10–1440", errHigh:"合法值：0 或 30–4500",
   cfgT:"参数配置", cal:"地磁校准", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
   calRun:"校准进行中…（以设备上报为准）", calNote:"校准为长时操作，期间其他命令已禁用",
   dTarget:"目标", waiting1:"（等待设备响应）", clearHex:"流水已清空", protoTx:"发送一条命令查看原始收发流水",
@@ -228,6 +233,10 @@ const EN={
   rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
   rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
   times:(a,b)=>`${a} → ${b}`,
+  cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
+  cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
+  hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
+  errRange:"Out of range", errGps:"valid: 0 or 10–1440", errHigh:"valid: 0 or 30–4500",
   cfgT:"Configuration", cal:"Magnetometer Calibration", cal1:"1. Keep away from ferrous objects and strong magnets",
   cal2:"2. Lay the device flat and rotate it slowly, twice", calRun:"Calibrating… (as reported by the device)",
   calNote:"Long-running operation; other commands are disabled meanwhile",
@@ -394,7 +403,7 @@ function fval(key){
     case "f_valve":return lang==="zh"?`阀1 ${d.v1?t("on"):t("off")} · 阀2 ${d.v2?t("on"):t("off")}`:`V1 ${d.v1?"On":"Off"} · V2 ${d.v2?"On":"Off"}`;
     case "f_insert":return lang==="zh"?`阀1 ${d.v1i?t("yes"):t("no")} · 阀2 ${d.v2i?t("yes"):t("no")}`:`V1 ${d.v1i?"Y":"N"} · V2 ${d.v2i?"Y":"N"}`;
     case "f_pulse":return `${d.p1} / ${d.p2}`;
-    case "f_volt":return `${d.vol*3.3} V`;
+    case "f_volt":return (lang==="zh"?"档 ":"Level ")+d.vol;
     case "f_port":return d.port?t("portPwm"):t("portSwitch");
     case "f_stable":return `${d.stable} s`;
     case "f_smart":return d.smart?t("auto"):t("manual");
@@ -440,7 +449,7 @@ function P_detail(){
     `<div class="card hcard">${head}
       <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
      ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
-     <div style="margin-top:14px"><button class="btn secondary" disabled>${t("cfg")} · ${t("coming")}</button></div>`;
+     <div style="margin-top:14px"><button class="btn secondary" onclick="cfgInit();nav('config')">${t("cfg")} ▸</button></div>`;
   return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
     `<div class="body">${body}</div>`;
 }
@@ -590,10 +599,135 @@ function failOTA(msg){clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=m
 function forceAbort(){S.ota.guard=false;clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=t("rConnLost");S.ota.stage=0;nav("detail");}
 function askGuard(){const o=S.ota;if(o.stage>=2&&o.stage<7&&!o.result){o.guard=true;render();}else{nav("detail");}}
 
-/* ═══════════ 配置 / Debug / 设置 / 日志 / 校准 ═══════════ */
+/* ═══════════ 配置（按设备家族，固件边界校验） ═══════════ */
+/* 契约依据 firmware-traceability.md §2.1：
+   UDS100  0x02 len9  = report(1-1440) + gps(0|10-1440) + low(30-4500) + high(0|30-4500)，非法整包静默拒绝
+   DC200F  0x02 len4  = period(0|1-1440 BE) + parkMode(0-2)
+   SVC100  0x02 len8  = vol + port + stable(1-255) + smartPower + timezone(0-26) + period(0|1-1440)，
+                        时区非法无 ACK、周期非法仍 ACK（不对称） */
+S.cfg={draft:{},errors:{},saving:false,ok:false,fail:false};
+function cfgFamily(){return S.device==="UDS100"?"uds":S.device==="SVC100"?"svc":"dc";}
+function cfgInit(){
+  const d=SIM[S.device],f=cfgFamily();
+  S.cfg.errors={};S.cfg.saving=false;S.cfg.ok=false;S.cfg.fail=false;
+  S.cfg.draft=f==="uds"?{report:d.period,gps:d.gps,low:d.low,high:d.high}
+            :f==="dc" ?{report:d.period,mode:d.modeL}
+            :{vol:d.vol,port:d.port,stable:d.stable,smart:d.smart,tz:d.tz,period:d.period};
+}
+function tzLabel(v){
+  if(v===25)return "UTC+03:30";if(v===26)return "UTC+05:30";
+  return v<13?`UTC+${v}`:`UTC−${v-12}`;
+}
+function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
+  const d=S.cfg.draft,err=S.cfg.errors[key];
+  return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <input class="input" style="flex:1" inputmode="numeric" value="${d[key]}"
+        oninput="S.cfg.draft['${key}']=this.value;S.cfg.errors['${key}']=null;render()"><span class="unit" style="color:var(--text2);font-size:12px">${unit||""}</span></div>
+    ${hint?`<div class="kv" style="margin-top:4px;font-size:11px">${hint}</div>`:""}
+    ${err?`<div style="font-size:12px;color:var(--err);margin-top:4px">✕ ${err}</div>`:""}</div>`;
+}
+function segRow(key,label,options){
+  const cur=S.cfg.draft[key];
+  return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
+    <div style="display:flex;gap:6px;margin-top:8px">${options.map((o,i)=>
+      `<div style="flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-size:13px;cursor:pointer;
+        background:${cur===i?"var(--info)":"var(--card2)"};color:${cur===i?"#fff":"var(--text2)"};font-weight:${cur===i?"600":"400"}"
+        onclick="S.cfg.draft['${key}']=${i};render()">${o}</div>`).join("")}</div></div>`;
+}
+function selRow(key,label,options){
+  const cur=S.cfg.draft[key];
+  return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${options.map(o=>
+      `<div style="padding:8px 12px;border-radius:9px;font-size:13px;cursor:pointer;
+        background:${cur===o.v?"var(--info)":"var(--card2)"};color:${cur===o.v?"#fff":"var(--text2)"}"
+        onclick="S.cfg.draft['${key}']=${o.v};render()">${o.l}</div>`).join("")}</div></div>`;
+}
 function P_config(){
-  return statusbar()+navbar(t("cfg"),"",true)+`<div class="center" style="min-height:520px">
-    <div style="font-size:44px">🎛</div><div class="big">${t("coming")}</div><div class="sub">${t("comingSub")}</div></div>`;
+  if(S.phase!=="ready")return statusbar()+navbar(t("cfg"),"",true)+
+    `<div class="center" style="min-height:520px"><div style="font-size:44px">🔌</div>
+     <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
+     <div class="sub">${lang==="zh"?"参数配置需要先连接目标设备":"Connect a device first"}</div>
+     <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
+  const f=cfgFamily(),d=SIM[S.device];
+  if(S.cfg.family!==f){S.cfg.family=f;cfgInit();}
+  const zh=lang==="zh";let body="",banner="";
+  if(S.cfg.ok)banner=`<div class="banner" style="background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)">✓ ${t("cfgOk")}<span class="act" onclick="cfgInit();render()">${zh?"完成":"Done"}</span></div>`;
+  if(S.cfg.fail)banner=`<div class="banner err">✕ ${t("cfgFail")}<span class="act" onclick="S.cfg.fail=false;render()">${t("retry")}</span></div>`;
+  const confirm=S.cfg.confirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cfgConfirmT")}</div>
+    <div class="b"><table class="props" style="width:100%">${cfgSummary()}</table></div>
+    <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.cfg.confirm=false;render()">${t("cancel")}</button>
+    <button class="btn" style="margin:0" onclick="cfgWrite()">${t("confirm")}</button></div></div></div>`:"";
+  const saving=S.cfg.saving?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cfgSent")}</div>
+    <div class="b center" style="text-align:center">0x02 → ${S.device} …9C01</div></div></div>`:"";
+  if(f==="uds"){
+    body=`${banner}
+      ${numRow("report",t("f_period"),null,1,null,1440,null,t("minutes"))}
+      ${numRow("gps",t("f_gps"),t("hintGps"),0,10,1440,null,t("minutes"))}
+      ${numRow("low",t("f_low"),null,30,null,4500,null,"mm")}
+      ${numRow("high",t("f_high"),t("hintHigh"),0,30,4500,null,"mm")}
+      <div class="kv" style="margin:4px 4px 0">${zh?"固件校验任一参数非法时整包静默拒绝（无 ACK），App 侧已前置同规则校验":"Firmware silently rejects the whole payload if any value is invalid; the app pre-validates with the same rules"}</div>`;
+  } else if(f==="dc"){
+    body=`${banner}
+      ${numRow("report",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}
+      ${segRow("mode",t("f_modeL"),[t("fusion"),t("magOnly"),t("radarFirst")])}`;
+  } else {
+    body=`${banner}
+      ${selRow("vol",t("f_volt"),[{v:1,l:zh?"档位 1":"Level 1"},{v:2,l:zh?"档位 2":"Level 2"},{v:3,l:zh?"档位 3":"Level 3"}])}
+      ${segRow("port",t("f_port"),[t("portSwitch"),t("portPwm")])}
+      ${numRow("stable",t("f_stable"),null,1,null,255,"s")}
+      ${segRow("smart",t("f_smart"),[t("auto"),t("manual")])}
+      ${selRow("tz",t("f_tz"),[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26].slice(0,26).map(v=>({v,l:tzLabel(v)})))}
+      ${numRow("period",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}`;
+  }
+  return statusbar()+navbar(t("cfg"),"",true)+`<div class="body">${body}
+    <button class="btn" onclick="cfgSave()">${t("cfgSave")}</button>
+    <div class="kv" style="margin-top:8px">0x02 · ${zh?"载荷":"payload"} ${f==="uds"?9:f==="dc"?4:8} B</div></div>`+confirm+saving;
+}
+function cfgValidate(){
+  const f=cfgFamily(),d=S.cfg.draft,E=S.cfg.errors;let ok=true;
+  const check=(k,a,b,zeroOk)=>{const v=Number(d[k]);
+    const bad=zeroOk?(v!==0&&(v<a||v>b)):(v<a||v>b);
+    if(bad){E[k]=zeroOk&&v!==0?`${t("errRange")} ${a}–${b}`:`${t("errRange")} ${a}–${b}`;ok=false;}};
+  const num=k=>{d[k]=Number(d[k]);return Number.isFinite(d[k]);};
+  if(f==="uds"){
+    if(!num("report")||d.report<1||d.report>1440){E.report=`${t("errRange")} 1–1440`;ok=false;}
+    if(!num("gps")||!(d.gps===0||(d.gps>=10&&d.gps<=1440))){E.gps=t("errGps");ok=false;}
+    if(!num("low")||d.low<30||d.low>4500){E.low=`${t("errRange")} 30–4500`;ok=false;}
+    if(!num("high")||!(d.high===0||(d.high>=30&&d.high<=4500))){E.high=t("errHigh");ok=false;}
+  } else if(f==="dc"){
+    if(!num("report")||d.report<0||d.report>1440){E.report=`${t("errRange")} 0–1440`;ok=false;}
+  } else {
+    if(!num("stable")||d.stable<1||d.stable>255){E.stable=`${t("errRange")} 1–255`;ok=false;}
+    if(!num("period")||d.period<0||d.period>1440){E.period=`${t("errRange")} 0–1440`;ok=false;}
+  }
+  return ok;
+}
+function cfgSummary(){
+  const f=cfgFamily(),d=S.cfg.draft;
+  const rows=f==="uds"?[[t("f_period"),`${d.report} ${t("minutes")}`],[t("f_gps"),`${d.gps} ${t("minutes")}`],
+      [t("f_low"),`${d.low} mm`],[t("f_high"),`${d.high} mm`]]
+    :f==="dc"?[[t("f_period"),`${d.report} ${t("minutes")}`],[t("f_modeL"),[t("fusion"),t("magOnly"),t("radarFirst")][d.mode]]]
+    :[[t("f_volt"),`${zh0()}${d.vol}`],[t("f_port"),d.port?t("portPwm"):t("portSwitch")],[t("f_stable"),`${d.stable} s`],
+      [t("f_smart"),d.smart?t("auto"):t("manual")],[t("f_tz"),tzLabel(+d.tz)],[t("f_period"),`${d.period} ${t("minutes")}`]];
+  return rows.map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join("");
+}
+function zh0(){return lang==="zh"?"档位 ":"Level ";}
+function cfgSave(){if(cfgValidate()){S.cfg.confirm=true;render();}else{render();}}
+function cfgWrite(){
+  S.cfg.confirm=false;S.cfg.saving=true;render();
+  setTimeout(()=>{
+    S.cfg.saving=false;
+    if(Scene.cfgReject){S.cfg.fail=true;log("0x02","ERR","no ACK (silent reject)");}
+    else{
+      S.cfg.ok=true;const d=SIM[S.device],dr=S.cfg.draft,f=cfgFamily();
+      if(f==="uds"){d.period=+dr.report;d.gps=+dr.gps;d.low=+dr.low;d.high=+dr.high;}
+      else if(f==="dc"){d.period=+dr.report;d.modeL=+dr.mode;}
+      else{d.vol=+dr.vol;d.port=+dr.port;d.stable=+dr.stable;d.smart=+dr.smart;d.tz=+dr.tz;d.period=+dr.period;}
+      log("0x02","INFO","ACK");
+    }
+    render();
+  },900);
 }
 function P_debug(){
   return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
@@ -703,6 +837,9 @@ function runScene(id){
   if(id==="otaBtOff"){if(S.ota.stage>=2&&S.ota.stage<7){failOTA(t("rBtOff"));}else toast(lang==="zh"?"请先在 OTA 页开始升级":"Start an OTA run first");}
   if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
   if(id==="switchDevice"){connectTo("UDS100","…3F2A",-58);toast(lang==="zh"?"旧会话 MPS100 已释放（停轮询/断开/清看门狗）":"Old MPS100 session released");}
+  if(id==="cfgReject"){Scene.cfgReject=true;connectTo("UDS100","…3F2A",-58);
+    setTimeout(()=>{cfgInit();S.page="config";
+      S.cfg.draft.low=29;toast(lang==="zh"?"已把低阈值改为 29（越界）——保存后观察静默拒绝流程":"low=29 out of range — save to see silent-reject flow");render();},1600);}
   notes();
 }
 
@@ -715,7 +852,7 @@ function notes(){
     detail:zh?"P-03：字段全集实时轮询（1s）；工具栏「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
     ota:zh?"P-04 全生命周期：选文件→确认弹窗→传输（每 16 包页写停顿）→等待重启→重连→版本确认→成功/报告。场景注入：静默复位重传、版本不符、蓝牙关闭。返回保护在传输后出现。100% 标注『尚未完成』。":"P-04 full lifecycle: pick→confirm→transfer (page-write stalls)→reboot→reconnect→verify→report. Scene injects: reset-restart, version mismatch, BT off. Guard appears once transferring. 100% marked not-done.",
-    config:zh?"P-05：v1 禁用占位（Q1/M8）。":"P-05: disabled placeholder (Q1/M8).",
+    config:zh?"P-05 参数配置（Q1 修订：进 v1）：三家族各自字段集+固件边界前置校验；保存=确认弹窗→0x02→ACK 回读；场景注入『UDS100 配置被静默拒绝』演示无 ACK 超时分支（TX-UDS-CFG-002）。":"P-05 config (Q1 revised: in v1): per-family fields + firmware-boundary pre-validation; save=confirm→0x02→ACK; Scene ▸ UDS100 silent-reject demo (TX-UDS-CFG-002).",
     debug:zh?"P-06：原始收发流水（隐藏入口：关于页连点版本 7 次）。":"P-06: raw stream (hidden entry: 7 taps on version in About).",
     settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold really filters scan, 7-tap debug unlock.",
     log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
