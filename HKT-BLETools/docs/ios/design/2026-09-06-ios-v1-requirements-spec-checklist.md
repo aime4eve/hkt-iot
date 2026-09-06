@@ -75,7 +75,7 @@
 | ID | 类型 | 内容 | 依据 | 状态 |
 | --- | --- | --- | --- | --- |
 | R-18 | 需求 | 实时任务+定时任务表（16 槽）+删除（单条/0xFF 全删）进 v1 | Q1 二修；需求 §7.3 | ✅ 原型 🔜 M8 |
-| SP-18 | 规格 | 0x03=valve+state+时长秒+pulse(3B)，忙静默→2s 超时；0x04=id(1-16)+起止分钟+repeat(bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05 全删/强停；无 BLE 回读→本地镜像明示 | FW-REF SVC 0x03/04/05；TX-SVC-TASK-001~003 | 🔜 M8 |
+| SP-18 | 规格 | 0x03=valve+state+时长秒+pulse(3B)，忙静默→2s 超时；0x04=id(1-16)+起止分钟+repeat(bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05 全删/强停；无 BLE 回读→本地镜像明示 | FW-REF SVC 0x03/04/05；TX-SVC-TASK-001~003；Android PR #3 佐证（repeat 掩码周一=bit0，其 V3.17 漏置位回归已修） | 🔜 M8 |
 
 ## P-06 / P-07 / 日志 / 校准 / P-08
 
