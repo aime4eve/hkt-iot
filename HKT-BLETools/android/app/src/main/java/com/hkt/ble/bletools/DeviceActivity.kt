@@ -393,7 +393,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         configButton.setOnClickListener(View.OnClickListener {
             var error = 0
 
-            fun validate(field: EditText, isValid: (Int) -> Boolean): Int? {
+            fun validate(field: EditText, isInvalid: (Int) -> Boolean): Int? {
                 val inputText = field.text.toString()
                 val number = if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
                     try {
@@ -405,7 +405,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     null
                 }
 
-                return if (number != null && isValid(number)) {
+                return if (number != null && !isInvalid(number)) {
                     field.error = null
                     number
                 } else {
@@ -568,7 +568,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         configButton?.setOnClickListener(View.OnClickListener {
             var error = 0
 
-            fun validate(field: EditText, isValid: (Int) -> Boolean): Int? {
+            fun validate(field: EditText, isInvalid: (Int) -> Boolean): Int? {
                 val inputText = field.text.toString()
                 val number = if (inputText.isNotEmpty() && TextUtils.isDigitsOnly(inputText)) {
                     try {
@@ -580,7 +580,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     null
                 }
 
-                return if (number != null && isValid(number)) {
+                return if (number != null && !isInvalid(number)) {
                     field.error = null
                     number
                 } else {
@@ -591,8 +591,11 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
 
             validate(reportPeriodEditText) { it < 1 || it > 1440 }
                 ?.let { mDeviceEvent.reportPeriod = it } ?: run { error++ }
-            validate(buffetingDurationEditText) { it < 1 || it > 255 }
-                ?.let { mDeviceEvent.buffetingDuration = it } ?: run { error++ }
+            // 端口功能不含稳定时间时字段被禁用，跳过校验且保留设备当前值
+            if (buffetingDurationEditText.isEnabled) {
+                validate(buffetingDurationEditText) { it < 1 || it > 255 }
+                    ?.let { mDeviceEvent.buffetingDuration = it } ?: run { error++ }
+            }
 
             if(error > 0){
                 Toast.makeText(context, R.string.invalid_numeric_range, Toast.LENGTH_SHORT).show()
