@@ -520,10 +520,13 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val powerModeItems = context.resources.getStringArray(R.array.spinner_items_auto_power_on)
         val timezoneItems = context.resources.getStringArray(R.array.spinner_items_timezone)
 
-        volOutSpinner.adapter = HighlightSpinnerAdapter(context, outputVoltageItems.toList(), volOutSpinner)
-        valveModeSpinner.adapter = HighlightSpinnerAdapter(context, portFunctionItems.toList(), valveModeSpinner)
-        autoPowerOnSpinner.adapter = HighlightSpinnerAdapter(context, powerModeItems.toList(), autoPowerOnSpinner)
-        timezoneOnSpinner.adapter = HighlightSpinnerAdapter(context, timezoneItems.toList(), timezoneOnSpinner)
+        // 视图缓存复用，adapter 只能设置一次：重复设置会把 Spinner 选中项重置为第 0 项，冲掉用户未保存的修改
+        if (volOutSpinner.adapter == null) {
+            volOutSpinner.adapter = HighlightSpinnerAdapter(context, outputVoltageItems.toList(), volOutSpinner)
+            valveModeSpinner.adapter = HighlightSpinnerAdapter(context, portFunctionItems.toList(), valveModeSpinner)
+            autoPowerOnSpinner.adapter = HighlightSpinnerAdapter(context, powerModeItems.toList(), autoPowerOnSpinner)
+            timezoneOnSpinner.adapter = HighlightSpinnerAdapter(context, timezoneItems.toList(), timezoneOnSpinner)
+        }
 
         fun updateStableTimeEditor() {
             val usesStableTime = portFunctionValues.getOrNull(valveModeSpinner.selectedItemPosition)
@@ -618,16 +621,19 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val timeEditText = view.findViewById<EditText>(R.id.et_time_realtime_task)
         val configButton = view.findViewById<Button>(R.id.bt_config_realtime_task)
 
-        valveSpinner.adapter = HighlightSpinnerAdapter(
-            context,
-            context.resources.getStringArray(R.array.spinner_items_valve).toList(),
-            valveSpinner
-        )
-        openStateSpinner.adapter = HighlightSpinnerAdapter(
-            context,
-            context.resources.getStringArray(R.array.spinner_items_check).toList(),
-            openStateSpinner
-        )
+        // 视图缓存复用，adapter 只能设置一次：重复设置会把 Spinner 选中项重置为第 0 项
+        if (valveSpinner.adapter == null) {
+            valveSpinner.adapter = HighlightSpinnerAdapter(
+                context,
+                context.resources.getStringArray(R.array.spinner_items_valve).toList(),
+                valveSpinner
+            )
+            openStateSpinner.adapter = HighlightSpinnerAdapter(
+                context,
+                context.resources.getStringArray(R.array.spinner_items_check).toList(),
+                openStateSpinner
+            )
+        }
 
         // 设置点击监听器
         configButton?.setOnClickListener(View.OnClickListener {
@@ -697,21 +703,24 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
         val configButton = view.findViewById<Button>(R.id.bt_config_timed_task)
         val deleteButton = view.findViewById<Button>(R.id.bt_delete_timed_task)
 
-        idSpinner.adapter = HighlightSpinnerAdapter(
-            context,
-            context.resources.getStringArray(R.array.spinner_items_task).toList(),
-            idSpinner
-        )
-        valveSpinner.adapter = HighlightSpinnerAdapter(
-            context,
-            context.resources.getStringArray(R.array.spinner_items_valve).toList(),
-            valveSpinner
-        )
-        openStateSpinner.adapter = HighlightSpinnerAdapter(
-            context,
-            context.resources.getStringArray(R.array.spinner_items_check).toList(),
-            openStateSpinner
-        )
+        // 视图缓存复用，adapter 只能设置一次：重复设置会把 Spinner 选中项重置为第 0 项
+        if (idSpinner.adapter == null) {
+            idSpinner.adapter = HighlightSpinnerAdapter(
+                context,
+                context.resources.getStringArray(R.array.spinner_items_task).toList(),
+                idSpinner
+            )
+            valveSpinner.adapter = HighlightSpinnerAdapter(
+                context,
+                context.resources.getStringArray(R.array.spinner_items_valve).toList(),
+                valveSpinner
+            )
+            openStateSpinner.adapter = HighlightSpinnerAdapter(
+                context,
+                context.resources.getStringArray(R.array.spinner_items_check).toList(),
+                openStateSpinner
+            )
+        }
 
         val repeatDays = listOf("1", "2", "3", "4", "5", "6", "7")
         val repeatSelected = BooleanArray(repeatDays.size)
