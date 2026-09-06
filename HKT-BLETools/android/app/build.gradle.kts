@@ -27,8 +27,8 @@ android {
         applicationId = "com.hkt.ble.bletools"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20260902
-        versionName = "3.17"
+        versionCode = 20260906
+        versionName = "3.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
