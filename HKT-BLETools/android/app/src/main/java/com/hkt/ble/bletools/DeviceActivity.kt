@@ -868,14 +868,24 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                 mDeviceEvent.repeatTimed = 0
                 for (i in selected.indices) {
                     if (selected[i]) {
-                        if (TextUtils.isEmpty(selectStr)) {
+                        // 构建显示文本
+                        if (selectStr.isEmpty()) {
                             selectStr += str[i]
                             ids += id[i]
                         } else {
-                            selectStr = selectStr + "," + str[i]
-                            ids = ids + "," + id[i]
-                            mDeviceEvent.repeatTimed += (1 shl i)
+                            selectStr = "$selectStr,${str[i]}"
+                            ids = "$ids,${id[i]}"
                         }
+
+                        // 修复：使用位或运算，每个索引对应一个bit位
+                        // i=0 → bit0 → 星期一 ("1")
+                        // i=1 → bit1 → 星期二 ("2")
+                        // i=2 → bit2 → 星期三 ("3")
+                        // i=3 → bit3 → 星期四 ("4")
+                        // i=4 → bit4 → 星期五 ("5")
+                        // i=5 → bit5 → 星期六 ("6")
+                        // i=6 → bit6 → 星期天 ("7")
+                        mDeviceEvent.repeatTimed = mDeviceEvent.repeatTimed or (1 shl i)
                     }
                 }
                 edit.text = selectStr
