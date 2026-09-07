@@ -102,6 +102,19 @@
   .switch i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
   .switch.on i{left:20px}
   .slider{width:110px;accent-color:var(--info)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;padding:16px 16px 26px;z-index:22;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+  .sheet .opt{display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:12px;background:var(--card2);margin-top:10px;cursor:pointer;font-size:15px;font-weight:600}
+  .sheet .opt .ic{font-size:20px}
+  .cam{position:absolute;inset:0;background:#0b0b0f;z-index:26;display:flex;flex-direction:column}
+  .cam .frame{position:relative;width:240px;height:240px;margin:110px auto 0}
+  .cam .frame i{position:absolute;width:34px;height:34px;border:3px solid #23ADE5}
+  .cam .frame i:nth-child(1){top:0;left:0;border-right:none;border-bottom:none;border-radius:8px 0 0 0}
+  .cam .frame i:nth-child(2){top:0;right:0;border-left:none;border-bottom:none;border-radius:0 8px 0 0}
+  .cam .frame i:nth-child(3){bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 8px}
+  .cam .frame i:nth-child(4){bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 8px 0}
+  .pulse{width:72px;height:72px;border-radius:50%;background:color-mix(in srgb,var(--info) 16%,transparent);display:flex;align-items:center;justify-content:center;position:relative;font-size:30px}
+  .pulse::before{content:"";position:absolute;inset:-14px;border-radius:50%;border:2px solid var(--info);animation:ping 1.6s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.55);opacity:.7}100%{transform:scale(1.3);opacity:0}}
 </style>
 </head>
 <body>
@@ -128,6 +141,7 @@
     <option value="otaBtOff">OTA 中蓝牙关闭</option>
     <option value="upgradeMode">连接处于升级模式的设备</option>
     <option value="switchDevice">会话切换 A→B</option>
+    <option value="locateMiss">定位设备 3 轮未找到</option>
     <option value="cfgReject">UDS100 配置被静默拒绝</option>
     <option value="svcBusy">SVC100 实时任务被忙拒绝</option>
   </select>
@@ -146,7 +160,14 @@
 const ZH={
   prev:"‹ 返回", app:"HKT BLETools", settings:"设置", scanning:n=>`扫描中… 已发现 ${n} 台`, scanDone:n=>`扫描完成 · ${n} 台`,
   stop:"停止", rescan:"重新扫描", empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
-  recent:"最近设备", yesterday:"昨天", filter:"目标设备过滤", coming:"即将开放",
+  locate:"⌖ 定位", locateT:"定位设备", locateSub:"扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标",
+  locateQr:"扫描设备二维码", locateManual:"输入 DevEUI", locateGo:"定位", euiLabel:"DevEUI（16 位十六进制）",
+  errEui:"须为 16 位十六进制（0-9、A-F）",
+  camPermT:"允许“HKT BLETools”使用相机？", camPermB:"用于扫描设备标签上的二维码", camHint:"对准设备标签上的二维码，自动识别",
+  camDeniedT:"相机权限未开启", camDeniedB:"需要在系统设置中允许相机权限，才能扫描设备二维码。",
+  finding:s=>`正在寻找 …${s}`, findHint:"靠近目标设备可加快定位，找到后自动连接", found:s=>`已找到目标 …${s}`,
+  notFoundT:s=>`未找到 …${s}`, notFoundSub:"请确认设备已上电、在信号范围内，并核对标签 DevEUI 后 6 位", qrOk:e=>`已识别 ${e}`,
+  recent:"最近设备", yesterday:"昨天",
   conn:"正在连接", dSvc:"正在发现服务…", dSub:"正在订阅通知…", cancel:"取消",
   connected:"已连接 · 轮询正常", stale:s=>`最后更新 ${s} 秒前 · 正在重试`,
   abnormal:"响应数据异常（未知类型），已显示可解析字段", disconnected:"连接已断开",
@@ -160,7 +181,7 @@ const ZH={
   occupied:"有车", vacant:"空位", normal:"正常", triggered:"已触发", on:"开启", off:"关闭",
   yes:"是", no:"否", auto:"自动", manual:"手动", fusion:"融合模式", magOnly:"仅地磁", radarFirst:"雷达优先",
   portPwm:"PWM 控制", portSwitch:"开关控制", view:"查看", minutes:"分钟", mm:"mm", deg:"°",
-  cfg:"参数配置", coming:"即将开放", comingSub:"v1 后期开放：UDS100 阈值/周期 · DC200 周期/工作模式 · SVC100 电压/端口/时区/周期",
+  cfg:"参数配置",
   debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制", waiting:"等待设备响应…",
   lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值", hideUn:"过滤无名称设备",
   about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
@@ -220,7 +241,14 @@ const ZH={
 const EN={
   prev:"‹ Back", app:"HKT BLETools", settings:"Settings", scanning:n=>`Scanning… ${n} found`, scanDone:n=>`Scan finished · ${n} found`,
   stop:"Stop", rescan:"Rescan", empty:"No supported devices found", emptySub:"Make sure devices are powered and nearby",
-  recent:"Recent", yesterday:"Yesterday", filter:"Target device filter", coming:"Coming soon",
+  locate:"⌖ Locate", locateT:"Locate Device", locateSub:"Scan the QR code on the device label, or enter the 16-hex DevEUI, to find and connect the target automatically",
+  locateQr:"Scan Device QR Code", locateManual:"Enter DevEUI", locateGo:"Locate", euiLabel:"DevEUI (16 hex chars)",
+  errEui:"Must be 16 hex characters (0-9, A-F)",
+  camPermT:"Allow “HKT BLETools” to use the camera?", camPermB:"Used to scan QR codes on device labels", camHint:"Point at the QR code on the device label to scan",
+  camDeniedT:"Camera permission is off", camDeniedB:"Enable camera permission in Settings to scan device QR codes.",
+  finding:s=>`Searching for …${s}`, findHint:"Move closer to speed up locating; connects automatically once found", found:s=>`Target …${s} found`,
+  notFoundT:s=>`…${s} not found`, notFoundSub:"Make sure the device is powered and nearby; check the last 6 chars of the label DevEUI", qrOk:e=>`Recognized ${e}`,
+  recent:"Recent", yesterday:"Yesterday",
   conn:"Connecting", dSvc:"Discovering services…", dSub:"Subscribing to notifications…", cancel:"Cancel",
   connected:"Connected · polling", stale:s=>`Updated ${s}s ago · retrying`,
   abnormal:"Response abnormal (unknown type); parsed fields shown", disconnected:"Disconnected",
@@ -234,7 +262,7 @@ const EN={
   occupied:"Occupied", vacant:"Vacant", normal:"Normal", triggered:"Triggered", on:"On", off:"Off",
   yes:"Yes", no:"No", auto:"Auto", manual:"Manual", fusion:"Fusion", magOnly:"Mag only", radarFirst:"Radar first",
   portPwm:"PWM control", portSwitch:"Switch control", view:"View", minutes:"min", mm:"mm", deg:"°",
-  cfg:"Configuration", coming:"Coming soon", comingSub:"Later in v1: UDS100 thresholds/period · DC200 period/mode · SVC100 voltage/ports/timezone/period",
+  cfg:"Configuration",
   debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy", waiting:"(waiting for device)",
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold", hideUn:"Hide unnamed devices",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
@@ -317,6 +345,7 @@ const S={
   ota:{stage:0,pct:0,pkt:0,wait:0,result:null,err:"",restarts:0,silence:false,report:null,t0:0,times:{}},
   guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,hist:{x:[],y:[],z:[]},
   radarOpen:false,
+  camPerm:"notDetermined",camAsk:false,locate:{mode:null,eui:null,suffix:null,err:null,draft:"0095690"},
 };
 const PKTS=1284;
 const clock=()=>{const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
@@ -358,31 +387,122 @@ function toggleScan(){
   setTimeout(()=>{if(S.scanning&&i>=CANDIDATES.length){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();}},7000);
 }
 function P_home(){
+  const locating=S.locate.mode==="finding"||S.locate.mode==="miss";
   const list=S.found.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="connectTo('${d.n}','${d.id}',${d.rssi})">
       <div style="flex:1"><div style="font-weight:700">${d.n}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${d.id} · ${d.rssi} dBm</div></div>${rssi(d.b||3)}</div>`).join("");
   const empty=(!S.scanning&&S.found.length===0)?`<div class="center" style="min-height:320px"><div style="font-size:44px">📡</div>
       <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
       <button class="btn secondary" style="width:auto;padding:10px 26px" onclick="toggleScan()">${t("rescan")}</button></div>`:"";
-  const recent=S.found.length===0?`<div class="section">${t("recent")}</div>
+  const recent=(S.found.length===0&&!locating)?`<div class="section">${t("recent")}</div>
       <div class="card hcard" style="cursor:pointer" onclick="connectTo('UDS100','…3F2A',-58)">
         <div style="flex:1"><div style="font-weight:700">UDS100</div>
         <div style="font-size:12px;color:var(--text2)">ID …8C3F2A · ${t("yesterday")}</div></div><button class="linkbtn">↻</button></div>`:"";
-  return statusbar()+`<div class="navbar">${t("app")}<span class="navright"><button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
-    <div class="body">
-      <div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
+  const body=locating?locateView():
+      `<div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
         <button class="linkbtn" data-act="toggle-scan">${S.scanning?t("stop"):t("rescan")}</button></div>
-      ${list}${empty}${recent}
-      <div class="section">${t("filter")}</div>
-      <div class="row"><span class="label" style="color:var(--text2)">DevEUI / QR</span><span class="value">${t("coming")}</span></div>
-    </div>`;
+      ${list}${empty}${recent}`;
+  return statusbar()+`<div class="navbar">${t("app")}<span class="navright">
+      <button class="linkbtn" data-act="locate" style="margin-right:12px">${t("locate")}</button>
+      <button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
+    <div class="body">${body}</div>`+homeOverlays();
 }
 function toggleScanAct(){toggleScan();}
+
+/* ═══════════ P-01b 目标设备定位（⌖ 扫码/手输 DevEUI → 后 6 位匹配广播名 → 命中自动连接） ═══════════
+   契约依据 Android MainActivity.kt（2026-09-07 用户裁决进 v1，翻案 09-06 Q4）：
+   - isValidDevEui：16 位十六进制；getDevEuiMatchSuffix：取后 6 位大写
+   - isTargetDevice：广播名 contains 后缀（忽略大小写）；目标模式在 RSSI/空名过滤之前判定
+   - 命中即停扫自动连接；3 轮（3×10s）未命中提示未找到（演示场景 5s） */
+const DEV_EUI_RE=/^[0-9A-Fa-f]{16}$/;
+function euiSuffix(eui){const v=String(eui||"").trim();return DEV_EUI_RE.test(v)?v.slice(-6).toUpperCase():null;}
+function openLocateSheet(){S.locate.mode="sheet";S.locate.err=null;render();}
+function locateCancel(){clearTimeout(S.locateHitTimer);clearTimeout(S.locateMissTimer);
+  S.locate.mode=null;S.locate.eui=null;S.locate.suffix=null;S.locate.err=null;render();}
+function confirmEuiInput(){
+  const v=String(S.locate.draft||"").trim();
+  if(!DEV_EUI_RE.test(v)){S.locate.err=t("errEui");render();return;}
+  locateStart(v);
+}
+function openCameraScan(){
+  if(S.camPerm==="granted"){startCam();return;}
+  if(S.camPerm==="denied"){S.locate.mode="camdenied";render();return;}
+  S.camAsk=true;render();
+}
+function startCam(){
+  S.camAsk=false;S.locate.mode="camera";render();
+  clearTimeout(S.camTimer);
+  S.camTimer=setTimeout(()=>{const eui="0095690A3F2AB7C4";toast(t("qrOk")(eui));locateStart(eui);},1800);
+}
+function locateStart(eui){
+  const s=euiSuffix(eui);
+  if(!s){S.locate.mode="input";S.locate.err=t("errEui");render();return;}
+  if(S.scanning){S.scanning=false;clearInterval(S.scanTimer);}
+  S.locate.mode="finding";S.locate.eui=String(eui).trim().toUpperCase();S.locate.suffix=s;S.locate.err=null;
+  log(t("locate"),"INFO",`${S.locate.eui} → suffix ${s}`);
+  render();
+  clearTimeout(S.locateHitTimer);clearTimeout(S.locateMissTimer);
+  if(Scene.locateMiss){
+    Scene.locateMiss=false;
+    S.locateMissTimer=setTimeout(()=>{S.locate.mode="miss";log(t("locate"),"WARN","3 cycles no match");render();},5000);
+    return;
+  }
+  S.locateHitTimer=setTimeout(()=>{
+    const id="…"+s.toLowerCase();
+    toast(t("found")(s));log(t("disc"),"INFO",`UDS100 ${id} target hit`);
+    S.locate.mode=null;
+    connectTo("UDS100",id,-58);
+  },2600);
+}
+function locateView(){
+  const l=S.locate;
+  if(l.mode==="finding")return `<div class="center" style="min-height:430px">
+    <div class="pulse">🎯</div><div class="big" style="margin-top:6px">${t("finding")(l.suffix)}</div>
+    <div class="sub">${t("findHint")}</div>
+    <button class="btn secondary" style="width:auto;padding:10px 30px" onclick="locateCancel()">${t("cancel")}</button></div>`;
+  return `<div class="center" style="min-height:430px">
+    <div style="font-size:44px">🔍</div><div class="big">${t("notFoundT")(l.suffix)}</div>
+    <div class="sub">${t("notFoundSub")}</div>
+    <button class="btn" style="width:auto;padding:12px 34px" onclick="locateStart(S.locate.eui)">${t("retry")}</button>
+    <button class="linkbtn" style="margin-top:8px" onclick="locateCancel()">${t("back")}</button></div>`;
+}
+function homeOverlays(){
+  const l=S.locate;let h="";
+  if(l.mode==="sheet")h=`<div class="dialog-mask" style="align-items:flex-end;background:rgba(0,0,0,.35)" onclick="locateCancel()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div style="font-weight:700;font-size:16px">${t("locateT")}</div>
+        <div class="kv" style="margin-top:4px">${t("locateSub")}</div>
+        <div class="opt" onclick="openCameraScan()"><span class="ic">📷</span>${t("locateQr")}</div>
+        <div class="opt" onclick="S.locate.mode='input';S.locate.err=null;render()"><span class="ic">⌨︎</span>${t("locateManual")}</div>
+        <button class="btn secondary" style="margin-top:14px" onclick="locateCancel()">${t("cancel")}</button>
+      </div></div>`;
+  else if(l.mode==="input")h=`<div class="dialog-mask"><div class="dialog" style="text-align:left">
+      <div class="t">${t("locateManual")}</div>
+      <div class="b" style="margin-bottom:8px">${t("euiLabel")}</div>
+      <input class="input" id="euiInput" maxlength="16" value="${l.draft}"
+        oninput="S.locate.draft=this.value.toUpperCase().replace(/[^0-9A-Fa-f]/g,'').slice(0,16);this.value=S.locate.draft">
+      ${l.err?`<div style="font-size:12px;color:var(--err);margin-top:6px">✕ ${l.err}</div>`:""}
+      <div class="btns" style="margin-top:14px"><button class="btn secondary" style="margin:0" onclick="locateCancel()">${t("cancel")}</button>
+      <button class="btn" style="margin:0" onclick="confirmEuiInput()">${t("locateGo")}</button></div></div></div>`;
+  else if(l.mode==="camdenied")h=`<div class="overlay"><div class="center" style="min-height:640px">
+      <div style="font-size:52px">📷</div><div class="big">${t("camDeniedT")}</div><div class="sub">${t("camDeniedB")}</div>
+      <button class="btn" style="width:auto;padding:12px 30px" onclick="S.camPerm='granted';startCam()">${t("goSet")}</button>
+      <button class="btn secondary" style="width:auto;padding:10px 24px" onclick="locateCancel()">${t("back")}</button></div></div>`;
+  if(S.camAsk)h+=`<div class="dialog-mask"><div class="dialog"><div class="t" style="font-size:14px">${t("camPermT")}</div>
+      <div class="b center">${t("camPermB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.camAsk=false;S.camPerm='denied';S.locate.mode='sheet';render()">${t("dontAllow")}</button>
+      <button class="btn" style="margin:0" onclick="startCam()">${t("allow")}</button></div></div></div>`;
+  if(l.mode==="camera")h+=`<div class="cam"><div style="color:#eee">${statusbar()}</div>
+      <div class="navbar small" style="color:#fff"><span class="back" data-act="camback" style="color:#23ADE5">${t("cancel")}</span><span>${t("locateQr")}</span></div>
+      <div class="frame"><i></i><i></i><i></i><i></i></div>
+      <div class="kv" style="color:#bbb;text-align:center;margin-top:26px">${t("camHint")}</div></div>`;
+  return h;
+}
 
 /* ═══════════ 连接 ═══════════ */
 function connectTo(name,id,rssi){
   if(S.phase==="ready"&&S.device!==name){toast(lang==="zh"?`已释放 ${S.device} 旧会话（停轮询/断开/清定时器）`:`Released old ${S.device} session`);stopPoll();}
-  S.device=name;S.page="connecting";S.connStep=0;S.connPhase=0;render();
+  S.device=name;S.id=id;S.page="connecting";S.connStep=0;S.connPhase=0;render();
   log(t("connPhase"),"INFO",name);
   const stepsMs=[700,900,800];
   S.connTimer=setInterval(()=>{
@@ -1184,7 +1304,8 @@ function render(){
   document.getElementById("langBtn").textContent=lang==="zh"?"EN":"中文";
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
   document.querySelectorAll("[data-act]").forEach(b=>{
-    b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":backPage,"home":goHome }[b.dataset.act];
+    b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":backPage,"home":goHome,
+      "locate":openLocateSheet,"camback":locateCancel }[b.dataset.act];
   });
   notes();
 }
@@ -1208,7 +1329,7 @@ document.getElementById("langBtn").onclick=()=>{lang=lang==="zh"?"en":"zh";rende
 document.getElementById("sceneSel").onchange=e=>{runScene(e.target.value);e.target.value="";};
 
 /* ═══════════ 场景注入 ═══════════ */
-const Scene={pollStall:false,otaReset:false,otaMismatch:false,upgradeModeDevice:false};
+const Scene={pollStall:false,otaReset:false,otaMismatch:false,upgradeModeDevice:false,locateMiss:false};
 function runScene(id){
   if(!id)return;
   if(id==="perm"){S.perm="ask";S.page="perm";render();}
@@ -1223,6 +1344,8 @@ function runScene(id){
   if(id==="otaBtOff"){if(S.ota.stage>=2&&S.ota.stage<7){failOTA(t("rBtOff"));}else toast(lang==="zh"?"请先在 OTA 页开始升级":"Start an OTA run first");}
   if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
   if(id==="switchDevice"){connectTo("UDS100","…3F2A",-58);toast(lang==="zh"?"旧会话 MPS100 已释放（停轮询/断开/清看门狗）":"Old MPS100 session released");}
+  if(id==="locateMiss"){Scene.locateMiss=true;S.camPerm="granted";locateStart("0095690A3F2AB7C4");
+    toast(lang==="zh"?"定向扫描 3 轮（演示 5 秒）未命中——观察『未找到』态与重试":"Targeted scan misses 3 cycles (5s demo) — observe the not-found state and retry");}
   if(id==="svcBusy"){Scene.svcBusy=true;connectTo("SVC100","…B4D2",-70);
     setTimeout(()=>{taskInit();S.page="tasks";
       S.task.draft={valve:1,state:1,dur:300,pulse:100};
@@ -1243,7 +1366,8 @@ const SPEC=[
  {id:"R-G5",pg:"all",tp:"需求",txt:"实现阶段 UI 1:1 克隆本确认稿（布局/组件/状态/文案/交互）",ref:"用户裁决 2026-09-06；UI 计划 §8"},
  {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；按支持名过滤；显示名称/RSSI；阈值与空名过滤；去重；点击连接",ref:"需求 §5.2；A-02/A-03"},
  {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值设置页可调且真实生效；未识别名不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010"},
- {id:"R-2",pg:"home",tp:"需求",txt:"v1 不含 DevEUI/扫码目标过滤——界面不显示任何占位入口（非延后，是范围外）",ref:"Q4 裁决 2026-09-06"},
+ {id:"R-2",pg:"home",tp:"需求",txt:"目标设备定位进 v1（2026-09-07 用户裁决选 B，翻案 09-06 Q4）：扫描页⌖入口，扫码/手输 16 位 DevEUI→取后 6 位匹配广播名→命中自动停扫直连；3 轮未命中给『未找到』+重试/退出；界面不保留任何占位入口",ref:"用户 2026-09-07；需求 §5.3；Android MainActivity.kt"},
+ {id:"SP-2",pg:"home",tp:"规格",txt:"校验=16 位 hex（预填前缀 0095690、自动大写、非法字符不进框）；匹配=后 6 位忽略大小写 contains 广播名；定位态隐藏常规列表+脉冲动画+可退出；目标模式忽略 RSSI/空名过滤；扫码=系统相机（二维码/条码），新增相机权限引导（未决定弹窗/拒绝→去设置/可用），权限页扩为五态；匹配仅依赖广播名，无新增固件依赖",ref:"Android isValidDevEui/getDevEuiMatchSuffix/isTargetDevice/addDeviceList；TC-ST-014~017"},
  {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
@@ -1307,7 +1431,7 @@ function notes(){
     return;
   }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；最近设备=冷启动上下文恢复（S-7）。无 DevEUI/扫码入口（v1 范围外）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接（含相机权限引导）；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; ⌖ Locate = scan QR / enter DevEUI → match last-6 suffix in advertised name → auto-connect (with camera permission flow); recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
     detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",

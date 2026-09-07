@@ -253,8 +253,8 @@ Bootloader 采用**停等式 ARQ**（`Compents/BootLoader/uart.c`）：每包数
 struct FeatureSurface {
     var basicConfigUI: Bool = false     // M8 随 Q1 裁决置 true
     var debugUI: Bool = false           // 隐藏入口开启；dev 构建默认 true
-    var targetedScanUI: Bool = false    // Q4：v1 关闭
-    var barcodeUI: Bool = false
+    var targetedScanUI: Bool = true    // 2026-09-07 裁决：定位进 v1（翻案 Q4）
+    var barcodeUI: Bool = true         // 扫码定位依赖二维码/条码识别（需相机权限）
     var languageSwitchUI: Bool = true
     var diagnosticLogUI: Bool = true
 }
