@@ -296,9 +296,9 @@ let lang="zh"; const t=k=>L[lang][k];
 
 /* ═══════════ 设备仿真数据（字段全集 = 需求 §7.1–7.3） ═══════════ */
 const SIM={
-  MPS100:{fw:"v1.28",batt:87,park:1,modeL:0,tamper:0,period:30,mag:[120,-120,400],
+  MPS100:{fw:"v1.28",batt:87,park:1,modeL:0,tamper:0,period:30,mag:[1236,-842,2468],
     radar:[12,28,45,66,80,120,90,60,34,18],fields:["f_park","f_modeL","f_tamper","f_period","f_mag","f_radar"]},
-  EPS100:{fw:"v1.0C",batt:64,park:0,modeL:1,tamper:0,period:20,mag:[-40,66,210],radar:[5,9,14,22,30,26,18,12,7,3]},
+  EPS100:{fw:"v1.0C",batt:64,park:0,modeL:1,tamper:0,period:20,mag:[-1634,952,1531],radar:[5,9,14,22,30,26,18,12,7,3]},
   UDS100:{fw:"v1.10",batt:72,temp:25040,hum:58600,dist:1082,ovf:0,low:400,high:3000,lat:31.2304,lon:121.4737,gps:60,period:30,
     angle:24,slant:0,alarm:0},
   SVC100:{fw:"v1.13",batt:93,v1:0,v1i:1,p1:118,v2:1,v2i:1,p2:502,vol:2,port:1,stable:5,smart:1,tz:25,period:60},
@@ -418,7 +418,7 @@ function startPoll(){
 function stopPoll(){clearInterval(S.pollTimer);}
 function bumpSim(){
   const d=SIM[S.device];if(!d)return;
-  if(d.mag)d.mag=d.mag.map(v=>jit(v,4));
+  if(d.mag)d.mag=d.mag.map(v=>jit(v,18));
   if(d.radar)d.radar=d.radar.map(v=>Math.max(2,jit(v,6)));
   if(d.temp!==undefined)d.temp=jit(d.temp,80);
   if(d.hum!==undefined)d.hum=jit(d.hum,150);
@@ -542,8 +542,9 @@ function reconnect(){S.p3="reconnecting";S.recon=1;render();
 function seedMag(){
   const d=SIM[S.device];if(!d||!d.mag)return;
   const base=[...d.mag];
+  const amp=v=>Math.max(12,Math.round(Math.abs(v)*0.04));
   for(let i=0;i<29;i++){
-    S.hist.x.push(jit(base[0],18));S.hist.y.push(jit(base[1],18));S.hist.z.push(jit(base[2],18));
+    S.hist.x.push(jit(base[0],amp(base[0])));S.hist.y.push(jit(base[1],amp(base[1])));S.hist.z.push(jit(base[2],amp(base[2])));
   }
   S.hist.x.push(base[0]);S.hist.y.push(base[1]);S.hist.z.push(base[2]);
 }
