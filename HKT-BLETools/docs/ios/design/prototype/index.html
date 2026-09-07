@@ -527,6 +527,7 @@ function togglePower(){
   if(S.powerOn){S.powerConfirm=true;render();return;}
   S.powerOn=true;S.p3="ready";startPoll();log("0xFE","INFO","power on");render();
 }
+function fmtSigned(arr){return arr&&arr.length?(arr[arr.length-1]>0?"+":"")+arr[arr.length-1]:"—";}
 function liveClockStr(){const d=new Date();const q=n=>String(n).padStart(2,"0");
   return `${d.getFullYear()}-${q(d.getMonth()+1)}-${q(d.getDate())} ${q(d.getHours())}:${q(d.getMinutes())}:${q(d.getSeconds())}`;}
 function doTimeSync(){
@@ -556,12 +557,16 @@ function magChart(){
   const X=i=>pad+i*(W-2*pad)/Math.max(h.x.length-1,1);
   const Y=v=>H-pad-(v-mn)/(mx-mn)*(H-2*pad);
   const line=arr=>arr.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
-  const zero=(mn<0&&mx>0)?`<line x1="${pad}" y1="${Y(0).toFixed(1)}" x2="${W-pad}" y2="${Y(0).toFixed(1)}" stroke="#88888855" stroke-dasharray="4 3"/>`:"";
-  const lines=[["#007aff",h.x],["#34c759",h.y],["#ff9500",h.z]]
-    .map(([c,arr])=>`<polyline points="${line(arr)}" fill="none" stroke="${c}" stroke-width="1.6"/>`).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block">${zero}${lines}</svg>
-    <div class="kv" style="display:flex;justify-content:space-between;margin-top:4px">
-      <span>min ${mn.toFixed(0)}</span><span>${h.x.length}/30</span><span>max ${mx.toFixed(0)}</span></div>`;
+  let grid="";
+  for(let i=1;i<=3;i++){const y=(pad+i*(H-2*pad)/4).toFixed(1);
+    grid+=`<line x1="${pad}" y1="${y}" x2="${W-pad}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;}
+  const zero=(mn<0&&mx>0)?`<line x1="${pad}" y1="${Y(0).toFixed(1)}" x2="${W-pad}" y2="${Y(0).toFixed(1)}" stroke="var(--text2)" stroke-opacity=".45" stroke-dasharray="5 4"/>`:"";
+  const series=[["#007aff",h.x],["#34c759",h.y],["#ff9500",h.z]];
+  const lines=series.map(([c,arr])=>`<polyline points="${line(arr)}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
+  const dots=series.map(([c,arr])=>arr.length?`<circle cx="${X(arr.length-1).toFixed(1)}" cy="${Y(arr[arr.length-1]).toFixed(1)}" r="3.2" fill="${c}"/>`:"").join("");
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${zero}${lines}${dots}</svg>
+    <div class="kv" style="display:flex;justify-content:space-between;margin-top:6px;color:var(--text2)">
+      <span>min ${mn.toFixed(0)}</span><span>${h.x.length} / 30</span><span>max ${mx.toFixed(0)}</span></div>`;
 }
 function P_tech(){
   if(S.hist.x.length===0)seedMag();
@@ -581,17 +586,17 @@ function P_tech(){
       <div style="display:flex;gap:14px;align-items:center;margin-top:6px">
         ${badge(d.park?"":"warn",d.park?t("occupied"):t("vacant"))}
         <span class="kv">${t("f_modeL")}: <b>${[t("fusion"),t("magOnly"),t("radarFirst")][d.modeL]}</b></span></div></div>
-    <div class="fieldgrid">
-      ${[["X","#007aff",h.x],["Y","#34c759",h.y],["Z","#ff9500",h.z]].map(([ax,c,arr])=>
-        `<div class="field" style="border-top:3px solid ${c}">
-          <div class="k">${lang==="zh"?"地磁 ":"Mag "}${ax} · ${t("f_mag")}</div>
-          <div class="v" style="color:${c};font-variant-numeric:tabular-nums">${arr.length?(arr[arr.length-1]>0?"+":"")+arr[arr.length-1]:"—"}</div></div>`).join("")}
+    <div class="section">${lang==="zh"?"地磁三轴 · 实时曲线（最近 30 组）":"Magnetometer · last 30 samples"}</div>
+    <div class="card" style="padding:14px 14px 8px">
+      <div style="display:flex;align-items:center;margin-bottom:8px">
+        <div style="font-weight:700;font-size:14px">${t("f_mag")}</div>
+        <div style="margin-left:auto;display:flex;gap:12px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">
+          <span style="color:#007aff">X ${fmtSigned(h.x)}</span>
+          <span style="color:#34c759">Y ${fmtSigned(h.y)}</span>
+          <span style="color:#ff9500">Z ${fmtSigned(h.z)}</span></div></div>
+      ${magChart()}
     </div>
-    <div class="card" style="padding:10px">${magChart()}</div>
-    <div class="kv" style="display:flex;gap:14px;margin-top:6px">
-      <span style="color:#007aff">— X</span><span style="color:#34c759">— Y</span><span style="color:#ff9500">— Z</span>
-      <span style="margin-left:auto">${t("radarVals")}: ${d.radar.join(" / ")}</span></div>
-    <div class="section">${t("f_radar")}</div>
+    <div class="section">${t("f_radar")} · ${t("radarVals")}</div>
     <div class="card" style="display:flex;gap:5px;align-items:flex-end;height:170px">${bars}</div>
     <div class="kv" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
       <span>${t("radarVals")}</span><span style="font-variant-numeric:tabular-nums">${d.radar.join(" / ")}</span></div>
@@ -1234,6 +1239,12 @@ function notes(){
     `<div class="n" style="color:#8a8a96">${zh?"确认本原型即同时确认以上需求与实现规格；实现阶段 1:1 克隆。":"Confirming this prototype confirms the requirements & specs above; implementation clones them 1:1."}</div>`;
 }
 setInterval(()=>{const el=document.getElementById("liveClock");if(el)el.textContent=liveClockStr();},1000);
+/* 评审直达：index.html#tech 等（技术页自动预备 MPS100 会话） */
+const hp=location.hash.slice(1);
+if(hp&&RENDER[hp]){
+  if(["detail","tech","tasks","config"].includes(hp)){S.device="MPS100";S.phase="ready";S.p3="ready";startPoll();}
+  S.page=hp;
+}
 render();
 </script>
 </body>
