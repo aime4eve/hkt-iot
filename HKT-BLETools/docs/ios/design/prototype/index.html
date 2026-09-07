@@ -313,7 +313,7 @@ const S={
   device:"MPS100",phase:"idle",p3:"ready",staleSec:0,recon:0,
   pollTimer:null,lastPoll:Date.now(),
   ota:{stage:0,pct:0,pkt:0,wait:0,result:null,err:"",restarts:0,silence:false,report:null,t0:0,times:{}},
-  guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,
+  guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,hist:{x:[],y:[],z:[]},
   radarOpen:false,
 };
 const PKTS=1284;
@@ -409,6 +409,9 @@ function startPoll(){
     if(Scene.pollStall&&S.staleSec>=4){S.staleSec=0;Scene.pollStall=false;log(t("recovered"),"INFO","0xFF");}
     S.lastPoll=Date.now();if(S.p3==="stale"||S.p3==="abnormal"){S.p3="ready";}
     bumpSim();
+    const d=SIM[S.device];
+    if(d&&d.mag){const h=S.hist;h.x.push(d.mag[0]);h.y.push(d.mag[1]);h.z.push(d.mag[2]);
+      if(h.x.length>30){h.x.shift();h.y.shift();h.z.shift();}}
     if(S.page==="detail"||S.page==="tech")render();
   },1000);
 }
@@ -535,12 +538,39 @@ function reconnect(){S.p3="reconnecting";S.recon=1;render();
   setTimeout(()=>{S.p3="ready";S.recon=0;startPoll();render();},1600);}
 
 /* ═══════════ P-03b 技术参数页（DC200Family 工程诊断） ═══════════ */
+function seedMag(){
+  const d=SIM[S.device];if(!d||!d.mag)return;
+  const base=[...d.mag];
+  for(let i=0;i<29;i++){
+    S.hist.x.push(jit(base[0],18));S.hist.y.push(jit(base[1],18));S.hist.z.push(jit(base[2],18));
+  }
+  S.hist.x.push(base[0]);S.hist.y.push(base[1]);S.hist.z.push(base[2]);
+}
+function magChart(){
+  const h=S.hist,W=340,H=150,pad=8;
+  const all=[...h.x,...h.y,...h.z];
+  if(all.length<2)return `<div class="kv" style="text-align:center;padding:18px">${lang==="zh"?"正在积累数据（至少 2 组）…":"Collecting samples (need ≥2)…"}</div>`;
+  let mn=Math.min(...all),mx=Math.max(...all);
+  if(mx===mn)mx=mn+1;
+  const span=mx-mn;mn-=span*0.08;mx+=span*0.08;
+  const X=i=>pad+i*(W-2*pad)/Math.max(h.x.length-1,1);
+  const Y=v=>H-pad-(v-mn)/(mx-mn)*(H-2*pad);
+  const line=arr=>arr.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const zero=(mn<0&&mx>0)?`<line x1="${pad}" y1="${Y(0).toFixed(1)}" x2="${W-pad}" y2="${Y(0).toFixed(1)}" stroke="#88888855" stroke-dasharray="4 3"/>`:"";
+  const lines=[["#007aff",h.x],["#34c759",h.y],["#ff9500",h.z]]
+    .map(([c,arr])=>`<polyline points="${line(arr)}" fill="none" stroke="${c}" stroke-width="1.6"/>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block">${zero}${lines}</svg>
+    <div class="kv" style="display:flex;justify-content:space-between;margin-top:4px">
+      <span>min ${mn.toFixed(0)}</span><span>${h.x.length}/30</span><span>max ${mx.toFixed(0)}</span></div>`;
+}
 function P_tech(){
+  if(S.hist.x.length===0)seedMag();
   if(S.phase!=="ready")return statusbar()+navbar(t("techT"),"",true)+
     `<div class="center" style="min-height:520px"><div style="font-size:44px">🔌</div>
      <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
   const d=SIM[S.device];
+  const h=S.hist;
   const bars=d.radar.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:150px">
     <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.max(3,Math.min(100,v))}%"></div>
     <div style="font-size:9px;color:var(--text2);margin-top:4px">${i+1}</div></div>`).join("");
@@ -550,9 +580,17 @@ function P_tech(){
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("judge")}</div>
       <div style="display:flex;gap:14px;align-items:center;margin-top:6px">
         ${badge(d.park?"":"warn",d.park?t("occupied"):t("vacant"))}
-        <span class="kv">${t("modeL")}: <b>${[t("fusion"),t("magOnly"),t("radarFirst")][d.modeL]}</b></span></div></div>
-    <div class="section">${t("mag")}</div>
-    <div class="fieldgrid">${mag("X",d.mag[0])}${mag("Y",d.mag[1])}${mag("Z",d.mag[2])}</div>
+        <span class="kv">${t("f_modeL")}: <b>${[t("fusion"),t("magOnly"),t("radarFirst")][d.modeL]}</b></span></div></div>
+    <div class="fieldgrid">
+      ${[["X","#007aff",h.x],["Y","#34c759",h.y],["Z","#ff9500",h.z]].map(([ax,c,arr])=>
+        `<div class="field" style="border-top:3px solid ${c}">
+          <div class="k">${lang==="zh"?"地磁 ":"Mag "}${ax} · ${t("f_mag")}</div>
+          <div class="v" style="color:${c};font-variant-numeric:tabular-nums">${arr.length?(arr[arr.length-1]>0?"+":"")+arr[arr.length-1]:"—"}</div></div>`).join("")}
+    </div>
+    <div class="card" style="padding:10px">${magChart()}</div>
+    <div class="kv" style="display:flex;gap:14px;margin-top:6px">
+      <span style="color:#007aff">— X</span><span style="color:#34c759">— Y</span><span style="color:#ff9500">— Z</span>
+      <span style="margin-left:auto">${t("radarVals")}: ${d.radar.join(" / ")}</span></div>
     <div class="section">${t("f_radar")}</div>
     <div class="card" style="display:flex;gap:5px;align-items:flex-end;height:170px">${bars}</div>
     <div class="kv" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
@@ -1151,7 +1189,7 @@ const SPEC=[
  {id:"R-26",pg:"detail",tp:"需求",txt:"电源开关进 v1（0xFE 持久化）：关机需确认，关机后界面明确『已关机』并可再开机",ref:"Q1 三修 2026-09-06；需求 §6.2"},
  {id:"SP-26",pg:"detail",tp:"规格",txt:"0xFE 载荷 4 字节、电源字节在 payload[3]；关机确认弹窗；关机→停轮询，开机→恢复轮询",ref:"TX-POWER-001"},
  {id:"R-27",pg:"tech",tp:"需求",txt:"DC200Family 技术参数页：地磁 X/Y/Z + 雷达 10 段频谱整合独立页，随轮询实时刷新，含当前判定对照（车位状态/工作模式），供现场从技术参数角度定位地磁/雷达问题；工程诊断页豁免协议术语规则",ref:"用户 2026-09-07；需求 §7.2"},
- {id:"SP-27",pg:"tech",tp:"规格",txt:"数据源=TLV 0x5D/0x5E/0x5F（各 2B 大端有符号）+0x60（10×uint16 大端）；实时刷新；判定对照取自 0x3A/0x3B；仅 DC200Family 提供入口",ref:"FW-REF callback_BLEQuery/setDataPackage"},
+ {id:"SP-27",pg:"tech",tp:"规格",txt:"数据源=TLV 0x5D/0x5E/0x5F+0x60；三轴保留最近 30 组折线图（X 蓝/Y 绿/Z 橙）+最新具体值；判定对照=0x3A/0x3B；仅 DC200Family 入口",ref:"FW-REF callback_BLEQuery/setDataPackage"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
