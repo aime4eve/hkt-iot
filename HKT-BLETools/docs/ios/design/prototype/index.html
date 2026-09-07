@@ -324,7 +324,9 @@ function toast(msg){const el=document.getElementById("toast");el.textContent=msg
 
 /* ═══════════ UI 原语 ═══════════ */
 const statusbar=()=>`<div class="statusbar"><span>9:41</span><span>●●● ⌾ ▮</span></div>`;
-const navbar=(title,right,back)=>`<div class="navbar small">${back?`<span class="back" data-act="back">${t("prev")}</span>`:""}<span>${title}</span><span class="navright">${right||""}</span></div>`;
+const navbar=(title,right,back)=>{
+  const homeBtn=(S.page!=="home")?`<button class="linkbtn" data-act="home" style="margin-right:8px">⌂ ${lang==="zh"?"首页":"Home"}</button>`:"";
+  return `<div class="navbar small">${back?`<span class="back" data-act="back">${t("prev")}</span>`:""}<span>${title}</span><span class="navright">${homeBtn}${right||""}</span></div>`;}
 const rssi=b=>`<span class="rssi s${b}"><i></i><i></i><i></i><i></i></span>`;
 const badge=(cls,txt)=>`<span class="badge ${cls||""}"><span class="dot"></span>${txt}</span>`;
 const field=(k,v,u,err)=>`<div class="field"><div class="k">${k}</div><div class="v ${err?"err":""}">${v}${u&&!err?`<span class="unit">${u}</span>`:""}</div></div>`;
@@ -398,7 +400,7 @@ function P_connecting(){
     ${steps(3)}<div class="sub">${names[Math.min(S.connStep,2)]}</div></div>
     <div style="padding:24px"><button class="btn secondary" onclick="cancelConn()">${t("cancel")}</button></div></div>`;
 }
-function cancelConn(){clearInterval(S.connTimer);S.phase="idle";nav("home");}
+function cancelConn(){clearInterval(S.connTimer);S.phase="idle";nav("home",{replace:true});}
 
 /* ═══════════ 轮询 ═══════════ */
 function startPoll(){
@@ -1133,11 +1135,24 @@ function render(){
   document.getElementById("langBtn").textContent=lang==="zh"?"EN":"中文";
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
   document.querySelectorAll("[data-act]").forEach(b=>{
-    b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":()=>nav(S.page==="radar"?"detail":"home") }[b.dataset.act];
+    b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":backPage,"home":goHome }[b.dataset.act];
   });
   notes();
 }
-function nav(p){S.page=p;render();}
+let navStack=[];
+function nav(p,opts){
+  opts=opts||{};
+  if(opts.replace){S.page=p;render();return;}
+  if(S.page!==p){navStack.push(S.page);if(navStack.length>20)navStack.shift();}
+  S.page=p;render();
+}
+function otaGuardActive(){const o=S.ota;return o.stage>=2&&o.stage<7&&!o.result;}
+function backPage(){
+  if(S.page==="ota"&&otaGuardActive()){S.ota.guard=true;render();return;}
+  S.page=navStack.pop()||"home";render();}
+function goHome(){
+  if(S.page==="ota"&&otaGuardActive()){S.ota.guard=true;render();return;}
+  navStack=[];S.page="home";render();}
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{S.page=b.dataset.nav;if(b.dataset.nav==="detail"&&S.phase!=="ready"){S.phase="ready";S.device=S.device||"MPS100";S.p3="ready";startPoll();}render();});
 document.getElementById("themeBtn").onclick=()=>{S.theme=S.theme==="light"?"dark":"light";render();};
 document.getElementById("langBtn").onclick=()=>{lang=lang==="zh"?"en":"zh";render();};
