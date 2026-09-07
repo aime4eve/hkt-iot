@@ -197,6 +197,9 @@ const ZH={
   addTask:"新建定时任务", delAll:"全部删除", del:"删除", days:"重复",
   startT:"开始", endT:"结束", noTasks:"暂无定时任务", localMirror:"设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D）",
   forceStopNote:"删除执行中的任务将强制停止阀门动作", invalidTime:"时间无效", needDay:"至少选择一天",
+  confirmPower:"确认关机", confirmWrite:"确认写入",
+  calEnvDC:"环境要求：远离车辆、钢筋/井盖/灯柱等铁磁结构与强磁源；移开身上磁性物品（磁吸手机支架、钥匙、机械手表）；设备水平放置，周围 1 米内无金属",
+  calEnvUDS:"环境要求：设备水平静止放置，避免振动与触碰；远离强磁与金属台面",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
   hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
@@ -263,6 +266,9 @@ const EN={
   addTask:"New Task", delAll:"Delete All", del:"Delete", days:"Repeat",
   startT:"Start", endT:"End", noTasks:"No scheduled tasks", localMirror:"No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only)",
   forceStopNote:"Deleting a running task force-stops the valve", invalidTime:"Invalid time", needDay:"Pick at least one day",
+  confirmPower:"Power Off", confirmWrite:"Write Values",
+  calEnvDC:"Environment: keep away from vehicles, rebar/manhole covers/bollards and strong magnets; remove magnetic items (MagSafe phone mounts, keys, watches); place the device level with no metal within 1 m",
+  calEnvUDS:"Environment: place the device level and still; avoid vibration and contact; keep away from strong magnets and metal surfaces",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
   hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
@@ -499,7 +505,7 @@ function P_detail(){
   const pwConfirm=S.powerConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("pwOffT")}</div>
       <div class="b">${t("pwOffB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.powerConfirm=false;render()">${t("cancel")}</button>
-      <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirm")}</button></div></div></div>`:"";
+      <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirmPower")}</button></div></div></div>`:"";
   return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
     `<div class="body">${body}</div>`+pwConfirm;
 }
@@ -719,7 +725,7 @@ function P_config(){
   const confirm=S.cfg.confirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cfgConfirmT")}</div>
     <div class="b"><table class="props" style="width:100%">${cfgSummary()}</table></div>
     <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.cfg.confirm=false;render()">${t("cancel")}</button>
-    <button class="btn" style="margin:0" onclick="cfgWrite()">${t("confirm")}</button></div></div></div>`:"";
+    <button class="btn" style="margin:0" onclick="cfgWrite()">${t("confirmWrite")}</button></div></div></div>`:"";
   const saving=S.cfg.saving?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cfgSent")}</div>
     <div class="b center" style="text-align:center">0x02 → ${S.device} …9C01</div></div></div>`:"";
   if(f==="uds"){
@@ -987,8 +993,10 @@ function P_cal(){
       <button class="btn" style="margin:0" onclick="calBegin()">${t("calStart")}</button></div></div></div>`:"";
   let mid;
   if(S.cal.state==="idle"){
-    mid=`<div class="center" style="min-height:380px"><div style="font-size:46px">🧭</div>
+    mid=`<div class="center" style="min-height:340px"><div style="font-size:46px">🧭</div>
       <div class="kv" style="text-align:left;line-height:2.2">${dc?t("calForDC"):t("calForUDS")}</div></div>
+      <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${lang==="zh"?"环境说明":"Environment"}</div>
+        <div class="kv" style="margin-top:4px;line-height:1.8">${dc?t("calEnvDC"):t("calEnvUDS")}</div></div>
       <div class="card" style="text-align:center"><div class="kv">${t("calNote")}</div></div>
       <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
