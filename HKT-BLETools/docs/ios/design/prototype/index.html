@@ -192,7 +192,6 @@ const ZH={
   calStart:"开始校准", calDone:"✓ 校准完成", calFinish:"完成", calForUDS:"将设备水平静止放置，然后开始校准",
   calForDC:"将设备水平放置，缓慢匀速旋转两周", calElapsed:s=>`已用时 ${s} 秒`,
   vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"开启后：接入阀自动开机，拔出自动关机（基于插入检测）",
-  estBatt:"电量（设备估算）", voltU:"电压",
   tasks:"阀门任务", rt:"实时任务", sched:"定时任务表（1–16）", valve:"阀门", v1:"阀 1", v2:"阀 2", vBoth:"双阀",
   act:"动作", openV:"开阀", closeV:"关阀", dur:"持续时间", durHint:"0 = 不自动结束（须手动停止）",
   pulseN:"脉冲数", exec:"立即执行", busy:"设备忙（本地定时任务执行中），实时任务被静默忽略（无 ACK）",
@@ -268,7 +267,6 @@ const EN={
   calForUDS:"Place the device level and still, then start", calForDC:"Lay the device flat and rotate it slowly, twice",
   calElapsed:s=>`Elapsed ${s}s`,
   vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"When on: valve connected auto-powers on; removed auto-powers off (insert detection)",
-  estBatt:"Battery (device est.)", voltU:"Voltage",
   tasks:"Valve Tasks", rt:"Realtime Task", sched:"Schedule Table (1–16)", valve:"Valve", v1:"Valve 1", v2:"Valve 2", vBoth:"Both",
   act:"Action", openV:"Open", closeV:"Close", dur:"Duration", durHint:"0 = no auto-stop (stop manually)",
   pulseN:"Pulse count", exec:"Run Now", busy:"Device busy (schedule running); realtime task silently ignored (no ACK)",
@@ -401,7 +399,7 @@ function P_connecting(){
   const names=[t("conn"),t("dSvc"),t("dSub")];
   return statusbar()+`<div class="overlay" style="position:relative">
     <div class="center"><div style="font-size:44px">🔗</div><div class="big">${S.device} …${(S.id||"9C01").slice(-4)}</div>
-    ${steps(3)}<div class="sub">${names[Math.min(S.connStep,2)]}</div></div>
+    ${steps(3)}<div class="sub">${names[Math.min(S.connStep||0,2)]}</div></div>
     <div style="padding:24px"><button class="btn secondary" onclick="cancelConn()">${t("cancel")}</button></div></div>`;
 }
 function cancelConn(){clearInterval(S.connTimer);S.phase="idle";nav("home",{replace:true});}
@@ -461,7 +459,7 @@ function fval(key){
     case "f_pulse":return `${d.p1} / ${d.p2}`;
     case "f_volt":return voltLabel(d.vol);
     case "f_port":return d.port?t("portPwm"):t("portSwitch");
-    case "f_stable":return `${d.stable} s`;
+    case "f_stable":return `${d.stable}`;
     case "f_smart":return d.smart?t("auto"):t("manual");
     case "f_tz":return d.tz===25?"UTC+03:30":d.tz===26?"UTC+05:30":d.tz<13?`UTC+${d.tz}`:`UTC−${d.tz-12}`;
     default:return"—";
@@ -773,7 +771,7 @@ function tzLabel(v){
 }
 function tzOptions(){
   const neg=[],utc0=[],pos=[],half=[];
-  for(let v=13;v<=24;v++)neg.push({v,l:tzLabel(v)});
+  for(let v=24;v>=13;v--)neg.push({v,l:tzLabel(v)});
   utc0.push({v:0,l:tzLabel(0)});
   for(let v=1;v<=12;v++)pos.push({v,l:tzLabel(v)});
   half.push({v:25,l:tzLabel(25)});half.push({v:26,l:tzLabel(26)});
@@ -781,11 +779,11 @@ function tzOptions(){
 }
 function tzGroups(){
   const neg=[],pos=[],half=[];
-  for(let v=13;v<=24;v++)neg.push({v,l:tzLabel(v)});
+  for(let v=24;v>=13;v--)neg.push({v,l:tzLabel(v)});
   for(let v=1;v<=12;v++)pos.push({v,l:tzLabel(v)});
   half.push({v:25,l:tzLabel(25)});half.push({v:26,l:tzLabel(26)});
   return [
-    {label:lang==="zh"?"西半球时区（UTC−01:00 ~ UTC−12:00）":"Western (UTC−01:00 ~ UTC−12:00)",items:neg},
+    {label:lang==="zh"?"西半球时区（UTC−12:00 ~ UTC−01:00）":"Western (UTC−12:00 ~ UTC−01:00)",items:neg},
     {label:"UTC+00:00",items:[{v:0,l:"UTC+00:00"}]},
     {label:lang==="zh"?"东半球时区（UTC+01:00 ~ UTC+12:00）":"Eastern (UTC+01:00 ~ UTC+12:00)",items:pos},
     {label:lang==="zh"?"半小时时区":"Half-hour time zones",items:half},
@@ -793,11 +791,17 @@ function tzGroups(){
 }
 function phoneTzEnc(){
   const off=-new Date().getTimezoneOffset()/60;         // 手机 UTC 偏移（小时）
-  const r=Math.round(off*2)/2;                          // 只支持整小时与 ±:30
-  if(Number.isInteger(r)&&r>=0&&r<=12)return r;
-  if(Number.isInteger(r)&&r<0&&r>=-12)return r+12;
-  if(r===3.5)return 25;if(r===5.5)return 26;
-  return 0;
+  const half=Math.round(off*2);                         // 半小时粒度；±:45 等不支持
+  if(Math.abs(off*2-half)>0.01)return null;
+  if(half%2===0){
+    const h=half/2;
+    if(h>=0&&h<=12)return h;                            // +0..+12 → 编码 0..12
+    if(h>=-12&&h<0)return 12-h;                         // −1..−12 → 编码 13..24（−3→15）
+    return null;
+  }
+  if(half===7)return 25;                                // +03:30
+  if(half===11)return 26;                               // +05:30
+  return null;                                          // −03:30 等设备不支持
 }
 function voltLabel(v){return [t("vol0"),t("vol1"),t("vol2")][v]||("?");}
 function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
@@ -809,13 +813,14 @@ function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
     ${hint?`<div class="kv" style="margin-top:4px;font-size:11px">${hint}</div>`:""}
     ${err?`<div style="font-size:12px;color:var(--err);margin-top:4px">✕ ${err}</div>`:""}</div>`;
 }
-function segRow(key,label,options){
-  const cur=S.cfg.draft[key];
+function segRow(key,label,options,vals){
+  const v=S.cfg.draft[key];const V=vals||options.map((_,i)=>i);
+  const idx=V.indexOf(v);
   return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
     <div style="display:flex;gap:6px;margin-top:8px">${options.map((o,i)=>
       `<div style="flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-size:13px;cursor:pointer;
-        background:${cur===i?"var(--info)":"var(--card2)"};color:${cur===i?"#fff":"var(--text2)"};font-weight:${cur===i?"600":"400"}"
-        onclick="S.cfg.draft['${key}']=${i};render()">${o}</div>`).join("")}</div></div>`;
+        background:${idx===i?"var(--info)":"var(--card2)"};color:${idx===i?"#fff":"var(--text2)"};font-weight:${idx===i?"600":"400"}"
+        onclick="S.cfg.draft['${key}']=${V[i]};render()">${o}</div>`).join("")}</div></div>`;
 }
 function selRow(key,label,options){
   const cur=S.cfg.draft[key];
@@ -858,14 +863,14 @@ function P_config(){
       ${selRow("vol",t("f_volt")+"（"+(zh?"固件映射 0=12V / 1=9V / 2=5V":"firmware: 0=12V / 1=9V / 2=5V")+"）",[{v:0,l:t("vol0")},{v:1,l:t("vol1")},{v:2,l:t("vol2")}])}
       ${segRow("port",t("f_port"),[t("portSwitch"),t("portPwm")])}
       ${numRow("stable",t("f_stable"),null,1,null,255,"s")}
-      ${segRow("smart",t("f_smart"),[t("auto"),t("manual")])}
+      ${segRow("smart",t("f_smart"),[t("auto"),t("manual")],[1,0])}
       <div class="kv" style="margin:-4px 4px 8px;font-size:11px">${t("smartHint")}</div>
       <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("f_tz")}（${zh?"作用：对时换算与阀门定时任务的触发时刻":"used for time-sync conversion and schedule timing"}）</div>
         <div class="kv" style="margin-top:4px">${zh?"设备当前":"Device current"}: <b>${tzLabel(d.tz)}</b></div>
         <select class="input" style="margin-top:8px" onchange="S.cfg.draft.tz=+this.value;render()">
           ${tzGroups().map(g=>`<optgroup label="${g.label}">${g.items.map(o=>`<option value="${o.v}" ${+S.cfg.draft.tz===o.v?"selected":""}>${o.l}</option>`).join("")}</optgroup>`).join("")}
         </select>
-        <button class="btn secondary" style="margin-top:8px" onclick="const e=phoneTzEnc();if(e===null){toast('${zh?"无法识别手机时区":"Cannot detect phone timezone"}')}else{S.cfg.draft.tz=e;render();toast('${zh?"已选为手机时区":"Set to phone timezone"}')}">${zh?"与手机时区一致":"Match phone timezone"}</button></div>
+        <button class="btn secondary" style="margin-top:8px" onclick="const e=phoneTzEnc();if(e===null){S.cfg.draft.tz=0;render();toast('${zh?"手机时区超出设备支持范围，已选 UTC+00:00":"Phone timezone unsupported; set to UTC+00:00"}')}else{S.cfg.draft.tz=e;render();toast('${zh?"已选为手机时区":"Set to phone timezone"}')}">${zh?"与手机时区一致":"Match phone timezone"}</button></div>
       ${numRow("period",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}`;
   }
   return statusbar()+navbar(t("cfg"),"",true)+`<div class="body">${body}
@@ -1273,8 +1278,11 @@ const SPEC=[
  {id:"SP-26",pg:"detail",tp:"规格",txt:"0xFE 载荷 4 字节、电源字节在 payload[3]；关机确认弹窗；关机→停轮询，开机→恢复轮询",ref:"TX-POWER-001"},
  {id:"R-27",pg:"tech",tp:"需求",txt:"DC200Family 技术参数页：地磁 X/Y/Z + 雷达 10 段频谱整合独立页，随轮询实时刷新，含当前判定对照（车位状态/工作模式），供现场从技术参数角度定位地磁/雷达问题；工程诊断页豁免协议术语规则",ref:"用户 2026-09-07；需求 §7.2"},
  {id:"SP-27",pg:"tech",tp:"规格",txt:"数据源=TLV 0x5D/0x5E/0x5F+0x60；三轴保留最近 30 组折线图（X 蓝/Y 绿/Z 橙）+最新具体值；判定对照=0x3A/0x3B；仅 DC200Family 入口",ref:"FW-REF callback_BLEQuery/setDataPackage"},
- {id:"R-29",pg:"all",tp:"需求",txt:"电量显示按固件口径分设备：UDS100 显示电压（mV）；DC200Family/SVC100 显示固件 1 字节估算电量并注明『设备估算』（固件 BLE 不上报真实电压）；版本信息（硬版+软版）可经 0xFF 查询获得并展示",ref:"用户 2026-09-07；FW-REF adc.c/setDataPackage"},
+ {id:"R-28",pg:"all",tp:"需求",txt:"导航规则：所有“返回”回到上一页（栈式导航，OTA 传输中返回仍触发保护弹窗）；每个非首页页面右上角提供“首页”直达（清空返回栈，回到扫描页）",ref:"用户 2026-09-07"},
+ {id:"R-29",pg:"all",tp:"需求",txt:"电量显示按固件口径分设备：UDS100 显示电压（mV）；DC200Family/SVC100 显示固件 1 字节估算电量（界面不标注估算来源字样——用户 2026-09-07 裁决）；版本信息（硬版+软版）可经 0xFF 查询获得并展示",ref:"用户 2026-09-07；FW-REF adc.c/setDataPackage"},
  {id:"SP-29",pg:"all",tp:"规格",txt:"UDS100 电量=TLV 0x8B（2B，mV）；DC200/SVC100=TLV 0x03（1B，估算：≥3100mV→100，2600-3100 按公式仅 0-1，DC200 另按剩余上行包数递减）；SVC 电压档位固件映射 0=12V/1=9V/2=5V；时区作用=0x06 对时换算+阀门定时任务触发时刻（配错时区=任务在错误时刻开关阀）；智能电源=插入检测自动开关机（接入阀开机/拔出关机）",ref:"FW-REF adc.c:104-113、control_center.h:42、control_center.c:166/858-868"},
+ {id:"R-30",pg:"config",tp:"需求",txt:"时区选择体验：下拉按 ISO 8601 偏移升序并分组（西/零/东/半小时）；提供“与手机时区一致”快捷设置；表单显示设备当前时区（0x8A 回读）",ref:"用户 2026-09-07；FW-REF 0x8A/0x06/local_schedule"},
+ {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
