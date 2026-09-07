@@ -209,7 +209,7 @@ const ZH={
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
   hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
   errRange:"超出范围", errGps:"合法值：0 或 10–1440", errHigh:"合法值：0 或 30–4500",
-  cfgT:"参数配置", cal:"地磁校准", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
+  cfgT:"参数配置", cal:"校准", calTUDS:"角度校准", calTDC:"磁力计校准", cal90:"预计约 90 秒，请耐心等待", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
   calRun:"校准进行中…（以设备上报为准）", calNote:"校准为长时操作，期间其他命令已禁用",
   dTarget:"目标", waiting1:"（等待设备响应）", clearHex:"流水已清空", protoTx:"发送一条命令查看原始收发流水",
   logT:"诊断日志", logExport:"导出", logClear:"清空", logEmpty:"暂无日志",
@@ -283,7 +283,7 @@ const EN={
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
   hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
   errRange:"Out of range", errGps:"valid: 0 or 10–1440", errHigh:"valid: 0 or 30–4500",
-  cfgT:"Configuration", cal:"Magnetometer Calibration", cal1:"1. Keep away from ferrous objects and strong magnets",
+  cfgT:"Configuration", cal:"Calibration", calTUDS:"Tilt Calibration", calTDC:"Mag Calibration", cal90:"Expected ~90 seconds, please wait", cal1:"1. Keep away from ferrous objects and strong magnets",
   cal2:"2. Lay the device flat and rotate it slowly, twice", calRun:"Calibrating… (as reported by the device)",
   calNote:"Long-running operation; other commands are disabled meanwhile",
   dTarget:"Target", waiting1:"(waiting for device)", clearHex:"Stream cleared", protoTx:"Send a command to see the raw stream",
@@ -499,7 +499,7 @@ function P_detail(){
       <div style="font-size:46px">⏻</div><div class="big">${t("offState")}</div>
       <button class="btn" style="width:auto;padding:12px 34px" onclick="togglePower()">${t("on")}</button></div>`;
   }
-  const calEntry=(S.device==="SVC100")?"":`<button class="btn secondary" onclick="calOpen()">${t("cal")} ▸</button>`;
+  const calEntry=(S.device==="SVC100")?"":`<button class="btn secondary" onclick="calOpen()">${S.device==="UDS100"?t("calTUDS"):t("calTDC")} ▸</button>`;
   const body=S.p3==="disconnected"?banner:
     `<div class="card hcard">${head}
       <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
@@ -576,6 +576,10 @@ function P_tech(){
      <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
   const d=SIM[S.device];
+  if(!d||!d.mag)return statusbar()+navbar(t("techT"),"",true)+
+    `<div class="center" style="min-height:480px"><div style="font-size:44px">🔌</div>
+     <div class="big">${lang==="zh"?"请先连接 DC200Family 设备":"Connect a DC200Family device first"}</div>
+     <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
   const h=S.hist;
   const bars=d.radar.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:150px">
     <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.max(3,Math.min(100,v))}%"></div>
@@ -760,8 +764,8 @@ function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
   const d=S.cfg.draft,err=S.cfg.errors[key];
   return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-      <input class="input" style="flex:1" inputmode="numeric" value="${d[key]}"
-        oninput="S.cfg.draft['${key}']=this.value;S.cfg.errors['${key}']=null;render()"><span class="unit" style="color:var(--text2);font-size:12px">${unit||""}</span></div>
+      <input class="input" id="cfg-${key}" style="flex:1" inputmode="numeric" value="${d[key]}"
+        oninput="S.cfg.draft['${key}']=this.value"><span class="unit" style="color:var(--text2);font-size:12px">${unit||""}</span></div>
     ${hint?`<div class="kv" style="margin-top:4px;font-size:11px">${hint}</div>`:""}
     ${err?`<div style="font-size:12px;color:var(--err);margin-top:4px">✕ ${err}</div>`:""}</div>`;
 }
@@ -851,7 +855,13 @@ function cfgSummary(){
   return rows.map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join("");
 }
 function zh0(){return lang==="zh"?"档位 ":"Level ";}
-function cfgSave(){if(cfgValidate()){S.cfg.confirm=true;render();}else{render();}}
+function cfgSave(){
+  if(cfgValidate()){S.cfg.confirm=true;render();return;}
+  render();
+  const first=Object.keys(S.cfg.errors)[0];
+  if(first){const el=document.getElementById("cfg-"+first);
+    if(el)el.scrollIntoView({behavior:"smooth",block:"center"});}
+}
 function cfgWrite(){
   S.cfg.confirm=false;S.cfg.saving=true;render();
   setTimeout(()=>{
@@ -1077,7 +1087,7 @@ function P_cal(){
     <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
     mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
-      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}</div>
+      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:""}</div>
       <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
       <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
   } else {
@@ -1171,7 +1181,7 @@ const SPEC=[
  {id:"R-7",pg:"detail",tp:"需求",txt:"轮询停摆→显示『最后更新 x 秒前』并保留最后有效值，不得显示假实时",ref:"S-1；SD §7.1"},
  {id:"R-8",pg:"detail",tp:"需求",txt:"响应含未知类型→保留可解析前缀字段+数据异常横幅+日志，不崩溃不跳过",ref:"S-6（M3 修订）；TC-BC-011"},
  {id:"R-9",pg:"detail",tp:"需求",txt:"OTA 中断后设备驻留升级模式：0xFF 无版本响应→专用恢复态引导重刷，不显示空状态页",ref:"S-5；SD §9.5.1；TC-BC-005"},
- {id:"R-10",pg:"detail",tp:"需求",txt:"校准进 v1：UDS100 倾角校准、DC200Family 磁力计校准（长时运行流程页）；SVC100 无校准",ref:"Q1 三修 2026-09-06；需求 §7.2"},
+ {id:"R-10",pg:"detail",tp:"需求",txt:"校准进 v1，命名对照 Android：UDS100=角度校准（进行中提示预计约 90 秒）、DC200Family=磁力计校准（长时运行流程页）；校准错误可能导致设备关机（Android 证据），失败态必须明确；SVC100 无校准",ref:"Q1 三修；Android dialog_config_calibration + DeviceActivity.kt:334；需求 §7.2"},
  {id:"R-11",pg:"ota",tp:"需求",txt:"六阶段（选择/确认/传输/等待重启/重连/版本确认）逐一有界面反馈；100% 标注『尚未完成』",ref:"需求 §8.2/§8.3"},
  {id:"R-12",pg:"ota",tp:"需求",txt:"显示固件名、大小、阶段、百分比、结果、重试入口",ref:"需求 §8.3；A-07"},
  {id:"R-13",pg:"ota",tp:"需求",txt:"升级期间返回/取消触发返回保护弹窗，明示不可逆风险",ref:"SD §8"},
@@ -1179,7 +1189,7 @@ const SPEC=[
  {id:"SP-11",pg:"ota",tp:"规格",txt:"文件校验（空/超大/后缀/型号弱校验强警告 Q7）；MTU≥160 前置；停等单包 3s、页写 16 包延迟、静默≥15s 失败、复位 ACK(1,0) 自动从包 0 重传≤2 次；成功判定=版本比对一致",ref:"SD §8.1/§8；TC-BC-001~004/007"},
  {id:"R-15",pg:"ota",tp:"需求",txt:"成功/失败页生成可导出 OTA 升级报告（前后版本、阶段耗时、失败原因）",ref:"需求 §3.3-8；SD §9.4"},
  {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
- {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
+ {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单；输入过程不整页重绘（保持焦点与滚动位置），校验错误在保存时定位到字段",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
  {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
  {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
  {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03=valve(0双/1/2)+state+时长秒(0=不自动结束)+pulse(3B)；忙=静默忽略→2s 超时提示『设备忙』；0x04=id(1-16)+起止分钟+repeat(≤0x7F，bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支；TX-SVC-TASK-001~003；Android PR #3 佐证（周一=bit0）"},
