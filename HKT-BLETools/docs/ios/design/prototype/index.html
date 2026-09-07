@@ -198,8 +198,13 @@ const ZH={
   startT:"开始", endT:"结束", noTasks:"暂无定时任务", localMirror:"设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D）",
   forceStopNote:"删除执行中的任务将强制停止阀门动作", invalidTime:"时间无效", needDay:"至少选择一天",
   confirmPower:"确认关机", confirmWrite:"确认写入",
-  calEnvDC:"环境要求：远离车辆、钢筋/井盖/灯柱等铁磁结构与强磁源；移开身上磁性物品（磁吸手机支架、钥匙、机械手表）；设备水平放置，周围 1 米内无金属",
-  calEnvUDS:"环境要求：设备水平静止放置，避免振动与触碰；远离强磁与金属台面",
+  calEnvDC:"远离车辆、钢筋/井盖/灯柱等铁磁结构与强磁源；移开身上磁性物品（磁吸手机支架、钥匙、机械手表）",
+  calPlaceDC:"设备水平放置，周围 1 米内无金属",
+  calActDC:"开始后缓慢匀速旋转两周，直到提示完成",
+  calEnvUDS:"避免强磁与金属台面干扰；清理设备周围杂物",
+  calPlaceUDS:"设备水平静止放置",
+  calActUDS:"开始后保持设备完全静止，等待完成提示",
+  techT:"技术参数", techEntry:"技术参数 ▸", judge:"当前判定", radarVals:"各段能量",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
   hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
@@ -267,8 +272,13 @@ const EN={
   startT:"Start", endT:"End", noTasks:"No scheduled tasks", localMirror:"No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only)",
   forceStopNote:"Deleting a running task force-stops the valve", invalidTime:"Invalid time", needDay:"Pick at least one day",
   confirmPower:"Power Off", confirmWrite:"Write Values",
-  calEnvDC:"Environment: keep away from vehicles, rebar/manhole covers/bollards and strong magnets; remove magnetic items (MagSafe phone mounts, keys, watches); place the device level with no metal within 1 m",
-  calEnvUDS:"Environment: place the device level and still; avoid vibration and contact; keep away from strong magnets and metal surfaces",
+  calEnvDC:"Keep away from vehicles, rebar/manhole covers/bollards and strong magnets; remove magnetic items (MagSafe phone mounts, keys, watches)",
+  calPlaceDC:"Place the device level with no metal within 1 m",
+  calActDC:"After starting, rotate it slowly and evenly for two full turns until prompted",
+  calEnvUDS:"Avoid strong magnets and metal surfaces; clear debris around the device",
+  calPlaceUDS:"Place the device level and still",
+  calActUDS:"After starting, keep the device completely still until prompted",
+  techT:"Tech Parameters", techEntry:"Tech Params ▸", judge:"Current detection", radarVals:"bin energy",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
   hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
@@ -399,6 +409,7 @@ function startPoll(){
     if(Scene.pollStall&&S.staleSec>=4){S.staleSec=0;Scene.pollStall=false;log(t("recovered"),"INFO","0xFF");}
     S.lastPoll=Date.now();if(S.p3==="stale"||S.p3==="abnormal"){S.p3="ready";}
     bumpSim();
+    if(S.page==="detail"||S.page==="tech")render();
   },1000);
 }
 function stopPoll(){clearInterval(S.pollTimer);}
@@ -451,8 +462,7 @@ function fieldRows(){
   const fam=S.device==="UDS100"?"uds":S.device==="SVC100"?"svc":"dc";
   const d=SIM[S.device];
   const defs={
-    dc:[["f_park","f_park",0],["f_modeL","f_modeL",0],["f_tamper","f_tamper",0],["f_period","f_period",0],
-        ["f_mag","f_mag",0],["f_radar","f_radar",0]],
+    dc:[["f_park","f_park",0],["f_modeL","f_modeL",0],["f_tamper","f_tamper",0],["f_period","f_period",0]],
     uds:[["f_temp","f_temp","°C"],["f_hum","f_hum","%"],["f_dist","f_dist","mm"],["f_ovf","f_ovf",0],
          ["f_low","f_low","mm"],["f_high","f_high","mm"],["f_angle","f_angle","°"],["f_slant","f_slant",0],
          ["f_alarm","f_alarm",0],["f_gps","f_gps",0],["f_period","f_period",0],["f_lat","f_lat",0],["f_lon","f_lon",0]],
@@ -491,6 +501,7 @@ function P_detail(){
     `<div class="card hcard">${head}
       <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${t("batt")} ${SIM[S.device].batt}%</div></div>
      ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
+     ${(S.device==="MPS100"||S.device==="EPS100"||S.device==="DC200")?`<button class="btn secondary" onclick="nav('tech')">${t("techEntry")}</button>`:""}
      <div class="section">${lang==="zh"?"设备操作":"Device actions"}</div>
      <div class="row"><span class="label">${t("power")}</span>
        <span class="switch ${S.powerOn?"on":""}" onclick="togglePower()"><i></i></span></div>
@@ -522,19 +533,34 @@ function doTimeSync(){
 }
 function reconnect(){S.p3="reconnecting";S.recon=1;render();
   setTimeout(()=>{S.p3="ready";S.recon=0;startPoll();render();},1600);}
-let radarTimer=null;
-document.addEventListener("click",e=>{
-  if(e.target.textContent===t("view")&&S.page==="detail"){
-    S.page="radar";render();
-  }
-});
-function P_radar(){
-  const bars=SIM[S.device].radar.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:150px">
-    <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.min(100,v)}%"></div>
+
+/* ═══════════ P-03b 技术参数页（DC200Family 工程诊断） ═══════════ */
+function P_tech(){
+  if(S.phase!=="ready")return statusbar()+navbar(t("techT"),"",true)+
+    `<div class="center" style="min-height:520px"><div style="font-size:44px">🔌</div>
+     <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
+     <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
+  const d=SIM[S.device];
+  const bars=d.radar.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:150px">
+    <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.max(3,Math.min(100,v))}%"></div>
     <div style="font-size:9px;color:var(--text2);margin-top:4px">${i+1}</div></div>`).join("");
-  return statusbar()+navbar(`${t("f_radar")} · ${S.device}`,`<button class="linkbtn" onclick="S.page='detail';render()">✕</button>`,true)+
-    `<div class="body"><div class="card" style="display:flex;gap:5px;align-items:flex-end;height:180px">${bars}</div>
-     <div class="kv">${lang==="zh"?"10 × uint16（TLV 0x60，20 字节，大端）":"10 × uint16 (TLV 0x60, 20 bytes, big-endian)"}</div></div>`;
+  const mag=(ax,v)=>`<div class="field"><div class="k">Mag ${ax}</div><div class="v" style="font-variant-numeric:tabular-nums">${v>0?"+":""}${v}</div></div>`;
+  return statusbar()+navbar(`${t("techT")} · ${S.device}`,`<button class="linkbtn" onclick="S.page='detail';render()">✕</button>`,true)+
+    `<div class="body">
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("judge")}</div>
+      <div style="display:flex;gap:14px;align-items:center;margin-top:6px">
+        ${badge(d.park?"":"warn",d.park?t("occupied"):t("vacant"))}
+        <span class="kv">${t("modeL")}: <b>${[t("fusion"),t("magOnly"),t("radarFirst")][d.modeL]}</b></span></div></div>
+    <div class="section">${t("mag")}</div>
+    <div class="fieldgrid">${mag("X",d.mag[0])}${mag("Y",d.mag[1])}${mag("Z",d.mag[2])}</div>
+    <div class="section">${t("f_radar")}</div>
+    <div class="card" style="display:flex;gap:5px;align-items:flex-end;height:170px">${bars}</div>
+    <div class="kv" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
+      <span>${t("radarVals")}</span><span style="font-variant-numeric:tabular-nums">${d.radar.join(" / ")}</span></div>
+    <div class="kv" style="margin-top:10px">${lang==="zh"
+      ?"工程诊断页：数据随轮询实时刷新。判读参考——地磁三轴变化量过小说明灵敏度/安装异常；雷达各段能量整体偏低说明有遮挡或干扰。"
+      :"Engineering view: values refresh with each poll. Low magnetometer delta suggests sensitivity/mounting issues; uniformly low radar bins suggest occlusion or interference."}</div>
+    </div>`;
 }
 
 /* ═══════════ OTA ═══════════ */
@@ -993,12 +1019,18 @@ function P_cal(){
       <button class="btn" style="margin:0" onclick="calBegin()">${t("calStart")}</button></div></div></div>`:"";
   let mid;
   if(S.cal.state==="idle"){
-    mid=`<div class="center" style="min-height:340px"><div style="font-size:46px">🧭</div>
-      <div class="kv" style="text-align:left;line-height:2.2">${dc?t("calForDC"):t("calForUDS")}</div></div>
-      <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${lang==="zh"?"环境说明":"Environment"}</div>
-        <div class="kv" style="margin-top:4px;line-height:1.8">${dc?t("calEnvDC"):t("calEnvUDS")}</div></div>
-      <div class="card" style="text-align:center"><div class="kv">${t("calNote")}</div></div>
-      <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
+    const title=dc?(lang==="zh"?"磁力计校准":"Magnetometer Calibration"):(lang==="zh"?"倾角校准":"Tilt Calibration");
+    const steps=dc?[[t("calEnvDC")],[t("calPlaceDC")],[t("calActDC")]]
+                  :[[t("calEnvUDS")],[t("calPlaceUDS")],[t("calActUDS")]];
+    mid=`<div class="card">
+      <div style="font-weight:700;font-size:16px;margin-bottom:10px">🧭 ${title}</div>
+      ${steps.map((st,i)=>`<div style="display:flex;gap:12px;margin:12px 0;align-items:flex-start">
+        <div style="flex:none;width:26px;height:26px;border-radius:50%;background:var(--info);color:#fff;
+          display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${i+1}</div>
+        <div class="kv" style="flex:1;line-height:1.6;padding-top:3px">${st[0]}</div></div>`).join("")}
+      <div class="kv" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">⚠︎ ${t("calNote")}</div>
+    </div>
+    <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
     mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
       <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}</div>
@@ -1027,7 +1059,7 @@ function P_perm(kind){
 }
 
 /* ═══════════ 路由 ═══════════ */
-const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,radar:P_radar,ota:P_ota,config:P_config,tasks:P_tasks,
+const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,tech:P_tech,ota:P_ota,config:P_config,tasks:P_tasks,
   debug:P_debug,settings:P_settings,log:P_log,cal:P_cal,
   perm:()=>P_perm(S.perm==="denied"?"denied":S.perm==="btoff"?"btoff":S.perm==="unsup"?"unsup":"ask")};
 function render(){
@@ -1089,7 +1121,7 @@ const SPEC=[
  {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
- {id:"R-5",pg:"detail",tp:"需求",txt:"三家族状态字段全集按模板展示（只读）：UDS100 13 项 / DC200 6 项 / SVC100 9 项",ref:"需求 §7.1–7.3；Q2"},
+ {id:"R-5",pg:"detail",tp:"需求",txt:"详情页只放业务状态（UDS100 13 项 / DC200 4 项 / SVC100 9 项）；地磁三轴与雷达频谱移入技术参数页（R-27）",ref:"需求 §7.1–7.3；Q2；用户 2026-09-07"},
  {id:"SP-5",pg:"detail",tp:"规格",txt:"1s 轮询驱动数值刷新；多字节大端；温湿度 ×1000；单位来自字段描述符",ref:"FW-REF callback_BLEQuery/Search；TC-ST-002"},
  {id:"R-6",pg:"detail",tp:"需求",txt:"断开提示+自动重连 3 次退避+手动重试；预期断开不触发自动重连",ref:"SD §9.5.2；A-06"},
  {id:"R-7",pg:"detail",tp:"需求",txt:"轮询停摆→显示『最后更新 x 秒前』并保留最后有效值，不得显示假实时",ref:"S-1；SD §7.1"},
@@ -1118,6 +1150,8 @@ const SPEC=[
  {id:"SP-25",pg:"detail",tp:"规格",txt:"0x06 帧 len 怪癖（=4）；发送手机 Unix 秒，App 不做时区换算；设备端 UDS/DC200 固定+8、SVC 按配置时区；无 ACK/空值视为失败",ref:"traceability §2.1-10；TX-SYNC-001"},
  {id:"R-26",pg:"detail",tp:"需求",txt:"电源开关进 v1（0xFE 持久化）：关机需确认，关机后界面明确『已关机』并可再开机",ref:"Q1 三修 2026-09-06；需求 §6.2"},
  {id:"SP-26",pg:"detail",tp:"规格",txt:"0xFE 载荷 4 字节、电源字节在 payload[3]；关机确认弹窗；关机→停轮询，开机→恢复轮询",ref:"TX-POWER-001"},
+ {id:"R-27",pg:"tech",tp:"需求",txt:"DC200Family 技术参数页：地磁 X/Y/Z + 雷达 10 段频谱整合独立页，随轮询实时刷新，含当前判定对照（车位状态/工作模式），供现场从技术参数角度定位地磁/雷达问题；工程诊断页豁免协议术语规则",ref:"用户 2026-09-07；需求 §7.2"},
+ {id:"SP-27",pg:"tech",tp:"规格",txt:"数据源=TLV 0x5D/0x5E/0x5F（各 2B 大端有符号）+0x60（10×uint16 大端）；实时刷新；判定对照取自 0x3A/0x3B；仅 DC200Family 提供入口",ref:"FW-REF callback_BLEQuery/setDataPackage"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
