@@ -178,7 +178,7 @@ const ZH={
   f_park:"车位状态", f_modeL:"工作模式", f_tamper:"防拆状态", f_period:"上报周期", f_mag:"地磁 X/Y/Z", f_radar:"雷达频谱",
   f_valve:"阀状态", f_insert:"插入检测", f_pulse:"脉冲计数", f_volt:"输出电压档", f_port:"端口功能",
   f_stable:"稳定时长", f_smart:"自动开关机", f_tz:"时区", f_angle:"倾角", f_slant:"倾斜", f_alarm:"温湿告警",
-  occupied:"有车", vacant:"空位", normal:"正常", triggered:"已触发", on:"开启", off:"关闭",
+  occupied:"有车", vacant:"空位", covered:"被遮挡", unknownS:"未知", normal:"正常", triggered:"已触发", on:"开启", off:"关闭",
   yes:"是", no:"否", auto:"自动", manual:"手动", fusion:"融合模式", magOnly:"仅地磁", radarFirst:"雷达优先",
   portPwm:"PWM 控制", portSwitch:"开关控制", view:"查看", minutes:"分钟", mm:"mm", deg:"°",
   cfg:"参数配置",
@@ -227,6 +227,12 @@ const ZH={
   calPlaceUDS:"设备水平静止放置",
   calActUDS:"开始后保持设备完全静止，等待完成提示",
   techT:"技术参数", techEntry:"技术参数 ▸", judge:"当前判定", radarVals:"各段能量",
+  ovf0:"正常", ovf1:"低阈值触发", ovf2:"高阈值触发", ovfInv:"无效",
+  portF:["端口1+2 脉冲","端口1 开关 · 端口2 脉冲","端口1 脉冲 · 端口2 开关","端口1+2 开关","端口1 开关 · 端口2 脉冲（稳定时间）","端口1 脉冲 · 端口2 开关（稳定时间）","端口1+2 开关（稳定时间）"],
+  portStableOff:"仅在带稳定时间的端口模式下可编辑",
+  slot:"任务槽位", slotHint:"1–16；写入覆盖该槽位现有任务",
+  calDC3:"磁力计校准耗时较长（最长约 3 分钟），请耐心等待",
+  dbgConfirmT:"确认发送原始命令？", dbgGo:"发送",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
   hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"0 为固件接受的合法值（开放策略见需求 §7.4）",
@@ -259,7 +265,7 @@ const EN={
   f_park:"Parking", f_modeL:"Work mode", f_tamper:"Tamper", f_period:"Report period", f_mag:"Mag X/Y/Z", f_radar:"Radar spectrum",
   f_valve:"Valve state", f_insert:"Insert detect", f_pulse:"Pulse count", f_volt:"Voltage level", f_port:"Port function",
   f_stable:"Stable time", f_smart:"Auto power", f_tz:"Time zone", f_angle:"Tilt angle", f_slant:"Slant", f_alarm:"HT alarm",
-  occupied:"Occupied", vacant:"Vacant", normal:"Normal", triggered:"Triggered", on:"On", off:"Off",
+  occupied:"Occupied", vacant:"Vacant", covered:"Covered", unknownS:"Unknown", normal:"Normal", triggered:"Triggered", on:"On", off:"Off",
   yes:"Yes", no:"No", auto:"Auto", manual:"Manual", fusion:"Fusion", magOnly:"Mag only", radarFirst:"Radar first",
   portPwm:"PWM control", portSwitch:"Switch control", view:"View", minutes:"min", mm:"mm", deg:"°",
   cfg:"Configuration",
@@ -309,6 +315,12 @@ const EN={
   calPlaceUDS:"Place the device level and still",
   calActUDS:"After starting, keep the device completely still until prompted",
   techT:"Tech Parameters", techEntry:"Tech Params ▸", judge:"Current detection", radarVals:"bin energy",
+  ovf0:"Normal", ovf1:"Low threshold triggered", ovf2:"High threshold triggered", ovfInv:"Invalid",
+  portF:["Port 1 + Port 2 pulse","Port 1 switch, Port 2 pulse","Port 1 pulse, Port 2 switch","Port 1 + Port 2 switch","Port 1 switch, Port 2 pulse (stable time)","Port 1 pulse, Port 2 switch (stable time)","Port 1 + Port 2 switch (stable time)"],
+  portStableOff:"Only editable in stable-time port modes",
+  slot:"Task slot", slotHint:"1–16; writing overwrites the task in that slot",
+  calDC3:"Magnetometer calibration can take up to 3 minutes",
+  dbgConfirmT:"Send this raw command?", dbgGo:"Send",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
   hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"0 is accepted by firmware (see req §7.4)",
@@ -556,7 +568,7 @@ function fval(key){
   const d=SIM[S.device];if(!d)return"—";
   const zh=lang==="zh";
   switch(key){
-    case "f_park":return d.park?t("occupied"):t("vacant");
+    case "f_park":return d.park===1?t("occupied"):d.park===0?t("vacant"):d.park===255?t("covered"):t("unknownS");
     case "f_modeL":return [t("fusion"),t("magOnly"),t("radarFirst")][d.modeL];
     case "f_tamper":return d.tamper?t("triggered"):t("normal");
     case "f_period":return `${d.period} ${t("minutes")}`;
@@ -565,20 +577,20 @@ function fval(key){
     case "f_temp":return fmtTemp(d.temp);
     case "f_hum":return fmtTemp(d.hum);
     case "f_dist":return `${d.dist}`;
-    case "f_ovf":return d.ovf?t("triggered"):t("vacant");
+    case "f_ovf":return [t("ovf0"),t("ovf1"),t("ovf2")][d.ovf]||t("ovfInv");
     case "f_low":return `${d.low}`;
     case "f_high":return `${d.high}`;
     case "f_lat":return d.lat.toFixed(4);
     case "f_lon":return d.lon.toFixed(4);
     case "f_gps":return `${d.gps} ${t("minutes")}`;
-    case "f_angle":return `${(d.angle/10).toFixed(1)}`;
+    case "f_angle":return `${(d.angle/100).toFixed(2)}`;   // 固件上报 angle×100（Ultrasonic communicate.c）
     case "f_slant":return d.slant?t("yes"):t("no");
     case "f_alarm":return d.alarm?t("triggered"):t("normal");
     case "f_valve":return lang==="zh"?`阀1 ${d.v1?t("on"):t("off")} · 阀2 ${d.v2?t("on"):t("off")}`:`V1 ${d.v1?"On":"Off"} · V2 ${d.v2?"On":"Off"}`;
     case "f_insert":return lang==="zh"?`阀1 ${d.v1i?t("yes"):t("no")} · 阀2 ${d.v2i?t("yes"):t("no")}`:`V1 ${d.v1i?"Y":"N"} · V2 ${d.v2i?"Y":"N"}`;
     case "f_pulse":return `${d.p1} / ${d.p2}`;
     case "f_volt":return voltLabel(d.vol);
-    case "f_port":return d.port?t("portPwm"):t("portSwitch");
+    case "f_port":return portLabel(d.port);
     case "f_stable":return `${d.stable}`;
     case "f_smart":return d.smart?t("auto"):t("manual");
     case "f_tz":return d.tz===25?"UTC+03:30":d.tz===26?"UTC+05:30":d.tz<13?`UTC+${d.tz}`:`UTC−${d.tz-12}`;
@@ -718,7 +730,7 @@ function P_tech(){
     `<div class="body">
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("judge")}</div>
       <div style="display:flex;gap:14px;align-items:center;margin-top:6px">
-        ${badge(d.park?"":"warn",d.park?t("occupied"):t("vacant"))}
+        ${badge(d.park===1?"":"warn",d.park===1?t("occupied"):d.park===0?t("vacant"):d.park===255?t("covered"):t("unknownS"))}
         <span class="kv">${t("f_modeL")}: <b>${[t("fusion"),t("magOnly"),t("radarFirst")][d.modeL]}</b></span></div></div>
     <div class="section">${lang==="zh"?"地磁三轴 · 实时曲线（最近 30 组）":"Magnetometer · last 30 samples"}</div>
     <div class="card" style="padding:14px 14px 8px">
@@ -924,11 +936,15 @@ function phoneTzEnc(){
   return null;                                          // −03:30 等设备不支持
 }
 function voltLabel(v){return [t("vol0"),t("vol1"),t("vol2")][v]||("?");}
-function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
+/* SVC100 端口功能 7 取值（Android arrays spinner_items_valve_mode；0x80 位=带稳定时间） */
+const PORT_VALUES=[0x00,0x01,0x02,0x03,0x81,0x82,0x83];
+function portLabel(v){const i=PORT_VALUES.indexOf(Number(v));return i>=0?t("portF")[i]:t("unknownS");}
+function stableModeOn(v){return (Number(v)&0x80)!==0;}
+function numRow(key,label,hint,minA,minB,maxA,maxB,unit,disabled){
   const d=S.cfg.draft,err=S.cfg.errors[key];
   return `<div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${label}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-      <input class="input" id="cfg-${key}" style="flex:1" inputmode="numeric" value="${d[key]}"
+      <input class="input" id="cfg-${key}" style="flex:1;${disabled?"opacity:.5":""}" inputmode="numeric" value="${d[key]}" ${disabled?"disabled":""}
         oninput="S.cfg.draft['${key}']=this.value"><span class="unit" style="color:var(--text2);font-size:12px">${unit||""}</span></div>
     ${hint?`<div class="kv" style="margin-top:4px;font-size:11px">${hint}</div>`:""}
     ${err?`<div style="font-size:12px;color:var(--err);margin-top:4px">✕ ${err}</div>`:""}</div>`;
@@ -981,8 +997,8 @@ function P_config(){
   } else {
     body=`${banner}
       ${selRow("vol",t("f_volt")+"（"+(zh?"固件映射 0=12V / 1=9V / 2=5V":"firmware: 0=12V / 1=9V / 2=5V")+"）",[{v:0,l:t("vol0")},{v:1,l:t("vol1")},{v:2,l:t("vol2")}])}
-      ${segRow("port",t("f_port"),[t("portSwitch"),t("portPwm")])}
-      ${numRow("stable",t("f_stable"),null,1,null,255,"s")}
+      ${selRow("port",t("f_port")+"（"+(zh?"7 取值，0x80 位=带稳定时间":"7 values, 0x80 bit = stable time")+"）",PORT_VALUES.map((v,i)=>({v,l:t("portF")[i]})))}
+      ${numRow("stable",t("f_stable"),stableModeOn(S.cfg.draft.port)?null:t("portStableOff"),1,null,255,"s","s",!stableModeOn(S.cfg.draft.port))}
       ${segRow("smart",t("f_smart"),[t("auto"),t("manual")],[1,0])}
       <div class="kv" style="margin:-4px 4px 8px;font-size:11px">${t("smartHint")}</div>
       <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("f_tz")}（${zh?"作用：对时换算与阀门定时任务的触发时刻":"used for time-sync conversion and schedule timing"}）</div>
@@ -1011,7 +1027,9 @@ function cfgValidate(){
   } else if(f==="dc"){
     if(!num("report")||d.report<0||d.report>1440){E.report=`${t("errRange")} 0–1440`;ok=false;}
   } else {
-    if(!num("stable")||d.stable<1||d.stable>255){E.stable=`${t("errRange")} 1–255`;ok=false;}
+    if(stableModeOn(d.port)){
+      if(!num("stable")||d.stable<1||d.stable>255){E.stable=`${t("errRange")} 1–255`;ok=false;}
+    } else { delete E.stable; }   // 非稳定时间模式字段禁用，跳过校验并保留设备当前值（Android updateStableTimeEditor 同款）
     if(!num("period")||d.period<0||d.period>1440){E.period=`${t("errRange")} 0–1440`;ok=false;}
   }
   return ok;
@@ -1021,7 +1039,7 @@ function cfgSummary(){
   const rows=f==="uds"?[[t("f_period"),`${d.report} ${t("minutes")}`],[t("f_gps"),`${d.gps} ${t("minutes")}`],
       [t("f_low"),`${d.low} mm`],[t("f_high"),`${d.high} mm`]]
     :f==="dc"?[[t("f_period"),`${d.report} ${t("minutes")}`],[t("f_modeL"),[t("fusion"),t("magOnly"),t("radarFirst")][d.mode]]]
-    :[[t("f_volt"),`${zh0()}${d.vol}`],[t("f_port"),d.port?t("portPwm"):t("portSwitch")],[t("f_stable"),`${d.stable} s`],
+    :[[t("f_volt"),`${zh0()}${d.vol}`],[t("f_port"),portLabel(d.port)],[t("f_stable"),`${d.stable} s`],
       [t("f_smart"),d.smart?t("auto"):t("manual")],[t("f_tz"),tzLabel(+d.tz)],[t("f_period"),`${d.period} ${t("minutes")}`]];
   return rows.map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join("");
 }
@@ -1049,11 +1067,13 @@ function cfgWrite(){
   },900);
 }
 /* ═══════════ SVC100 阀门任务（0x03 实时 / 0x04 定时 / 0x05 删除） ═══════════
-   固件契约（SVC communicate.c 已核实）：
-   - 0x03 len7：valve(0双/1/2)+state(0关/1开)+time(2B BE, 秒, 0=不自动结束)+pulse(3B BE)；
+   固件契约（SVC communicate.c 已核实，2026-09-07 复核）：
+   - 0x03 len7（载荷 6B）：valve(0双/1/2)+state(0关/1开)+time(2B BE, 秒, 0=不自动结束)+pulse(2B BE)；
+     注意：固件按 srcHex[5..7] 读 3B 脉冲，与 len 门槛 7（=cmd+6B 载荷）不自洽，第 3 字节实为 CRC 高位
+     ——固件缺陷，待固件组修复；App 侧契约=严格按 6B 载荷发送（与 Android V3.21 逐字节一致）
      本地定时任务执行中 → 整个分支被跳过：无 ACK、无错误（静默忙拒绝）
-   - 0x04 len11：id(1-16)+valve(0-2)+state(0-1)+pulse(2B BE)+start分钟(2B)+end分钟(2B)+repeat(≤0x7F)；
-     任一非法 → return 静默；合法 → 存 flash + ACK
+   - 0x04 len11：id(1-16，槽位可选/覆盖)+valve(0-2 含双阀)+state(0-1)+pulse(2B BE)+start分钟(2B)+end分钟(2B)+repeat(≤0x7F)；
+     任一非法 → return 静默；合法 → 存 flash + ACK；固件不校验结束>开始（App 侧前置校验）
    - 0x05 len2：id 1-16 单删；0xFF 全删；删除执行中任务强制停止；删除后 ACK
    - repeat 位序：bit0=周一 … bit5=周六，bit6=周日（(wday?wday:7)-1）
    - 任务表无 BLE 回读（0x3D 仅走 LoRa 平台侧）→ App 本地镜像 + UI 明示 */
@@ -1125,8 +1145,12 @@ function P_taskEdit(dayNames){
       <select class="input" style="flex:1" onchange="S.task.draft['${key2}']=+this.value;render()">${
         Array.from({length:60},(_,i)=>`<option ${d[key2]===i?"selected":""}>${String(i).padStart(2,"0")}</option>`).join("")}</select></div>`;
   return statusbar()+navbar(t("addTask"),"",true)+`<div class="body">
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("slot")}（${t("slotHint")}）</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${Array.from({length:16},(_,i)=>i+1).map(n=>
+        `<div style="width:38px;text-align:center;padding:8px 0;border-radius:9px;cursor:pointer;font-size:13px;background:${+d.id===n?"var(--info)":S.tasks.some(x=>x.id===n)?"var(--card2)":"var(--card2)"};color:${+d.id===n?"#fff":"var(--text2)"};${S.tasks.some(x=>x.id===n)?"outline:1px solid var(--line);":""}" onclick="S.task.draft.id=${n};render()">${n}</div>`).join("")}</div>
+      <div class="kv" style="margin-top:6px;font-size:11px">${lang==="zh"?"实线圈=槽位已有任务，写入即覆盖":"Outlined = slot in use; writing overwrites it"}</div></div>
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("valve")}</div>
-      <div style="display:flex;gap:6px;margin-top:8px">${[1,2].map(v=>`<div style="flex:1;text-align:center;padding:9px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.valve===v?"var(--info)":"var(--card2)"};color:${d.valve===v?"#fff":"var(--text2)"}" onclick="S.task.draft.valve=${v};render()">${v===1?t("v1"):t("v2")}</div>`).join("")}</div></div>
+      <div style="display:flex;gap:6px;margin-top:8px">${[0,1,2].map(v=>`<div style="flex:1;text-align:center;padding:9px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.valve===v?"var(--info)":"var(--card2)"};color:${d.valve===v?"#fff":"var(--text2)"}" onclick="S.task.draft.valve=${v};render()">${v===0?t("vBoth"):v===1?t("v1"):t("v2")}</div>`).join("")}</div></div>
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("act")}</div>
       <div style="display:flex;gap:6px;margin-top:8px">${[1,0].map(v=>`<div style="flex:1;text-align:center;padding:9px;border-radius:9px;cursor:pointer;font-size:13px;background:${d.state===v?"var(--info)":"var(--card2)"};color:${d.state===v?"#fff":"var(--text2)"}" onclick="S.task.draft.state=${v};render()">${v?t("openV"):t("closeV")}</div>`).join("")}</div></div>
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("pulseN")}</div>
@@ -1142,8 +1166,11 @@ function P_taskEdit(dayNames){
 function saveTask(){
   const d=S.task.draft;
   if(!(d.sh<24&&d.sm<60&&d.eh<24&&d.em<60)){toast(t("invalidTime"));return;}
+  if(+d.eh*60+ +d.em<=+d.sh*60+ +d.sm){toast(t("invalidTime"));return;}   // 结束须晚于开始（Android 同款前置校验；固件只校验时分范围）
+  const p=+d.pulse;
+  if(!Number.isFinite(p)||p<0||p>65535){toast(`${t("errRange")} 0–65535`);return;}   // 0x04 pulse 2B
   if(!d.days.some(x=>x)){toast(t("needDay"));return;}
-  const rec={id:d.editing||d.id,valve:d.valve,state:d.state,pulse:+d.pulse||0,
+  const rec={id:+d.id,valve:d.valve,state:d.state,pulse:p,
              sh:+d.sh,sm:+d.sm,eh:+d.eh,em:+d.em,days:[...d.days]};
   const i=S.tasks.findIndex(x=>x.id===rec.id);
   if(i>=0)S.tasks[i]=rec;else S.tasks.push(rec);
@@ -1162,6 +1189,9 @@ function delAllTasks(){
   S.tasks=[];log("0x05","INFO","delete ALL (0xFF)");render();
 }
 function execRT(){
+  const dur=+S.task.draft.rtDur,pul=+S.task.draft.rtPulse;
+  if(!Number.isFinite(dur)||dur<0||dur>65535||!Number.isFinite(pul)||pul<0||pul>65535){
+    toast(`${t("errRange")} 0–65535`);return;}   // 0x03 time/pulse 均 2B
   if(Scene.svcBusy){
     S.task.busy=true;log("0x03","ERR","busy: local schedule running, silently ignored");
     setTimeout(()=>{S.task.busy=false;render();},2600);render();return;
@@ -1177,11 +1207,16 @@ function P_debug(){
     <div class="row"><span class="label">${t("target")}: ${S.device} …9C01</span>${badge(S.phase==="ready"?"":"err",S.phase==="ready"?"● "+t("on"):"○ "+t("off"))}</div>
     <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3">
     <div style="display:flex;gap:7px;margin:10px 0">
-      <button class="tb" style="background:var(--info);border-color:var(--info);color:#fff" onclick="sendHex()">${t("send")}</button>
+      <button class="tb" style="background:var(--info);border-color:var(--info);color:#fff" onclick="askDbgSend()">${t("send")}</button>
       <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="S.hex=[];render()">${t("clear")}</button>
       <button class="tb" style="background:var(--card);color:var(--text);border-color:var(--line)" onclick="toast('${t("copy")} ✓')">${t("copy")}</button></div>
-    <div class="hexlog" id="hexlog">${S.hex.length?S.hex.join(""):`<div class="kv" style="text-align:center;padding:20px">${t("protoTx")}</div>`}</div></div>`;
+    <div class="hexlog" id="hexlog">${S.hex.length?S.hex.join(""):`<div class="kv" style="text-align:center;padding:20px">${t("protoTx")}</div>`}</div></div>`
+    +(S.dbgConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("dbgConfirmT")}</div>
+      <div class="b center" style="text-align:center;font-family:var(--mono)">68 6B 74 00 00 05 FF FF FF FF FF 06 C3</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.dbgConfirm=false;render()">${t("cancel")}</button>
+      <button class="btn" style="margin:0" onclick="S.dbgConfirm=false;sendHex()">${t("dbgGo")}</button></div></div></div>`:"");
 }
+function askDbgSend(){S.dbgConfirm=true;render();}
 function sendHex(){
   const now=clock();
   S.hex.unshift(`<div><span class="ts">${now}.204</span><span class="tx">TX</span> 686B74 00 0005 FFFFFFFFFF 06C3</div>`);
@@ -1258,7 +1293,7 @@ function P_cal(){
     <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
     mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
-      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:""}</div>
+      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
       <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
       <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
   } else {
@@ -1348,11 +1383,11 @@ function runScene(id){
     toast(lang==="zh"?"定向扫描 3 轮（演示 5 秒）未命中——观察『未找到』态与重试":"Targeted scan misses 3 cycles (5s demo) — observe the not-found state and retry");}
   if(id==="svcBusy"){Scene.svcBusy=true;connectTo("SVC100","…B4D2",-70);
     setTimeout(()=>{taskInit();S.page="tasks";
-      S.task.draft={valve:1,state:1,dur:300,pulse:100};
-      toast(lang==="zh"?"固件正持有本地定时任务——点『立即执行』观察静默忙拒绝（2s 超时）":"Firmware holds a local task — press Run Now to see busy silent-reject");render();},1600);}
+      S.task.draft={...S.task.draft,rtValve:1,rtState:1,rtDur:300,rtPulse:100};
+      toast(lang==="zh"?"固件正持有本地定时任务——点『立即执行』观察静默忙拒绝（2s 超时）":"Firmware holds a local task — press Run Now to see busy silent-reject");render();},3000);}
   if(id==="cfgReject"){Scene.cfgReject=true;connectTo("UDS100","…3F2A",-58);
     setTimeout(()=>{cfgInit();S.page="config";
-      S.cfg.draft.low=29;toast(lang==="zh"?"已把低阈值改为 29（越界）——保存后观察静默拒绝流程":"low=29 out of range — save to see silent-reject flow");render();},1600);}
+      S.cfg.draft.low=29;toast(lang==="zh"?"已把低阈值改为 29（越界）——保存后观察静默拒绝流程":"low=29 out of range — save to see silent-reject flow");render();},3000);}
   notes();
 }
 
@@ -1372,7 +1407,7 @@ const SPEC=[
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
  {id:"R-5",pg:"detail",tp:"需求",txt:"详情页只放业务状态（UDS100 13 项 / DC200 4 项 / SVC100 9 项）；地磁三轴与雷达频谱移入技术参数页（R-27）",ref:"需求 §7.1–7.3；Q2；用户 2026-09-07"},
- {id:"SP-5",pg:"detail",tp:"规格",txt:"1s 轮询驱动数值刷新；多字节大端；温湿度 ×1000；单位来自字段描述符",ref:"FW-REF callback_BLEQuery/Search；TC-ST-002"},
+ {id:"SP-5",pg:"detail",tp:"规格",txt:"1s 轮询驱动数值刷新；多字节大端；温湿度 ×1000；单位来自字段描述符；状态映射按固件枚举：车位 0=空位/1=有车/0xFF=遮挡/其他未知（0x3A），满溢 0=正常/1=低阈值触发/2=高阈值触发/0xFF=无效（0x47），倾角=原始值/100（固件 angle×100 上报，0x0E）",ref:"FW-REF callback_BLEQuery/Search；Android Communicate.kt streamRev；TC-ST-002"},
  {id:"R-6",pg:"detail",tp:"需求",txt:"断开提示+自动重连 3 次退避+手动重试；预期断开不触发自动重连",ref:"SD §9.5.2；A-06"},
  {id:"R-7",pg:"detail",tp:"需求",txt:"轮询停摆→显示『最后更新 x 秒前』并保留最后有效值，不得显示假实时",ref:"S-1；SD §7.1"},
  {id:"R-8",pg:"detail",tp:"需求",txt:"响应含未知类型→保留可解析前缀字段+数据异常横幅+日志，不崩溃不跳过",ref:"S-6（M3 修订）；TC-BC-011"},
@@ -1384,17 +1419,17 @@ const SPEC=[
  {id:"R-14",pg:"ota",tp:"需求",txt:"§8.5 十个异常场景全部有明确状态与恢复路径，不允许无响应界面",ref:"需求 §8.5；TC-BC-003~007"},
  {id:"SP-11",pg:"ota",tp:"规格",txt:"文件校验（空/超大/后缀/型号弱校验强警告 Q7）；MTU≥160 前置；停等单包 3s、页写 16 包延迟、静默≥15s 失败、复位 ACK(1,0) 自动从包 0 重传≤2 次；成功判定=版本比对一致",ref:"SD §8.1/§8；TC-BC-001~004/007"},
  {id:"R-15",pg:"ota",tp:"需求",txt:"成功/失败页生成可导出 OTA 升级报告（前后版本、阶段耗时、失败原因）",ref:"需求 §3.3-8；SD §9.4"},
- {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
- {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单；输入过程不整页重绘（保持焦点与滚动位置），校验错误在保存时定位到字段",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
+ {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口（7 功能值）/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
+ {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；SVC 端口功能=7 取值（0x00-0x03/0x81-0x83：1/2 路各自脉冲/开关 × 是否带稳定时间，标签对齐 Android spinner_items_valve_mode），稳定时长仅 0x80 位模式可编辑（否则禁用并保留设备当前值，跳过校验）；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单；输入过程不整页重绘（保持焦点与滚动位置），校验错误在保存时定位到字段",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android DeviceActivity getConfigSVC100View/updateStableTimeEditor；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
  {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
  {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
- {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03=valve(0双/1/2)+state+时长秒(0=不自动结束)+pulse(3B)；忙=静默忽略→2s 超时提示『设备忙』；0x04=id(1-16)+起止分钟+repeat(≤0x7F，bit0=周一…bit6=周日)，非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支；TX-SVC-TASK-001~003；Android PR #3 佐证（周一=bit0）"},
+ {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；固件按 3B 读脉冲与 len 门槛 7 不自洽（第 3 字节吃到 CRC 高位）=固件缺陷待修，App 严格按 6B 载荷发送（与 Android 逐字节一致）；忙=静默忽略→2s 超时提示『设备忙』；0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve(0双/1/2)+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支（2026-09-07 复核）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
  {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
  {id:"SP-19",pg:"debug",tp:"规格",txt:"隐藏入口：关于页连点版本 7 次开启；dev 构建默认开",ref:"Q3 裁决"},
  {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语；设置页语言行点击循环切换（跟随系统→简体中文→English）并即时生效；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
  {id:"R-21",pg:"settings",tp:"需求",txt:"关于页显示 App 版本号+构建号；隐私说明占位",ref:"Q10"},
  {id:"R-22",pg:"log",tp:"需求",txt:"诊断日志覆盖九类事件（扫描/发现/连接/服务/订阅/写入/响应/OTA 阶段/错误恢复），导出 txt 带环境头",ref:"需求 §9.2；SD §9.4；A-09"},
- {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准，期间禁其他命令；UI 是否开放待 Q1",ref:"需求 §7.2；TC-ST-006"},
+ {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准（完成信号=设备上报 Calibration Done），期间禁其他命令；关机时校准不可用；App 等待上限 DC200 360s/其他 240s（超时给明确提示）",ref:"需求 §7.2；Android startSyncCheck timeout；TC-ST-006"},
  {id:"R-24",pg:"perm",tp:"需求",txt:"权限四态引导：未请求/被拒/蓝牙关闭/不支持 BLE；授权后自动返回",ref:"需求 §9.4；A-01"},
  {id:"R-25",pg:"detail",tp:"需求",txt:"时间同步进 v1：页面实时显示手机当前时间（秒级），一键同步，无需用户输入数字",ref:"用户澄清 2026-09-06；SD §2.2"},
  {id:"SP-25",pg:"detail",tp:"规格",txt:"0x06 帧 len 怪癖（=4）；发送手机 Unix 秒，App 不做时区换算；设备端 UDS/DC200 固定+8、SVC 按配置时区；无 ACK/空值视为失败",ref:"traceability §2.1-10；TX-SYNC-001"},
