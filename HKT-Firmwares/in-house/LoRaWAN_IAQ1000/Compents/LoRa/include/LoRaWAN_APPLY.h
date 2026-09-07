@@ -72,6 +72,38 @@ extern "C"
 
     } LoRaWAN_JoinEvent_t;
 
+    typedef enum TxRecoverState
+    {
+        TX_RECOVER_IDLE,
+        TX_RECOVER_BACKOFF,
+        TX_RECOVER_MODULE,
+        TX_RECOVER_REJOIN,
+    } TxRecoverState_t;
+
+    typedef enum TxFailType
+    {
+        TX_FAIL_NONE,
+        TX_FAIL_BUSY_TIMEOUT,
+        TX_FAIL_STAT_TIMEOUT,
+        TX_FAIL_UPLINK,
+        TX_FAIL_ACK,
+    } TxFailType_t;
+
+    struct TxRecoverManager
+    {
+        TxRecoverState_t state;
+        TxFailType_t lastFailType;
+        u8 uplink_fail_cnt;
+        u8 ack_fail_cnt;
+        u8 busy_timeout_cnt;
+        u8 stat_timeout_cnt;
+        u8 module_recover_cnt;
+        u8 rejoin_trigger_cnt;
+        u8 backoff_level;
+        time_t last_tx_success_ts;
+        time_t backoff_target_ts;
+    };
+
     struct LoRaParam
     {
         u8 joinState : 1;    // 入网状态
@@ -110,6 +142,7 @@ extern "C"
     extern u8 jion_fail_cnt;
     extern time_t reconnect_stamp;
     extern struct LoRaParam LoRaWAN;
+    extern struct TxRecoverManager txRecover;
 
     void LoRa_DelayMs(u32 delay_time);
     void rstLoRaWANModule(void);
@@ -126,6 +159,10 @@ extern "C"
 
     void LoRaWAN_Init(void);
     void LoRaWAN_JoinInit(void);
+
+    void LoRaWAN_ReportTxFail(TxFailType_t type);
+    void LoRaWAN_ReportTxSuccess(void);
+    void LoRaWAN_TxRecoverProcess(void);
 
 #ifdef __cplusplus
 }
