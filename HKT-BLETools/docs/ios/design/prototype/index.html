@@ -1119,8 +1119,16 @@ const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,tech:P_tech,ot
 function render(){
   document.documentElement.dataset.lang=lang;
   document.documentElement.dataset.theme=S.theme;
+  // 同页重绘时保留滚动位置（轮询每秒刷新不能把用户打回顶部）；切页则归顶
+  const prevBody=document.querySelector("#screen .body");
+  const keepScroll=(prevBody&&prevBody.dataset.page===S.page)?prevBody.scrollTop:0;
   const page=S.perm!=="granted"&&["home","detail","ota"].includes(S.page)?P_perm(S.perm==="denied"?"denied":"btoff"):RENDER[S.page]();
   document.getElementById("screen").innerHTML=page;
+  const newBody=document.querySelector("#screen .body");
+  if(newBody){newBody.dataset.page=S.page;newBody.scrollTop=keepScroll;
+    if(keepScroll>0)requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+      const b=document.querySelector("#screen .body");
+      if(b&&b.dataset.page===S.page)b.scrollTop=keepScroll;});});}
   document.getElementById("themeBtn").textContent=S.theme==="light"?"🌗":"☀️";
   document.getElementById("langBtn").textContent=lang==="zh"?"EN":"中文";
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
