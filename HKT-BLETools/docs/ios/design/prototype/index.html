@@ -486,7 +486,7 @@ function fieldRows(){
 function battDisplay(){
   const d=SIM[S.device];
   if(S.device==="UDS100")return (lang==="zh"?"电压 ":"Voltage ")+(d.battVolMV||4000)+" mV";
-  return (lang==="zh"?t("estBatt"):"Battery (est.)")+" "+d.batt+"%";
+  return (lang==="zh"?"电量 ":"Battery ")+d.batt+"%";
 }
 function P_detail(){
   if(S.p3==="upgradeMode"){
@@ -772,11 +772,32 @@ function tzLabel(v){
   return v<13?`UTC+${String(v).padStart(2,"0")}:00`:`UTC−${String(v-12).padStart(2,"0")}:00`;
 }
 function tzOptions(){
-  const out=[];
-  for(let v=0;v<=12;v++)out.push({v,l:tzLabel(v)});
-  for(let v=13;v<=24;v++)out.push({v,l:tzLabel(v)});
-  out.push({v:25,l:tzLabel(25)});out.push({v:26,l:tzLabel(26)});
-  return out;
+  const neg=[],utc0=[],pos=[],half=[];
+  for(let v=13;v<=24;v++)neg.push({v,l:tzLabel(v)});
+  utc0.push({v:0,l:tzLabel(0)});
+  for(let v=1;v<=12;v++)pos.push({v,l:tzLabel(v)});
+  half.push({v:25,l:tzLabel(25)});half.push({v:26,l:tzLabel(26)});
+  return [...neg,...utc0,...pos,...half];
+}
+function tzGroups(){
+  const neg=[],pos=[],half=[];
+  for(let v=13;v<=24;v++)neg.push({v,l:tzLabel(v)});
+  for(let v=1;v<=12;v++)pos.push({v,l:tzLabel(v)});
+  half.push({v:25,l:tzLabel(25)});half.push({v:26,l:tzLabel(26)});
+  return [
+    {label:lang==="zh"?"西半球时区（UTC−01:00 ~ UTC−12:00）":"Western (UTC−01:00 ~ UTC−12:00)",items:neg},
+    {label:"UTC+00:00",items:[{v:0,l:"UTC+00:00"}]},
+    {label:lang==="zh"?"东半球时区（UTC+01:00 ~ UTC+12:00）":"Eastern (UTC+01:00 ~ UTC+12:00)",items:pos},
+    {label:lang==="zh"?"半小时时区":"Half-hour time zones",items:half},
+  ];
+}
+function phoneTzEnc(){
+  const off=-new Date().getTimezoneOffset()/60;         // 手机 UTC 偏移（小时）
+  const r=Math.round(off*2)/2;                          // 只支持整小时与 ±:30
+  if(Number.isInteger(r)&&r>=0&&r<=12)return r;
+  if(Number.isInteger(r)&&r<0&&r>=-12)return r+12;
+  if(r===3.5)return 25;if(r===5.5)return 26;
+  return 0;
 }
 function voltLabel(v){return [t("vol0"),t("vol1"),t("vol2")][v]||("?");}
 function numRow(key,label,hint,minA,minB,maxA,maxB,unit){
@@ -840,9 +861,11 @@ function P_config(){
       ${segRow("smart",t("f_smart"),[t("auto"),t("manual")])}
       <div class="kv" style="margin:-4px 4px 8px;font-size:11px">${t("smartHint")}</div>
       <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("f_tz")}（${zh?"作用：对时换算与阀门定时任务的触发时刻":"used for time-sync conversion and schedule timing"}）</div>
+        <div class="kv" style="margin-top:4px">${zh?"设备当前":"Device current"}: <b>${tzLabel(d.tz)}</b></div>
         <select class="input" style="margin-top:8px" onchange="S.cfg.draft.tz=+this.value;render()">
-          ${tzOptions().map(o=>`<option value="${o.v}" ${+S.cfg.draft.tz===o.v?"selected":""}>${o.l}</option>`).join("")}
-        </select></div>
+          ${tzGroups().map(g=>`<optgroup label="${g.label}">${g.items.map(o=>`<option value="${o.v}" ${+S.cfg.draft.tz===o.v?"selected":""}>${o.l}</option>`).join("")}</optgroup>`).join("")}
+        </select>
+        <button class="btn secondary" style="margin-top:8px" onclick="const e=phoneTzEnc();if(e===null){toast('${zh?"无法识别手机时区":"Cannot detect phone timezone"}')}else{S.cfg.draft.tz=e;render();toast('${zh?"已选为手机时区":"Set to phone timezone"}')}">${zh?"与手机时区一致":"Match phone timezone"}</button></div>
       ${numRow("period",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}`;
   }
   return statusbar()+navbar(t("cfg"),"",true)+`<div class="body">${body}
