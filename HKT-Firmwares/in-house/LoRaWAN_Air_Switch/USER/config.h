@@ -10,7 +10,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 
-#define FUNC_BOARD_VERSION_CL 1
+#define FUNC_BOARD_VERSION_CL 0
 
 #if FUNC_BOARD_VERSION_CL
 #include "stm32l0xx_hal.h"
@@ -78,11 +78,11 @@
 #define SEC_DELAY         (1000 / SYSTEM_TIMER_BASE) // u16 不能超过65秒
 
 #define HARDWARE_VER 0x07
-#define SOFTWARE_VER 0x0C
+#define SOFTWARE_VER 0x0D
 
 #define FUNC_LoRaWAN_ABP      0
 #define FUNC_LoRaWAN_SAMPLE   1
-#define FUNC_LORA_VERSION_LIR 0
+#define FUNC_LORA_VERSION_LIR 1
 
 #define FUNC_LoRaWAN_CN470_0        0 // 通道0-7
 #define FUNC_LoRaWAN_CN470_8        0 // 通道8-15
@@ -105,10 +105,14 @@
 #define LoRaWAN_DEBUG_ENABLE    0
 #define HIGH_LEVEL_DEBUG_ENABLE 0
 
+#if FUNC_BOARD_VERSION_CL
+
 typedef enum {
     FALSE = 0,
     TRUE = !FALSE
 } BOOL;
+
+#endif
 
 void fwdgt_reload(void);
 

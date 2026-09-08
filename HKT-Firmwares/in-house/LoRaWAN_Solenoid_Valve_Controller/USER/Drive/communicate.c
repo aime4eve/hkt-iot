@@ -553,7 +553,7 @@ void fromLoRaWANDataHandle(u8 *data, u16 len)
                 real_time_task_t.valve = srcHex[1];
                 real_time_task_t.state = srcHex[2];
                 real_time_task_t.time = srcHex[3] << 8 | srcHex[4];
-                real_time_task_t.pulse_count = srcHex[5] << 16 | srcHex[6] << 8 | srcHex[7];
+                real_time_task_t.pulse_count = srcHex[5] << 8 | srcHex[6];
                 if (real_time_task_t.time > 0)
                     real_time_task_t.task_over_timestamp = Timestamp + real_time_task_t.time;
                 else
@@ -1657,7 +1657,7 @@ void fromBleDataHandle(u8 *data, u16 len)
             real_time_task_t.valve = srcHex[1];
             real_time_task_t.state = srcHex[2];
             real_time_task_t.time = srcHex[3] << 8 | srcHex[4];
-            real_time_task_t.pulse_count = srcHex[5] << 16 | srcHex[6] << 8 | srcHex[7];
+            real_time_task_t.pulse_count = srcHex[5] << 8 | srcHex[6];
             if (real_time_task_t.time > 0)
                 real_time_task_t.task_over_timestamp = Timestamp + real_time_task_t.time;
             else
