@@ -185,6 +185,7 @@ const ZH={
   debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制", waiting:"等待设备响应…",
   lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值",
   prefixF:"设备名称前缀过滤", prefixHint:"仅显示名称以所选前缀开头的设备；未命名设备自动排除",
+  privUpdated:"生效日期",
   about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
   dbgOn:"已开启调试模式", permT:"允许“HKT BLETools”使用蓝牙？", permB:"用于查找和连接附近的 HKT 设备",
   dontAllow:"不允许", allow:"允许", deniedT:"蓝牙权限未开启", deniedB:"需要在系统设置中允许蓝牙权限，才能扫描和连接设备。",
@@ -273,6 +274,7 @@ const EN={
   debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy", waiting:"(waiting for device)",
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
   prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
+  privUpdated:"Effective date",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
   dontAllow:"Don't Allow", allow:"Allow", deniedT:"Bluetooth permission is off", deniedB:"Enable Bluetooth permission in Settings to scan and connect devices.",
@@ -337,6 +339,44 @@ const EN={
 };
 const L={zh:ZH,en:EN};
 let lang="zh"; const t=k=>L[lang][k];
+
+/* ═══════════ 隐私说明正式稿（GDPR 透明度要点结构；内容=本应用数据事实的最小如实描述；用户 2026-09-08 裁决起草） ═══════════ */
+const PRIVACY={
+ zh:{updated:"2026-09-08",secs:[
+  ["概述","HKT BLETools（下称“本应用”）是在您的 iPhone 本地运行的设备管理工具，用于查找、连接和管理 HKT 蓝牙设备（MPS / SVC / UDS / EPS 系列）。\n本应用不收集、不上传、不共享任何个人数据，也不包含分析统计、广告或追踪组件。"],
+  ["我们处理的信息（仅存于您的设备）","• 蓝牙扫描数据：附近 HKT 设备的广播名称、系统标识符与信号强度，仅用于建立和维持连接；\n• 设备数据：所连接设备的固件版本、电量/电压、温湿度、经纬度（由设备上报）、阀门状态、地磁/雷达读数等状态与配置信息；\n• 本地记录：诊断日志、固件升级报告、最近连接的设备、语言与扫描过滤等设置。"],
+  ["存储与保留","上述数据仅保存在您的 iPhone 本地（系统沙盒）中，不会传输到任何服务器；删除本应用即同时永久删除上述全部数据。"],
+  ["无网络传输与第三方","本应用不具备任何服务器通信能力，不嵌入第三方分析、广告或追踪 SDK，不存在向外部第三方披露数据的行为。"],
+  ["相机使用","仅在您使用“定位设备 → 扫描设备二维码”功能时访问相机，用于读取设备标签上的二维码；相机画面不会被拍摄、录制或保存。"],
+  ["蓝牙权限","蓝牙权限仅用于扫描和连接 HKT 设备，不用于推断位置或建立行为画像。"],
+  ["数据导出","仅当您主动导出诊断日志或固件升级报告时，数据经 iOS 系统分享面板发送，目的地由您选择；在您操作之前，任何数据都不会离开设备。"],
+  ["您的权利","数据仅存于本机：删除全部数据 = 卸载本应用；导出数据 = 使用应用内导出功能。本应用无账号体系，不涉及在线行使权利的流程。"],
+  ["儿童隐私","本应用为工业/工程作业工具，不面向儿童，不有意收集任何个人信息。"],
+  ["本说明的变更","若未来版本的功能影响本说明（例如增加联网能力），我们将更新本页并标注版本与生效日期；重大变更会在应用内提示您。"],
+  ["联系我们","如对本说明有任何疑问，可通过应用发布渠道公布的联系方式与我们联系。"],
+ ]},
+ en:{updated:"2026-09-08",secs:[
+  ["Overview","HKT BLETools (the “app”) is a device-management tool that runs locally on your iPhone to find, connect to and manage HKT Bluetooth devices (MPS / SVC / UDS / EPS series).\nThe app does not collect, upload or share any personal data, and contains no analytics, advertising or tracking components."],
+  ["Information we process (stored only on your device)","• Bluetooth scan data: advertised names, system identifiers and signal strength of nearby HKT devices, used only to establish and maintain connections;\n• Device data: firmware version, battery/voltage, temperature/humidity, latitude/longitude (reported by the device), valve states, magnetometer/radar readings and configuration of the connected device;\n• Local records: diagnostic logs, firmware-update reports, recently connected devices, language and scan-filter settings."],
+  ["Storage and retention","All data above is stored only on your iPhone (system sandbox) and is never transmitted to any server. Uninstalling the app permanently deletes all of it."],
+  ["No network transfer, no third parties","The app has no server-communication capability, embeds no third-party analytics, advertising or tracking SDKs, and does not disclose data to external parties."],
+  ["Camera use","The camera is accessed only when you use “Locate Device → Scan Device QR Code”, to read the QR code on the device label. The camera feed is never photographed, recorded or saved."],
+  ["Bluetooth permission","Bluetooth is used only to scan for and connect to HKT devices — never to infer your location or build behavioural profiles."],
+  ["Data export","Only when you actively export a diagnostic log or update report does data leave the device, via the iOS share sheet, to a destination you choose. Nothing leaves the device without your action."],
+  ["Your rights","Data lives only on this device: delete all data = uninstall the app; export data = use the in-app export. The app has no account system."],
+  ["Children","The app is an industrial/engineering tool, is not directed at children, and does not knowingly collect any personal information."],
+  ["Changes to this statement","If a future version changes what this statement covers (e.g. adding networking), we will update this page with a new version and date; material changes will be announced in the app."],
+  ["Contact us","If you have questions about this statement, contact us via the channels published on the app's store page."],
+ ]},
+};
+function P_privacy(){
+  const p=PRIVACY[lang];
+  return statusbar()+navbar(t("privacy"),"",true)+`<div class="body">
+    <div class="kv" style="text-align:center;margin:2px 0 10px">${t("privUpdated")}: ${p.updated} · v1.0</div>
+    ${p.secs.map(([h,b])=>`<div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:6px">${h}</div>
+      <div class="kv" style="white-space:pre-line">${b}</div></div>`).join("")}
+    </div>`;
+}
 
 /* ═══════════ 设备仿真数据（字段全集 = 需求 §7.1–7.3） ═══════════ */
 const SIM={
@@ -1247,7 +1287,7 @@ function P_settings(){
     <div class="section">${t("about")}</div>
     <div class="row" style="cursor:pointer" onclick="taps()"><span class="label">${t("ver")}</span>
       <span class="value" id="verVal">1.0.0 (123)</span></div>
-    <div class="row"><span class="label">${t("privacy")}</span><span class="value">▸</span></div>
+    <div class="row" style="cursor:pointer" onclick="nav('privacy')"><span class="label">${t("privacy")}</span><span class="value">▸</span></div>
     <div class="kv" id="taps" style="text-align:center;margin-top:6px"></div></div>`;
 }
 /* 语言模式：sys=跟随系统（真实 App 跟随手机系统语言；原型内默认中文） */
@@ -1328,7 +1368,7 @@ function P_perm(kind){
 
 /* ═══════════ 路由 ═══════════ */
 const RENDER={home:P_home,connecting:P_connecting,detail:P_detail,tech:P_tech,ota:P_ota,config:P_config,tasks:P_tasks,
-  debug:P_debug,settings:P_settings,log:P_log,cal:P_cal,
+  debug:P_debug,settings:P_settings,log:P_log,cal:P_cal,privacy:P_privacy,
   perm:()=>P_perm(S.perm==="denied"?"denied":S.perm==="btoff"?"btoff":S.perm==="unsup"?"unsup":"ask")};
 function render(){
   document.documentElement.dataset.lang=lang;
@@ -1435,7 +1475,7 @@ const SPEC=[
  {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
  {id:"SP-19",pg:"debug",tp:"规格",txt:"隐藏入口：关于页连点版本 7 次开启；dev 构建默认开",ref:"Q3 裁决"},
  {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语；设置页语言行点击循环切换（跟随系统→简体中文→English）并即时生效；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
- {id:"R-21",pg:"settings",tp:"需求",txt:"关于页显示 App 版本号+构建号；隐私说明占位",ref:"Q10"},
+ {id:"R-21",pg:"settings",tp:"需求",txt:"关于页显示 App 版本号+构建号；隐私说明正式稿（双语页，GDPR 透明度要点结构：不收集个人数据/全部本地存储/无网络传输与第三方 SDK/相机仅扫码/导出经系统分享由用户发起/删除数据=卸载 App），App Store 隐私口径=Data Not Collected；联系邮箱由产品在发布前提供并补入",ref:"Q10；GDPR Art.5 透明性；Apple 隐私标签；用户 2026-09-08"},
  {id:"R-22",pg:"log",tp:"需求",txt:"诊断日志覆盖九类事件（扫描/发现/连接/服务/订阅/写入/响应/OTA 阶段/错误恢复），导出 txt 带环境头",ref:"需求 §9.2；SD §9.4；A-09"},
  {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准（完成信号=设备上报 Calibration Done），期间禁其他命令；关机时校准不可用；App 等待上限 DC200 360s/其他 240s（超时给明确提示）",ref:"需求 §7.2；Android startSyncCheck timeout；TC-ST-006"},
  {id:"R-24",pg:"perm",tp:"需求",txt:"权限四态引导：未请求/被拒/蓝牙关闭/不支持 BLE；授权后自动返回",ref:"需求 §9.4；A-01"},
@@ -1486,6 +1526,7 @@ function notes(){
     log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
     cal:zh?"P-09 校准（进 v1）：确认→校准中（已用时）→完成；以设备上报为准，期间禁其他命令。UDS100=倾角、DC200=磁力计。":"P-09 calibration (in v1): confirm → running (elapsed) → done; device-driven.",
     perm:zh?"P-08 权限/蓝牙引导：首启系统弹窗→拒绝→去设置→授权自动返回。":"P-08 permission gate: first-run dialog → denied → Settings → auto-return.",
+    privacy:zh?"隐私说明正式稿（双语，随语言切换）：按 GDPR 透明度要点组织，内容为本应用数据事实的最小如实描述——不收集/全本地/无网络/无第三方 SDK/相机仅扫码/导出由用户发起。":"Official privacy statement (bilingual): GDPR-transparency structure; a minimal truthful description of the app's data facts — nothing collected, all local, no network, camera only for QR, export user-initiated.",
   }[S.page]||"";
   const items=SPEC.filter(x=>x.pg===S.page);
   const itemsHtml=items.length?items.map(item).join(""):`<div class="n">${zh?"本页无独立条目，见规格总表。":"See master list."}</div>`;
