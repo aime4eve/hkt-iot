@@ -1,3 +1,0 @@
-module CoreProtocol {
-    header "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreProtocol.build/include/CoreProtocol-Swift.h"
-}
