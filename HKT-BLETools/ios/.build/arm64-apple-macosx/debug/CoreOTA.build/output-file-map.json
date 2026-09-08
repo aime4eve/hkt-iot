@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/primary.swiftdeps"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/Sources/CoreOTA/OTATransferPlanner.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/CoreOTA.build/OTATransferPlanner.dia"
+  }
+}

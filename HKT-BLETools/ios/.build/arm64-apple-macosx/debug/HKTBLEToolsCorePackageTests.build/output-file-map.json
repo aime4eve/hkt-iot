@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/primary.swiftdeps"
+  },
+  "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.derived/runner.swift": {
+    "dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.d",
+    "object": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.swift.o",
+    "swiftmodule": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot/HKT-BLETools/ios/.build/arm64-apple-macosx/debug/HKTBLEToolsCorePackageTests.build/runner.dia"
+  }
+}

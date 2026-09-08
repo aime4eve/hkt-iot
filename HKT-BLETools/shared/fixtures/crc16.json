@@ -7,11 +7,16 @@
   {
     "name": "abc",
     "hex": "414243",
-    "expected": "29B1"
+    "expected": "58E9"
   },
   {
     "name": "hkt-prefix",
     "hex": "686B74",
     "expected": "77D1"
+  },
+  {
+    "name": "check-value",
+    "hex": "313233343536373839",
+    "expected": "2189"
   }
 ]

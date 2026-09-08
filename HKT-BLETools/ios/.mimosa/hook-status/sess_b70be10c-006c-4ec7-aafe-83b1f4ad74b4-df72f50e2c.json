@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-05T20:10:40.570Z",
+  "sessionId": "sess_b70be10c-006c-4ec7-aafe-83b1f4ad74b4",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "Tests/CoreDeviceTests/DeviceRegistryTests.swift",
+  "outcome": "clear",
+  "coverage": "complete",
+  "findingCount": 0,
+  "durationMs": 2,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}
