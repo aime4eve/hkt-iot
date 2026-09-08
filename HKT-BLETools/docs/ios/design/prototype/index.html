@@ -767,8 +767,6 @@ function P_detail(){
      <div class="section">${lang==="zh"?"设备操作":"Device actions"}</div>
      <div class="row"><span class="label">${t("power")}</span>
        <span class="switch ${S.powerOn?"on":""}" onclick="togglePower()"><i></i></span></div>
-     <div class="row"><span class="label" style="color:var(--err)">${t("discBtn")}</span>
-       <span class="value"><button class="linkbtn" style="color:var(--err)" onclick="disconnectSession()">${t("discGo")}</button></span></div>
      <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("tsTitle")}</div>
        <div style="font-size:24px;font-weight:600;margin-top:4px" id="liveClock">${liveClockStr()}</div>
        <div class="kv" style="margin-top:2px">${t("tsHint")}</div>
@@ -781,8 +779,17 @@ function P_detail(){
       <div class="b">${t("pwOffB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.powerConfirm=false;render()">${t("cancel")}</button>
       <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirmPower")}</button></div></div></div>`:"";
-  return statusbar()+navbar(S.device,`<button class="linkbtn" onclick="openOTA()">${t("ota")} ▸</button>`,true)+
-    `<div class="body">${body}</div>`+pwConfirm;
+  /* 会话操作条（用户 2026-09-08）：返回/首页/固件升级/断开连接 集中一行；OTA 传输中/校准中断开置灰 */
+  const discDisabled=(S.page==="ota"&&otaGuardActive())||(S.cal&&S.cal.state==="running");
+  const sessBar=`<div style="padding:36px 16px 0">
+    <div style="font-size:20px;font-weight:700">${S.device}</div>
+    <div style="display:flex;gap:14px;align-items:center;padding-top:8px">
+      <button class="linkbtn" data-act="back">‹ ${lang==="zh"?"返回":"Back"}</button>
+      <button class="linkbtn" data-act="home">⌂ ${lang==="zh"?"首页":"Home"}</button>
+      <button class="linkbtn" onclick="openOTA()">⏫ ${t("ota")}</button>
+      <button class="linkbtn" style="margin-left:auto;color:var(--err);${discDisabled?"opacity:.4;pointer-events:none":""}" onclick="disconnectSession()">${t("discBtn")}</button>
+    </div></div>`;
+  return statusbar()+sessBar+`<div class="body" style="padding-top:10px">${body}</div>`+pwConfirm;
 }
 function togglePower(){
   if(S.powerOn){S.powerConfirm=true;render();return;}
@@ -1572,7 +1579,7 @@ const SPEC=[
  {id:"SP-29",pg:"all",tp:"规格",txt:"UDS100 电量=TLV 0x8B（2B，mV）；DC200/SVC100=TLV 0x03（1B，估算：≥3100mV→100，2600-3100 按公式仅 0-1，DC200 另按剩余上行包数递减）；SVC 电压档位固件映射 0=12V/1=9V/2=5V；时区作用=0x06 对时换算+阀门定时任务触发时刻（配错时区=任务在错误时刻开关阀）；智能电源=插入检测自动开关机（接入阀开机/拔出关机）",ref:"FW-REF adc.c:104-113、control_center.h:42、control_center.c:166/858-868"},
  {id:"R-30",pg:"config",tp:"需求",txt:"时区选择体验：下拉按 ISO 8601 偏移升序并分组（西/零/东/半小时）；提供“与手机时区一致”快捷设置；表单显示设备当前时区（0x8A 回读）",ref:"用户 2026-09-07；FW-REF 0x8A/0x06/local_schedule"},
  {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
- {id:"R-31",pg:"detail",tp:"需求",txt:"详情页“设备操作”区提供“断开连接”：停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
+ {id:"R-31",pg:"detail",tp:"需求",txt:"详情页顶部“会话操作条”集中四个动作：返回 / 首页 / 固件升级 / 断开连接（用户 2026-09-08）。断开连接=停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
  {id:"SP-31",pg:"detail",tp:"规格",txt:"清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
  {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连；“重新扫描”对驻留会话做信号检测：无蓝牙信号（>5s 无轮询响应）则清除徽章并自动重连",ref:"用户 2026-09-08"},
  {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连；重扫健康检测=最后成功轮询距今 >5s（连接态设备已停止广播，不能以扫描结果判活，只能看轮询心跳）→清徽章+按 R-6 自动重连 ≤3 次，失败转断开态入最近设备",ref:"SD §9.5.2；固件 1s 保活约束"},
