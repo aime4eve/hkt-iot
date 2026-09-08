@@ -186,6 +186,7 @@ const ZH={
   lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值",
   prefixF:"设备名称前缀过滤", prefixHint:"仅显示名称以所选前缀开头的设备；未命名设备自动排除",
   privUpdated:"生效日期",
+  connBadge:"已连接", discBtn:"断开连接", discGo:"断开", switchT:"切换设备？", switchGo:"切换并连接",
   about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
   dbgOn:"已开启调试模式", permT:"允许“HKT BLETools”使用蓝牙？", permB:"用于查找和连接附近的 HKT 设备",
   dontAllow:"不允许", allow:"允许", deniedT:"蓝牙权限未开启", deniedB:"需要在系统设置中允许蓝牙权限，才能扫描和连接设备。",
@@ -275,6 +276,7 @@ const EN={
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
   prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
   privUpdated:"Effective date",
+  connBadge:"Connected", discBtn:"Disconnect", discGo:"Disconnect", switchT:"Switch device?", switchGo:"Switch & Connect",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
   dontAllow:"Don't Allow", allow:"Allow", deniedT:"Bluetooth permission is off", deniedB:"Enable Bluetooth permission in Settings to scan and connect devices.",
@@ -400,6 +402,7 @@ const S={
   guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,hist:{x:[],y:[],z:[]},
   radarOpen:false,
   camPerm:"notDetermined",camAsk:false,locate:{mode:null,eui:null,suffix:null,err:null,draft:"0095690"},
+  lastSession:null,switchTo:null,
 };
 const PKTS=1284;
 const clock=()=>{const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
@@ -442,22 +445,56 @@ function toggleScan(){
   },800);
   setTimeout(()=>{if(S.scanning&&i>=CANDIDATES.length){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();}},7000);
 }
+/* 会话驻留/断开/切换（R-31/R-32，用户 2026-09-08）：
+   返回=会话驻留；点已连接设备直接回详情（先验活）；点其他设备→确认框→原子释放旧会话再连新设备；
+   断开连接=预期断开，不触发自动重连 */
+function deviceCardClick(n,id,rssi){
+  if(S.phase==="ready"){
+    if(n===S.device&&id===S.id){nav("detail");return;}   // 验活通过：同一设备直接回详情
+    S.switchTo={n,id,rssi};render();return;              // 其他设备 → 确认框自动切换
+  }
+  connectTo(n,id,rssi);                                  // 无活会话（或已被系统断开的降级）→ 标准连接
+}
+function releaseSession(){
+  stopPoll();clearInterval(S.connTimer);                 // 原子顺序：停轮询→停守护→清定时器→（GATT 断开）
+  if(S.device)S.lastSession={n:S.device,id:S.id||"…9C01"};
+  S.phase="idle";S.p3="idle";
+}
+function disconnectSession(){
+  const dev=`${S.device} ${S.id||""}`;
+  releaseSession();
+  log(t("disc"),"INFO",(lang==="zh"?"手动断开（预期断开，不自动重连） ":"manual disconnect (expected, no auto-reconnect) ")+dev);
+  navStack=[];S.page="home";render();
+  toast(lang==="zh"?"已断开连接（不会自动重连）":"Disconnected (no auto-reconnect)");
+}
+function confirmSwitch(){
+  const to=S.switchTo;S.switchTo=null;
+  releaseSession();
+  connectTo(to.n,to.id,to.rssi);
+}
 function P_home(){
   const locating=S.locate.mode==="finding"||S.locate.mode==="miss";
-  const list=S.found.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="connectTo('${d.n}','${d.id}',${d.rssi})">
+  const live=S.phase==="ready"?{n:S.device,id:S.id||"…9C01"}:null;
+  const isLive=d=>live&&d.n===live.n&&d.id===live.id;
+  const others=S.found.filter(d=>!isLive(d));
+  const liveCard=live?`<div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${live.n}','${live.id}',0)">
+      <div style="flex:1"><div style="font-weight:700">${live.n} <span class="badge" style="padding:2px 8px;margin-left:6px">${t("connBadge")}</span></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${live.id}</div></div><button class="linkbtn">›</button></div>`:"";
+  const list=others.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${d.n}','${d.id}',${d.rssi})">
       <div style="flex:1"><div style="font-weight:700">${d.n}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${d.id} · ${d.rssi} dBm</div></div>${rssi(d.b||3)}</div>`).join("");
-  const empty=(!S.scanning&&S.found.length===0)?`<div class="center" style="min-height:320px"><div style="font-size:44px">📡</div>
+  const empty=(!S.scanning&&S.found.length===0&&!live)?`<div class="center" style="min-height:320px"><div style="font-size:44px">📡</div>
       <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
       <button class="btn secondary" style="width:auto;padding:10px 26px" onclick="toggleScan()">${t("rescan")}</button></div>`:"";
-  const recent=(S.found.length===0&&!locating)?`<div class="section">${t("recent")}</div>
-      <div class="card hcard" style="cursor:pointer" onclick="connectTo('UDS100','…3F2A',-58)">
-        <div style="flex:1"><div style="font-weight:700">UDS100</div>
-        <div style="font-size:12px;color:var(--text2)">ID …8C3F2A · ${t("yesterday")}</div></div><button class="linkbtn">↻</button></div>`:"";
+  const last=S.lastSession||{n:"UDS100",id:"…8C3F2A"};
+  const recent=(S.found.length===0&&!live&&!locating)?`<div class="section">${t("recent")}</div>
+      <div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${last.n}','${last.id}',-58)">
+        <div style="flex:1"><div style="font-weight:700">${last.n}</div>
+        <div style="font-size:12px;color:var(--text2)">ID ${last.id} · ${t("yesterday")}</div></div><button class="linkbtn">↻</button></div>`:"";
   const body=locating?locateView():
       `<div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
         <button class="linkbtn" data-act="toggle-scan">${S.scanning?t("stop"):t("rescan")}</button></div>
-      ${list}${empty}${recent}`;
+      ${liveCard}${list}${empty}${recent}`;
   return statusbar()+`<div class="navbar">${t("app")}<span class="navright">
       <button class="linkbtn" data-act="locate" style="margin-right:12px">${t("locate")}</button>
       <button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
@@ -552,12 +589,16 @@ function homeOverlays(){
       <div class="navbar small" style="color:#fff"><span class="back" data-act="camback" style="color:#23ADE5">${t("cancel")}</span><span>${t("locateQr")}</span></div>
       <div class="frame"><i></i><i></i><i></i><i></i></div>
       <div class="kv" style="color:#bbb;text-align:center;margin-top:26px">${t("camHint")}</div></div>`;
+  if(S.switchTo)h+=`<div class="dialog-mask"><div class="dialog"><div class="t">${t("switchT")}</div>
+      <div class="b">${lang==="zh"?`当前已连接 <b>${S.device}</b> ${S.id||""}。切换将断开当前会话并连接 <b>${S.switchTo.n}</b> ${S.switchTo.id}。`:`Currently connected to <b>${S.device}</b> ${S.id||""}. Switching will disconnect it and connect to <b>${S.switchTo.n}</b> ${S.switchTo.id}.`}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.switchTo=null;render()">${t("cancel")}</button>
+      <button class="btn" style="margin:0" onclick="confirmSwitch()">${t("switchGo")}</button></div></div></div>`;
   return h;
 }
 
 /* ═══════════ 连接 ═══════════ */
 function connectTo(name,id,rssi){
-  if(S.phase==="ready"&&S.device!==name){toast(lang==="zh"?`已释放 ${S.device} 旧会话（停轮询/断开/清定时器）`:`Released old ${S.device} session`);stopPoll();}
+  if(S.phase==="ready")releaseSession();   // 兜底：任何路径进入连接前先原子释放旧会话（正常路径由确认框先行释放）
   S.device=name;S.id=id;S.page="connecting";S.connStep=0;S.connPhase=0;render();
   log(t("connPhase"),"INFO",name);
   const stepsMs=[700,900,800];
@@ -693,6 +734,8 @@ function P_detail(){
      <div class="section">${lang==="zh"?"设备操作":"Device actions"}</div>
      <div class="row"><span class="label">${t("power")}</span>
        <span class="switch ${S.powerOn?"on":""}" onclick="togglePower()"><i></i></span></div>
+     <div class="row"><span class="label" style="color:var(--err)">${t("discBtn")}</span>
+       <span class="value"><button class="linkbtn" style="color:var(--err)" onclick="disconnectSession()">${t("discGo")}</button></span></div>
      <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("tsTitle")}</div>
        <div style="font-size:24px;font-weight:600;margin-top:4px" id="liveClock">${liveClockStr()}</div>
        <div class="kv" style="margin-top:2px">${t("tsHint")}</div>
@@ -1426,7 +1469,8 @@ function runScene(id){
   if(id==="otaMismatch"){Scene.otaMismatch=true;Scene.otaReset=false;S.device="MPS100";openOTA();pickFile();setTimeout(()=>{runOTA();},100);}
   if(id==="otaBtOff"){if(S.ota.stage>=2&&S.ota.stage<7){failOTA(t("rBtOff"));}else toast(lang==="zh"?"请先在 OTA 页开始升级":"Start an OTA run first");}
   if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
-  if(id==="switchDevice"){connectTo("UDS100","…3F2A",-58);toast(lang==="zh"?"旧会话 MPS100 已释放（停轮询/断开/清看门狗）":"Old MPS100 session released");}
+  if(id==="switchDevice"){deviceCardClick("UDS100","…3F2A",-58);
+    toast(lang==="zh"?"点选了另一台设备——弹出切换确认框，确认后原子释放 MPS100 会话再连 UDS100":"Another device tapped — confirm dialog releases the MPS100 session atomically, then connects UDS100");}
   if(id==="locateMiss"){Scene.locateMiss=true;S.camPerm="granted";locateStart("0095690A3F2AB7C4");
     toast(lang==="zh"?"定向扫描 3 轮（演示 5 秒）未命中——观察『未找到』态与重试":"Targeted scan misses 3 cycles (5s demo) — observe the not-found state and retry");}
   if(id==="svcBusy"){Scene.svcBusy=true;connectTo("SVC100","…B4D2",-70);
@@ -1490,6 +1534,10 @@ const SPEC=[
  {id:"SP-29",pg:"all",tp:"规格",txt:"UDS100 电量=TLV 0x8B（2B，mV）；DC200/SVC100=TLV 0x03（1B，估算：≥3100mV→100，2600-3100 按公式仅 0-1，DC200 另按剩余上行包数递减）；SVC 电压档位固件映射 0=12V/1=9V/2=5V；时区作用=0x06 对时换算+阀门定时任务触发时刻（配错时区=任务在错误时刻开关阀）；智能电源=插入检测自动开关机（接入阀开机/拔出关机）",ref:"FW-REF adc.c:104-113、control_center.h:42、control_center.c:166/858-868"},
  {id:"R-30",pg:"config",tp:"需求",txt:"时区选择体验：下拉按 ISO 8601 偏移升序并分组（西/零/东/半小时）；提供“与手机时区一致”快捷设置；表单显示设备当前时区（0x8A 回读）",ref:"用户 2026-09-07；FW-REF 0x8A/0x06/local_schedule"},
  {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
+ {id:"R-31",pg:"detail",tp:"需求",txt:"详情页“设备操作”区提供“断开连接”：停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
+ {id:"SP-31",pg:"detail",tp:"规格",txt:"清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
+ {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连",ref:"用户 2026-09-08"},
+ {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连",ref:"SD §9.5.2；固件 1s 保活约束"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
@@ -1514,7 +1562,7 @@ function notes(){
     return;
   }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）在设置页生效；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接（含相机权限引导）；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) work from Settings; ⌖ Locate = scan QR / enter DevEUI → match last-6 suffix in advertised name → auto-connect (with camera permission flow); recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）在设置页生效；返回不释放会话——已连接设备卡片带徽章、点击直接回详情，点其他设备弹确认后原子切换，断开用详情页『断开连接』；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) work from Settings; Back keeps the session — the connected device card is badged and re-enters directly, tapping another device asks to confirm an atomic switch, use Disconnect on detail; ⌖ Locate = scan QR / enter DevEUI → auto-connect; recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
     detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
