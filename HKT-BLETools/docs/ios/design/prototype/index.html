@@ -183,7 +183,8 @@ const ZH={
   portPwm:"PWM 控制", portSwitch:"开关控制", view:"查看", minutes:"分钟", mm:"mm", deg:"°",
   cfg:"参数配置",
   debug:"Debug", target:"目标", send:"发送", clear:"清空", copy:"复制", waiting:"等待设备响应…",
-  lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值", hideUn:"过滤无名称设备",
+  lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值",
+  prefixF:"设备名称前缀过滤", prefixHint:"仅显示名称以所选前缀开头的设备；未命名设备自动排除",
   about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
   dbgOn:"已开启调试模式", permT:"允许“HKT BLETools”使用蓝牙？", permB:"用于查找和连接附近的 HKT 设备",
   dontAllow:"不允许", allow:"允许", deniedT:"蓝牙权限未开启", deniedB:"需要在系统设置中允许蓝牙权限，才能扫描和连接设备。",
@@ -270,7 +271,8 @@ const EN={
   portPwm:"PWM control", portSwitch:"Switch control", view:"View", minutes:"min", mm:"mm", deg:"°",
   cfg:"Configuration",
   debug:"Debug", target:"Target", send:"Send", clear:"Clear", copy:"Copy", waiting:"(waiting for device)",
-  lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold", hideUn:"Hide unnamed devices",
+  lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
+  prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
   dontAllow:"Don't Allow", allow:"Allow", deniedT:"Bluetooth permission is off", deniedB:"Enable Bluetooth permission in Settings to scan and connect devices.",
@@ -351,7 +353,7 @@ function jit(base,amp){jitterSeed=(jitterSeed*9301+49297)%233280;const r=jitterS
 /* ═══════════ 全局状态 ═══════════ */
 const S={
   page:"home",theme:"light",perm:"granted",btOn:true,
-  found:[],scanning:false,rssiTh:-80,hideUn:false,
+  found:[],scanning:false,rssiTh:-80,prefix:{MPS:true,SVC:true,UDS:true,EPS:true},
   device:"MPS100",phase:"idle",p3:"ready",staleSec:0,recon:0,
   pollTimer:null,lastPoll:Date.now(),
   ota:{stage:0,pct:0,pkt:0,wait:0,result:null,err:"",restarts:0,silence:false,report:null,t0:0,times:{}},
@@ -380,6 +382,8 @@ const CANDIDATES=[
   {n:"MPS100",id:"…9C01",rssi:-63},{n:"UDS100",id:"…3F2A",rssi:-58},
   {n:"SVC100",id:"…B4D2",rssi:-70},{n:"EPS100",id:"…77AA",rssi:-91},
 ];
+/* 名称前缀过滤（用户 2026-09-08 裁决，替代"过滤无名称设备"）：广播名前 3 字符须命中所选前缀；未命名设备天然排除 */
+function prefixOk(name){const p=String(name||"").trim().slice(0,3).toUpperCase();return !!(p&&S.prefix[p]);}
 function toggleScan(){
   if(S.scanning){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();return;}
   S.scanning=true;S.found=[];log(t("scanStart"),"INFO","3 cycles × 10 s");render();
@@ -387,7 +391,7 @@ function toggleScan(){
   S.scanTimer=setInterval(()=>{
     if(i<CANDIDATES.length){
       const c=CANDIDATES[i++];
-      if(c.rssi>=S.rssiTh){S.found.push({...c});log(t("disc"),"INFO",`${c.n} ${c.rssi}dBm`);}
+      if(c.rssi>=S.rssiTh&&prefixOk(c.n)){S.found.push({...c});log(t("disc"),"INFO",`${c.n} ${c.rssi}dBm`);}
     } else {
       // RSSI 波动 + 弱信号设备偶发丢失
       S.found.forEach(d=>{d.rssi=jit(d.rssi,6);d.b=d.rssi>-70?3:d.rssi>-85?2:1;});
@@ -424,7 +428,7 @@ function toggleScanAct(){toggleScan();}
 /* ═══════════ P-01b 目标设备定位（⌖ 扫码/手输 DevEUI → 后 6 位匹配广播名 → 命中自动连接） ═══════════
    契约依据 Android MainActivity.kt（2026-09-07 用户裁决进 v1，翻案 09-06 Q4）：
    - isValidDevEui：16 位十六进制；getDevEuiMatchSuffix：取后 6 位大写
-   - isTargetDevice：广播名 contains 后缀（忽略大小写）；目标模式在 RSSI/空名过滤之前判定
+   - isTargetDevice：广播名 contains 后缀（忽略大小写）；目标模式在 RSSI/名称前缀过滤之前判定
    - 命中即停扫自动连接；3 轮（3×10s）未命中提示未找到（演示场景 5s） */
 const DEV_EUI_RE=/^[0-9A-Fa-f]{16}$/;
 function euiSuffix(eui){const v=String(eui||"").trim();return DEV_EUI_RE.test(v)?v.slice(-6).toUpperCase():null;}
@@ -1234,8 +1238,12 @@ function P_settings(){
     <div class="section">${lang==="zh"?"扫描过滤":"Scan filter"}</div>
     <div class="row"><span class="label">${t("rssiTh")}</span>
       <span class="value"><input type="range" class="slider" min="-95" max="-40" step="5" value="${S.rssiTh}" oninput="S.rssiTh=+this.value;this.nextElementSibling.textContent=this.value+' dBm'"><span>${S.rssiTh} dBm</span></span></div>
-    <div class="row"><span class="label">${t("hideUn")}</span>
-      <span class="switch ${S.hideUn?"on":""}" onclick="S.hideUn=!S.hideUn;render()"><i></i></span></div>
+    <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("prefixF")}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">${["MPS","SVC","UDS","EPS"].map(p=>
+        `<div style="flex:1;text-align:center;padding:8px 0;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;
+          background:${S.prefix[p]?"var(--info)":"var(--card2)"};color:${S.prefix[p]?"#fff":"var(--text2)"}"
+          onclick="S.prefix['${p}']=!S.prefix['${p}'];render()">${p}</div>`).join("")}</div>
+      <div class="kv" style="margin-top:6px;font-size:11px">${t("prefixHint")}</div></div>
     <div class="section">${t("about")}</div>
     <div class="row" style="cursor:pointer" onclick="taps()"><span class="label">${t("ver")}</span>
       <span class="value" id="verVal">1.0.0 (123)</span></div>
@@ -1399,10 +1407,10 @@ const SPEC=[
  {id:"R-G3",pg:"all",tp:"需求",txt:"全部文案走 String Catalog，中英双语，禁止硬编码",ref:"需求 §9.3"},
  {id:"R-G4",pg:"all",tp:"需求",txt:"错误十分类，每类带人话原因与建议动作，禁止统一『失败』",ref:"需求 §10.2"},
  {id:"R-G5",pg:"all",tp:"需求",txt:"实现阶段 UI 1:1 克隆本确认稿（布局/组件/状态/文案/交互）",ref:"用户裁决 2026-09-06；UI 计划 §8"},
- {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；按支持名过滤；显示名称/RSSI；阈值与空名过滤；去重；点击连接",ref:"需求 §5.2；A-02/A-03"},
- {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值设置页可调且真实生效；未识别名不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010"},
+ {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；显示名称/RSSI；阈值与名称前缀过滤（MPS/SVC/UDS/EPS 可勾选，未命名设备天然排除）；去重；点击连接",ref:"需求 §5.2；A-02/A-03；用户 2026-09-08"},
+ {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调、真实生效、随过滤设置持久化）；非所选前缀与未命名设备不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010；用户 2026-09-08"},
  {id:"R-2",pg:"home",tp:"需求",txt:"目标设备定位进 v1（2026-09-07 用户裁决选 B，翻案 09-06 Q4）：扫描页⌖入口，扫码/手输 16 位 DevEUI→取后 6 位匹配广播名→命中自动停扫直连；3 轮未命中给『未找到』+重试/退出；界面不保留任何占位入口",ref:"用户 2026-09-07；需求 §5.3；Android MainActivity.kt"},
- {id:"SP-2",pg:"home",tp:"规格",txt:"校验=16 位 hex（预填前缀 0095690、自动大写、非法字符不进框）；匹配=后 6 位忽略大小写 contains 广播名；定位态隐藏常规列表+脉冲动画+可退出；目标模式忽略 RSSI/空名过滤；扫码=系统相机（二维码/条码），新增相机权限引导（未决定弹窗/拒绝→去设置/可用），权限页扩为五态；匹配仅依赖广播名，无新增固件依赖",ref:"Android isValidDevEui/getDevEuiMatchSuffix/isTargetDevice/addDeviceList；TC-ST-014~017"},
+ {id:"SP-2",pg:"home",tp:"规格",txt:"校验=16 位 hex（预填前缀 0095690、自动大写、非法字符不进框）；匹配=后 6 位忽略大小写 contains 广播名；定位态隐藏常规列表+脉冲动画+可退出；目标模式忽略 RSSI/名称前缀过滤；扫码=系统相机（二维码/条码），新增相机权限引导（未决定弹窗/拒绝→去设置/可用），权限页扩为五态；匹配仅依赖广播名，无新增固件依赖",ref:"Android isValidDevEui/getDevEuiMatchSuffix/isTargetDevice/addDeviceList；TC-ST-014~017"},
  {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
@@ -1466,7 +1474,7 @@ function notes(){
     return;
   }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值过滤在设置页生效；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接（含相机权限引导）；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold filter works from Settings; ⌖ Locate = scan QR / enter DevEUI → match last-6 suffix in advertised name → auto-connect (with camera permission flow); recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）在设置页生效；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接（含相机权限引导）；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) work from Settings; ⌖ Locate = scan QR / enter DevEUI → match last-6 suffix in advertised name → auto-connect (with camera permission flow); recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
     detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
@@ -1474,7 +1482,7 @@ function notes(){
     config:zh?"P-05 参数配置（Q1 修订：进 v1）：三家族各自字段集+固件边界前置校验；保存=确认弹窗→0x02→ACK 回读；场景注入『UDS100 配置被静默拒绝』演示无 ACK 超时分支（TX-UDS-CFG-002）。":"P-05 config (Q1 revised: in v1): per-family fields + firmware-boundary pre-validation; save=confirm→0x02→ACK; Scene ▸ UDS100 silent-reject demo.",
     tasks:zh?"P-05b 阀门任务：实时任务（0x03，忙=静默忽略→2s 超时提示）+ 定时任务表 16 槽（0x04，repeat bit0=周一…bit6=周日）+ 删除（0x05，0xFF 全删，删执行中强制停止）；本地镜像明示（无 BLE 回读）。":"P-05b valve tasks: realtime (0x03, busy silent→2s timeout) + schedule table (0x04) + delete (0x05); local-mirror notice.",
     debug:zh?"P-06：原始收发流水（隐藏入口：关于页连点版本 7 次）。":"P-06: raw stream (hidden entry: 7 taps on version in About).",
-    settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold really filters scan, 7-tap debug unlock.",
+    settings:zh?"P-07：语言即时切换（本页即可试）、RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）真实影响扫描列表、连点版本 7 次开 Debug。":"P-07: live language switch, RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) really affect the scan list, 7-tap debug unlock.",
     log:zh?"诊断日志=九类事件（扫描/发现/连接/轮询异常/OTA 阶段…），导出为 txt。":"Diagnostic log = nine event classes; export as txt.",
     cal:zh?"P-09 校准（进 v1）：确认→校准中（已用时）→完成；以设备上报为准，期间禁其他命令。UDS100=倾角、DC200=磁力计。":"P-09 calibration (in v1): confirm → running (elapsed) → done; device-driven.",
     perm:zh?"P-08 权限/蓝牙引导：首启系统弹窗→拒绝→去设置→授权自动返回。":"P-08 permission gate: first-run dialog → denied → Settings → auto-return.",
