@@ -6,16 +6,18 @@
 <title>HKT BLETools iOS v1 — 高保真场景原型 v2（D3/D4）</title>
 <style>
   :root{
-    --bg:#f2f2f7; --card:#ffffff; --card2:#f7f7fa; --text:#111114; --text2:#6e6e76;
-    --line:#e3e3ea; --ok:#34c759; --warn:#ff9500; --err:#ff3b30; --info:#007aff; --fill:#ececf1;
-    --r-card:12px; --r-dialog:20px; --mono:ui-monospace,Menlo,monospace;
+    --bg:#eef1f4; --card:#ffffff; --card2:#f5f7f9; --text:#151a20; --text2:#5f6b77;
+    --line:#d9e0e7; --ok:#178a44; --warn:#b65f00; --err:#c81e1e; --info:#0a68d6; --fill:#e8ecf0;
+    --r-card:10px; --r-control:8px; --r-dialog:18px; --mono:ui-monospace,Menlo,monospace;
+    --card-shadow:0 1px 2px rgba(15,23,42,.05);
   }
   html[data-theme="dark"]{
-    --bg:#000; --card:#1c1c1e; --card2:#2a2a2d; --text:#f2f2f5; --text2:#98989f;
-    --line:#38383e; --ok:#30d158; --warn:#ff9f0a; --err:#ff453a; --info:#0a84ff; --fill:#2c2c30;
+    --bg:#000; --card:#16181c; --card2:#222529; --text:#f3f5f7; --text2:#a2aab3;
+    --line:#35383f; --ok:#33d269; --warn:#ffb340; --err:#ff6b60; --info:#63aaff; --fill:#292c31;
+    --card-shadow:0 1px 2px rgba(0,0,0,.24);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-  body{font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#c9c9d1;color:var(--text);font-size:15px}
+  body{font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#d8dde3;color:var(--text);font-size:15px}
   .toolbar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 14px;background:#111116;color:#eee}
   .toolbar .brand{font-weight:700;margin-right:6px;font-size:13px}
   .tb{border:1px solid #3a3a42;background:#22222a;color:#eee;border-radius:8px;padding:4px 9px;cursor:pointer;font-size:12px}
@@ -27,13 +29,13 @@
   .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:120px;height:26px;border-radius:14px;background:#0c0c0f;z-index:9}
   .page{flex:1;display:flex;flex-direction:column;overflow:hidden}
   .statusbar{display:flex;justify-content:space-between;padding:14px 24px 0;font-size:13px;font-weight:600}
-  .navbar{display:flex;align-items:center;gap:8px;padding:40px 16px 10px;font-size:20px;font-weight:700}
+  .navbar{display:flex;align-items:center;gap:8px;padding:40px 16px 10px;font-size:20px;font-weight:700;letter-spacing:0}
   .navbar.small{font-size:17px;padding-bottom:6px}
-  .navbar .back{font-size:15px;color:var(--info);font-weight:400;cursor:pointer}
+  .navbar .back{display:inline-flex;align-items:center;font-size:14px;color:var(--info);font-weight:600;cursor:pointer;background:color-mix(in srgb,var(--info) 9%,transparent);border-radius:var(--r-control);padding:5px 9px}
   .navbar .navright{margin-left:auto}
-  .linkbtn{color:var(--info);background:none;border:none;font-size:15px;cursor:pointer;padding:0}
+  .linkbtn{display:inline-flex;align-items:center;gap:4px;color:var(--info);background:color-mix(in srgb,var(--info) 9%,transparent);border:none;font-size:14px;font-weight:600;cursor:pointer;padding:6px 9px;border-radius:var(--r-control)}
   .body{flex:1;overflow-y:auto;padding:0 16px 24px}
-  .card{background:var(--card);border-radius:var(--r-card);padding:13px 14px;margin-bottom:11px}
+  .card{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);padding:13px 14px;margin-bottom:11px;box-shadow:var(--card-shadow)}
   .hcard{display:flex;align-items:center;gap:12px}
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:999px;font-weight:600;
          background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
@@ -41,20 +43,113 @@
   .badge.err{background:color-mix(in srgb,var(--err) 15%,transparent);color:var(--err)}
   .badge.info{background:color-mix(in srgb,var(--info) 15%,transparent);color:var(--info)}
   .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-  .section{font-size:13px;color:var(--text2);margin:14px 4px 8px;font-weight:600}
-  .fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .field{background:var(--card);border-radius:var(--r-card);padding:9px 12px}
-  .field .k{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .field .v{font-size:17px;font-weight:600;margin-top:2px;white-space:nowrap}
+  .section{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);margin:16px 4px 8px;font-weight:700;letter-spacing:.05em}
+  .section::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--line) 76%,transparent)}
+  .fieldgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .fieldgrid .field:nth-child(odd):last-child{grid-column:1 / -1}
+  .field{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);padding:10px 12px;min-height:70px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--card-shadow)}
+  .field .k{font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .field .v{font-size:16px;font-weight:650;margin-top:4px;white-space:normal;overflow-wrap:anywhere;line-height:1.25;font-variant-numeric:tabular-nums}
   .field .v .unit{font-size:11px;color:var(--text2);font-weight:400;margin-left:2px}
   .field .v.err{color:var(--err);font-size:13px}
-  .row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);border-radius:var(--r-card);margin-bottom:9px}
+  .svc-module{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);margin-bottom:8px;padding:12px;box-shadow:var(--card-shadow)}
+  .svc-module-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .svc-module-title{font-size:13px;font-weight:700}
+  .svc-module-tag{font-size:10px;font-weight:650;color:var(--text2);background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+  .channel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .channel{background:var(--card2);border:1px solid color-mix(in srgb,var(--line) 72%,transparent);border-radius:8px;padding:10px}
+  .channel-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .channel-name{font-size:12px;font-weight:700;color:var(--text2)}
+  .state-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:999px;padding:3px 7px}
+  .state-pill.on{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+  .state-pill.off{background:color-mix(in srgb,var(--text2) 10%,transparent);color:var(--text2)}
+  .channel-kpis{display:grid;gap:8px;margin-top:9px}
+  .channel-kpi{min-width:0}
+  .channel-kpi span{display:block;font-size:10px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .channel-kpi b{display:block;margin-top:1px;font-size:14px;font-weight:650;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);margin-bottom:9px;box-shadow:var(--card-shadow)}
   .row .label{font-size:15px}
   .row .value{color:var(--text2);font-size:14px;display:flex;align-items:center;gap:6px}
-  .btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;background:var(--info);color:#fff;font-size:16px;font-weight:600;text-align:center;cursor:pointer;margin-top:12px}
-  .btn.secondary{background:var(--fill);color:var(--text)}
-  .btn.danger{background:color-mix(in srgb,var(--err) 12%,transparent);color:var(--err)}
+  .btn{display:block;width:100%;padding:13px;border:1px solid transparent;border-radius:var(--r-control);background:var(--info);color:#fff;font-size:16px;font-weight:650;text-align:center;cursor:pointer;margin-top:12px}
+  .btn.secondary{background:var(--card);border-color:var(--line);color:var(--text)}
+  .btn.danger{background:color-mix(in srgb,var(--err) 10%,transparent);border-color:color-mix(in srgb,var(--err) 22%,transparent);color:var(--err)}
   .btn:disabled{opacity:.4;cursor:not-allowed}
+  .actiongroup{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);overflow:hidden;margin-bottom:11px;box-shadow:var(--card-shadow)}
+  .actionrow{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;background:none;border:none;border-top:1px solid color-mix(in srgb,var(--line) 62%,transparent);color:var(--text);font-size:15px;text-align:left;cursor:pointer}
+  .actiongroup>.actionrow:first-child{border-top:none}
+  .actionrow .title{font-size:15px;font-weight:600}
+  .actionrow .actionvalue{font-size:17px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+  .actionrow .hint{font-size:12px;color:var(--text2);margin-top:2px}
+  .actionrow .chev{margin-left:auto;color:var(--text2);font-size:18px;line-height:1}
+  .actionrow .meta{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .inlinebtn{padding:7px 10px;border:none;border-radius:var(--r-control);background:color-mix(in srgb,var(--info) 10%,transparent);color:var(--info);font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap}
+  .ops-panel{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);overflow:hidden;box-shadow:var(--card-shadow)}
+  .ops-power{display:flex;align-items:center;gap:12px;min-height:58px;padding:0 14px;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);cursor:pointer}
+  .ops-power.disabled,.op-card:disabled{opacity:.45;cursor:not-allowed}
+  .ops-power-label{font-size:15px;font-weight:650}
+  .ops-power-state{flex:1;font-size:12px;color:var(--text2)}
+  .ops-power .switch{pointer-events:none}
+  .ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;background:var(--card2)}
+  .op-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:78px;padding:11px;background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-control);color:var(--text);font-family:inherit;text-align:left;cursor:pointer}
+  .op-badge{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--info) 10%,transparent);color:var(--info);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em}
+  .op-card.warn .op-badge{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn)}
+  .op-card.ok .op-badge{background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)}
+  .op-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
+  .op-title{font-size:13px;font-weight:650;line-height:1.2;overflow-wrap:anywhere}
+  .op-desc{font-size:11px;color:var(--text2);line-height:1.25;overflow-wrap:anywhere}
+  .op-clock{font-size:11px;font-weight:650;line-height:1.25;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .op-go{color:var(--text2);font-size:17px;line-height:1}
+  .op-action{padding:6px 8px;border-radius:999px;background:color-mix(in srgb,var(--info) 10%,transparent);color:var(--info);font-size:11px;font-weight:700;white-space:nowrap}
+  .op-card.wide{grid-column:1 / -1;min-height:62px}
+  .op-card.wide .op-clock{white-space:nowrap}
+  .cfg-section{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:var(--r-card);padding:12px;margin-bottom:10px;box-shadow:var(--card-shadow)}
+  .cfg-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .cfg-title{font-size:15px;font-weight:700;line-height:1.2}
+  .cfg-caption{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.35}
+  .cfg-state{flex:none;font-size:10px;font-weight:700;color:var(--text2);background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:3px 7px}
+  .cfg-state.on{color:var(--ok);background:color-mix(in srgb,var(--ok) 11%,transparent);border-color:color-mix(in srgb,var(--ok) 20%,transparent)}
+  .cfg-label{display:block;font-size:11px;font-weight:650;color:var(--text2);margin:10px 0 6px}
+  .cfg-label:first-of-type{margin-top:0}
+  .choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .choice{position:relative;border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);padding:10px 6px;text-align:center;font-size:15px;font-weight:700;cursor:pointer;font-variant-numeric:tabular-nums}
+  .choice.selected{background:color-mix(in srgb,var(--info) 10%,transparent);border-color:color-mix(in srgb,var(--info) 35%,transparent);color:var(--info)}
+  .port-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .port-set{border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);padding:10px}
+  .port-set-title{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:7px}
+  .mode-set{display:grid;gap:5px}
+  .mode-option{padding:8px 6px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text2);font-size:12px;font-weight:600;text-align:center;cursor:pointer;line-height:1.25}
+  .mode-option.selected{background:color-mix(in srgb,var(--info) 10%,transparent);border-color:color-mix(in srgb,var(--info) 32%,transparent);color:var(--info)}
+  .cfg-control{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-control);padding:9px 10px}
+  .cfg-control span:first-child{font-size:13px;font-weight:600}
+  .cfg-combo{display:grid;grid-template-columns:minmax(132px,auto) minmax(0,1fr);gap:7px;margin-top:8px}
+  .cfg-combo .cfg-control{height:100%}
+  .radio-list{display:grid;gap:6px}
+  .radio-card{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);padding:10px;font-size:13px;line-height:1.35;text-align:left;cursor:pointer;color:var(--text)}
+  .radio-card.selected{background:color-mix(in srgb,var(--info) 8%,transparent);border-color:color-mix(in srgb,var(--info) 30%,transparent)}
+  .radio-mark{flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);margin-top:1px;position:relative}
+  .radio-card.selected .radio-mark{border-color:var(--info)}
+  .radio-card.selected .radio-mark::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--info)}
+  .radio-label{min-width:0;font-weight:550}
+  .radio-meta{margin-left:auto;flex:none;font-size:10px;font-weight:700;color:var(--text2)}
+  .cfg-input-row{display:flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-control);padding:0 10px}
+  .cfg-input-row input{flex:1;min-width:0;border:none;background:none;padding:10px 0;font-size:15px;font-weight:650;font-family:inherit;color:var(--text);outline:none;font-variant-numeric:tabular-nums}
+  .cfg-input-row.disabled{opacity:.45}
+  .cfg-input-row .unit{font-size:12px;color:var(--text2);white-space:nowrap}
+  .select-shell{position:relative}
+  .select-shell select{width:100%;appearance:none;background:var(--card2);border:1px solid var(--line);border-radius:var(--r-control);padding:10px 32px 10px 10px;font-size:14px;color:var(--text);outline:none;font-family:inherit}
+  .select-shell::after{content:"▾";position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:12px;pointer-events:none}
+  .savebar{position:sticky;bottom:0;margin:12px -16px -24px;padding:11px 16px 24px;background:var(--bg);border-top:1px solid color-mix(in srgb,var(--line) 68%,transparent)}
+  .savebar .payload{margin-top:7px;text-align:center;font-size:11px;color:var(--text2);font-family:var(--mono)}
+  .body.savebody{padding-bottom:0}
+  .body.savebody .savebar{margin-bottom:0}
+  .sessionbar{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:12px;margin:0 16px 12px;padding:13px 14px;box-shadow:var(--card-shadow)}
+  .session-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .device-name{font-size:23px;font-weight:750;letter-spacing:0;line-height:1.1}
+  .device-meta{margin:5px 0 12px;text-align:right;font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums}
+  .session-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .session-btn{height:34px;padding:0 4px;border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .session-btn.danger{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 24%,transparent);color:var(--err)}
+  .session-btn:disabled{opacity:.4;cursor:not-allowed}
   .banner{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:11px;line-height:1.4}
   .banner.err{background:color-mix(in srgb,var(--err) 12%,transparent);color:var(--err)}
   .banner.warn{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn)}
@@ -187,7 +282,8 @@ const ZH={
   lang:"语言", sys:"跟随系统", diag:"诊断日志", view:"查看 ▸", rssiTh:"信号强度阈值",
   prefixF:"设备名称前缀过滤", prefixHint:"仅显示名称以所选前缀开头的设备；未命名设备自动排除",
   privUpdated:"生效日期",
-  connBadge:"已连接", discBtn:"断开连接", discGo:"断开", switchT:"切换设备？", switchGo:"切换并连接",
+  connBadge:"已连接", discBtn:"断开连接", discGo:"断开", discConfirmT:"确认断开连接？", discConfirmB:"断开后将停止实时轮询并断开 BLE；这是预期断开，不会自动重连。设备会进入最近设备。",
+  confirmDisc:"确认断开", switchT:"切换设备？", switchGo:"切换并连接",
   about:"关于", ver:"版本", privacy:"隐私说明", taps:(n)=>`再点 ${7-n} 次开启调试模式`,
   dbgOn:"已开启调试模式", permT:"允许“HKT BLETools”使用蓝牙？", permB:"用于查找和连接附近的 HKT 设备",
   dontAllow:"不允许", allow:"允许", deniedT:"蓝牙权限未开启", deniedB:"需要在系统设置中允许蓝牙权限，才能扫描和连接设备。",
@@ -213,10 +309,11 @@ const ZH={
   pct:p=>`${p}%`,
   tsTitle:"时间同步", tsHint:"将手机当前时间同步到设备", tsGo:"同步到设备",
   tsSending:"正在同步…", tsDone:"✓ 设备时间已更新", power:"电源", offState:"已关机",
+  opSync:"同步", opSyncing:"同步中", opDone:"完成", opTechDesc:"三轴曲线 · 雷达频谱", opCalDesc:"环境检查 · 长时操作", opCfgDesc:"上报 / 端口 / 时区",
   pwOffT:"确认关机？", pwOffB:"关机后设备停止上报与工作，之后可再次开机。",
   calStart:"开始校准", calDone:"✓ 校准完成", calFinish:"完成", calForUDS:"将设备水平静止放置，然后开始校准",
-  calForDC:"将设备水平放置，缓慢匀速旋转两周", calElapsed:s=>`已用时 ${s} 秒`,
-  vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"开启后：接入阀自动开机，拔出自动关机（基于插入检测）",
+  calForDC:"请确认 7 项环境与操作要求后开始校准", calElapsed:s=>`已用时 ${s} 秒`,
+  vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"开启后：阀插入自动开机，阀拔出自动关机",
   tasks:"阀门任务", rt:"实时任务", sched:"定时任务表（1–16）", valve:"阀门", v1:"阀 1", v2:"阀 2", vBoth:"双阀",
   act:"动作", openV:"开阀", closeV:"关阀", dur:"持续时间", durHint:"0 = 不自动结束（须手动停止）",
   pulseN:"脉冲数", exec:"立即执行", busy:"设备忙（本地定时任务执行中），实时任务被静默忽略（无 ACK）",
@@ -224,16 +321,25 @@ const ZH={
   startT:"开始", endT:"结束", noTasks:"暂无定时任务", localMirror:"设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D）",
   forceStopNote:"删除执行中的任务将强制停止阀门动作", invalidTime:"时间无效", needDay:"至少选择一天",
   confirmPower:"确认关机", confirmWrite:"确认写入",
-  calEnvDC:"远离车辆、钢筋/井盖/灯柱等铁磁结构与强磁源；移开身上磁性物品（磁吸手机支架、钥匙、机械手表）",
-  calPlaceDC:"设备水平放置，周围 1 米内无金属",
-  calActDC:"开始后缓慢匀速旋转两周，直到提示完成",
+  calDCGuide:[
+    {title:"邻位车辆",desc:"相邻车位 2 米内无车辆停放，理想时机为安装后车位尚空时"},
+    {title:"固定铁磁结构",desc:"车位 1 米内无井盖、灯柱基座、裸露钢筋、消防栓"},
+    {title:"通电电缆",desc:"距地埋电缆、配电箱 1 米以上"},
+    {title:"随身磁物",desc:"磁吸手机支架、钥匙串、机械手表等距设备 0.5 米以上"},
+    {title:"设备状态",desc:"传感器已按规范水平嵌入路面，校准期间不得触碰"},
+    {title:"触发并等待",desc:"指令触发后人员退开 2 米，等待自动完成，勿重复触发"},
+    {title:"验证与失败处理",desc:"完成上报后做一次停车 / 驶离验证；失败时先排查邻位车辆、井盖等干扰源，排除后再重试，勿原地反复重试"}
+  ],
   calEnvUDS:"避免强磁与金属台面干扰；清理设备周围杂物",
   calPlaceUDS:"设备水平静止放置",
   calActUDS:"开始后保持设备完全静止，等待完成提示",
   techT:"技术参数", techEntry:"技术参数 ▸", judge:"当前判定", radarVals:"各段能量",
   ovf0:"正常", ovf1:"低阈值触发", ovf2:"高阈值触发", ovfInv:"无效",
   portF:["端口1+2 脉冲","端口1 开关 · 端口2 脉冲","端口1 脉冲 · 端口2 开关","端口1+2 开关","端口1 开关 · 端口2 脉冲（稳定时间）","端口1 脉冲 · 端口2 开关（稳定时间）","端口1+2 开关（稳定时间）"],
+  svcStable:"含稳定时长", svcStandard:"标准模式",
   portStableOff:"仅在带稳定时间的端口模式下可编辑",
+  cfgOutput:"输出与端口", cfgOutputHint:"选择供电档位与两路端口动作", cfgTimeReport:"时间与上报", cfgTimeHint:"用于 0x06 对时换算与定时任务触发", cfgFirmwareMap:"固件映射 0=12V / 1=9V / 2=5V",
+  cfgDerivedPort:"合成端口值", cfgStableRange:"1–255 秒", cfgOn:"开启", cfgOff:"关闭",
   slot:"任务槽位", slotHint:"1–16；写入覆盖该槽位现有任务",
   calDC3:"磁力计校准耗时较长（最长约 3 分钟），请耐心等待",
   dbgConfirmT:"确认发送原始命令？", dbgGo:"发送",
@@ -277,7 +383,8 @@ const EN={
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
   prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
   privUpdated:"Effective date",
-  connBadge:"Connected", discBtn:"Disconnect", discGo:"Disconnect", switchT:"Switch device?", switchGo:"Switch & Connect",
+  connBadge:"Connected", discBtn:"Disconnect", discGo:"Disconnect", discConfirmT:"Disconnect?", discConfirmB:"Disconnecting stops live polling and disconnects BLE. This is an expected disconnect and will not auto-reconnect. The device will be kept in Recents.",
+  confirmDisc:"Disconnect",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
   dontAllow:"Don't Allow", allow:"Allow", deniedT:"Bluetooth permission is off", deniedB:"Enable Bluetooth permission in Settings to scan and connect devices.",
@@ -303,11 +410,12 @@ const EN={
   pct:p=>`${p}%`,
   tsTitle:"Time Sync", tsHint:"Sync the phone's current time to the device", tsGo:"Sync to Device",
   tsSending:"Syncing…", tsDone:"✓ Device time updated", power:"Power", offState:"Powered off",
+  opSync:"Sync", opSyncing:"Syncing", opDone:"Done", opTechDesc:"3-axis curves · radar spectrum", opCalDesc:"Environment checks · long-running", opCfgDesc:"Reporting / port / timezone",
   pwOffT:"Power off?", pwOffB:"The device stops reporting and working. You can power it on again.",
   calStart:"Start Calibration", calDone:"✓ Calibration complete", calFinish:"Done",
-  calForUDS:"Place the device level and still, then start", calForDC:"Lay the device flat and rotate it slowly, twice",
+  calForUDS:"Place the device level and still, then start", calForDC:"Confirm the seven environment and operation checks, then start",
   calElapsed:s=>`Elapsed ${s}s`,
-  vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"When on: valve connected auto-powers on; removed auto-powers off (insert detection)",
+  vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"When on: the valve powers on when inserted and off when removed",
   tasks:"Valve Tasks", rt:"Realtime Task", sched:"Schedule Table (1–16)", valve:"Valve", v1:"Valve 1", v2:"Valve 2", vBoth:"Both",
   act:"Action", openV:"Open", closeV:"Close", dur:"Duration", durHint:"0 = no auto-stop (stop manually)",
   pulseN:"Pulse count", exec:"Run Now", busy:"Device busy (schedule running); realtime task silently ignored (no ACK)",
@@ -315,16 +423,25 @@ const EN={
   startT:"Start", endT:"End", noTasks:"No scheduled tasks", localMirror:"No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only)",
   forceStopNote:"Deleting a running task force-stops the valve", invalidTime:"Invalid time", needDay:"Pick at least one day",
   confirmPower:"Power Off", confirmWrite:"Write Values",
-  calEnvDC:"Keep away from vehicles, rebar/manhole covers/bollards and strong magnets; remove magnetic items (MagSafe phone mounts, keys, watches)",
-  calPlaceDC:"Place the device level with no metal within 1 m",
-  calActDC:"After starting, rotate it slowly and evenly for two full turns until prompted",
+  calDCGuide:[
+    {title:"Neighboring vehicles",desc:"No vehicles parked within 2 m of adjacent spaces; ideally calibrate while the parking space is still empty after installation"},
+    {title:"Fixed ferromagnetic structures",desc:"No manhole covers, lamp-post bases, exposed rebar, or fire hydrants within 1 m of the parking space"},
+    {title:"Energized cables",desc:"Stay more than 1 m from buried cables and distribution boxes"},
+    {title:"Personal magnetic items",desc:"Keep MagSafe phone mounts, keychains, mechanical watches, and similar items at least 0.5 m from the device"},
+    {title:"Device status",desc:"The sensor is embedded level in the road surface per specification; do not touch it during calibration"},
+    {title:"Trigger and wait",desc:"After triggering the command, move at least 2 m away and wait for automatic completion; do not trigger repeatedly"},
+    {title:"Verification and failure handling",desc:"After completion is reported, perform one parking/departure verification; if it fails, first check interference sources such as adjacent vehicles and manhole covers, retry only after clearing them, and do not retry repeatedly in place"}
+  ],
   calEnvUDS:"Avoid strong magnets and metal surfaces; clear debris around the device",
   calPlaceUDS:"Place the device level and still",
   calActUDS:"After starting, keep the device completely still until prompted",
   techT:"Tech Parameters", techEntry:"Tech Params ▸", judge:"Current detection", radarVals:"bin energy",
   ovf0:"Normal", ovf1:"Low threshold triggered", ovf2:"High threshold triggered", ovfInv:"Invalid",
   portF:["Port 1 + Port 2 pulse","Port 1 switch, Port 2 pulse","Port 1 pulse, Port 2 switch","Port 1 + Port 2 switch","Port 1 switch, Port 2 pulse (stable time)","Port 1 pulse, Port 2 switch (stable time)","Port 1 + Port 2 switch (stable time)"],
+  svcStable:"Stable time on", svcStandard:"Standard mode",
   portStableOff:"Only editable in stable-time port modes",
+  cfgOutput:"Output & port", cfgOutputHint:"Choose supply level and both port actions", cfgTimeReport:"Time & reporting", cfgTimeHint:"Used for 0x06 time sync and schedule timing", cfgFirmwareMap:"firmware: 0=12V / 1=9V / 2=5V",
+  cfgDerivedPort:"Derived port value", cfgStableRange:"1–255 s", cfgOn:"On", cfgOff:"Off",
   slot:"Task slot", slotHint:"1–16; writing overwrites the task in that slot",
   calDC3:"Magnetometer calibration can take up to 3 minutes",
   dbgConfirmT:"Send this raw command?", dbgGo:"Send",
@@ -413,8 +530,8 @@ function toast(msg){const el=document.getElementById("toast");el.textContent=msg
 
 /* ═══════════ UI 原语 ═══════════ */
 const statusbar=()=>`<div class="statusbar"><span>9:41</span><span>●●● ⌾ ▮</span></div>`;
-const navbar=(title,right,back)=>{
-  const homeBtn=(S.page!=="home")?`<button class="linkbtn" data-act="home" style="margin-right:8px">⌂ ${lang==="zh"?"首页":"Home"}</button>`:"";
+const navbar=(title,right,back,showHome=true)=>{
+  const homeBtn=(S.page!=="home"&&showHome)?`<button class="linkbtn" data-act="home" style="margin-right:8px">⌂ ${lang==="zh"?"首页":"Home"}</button>`:"";
   return `<div class="navbar small">${back?`<span class="back" data-act="back">${t("prev")}</span>`:""}<span>${title}</span><span class="navright">${homeBtn}${right||""}</span></div>`;}
 const rssi=b=>`<span class="rssi s${b}"><i></i><i></i><i></i><i></i></span>`;
 const badge=(cls,txt)=>`<span class="badge ${cls||""}"><span class="dot"></span>${txt}</span>`;
@@ -479,6 +596,9 @@ function disconnectSession(){
   log(t("disc"),"INFO",(lang==="zh"?"手动断开（预期断开，不自动重连） ":"manual disconnect (expected, no auto-reconnect) ")+dev);
   navStack=[];S.page="home";render();
   toast(lang==="zh"?"已断开连接（不会自动重连）":"Disconnected (no auto-reconnect)");
+}
+function askDisconnectSession(){
+  S.discConfirm=true;render();
 }
 function confirmSwitch(){
   const to=S.switchTo;S.switchTo=null;
@@ -731,6 +851,36 @@ function fieldRows(){
     return field(t(k),unknownTail?"…":fval(k),typeof u==="string"?u:"",false);
   }).join("")+`</div>`;
 }
+function svcFieldRows(){
+  const d=SIM.SVC100,zh=lang==="zh";
+  const mode=Number(d.port)&0x03;
+  const stable=stableModeOn(d.port);
+  const portName=on=>on?t("portSwitch"):t("portPwm");
+  const channels=[
+    {name:zh?"阀 1":"V1",on:!!d.v1,insert:!!d.v1i,pulse:d.p1,switchMode:mode===1||mode===3},
+    {name:zh?"阀 2":"V2",on:!!d.v2,insert:!!d.v2i,pulse:d.p2,switchMode:mode===2||mode===3},
+  ];
+  const channel=c=>`<div class="channel">
+    <div class="channel-head"><span class="channel-name">${c.name}</span>
+      <span class="state-pill ${c.on?"on":"off"}"><i class="dot"></i>${c.on?t("on"):t("off")}</span></div>
+    <div class="channel-kpis">
+      <div class="channel-kpi"><span>${t("f_insert")}</span><b>${c.insert?t("yes"):t("no")}</b></div>
+      <div class="channel-kpi"><span>${t("f_pulse")}</span><b>${c.pulse.toLocaleString()}</b></div>
+      <div class="channel-kpi"><span>${t("f_port")}</span><b>${portName(c.switchMode)}</b></div>
+    </div></div>`;
+  return `<div class="svc-module">
+      <div class="svc-module-head"><span class="svc-module-title">${t("f_valve")}</span>
+        <span class="svc-module-tag">${stable?t("svcStable"):t("svcStandard")}</span></div>
+      <div class="channel-grid">${channels.map(channel).join("")}</div>
+    </div>
+    <div class="fieldgrid">
+      ${field(t("f_volt"),voltLabel(d.vol))}
+      ${field(t("f_stable"),d.stable,"s")}
+      ${field(t("f_smart"),d.smart?t("auto"):t("manual"))}
+      ${field(t("f_tz"),fval("f_tz"))}
+      ${field(t("f_period"),S.p3==="abnormal"?"…":d.period,S.p3==="abnormal"?"":t("minutes"))}
+    </div>`;
+}
 function battDisplay(){
   const d=SIM[S.device];
   if(S.device==="UDS100")return (lang==="zh"?"电压 ":"Voltage ")+(d.battVolMV||4000)+" mV";
@@ -758,47 +908,65 @@ function P_detail(){
       <div style="font-size:46px">⏻</div><div class="big">${t("offState")}</div>
       <button class="btn" style="width:auto;padding:12px 34px" onclick="togglePower()">${t("on")}</button></div>`;
   }
-  const calEntry=(S.device==="SVC100")?"":`<button class="btn secondary" onclick="calOpen()">${S.device==="UDS100"?t("calTUDS"):t("calTDC")} ▸</button>`;
+  const opsDisabled=S.cal&&S.cal.state==="running";
+  const calTitle=(S.device==="SVC100")?"":S.device==="UDS100"?t("calTUDS"):t("calTDC");
+  const calTile=calTitle?`<button class="op-card warn wide" onclick="calOpen()" ${opsDisabled?"disabled":""}>
+      <span class="op-badge">CAL</span>
+      <span class="op-copy"><span class="op-title">${calTitle}</span><span class="op-desc">${t("opCalDesc")}</span></span>
+      <span class="op-go">›</span></button>`:"";
+  const techTile=(S.device==="MPS100"||S.device==="EPS100"||S.device==="DC200")?`<button class="op-card wide" onclick="nav('tech')" ${opsDisabled?"disabled":""}>
+      <span class="op-badge">MAG</span>
+      <span class="op-copy"><span class="op-title">${t("techT")}</span><span class="op-desc">${t("opTechDesc")}</span></span>
+      <span class="op-go">›</span></button>`:"";
+  const timeState=S.tsState==="sending"?t("opSyncing"):S.tsState==="ok"?t("opDone"):t("opSync");
+  const operationTiles=`${calTile}
+    ${techTile}
+    <button class="op-card wide" onclick="cfgInit();nav('config')" ${opsDisabled?"disabled":""}><span class="op-badge">CFG</span>
+      <span class="op-copy"><span class="op-title">${t("cfg")}</span><span class="op-desc">${t("opCfgDesc")}</span></span>
+      <span class="op-go">›</span></button>
+    <button class="op-card ok wide" onclick="doTimeSync()" ${opsDisabled||S.tsState==="sending"?"disabled":""}><span class="op-badge">TIME</span>
+      <span class="op-copy"><span class="op-title">${t("tsTitle")}</span><span class="op-desc op-clock" id="liveClock">${liveClockStr()}</span></span>
+      <span class="op-action">${timeState}</span></button>`;
   const body=S.p3==="disconnected"?banner:
-    `<div class="card hcard">${head}
-      <div style="flex:1;text-align:right;font-size:13px;color:var(--text2)">${t("fw")} ${SIM[S.device].fw} · ${battDisplay()}</div></div>
-     ${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${fieldRows()}
-     ${(S.device==="MPS100"||S.device==="EPS100"||S.device==="DC200")?`<button class="btn secondary" onclick="nav('tech')">${t("techEntry")}</button>`:""}
+    `${banner}<div class="section">${lang==="zh"?"状态（实时轮询）":"Status (live polling)"}</div>${S.device==="SVC100"?svcFieldRows():fieldRows()}
      <div class="section">${lang==="zh"?"设备操作":"Device actions"}</div>
-     <div class="row"><span class="label">${t("power")}</span>
-       <span class="switch ${S.powerOn?"on":""}" onclick="togglePower()"><i></i></span></div>
-     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("tsTitle")}</div>
-       <div style="font-size:24px;font-weight:600;margin-top:4px" id="liveClock">${liveClockStr()}</div>
-       <div class="kv" style="margin-top:2px">${t("tsHint")}</div>
-       ${S.tsState==="sending"?badge("info",t("tsSending")):S.tsState==="ok"?badge("",t("tsDone")):
-         `<button class="btn" style="margin:10px 0 0" onclick="doTimeSync()">${t("tsGo")}</button>`}</div>
-     ${calEntry}
-     ${S.device==="SVC100"?`<div style="margin-top:14px"><button class="btn secondary" onclick="taskInit();nav('tasks')">${t("tasks")} ▸</button></div>`:""}
-     <div style="margin-top:14px"><button class="btn secondary" onclick="cfgInit();nav('config')">${t("cfg")} ▸</button></div>`;
+     <div class="ops-panel">
+       <div class="ops-power ${opsDisabled?"disabled":""}" ${opsDisabled?"":`onclick="togglePower()"`}><span class="ops-power-label">${t("power")}</span>
+         <span class="ops-power-state">${S.powerOn?t("on"):t("offState")}</span>
+         <span class="switch ${S.powerOn?"on":""}"><i></i></span></div>
+       <div class="ops-grid">${operationTiles}</div></div>`;
   const pwConfirm=S.powerConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("pwOffT")}</div>
       <div class="b">${t("pwOffB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.powerConfirm=false;render()">${t("cancel")}</button>
       <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirmPower")}</button></div></div></div>`:"";
+  const discConfirm=S.discConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("discConfirmT")}</div>
+      <div class="b">${t("discConfirmB")}</div>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.discConfirm=false;render()">${t("cancel")}</button>
+      <button class="btn danger" style="margin:0" onclick="S.discConfirm=false;disconnectSession()">${t("confirmDisc")}</button></div></div></div>`:"";
   /* 会话操作条（用户 2026-09-08）：返回/首页/固件升级/断开连接 集中一行；OTA 传输中/校准中断开置灰 */
   const discDisabled=(S.page==="ota"&&otaGuardActive())||(S.cal&&S.cal.state==="running");
-  const sessBar=`<div style="padding:36px 16px 0">
-    <div style="font-size:20px;font-weight:700">${S.device}</div>
-    <div style="display:flex;gap:14px;align-items:center;padding-top:8px">
-      <button class="linkbtn" data-act="back">‹ ${lang==="zh"?"返回":"Back"}</button>
-      <button class="linkbtn" data-act="home">⌂ ${lang==="zh"?"首页":"Home"}</button>
-      <button class="linkbtn" onclick="openOTA()">⏫ ${t("ota")}</button>
-      <button class="linkbtn" style="margin-left:auto;color:var(--err);${discDisabled?"opacity:.4;pointer-events:none":""}" onclick="disconnectSession()">${t("discBtn")}</button>
+  const sessBar=`<div class="sessionbar">
+    <div class="session-top"><div class="device-name">${S.device}</div>${head}</div>
+    <div class="device-meta">${t("fw")} ${SIM[S.device].fw} · ${battDisplay()}</div>
+    <div class="session-actions">
+      <button class="session-btn" data-act="back">${lang==="zh"?"返回":"Back"}</button>
+      <button class="session-btn" data-act="home">${lang==="zh"?"首页":"Home"}</button>
+      <button class="session-btn" onclick="openOTA()">${t("ota")}</button>
+      <button class="session-btn danger" ${discDisabled?"disabled":""} onclick="askDisconnectSession()">${t("discBtn")}</button>
     </div></div>`;
-  return statusbar()+sessBar+`<div class="body" style="padding-top:10px">${body}</div>`+pwConfirm;
+  return statusbar()+sessBar+`<div class="body">${body}</div>`+pwConfirm+discConfirm;
 }
 function togglePower(){
+  if(S.cal&&S.cal.state==="running")return;
   if(S.powerOn){S.powerConfirm=true;render();return;}
   S.powerOn=true;S.p3="ready";startPoll();log("0xFE","INFO","power on");render();
 }
 function fmtSigned(arr){return arr&&arr.length?(arr[arr.length-1]>0?"+":"")+arr[arr.length-1]:"—";}
-function liveClockStr(){const d=new Date();const q=n=>String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${q(d.getMonth()+1)}-${q(d.getDate())} ${q(d.getHours())}:${q(d.getMinutes())}:${q(d.getSeconds())}`;}
+function liveClockParts(){const d=new Date();const q=n=>String(n).padStart(2,"0");
+  return {date:`${d.getFullYear()}-${q(d.getMonth()+1)}-${q(d.getDate())}`,time:`${q(d.getHours())}:${q(d.getMinutes())}:${q(d.getSeconds())}`};}
+function liveClockStr(){const c=liveClockParts();return `${c.date} ${c.time}`;}
 function doTimeSync(){
+  if((S.cal&&S.cal.state==="running")||S.tsState==="sending")return;
   S.tsState="sending";render();
   setTimeout(()=>{S.tsState="ok";log("0x06","INFO","phone time -> device");render();
     setTimeout(()=>{S.tsState=null;render();},2600);},700);
@@ -839,12 +1007,12 @@ function magChart(){
 }
 function P_tech(){
   if(S.hist.x.length===0)seedMag();
-  if(S.phase!=="ready")return statusbar()+navbar(t("techT"),"",true)+
+  if(S.phase!=="ready")return statusbar()+navbar(t("techT"),"",true,false)+
     `<div class="center" style="min-height:520px"><div style="font-size:44px">🔌</div>
      <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
   const d=SIM[S.device];
-  if(!d||!d.mag)return statusbar()+navbar(t("techT"),"",true)+
+  if(!d||!d.mag)return statusbar()+navbar(t("techT"),"",true,false)+
     `<div class="center" style="min-height:480px"><div style="font-size:44px">🔌</div>
      <div class="big">${lang==="zh"?"请先连接 DC200Family 设备":"Connect a DC200Family device first"}</div>
      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
@@ -853,7 +1021,7 @@ function P_tech(){
     <div style="width:70%;background:var(--info);border-radius:3px 3px 0 0;height:${Math.max(3,Math.min(100,v))}%"></div>
     <div style="font-size:9px;color:var(--text2);margin-top:4px">${i+1}</div></div>`).join("");
   const mag=(ax,v)=>`<div class="field"><div class="k">Mag ${ax}</div><div class="v" style="font-variant-numeric:tabular-nums">${v>0?"+":""}${v}</div></div>`;
-  return statusbar()+navbar(`${t("techT")} · ${S.device}`,`<button class="linkbtn" onclick="S.page='detail';render()">✕</button>`,true)+
+  return statusbar()+navbar(`${t("techT")} · ${S.device}`,"",true,false)+
     `<div class="body">
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("judge")}</div>
       <div style="display:flex;gap:14px;align-items:center;margin-top:6px">
@@ -1093,8 +1261,57 @@ function selRow(key,label,options){
         background:${cur===o.v?"var(--info)":"var(--card2)"};color:${cur===o.v?"#fff":"var(--text2)"}"
         onclick="S.cfg.draft['${key}']=${o.v};render()">${o.l}</div>`).join("")}</div></div>`;
 }
+function svcChoice(key,label,options){
+  const cur=S.cfg.draft[key];
+  return `<label class="cfg-label">${label}</label><div class="choice-grid">${options.map(o=>
+    `<div class="choice ${cur===o.v?"selected":""}" onclick="S.cfg.draft['${key}']=${o.v};render()">${o.l}</div>`).join("")}</div>`;
+}
+function svcPortAction(title,bit,port){
+  const switchMode=(Number(port)&bit)!==0;
+  const switchPort=svcDerivedPort(port,bit,1);
+  const pulsePort=svcDerivedPort(port,bit,0);
+  return `<div class="port-set"><div class="port-set-title">${title}</div>
+    <div class="mode-set">
+      <div class="mode-option ${switchMode?"selected":""}" onclick="S.cfg.draft.port=${switchPort};render()">${t("portSwitch")}</div>
+      <div class="mode-option ${switchMode?"":"selected"}" onclick="S.cfg.draft.port=${pulsePort};render()">${t("portPwm")}</div>
+    </div></div>`;
+}
+function svcDerivedPort(port,bit,mode){
+  const base=(Number(port)&3&~bit)|(mode?bit:0);
+  return base|(Number(port)&0x80);
+}
+function svcPortControls(port){
+  const stableOn=stableModeOn(port);
+  return `<label class="cfg-label">${t("f_port")}</label>
+    <div class="port-grid">
+      ${svcPortAction(t("v1"),1,port)}
+      ${svcPortAction(t("v2"),2,port)}
+    </div>`;
+}
+function svcStableControls(port,err){
+  const stableOn=stableModeOn(port);
+  const hint=stableOn?t("cfgStableRange"):t("portStableOff");
+  return `<div class="cfg-combo">
+      <div class="cfg-control"><span>${t("svcStable")}</span>
+        <span class="switch ${stableOn?"on":""}" onclick="S.cfg.draft.port=${Number(port)^0x80};render()"><i></i></span></div>
+      <div class="cfg-input-row ${stableOn?"":"disabled"}"><input id="cfg-stable" inputmode="numeric" value="${S.cfg.draft.stable}"
+        aria-label="${t("f_stable")}" ${stableOn?"":"disabled"} oninput="S.cfg.draft.stable=this.value"><span class="unit">s</span></div>
+    </div>
+    ${err?`<div style="margin-top:5px;font-size:12px;color:var(--err)">✕ ${err}</div>`:hint?`<div class="cfg-caption" style="margin-top:5px">${hint}</div>`:""}`;
+}
+function svcNumRow(key,label,hint,unit,disabled){
+  const value=S.cfg.draft[key],err=S.cfg.errors[key];
+  return `<label class="cfg-label">${label}</label>
+    <div class="cfg-input-row ${disabled?"disabled":""}"><input id="cfg-${key}" inputmode="numeric" value="${value}"
+      ${disabled?"disabled":""} oninput="S.cfg.draft['${key}']=this.value"><span class="unit">${unit}</span></div>
+    ${err?`<div style="margin-top:5px;font-size:12px;color:var(--err)">✕ ${err}</div>`:hint?`<div class="cfg-caption" style="margin-top:5px">${hint}</div>`:""}`;
+}
+function cfgSection(title,caption,state,stateOn,content){
+  return `<div class="cfg-section"><div class="cfg-section-head"><div><div class="cfg-title">${title}</div>
+    <div class="cfg-caption">${caption}</div></div>${state?`<span class="cfg-state ${stateOn?"on":""}">${state}</span>`:""}</div>${content}</div>`;
+}
 function P_config(){
-  if(S.phase!=="ready")return statusbar()+navbar(t("cfg"),"",true)+
+  if(S.phase!=="ready")return statusbar()+navbar(t("cfg"),"",true,false)+
     `<div class="center" style="min-height:520px"><div style="font-size:44px">🔌</div>
      <div class="big">${lang==="zh"?"未连接设备":"No device connected"}</div>
      <div class="sub">${lang==="zh"?"参数配置需要先连接目标设备":"Connect a device first"}</div>
@@ -1122,23 +1339,31 @@ function P_config(){
       ${numRow("report",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}
       ${segRow("mode",t("f_modeL"),[t("fusion"),t("magOnly"),t("radarFirst")])}`;
   } else {
-    body=`${banner}
-      ${selRow("vol",t("f_volt")+"（"+(zh?"固件映射 0=12V / 1=9V / 2=5V":"firmware: 0=12V / 1=9V / 2=5V")+"）",[{v:0,l:t("vol0")},{v:1,l:t("vol1")},{v:2,l:t("vol2")}])}
-      ${selRow("port",t("f_port")+"（"+(zh?"7 取值，0x80 位=带稳定时间":"7 values, 0x80 bit = stable time")+"）",PORT_VALUES.map((v,i)=>({v,l:t("portF")[i]})))}
-      ${numRow("stable",t("f_stable"),stableModeOn(S.cfg.draft.port)?null:t("portStableOff"),1,null,255,"s","s",!stableModeOn(S.cfg.draft.port))}
-      ${segRow("smart",t("f_smart"),[t("auto"),t("manual")],[1,0])}
-      <div class="kv" style="margin:-4px 4px 8px;font-size:11px">${t("smartHint")}</div>
-      <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("f_tz")}（${zh?"作用：对时换算与阀门定时任务的触发时刻":"used for time-sync conversion and schedule timing"}）</div>
-        <div class="kv" style="margin-top:4px">${zh?"设备当前":"Device current"}: <b>${tzLabel(d.tz)}</b></div>
-        <select class="input" style="margin-top:8px" onchange="S.cfg.draft.tz=+this.value;render()">
+    const smartOn=!!S.cfg.draft.smart;
+    const rawPort=`0x${(Number(S.cfg.draft.port)&0xff).toString(16).toUpperCase().padStart(2,"0")}`;
+    const outputContent=`${svcChoice("vol",t("f_volt"),[{v:0,l:t("vol0")},{v:1,l:t("vol1")},{v:2,l:t("vol2")}])}
+      <div class="cfg-caption" style="margin-top:6px">${t("cfgFirmwareMap")}</div>
+      ${svcPortControls(S.cfg.draft.port)}
+      <div class="cfg-caption" style="margin-top:7px">${t("cfgDerivedPort")}: ${rawPort}</div>
+      ${svcStableControls(S.cfg.draft.port,S.cfg.errors.stable)}
+      <div class="cfg-control" style="margin-top:10px"><span>${t("f_smart")}</span>
+        <span class="switch ${smartOn?"on":""}" onclick="S.cfg.draft.smart=${smartOn?0:1};render()"><i></i></span></div>
+      <div class="cfg-caption" style="margin-top:7px">${t("smartHint")}</div>`;
+    const timeContent=`<label class="cfg-label">${t("f_tz")}</label>
+        <div class="select-shell"><select onchange="S.cfg.draft.tz=+this.value;render()">
           ${tzGroups().map(g=>`<optgroup label="${g.label}">${g.items.map(o=>`<option value="${o.v}" ${+S.cfg.draft.tz===o.v?"selected":""}>${o.l}</option>`).join("")}</optgroup>`).join("")}
-        </select>
-        <button class="btn secondary" style="margin-top:8px" onclick="const e=phoneTzEnc();if(e===null){S.cfg.draft.tz=0;render();toast('${zh?"手机时区超出设备支持范围，已选 UTC+00:00":"Phone timezone unsupported; set to UTC+00:00"}')}else{S.cfg.draft.tz=e;render();toast('${zh?"已选为手机时区":"Set to phone timezone"}')}">${zh?"与手机时区一致":"Match phone timezone"}</button></div>
-      ${numRow("period",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}`;
+        </select></div>
+        <div class="cfg-caption" style="margin-top:6px">${zh?"设备当前":"Device current"}: ${tzLabel(d.tz)}</div>
+        <button class="btn secondary" style="margin-top:9px" onclick="const e=phoneTzEnc();if(e===null){S.cfg.draft.tz=0;render();toast('${zh?"手机时区超出设备支持范围，已选 UTC+00:00":"Phone timezone unsupported; set to UTC+00:00"}')}else{S.cfg.draft.tz=e;render();toast('${zh?"已选为手机时区":"Set to phone timezone"}')}">${zh?"与手机时区一致":"Match phone timezone"}</button>
+      ${svcNumRow("period",t("f_period"),t("hintPeriod0"),t("minutes"))}`;
+    body=`${banner}
+      ${cfgSection(t("cfgOutput"),t("cfgOutputHint"),rawPort,true,outputContent)}
+      ${cfgSection(t("cfgTimeReport"),t("cfgTimeHint"),tzLabel(d.tz),true,timeContent)}`;
   }
-  return statusbar()+navbar(t("cfg"),"",true)+`<div class="body">${body}
-    <button class="btn" onclick="cfgSave()">${t("cfgSave")}</button>
-    <div class="kv" style="margin-top:8px">0x02 · ${zh?"载荷":"payload"} ${f==="uds"?9:f==="dc"?4:8} B</div></div>`+confirm+saving;
+  const saveButton=`<button class="btn" onclick="cfgSave()">${t("cfgSave")}</button>`;
+  const payloadText=`0x02 · ${zh?"载荷":"payload"} ${f==="uds"?9:f==="dc"?4:8} B`;
+  const footer=f==="svc"?`<div class="savebar">${saveButton}<div class="payload">${payloadText}</div></div>`:`${saveButton}<div class="kv" style="margin-top:8px">${payloadText}</div>`;
+  return statusbar()+navbar(t("cfg"),"",true,false)+`<div class="body ${f==="svc"?"savebody":""}">${body}${footer}</div>`+confirm+saving;
 }
 function cfgValidate(){
   const f=cfgFamily(),d=S.cfg.draft,E=S.cfg.errors;let ok=true;
@@ -1210,7 +1435,7 @@ function taskInit(){S.task.mode="list";S.task.busy=false;
   if(!S.task.draft)S.task.draft={rtValve:1,rtState:1,rtDur:300,rtPulse:100};
   render();}
 function P_tasks(){
-  if(S.phase!=="ready"||S.device!=="SVC100")return statusbar()+navbar(t("tasks"),"",true)+
+  if(S.phase!=="ready"||S.device!=="SVC100")return statusbar()+navbar(t("tasks"),"",true,false)+
     `<div class="center" style="min-height:480px"><div style="font-size:44px">🔌</div>
      <div class="big">${lang==="zh"?"请先连接 SVC100":"Connect an SVC100 first"}</div>
      <button class="btn" style="width:auto;padding:12px 30px" onclick="nav('home')">${t("rescan")}</button></div>`;
@@ -1241,7 +1466,7 @@ function P_tasks(){
       <div style="display:flex;gap:4px;margin-top:6px">${DAY_KEYS.map((k,i)=>tk.days[i]?`<span class="badge info" style="padding:2px 7px">${dayNames[i]}</span>`:"").join("")}</div>
     </div>`).join("")
     :`<div class="card" style="text-align:center;color:var(--text2);padding:24px">${t("noTasks")}</div>`;
-  return statusbar()+navbar(t("tasks"),`<button class="linkbtn" onclick="taskEditNew()">＋ ${t("addTask")}</button>`,true)+
+  return statusbar()+navbar(t("tasks"),`<button class="linkbtn" onclick="taskEditNew()">＋ ${t("addTask")}</button>`,true,false)+
     `<div class="body">
     ${rtCard}
     <div class="section">${t("sched")} · 0x04 / 0x05</div>
@@ -1271,7 +1496,7 @@ function P_taskEdit(dayNames){
         Array.from({length:24},(_,i)=>`<option ${d[key]===i?"selected":""}>${String(i).padStart(2,"0")}</option>`).join("")}</select>:
       <select class="input" style="flex:1" onchange="S.task.draft['${key2}']=+this.value;render()">${
         Array.from({length:60},(_,i)=>`<option ${d[key2]===i?"selected":""}>${String(i).padStart(2,"0")}</option>`).join("")}</select></div>`;
-  return statusbar()+navbar(t("addTask"),"",true)+`<div class="body">
+  return statusbar()+navbar(t("addTask"),"",true,false)+`<div class="body">
     <div class="card"><div class="k" style="font-size:12px;color:var(--text2)">${t("slot")}（${t("slotHint")}）</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${Array.from({length:16},(_,i)=>i+1).map(n=>
         `<div style="width:38px;text-align:center;padding:8px 0;border-radius:9px;cursor:pointer;font-size:13px;background:${+d.id===n?"var(--info)":S.tasks.some(x=>x.id===n)?"var(--card2)":"var(--card2)"};color:${+d.id===n?"#fff":"var(--text2)"};${S.tasks.some(x=>x.id===n)?"outline:1px solid var(--line);":""}" onclick="S.task.draft.id=${n};render()">${n}</div>`).join("")}</div>
@@ -1393,7 +1618,7 @@ function P_log(){
   return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true)+
     `<div class="body">${lines}</div>`;
 }
-function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};S.page="cal";render();}
+function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};nav("cal");}
 function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
   clearInterval(S.calTimer);
   S.calTimer=setInterval(()=>{S.cal.elapsed++;
@@ -1411,14 +1636,14 @@ function P_cal(){
   let mid;
   if(S.cal.state==="idle"){
     const title=dc?(lang==="zh"?"磁力计校准":"Magnetometer Calibration"):(lang==="zh"?"倾角校准":"Tilt Calibration");
-    const steps=dc?[[t("calEnvDC")],[t("calPlaceDC")],[t("calActDC")]]
-                  :[[t("calEnvUDS")],[t("calPlaceUDS")],[t("calActUDS")]];
+    const steps=dc?t("calDCGuide").map(({title,desc})=>[title,desc])
+                  :[[null,t("calEnvUDS")],[null,t("calPlaceUDS")],[null,t("calActUDS")]];
     mid=`<div class="card">
       <div style="font-weight:700;font-size:16px;margin-bottom:10px">🧭 ${title}</div>
       ${steps.map((st,i)=>`<div style="display:flex;gap:12px;margin:12px 0;align-items:flex-start">
         <div style="flex:none;width:26px;height:26px;border-radius:50%;background:var(--info);color:#fff;
           display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${i+1}</div>
-        <div class="kv" style="flex:1;line-height:1.6;padding-top:3px">${st[0]}</div></div>`).join("")}
+        <div class="kv" style="flex:1;line-height:1.6;padding-top:3px">${st[0]?`<b>${st[0]}</b>${lang==="zh"?"：":": "}`:""}${st[1]}</div></div>`).join("")}
       <div class="kv" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">⚠︎ ${t("calNote")}</div>
     </div>
     <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
@@ -1432,7 +1657,7 @@ function P_cal(){
       <div class="big">${t("calDone")}</div>
       <button class="btn" style="width:auto;padding:12px 40px" onclick="nav('detail')">${t("calFinish")}</button></div>`;
   }
-  return statusbar()+navbar(t("cal"),"",true)+`<div class="body">${mid}</div>`+confirm;
+  return statusbar()+navbar(t("cal"),"",true,false)+`<div class="body">${mid}</div>`+confirm;
 }
 function P_perm(kind){
   const m={ask:["🛡",t("permT"),t("permB"),[["secondary",t("dontAllow"),()=>{S.perm="denied";S.page="perm";render();}]],true],
@@ -1536,6 +1761,7 @@ const SPEC=[
  {id:"R-G3",pg:"all",tp:"需求",txt:"全部文案走 String Catalog，中英双语，禁止硬编码",ref:"需求 §9.3"},
  {id:"R-G4",pg:"all",tp:"需求",txt:"错误十分类，每类带人话原因与建议动作，禁止统一『失败』",ref:"需求 §10.2"},
  {id:"R-G5",pg:"all",tp:"需求",txt:"实现阶段 UI 1:1 克隆本确认稿（布局/组件/状态/文案/交互）",ref:"用户裁决 2026-09-06；UI 计划 §8"},
+ {id:"R-G6",pg:"all",tp:"需求",txt:"采用工业遥测视觉语言：中性底色、分层卡面、8pt 控件、数据用等宽数字、状态用语义色和清晰分区；不改变业务字段、动作与协议契约",ref:"用户方向 2026-09-08"},
  {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；显示名称/RSSI；阈值与名称前缀过滤（MPS/SVC/UDS/EPS 可勾选，未命名设备天然排除）；去重；点击连接",ref:"需求 §5.2；A-02/A-03；用户 2026-09-08"},
  {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调、真实生效、随过滤设置持久化）；非所选前缀与未命名设备不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010；用户 2026-09-08"},
  {id:"R-2",pg:"home",tp:"需求",txt:"目标设备定位进 v1（2026-09-07 用户裁决选 B，翻案 09-06 Q4）：扫描页⌖入口，扫码/手输 16 位 DevEUI→取后 6 位匹配广播名→命中自动停扫直连；3 轮未命中给『未找到』+重试/退出；界面不保留任何占位入口",ref:"用户 2026-09-07；需求 §5.3；Android MainActivity.kt"},
@@ -1558,6 +1784,7 @@ const SPEC=[
  {id:"R-15",pg:"ota",tp:"需求",txt:"成功/失败页生成可导出 OTA 升级报告（前后版本、阶段耗时、失败原因）",ref:"需求 §3.3-8；SD §9.4"},
  {id:"R-16",pg:"config",tp:"需求",txt:"三家族各自配置字段进 v1：UDS100 周期/GPS/低高阈值；DC200 周期/工作模式；SVC100 电压/端口（7 功能值）/稳定/智能电源/时区/周期",ref:"Q1 修订 2026-09-06；需求 §7"},
  {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；SVC 端口功能=7 取值（0x00-0x03/0x81-0x83：1/2 路各自脉冲/开关 × 是否带稳定时间，标签对齐 Android spinner_items_valve_mode），稳定时长仅 0x80 位模式可编辑（否则禁用并保留设备当前值，跳过校验）；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单；输入过程不整页重绘（保持焦点与滚动位置），校验错误在保存时定位到字段",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android DeviceActivity getConfigSVC100View/updateStableTimeEditor；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
+ {id:"SP-G7",pg:"config",tp:"规格",txt:"参数配置页采用工业表单布局：语义分区（输出与端口 / 时间与上报）；SVC100 电压用三档选择，端口 1/端口 2 分别选择开关或 PWM，界面合成单字节端口值；稳定时长由 0x80 全局位开关且仅该模式下可编辑；自动开关机用开关并显示插入/拔出触发说明；保存操作固定底部；仅改布局，不改字段、范围与 0x02 契约",ref:"R-G6；R-16；SP-16；用户方向 2026-09-08"},
  {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
  {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
  {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；固件按 3B 读脉冲与 len 门槛 7 不自洽（第 3 字节吃到 CRC 高位）=固件缺陷待修，App 严格按 6B 载荷发送（与 Android 逐字节一致）；忙=静默忽略→2s 超时提示『设备忙』；0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve(0双/1/2)+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支（2026-09-07 复核）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
@@ -1566,7 +1793,7 @@ const SPEC=[
  {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语；设置页语言行点击循环切换（跟随系统→简体中文→English）并即时生效；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
  {id:"R-21",pg:"settings",tp:"需求",txt:"关于页显示 App 版本号+构建号；隐私说明正式稿（双语页，GDPR 透明度要点结构：不收集个人数据/全部本地存储/无网络传输与第三方 SDK/相机仅扫码/导出经系统分享由用户发起/删除数据=卸载 App），App Store 隐私口径=Data Not Collected；联系渠道=sales@hktlora.com / www.hktlora.com（产品 2026-09-08 提供）",ref:"Q10；GDPR Art.5 透明性；Apple 隐私标签；用户 2026-09-08"},
  {id:"R-22",pg:"log",tp:"需求",txt:"诊断日志覆盖九类事件（扫描/发现/连接/服务/订阅/写入/响应/OTA 阶段/错误恢复），导出 txt 带环境头",ref:"需求 §9.2；SD §9.4；A-09"},
- {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准（完成信号=设备上报 Calibration Done），期间禁其他命令；关机时校准不可用；App 等待上限 DC200 360s/其他 240s（超时给明确提示）",ref:"需求 §7.2；Android startSyncCheck timeout；TC-ST-006"},
+ {id:"R-23",pg:"cal",tp:"需求",txt:"校准为长时运行状态：以设备上报为准（完成信号=设备上报 Calibration Done），期间禁其他命令；关机时校准不可用；App 等待上限 DC200 360s/其他 240s（超时给明确提示）；磁力计校准前显示邻位车辆/固定铁磁结构/通电电缆/随身磁物/设备状态/触发等待/验证与失败处理 7 类引导",ref:"需求 §7.2；Android startSyncCheck timeout；TC-ST-006；用户 2026-09-08"},
  {id:"R-24",pg:"perm",tp:"需求",txt:"权限四态引导：未请求/被拒/蓝牙关闭/不支持 BLE；授权后自动返回",ref:"需求 §9.4；A-01"},
  {id:"R-25",pg:"detail",tp:"需求",txt:"时间同步进 v1：页面实时显示手机当前时间（秒级），一键同步，无需用户输入数字",ref:"用户澄清 2026-09-06；SD §2.2"},
  {id:"SP-25",pg:"detail",tp:"规格",txt:"0x06 帧 len 怪癖（=4）；发送手机 Unix 秒，App 不做时区换算；设备端 UDS/DC200 固定+8、SVC 按配置时区；无 ACK/空值视为失败",ref:"traceability §2.1-10；TX-SYNC-001"},
@@ -1574,13 +1801,14 @@ const SPEC=[
  {id:"SP-26",pg:"detail",tp:"规格",txt:"0xFE 载荷 4 字节、电源字节在 payload[3]；关机确认弹窗；关机→停轮询，开机→恢复轮询",ref:"TX-POWER-001"},
  {id:"R-27",pg:"tech",tp:"需求",txt:"DC200Family 技术参数页：地磁 X/Y/Z + 雷达 10 段频谱整合独立页，随轮询实时刷新，含当前判定对照（车位状态/工作模式），供现场从技术参数角度定位地磁/雷达问题；工程诊断页豁免协议术语规则",ref:"用户 2026-09-07；需求 §7.2"},
  {id:"SP-27",pg:"tech",tp:"规格",txt:"数据源=TLV 0x5D/0x5E/0x5F+0x60；三轴保留最近 30 组折线图（X 蓝/Y 绿/Z 橙）+最新具体值；判定对照=0x3A/0x3B；仅 DC200Family 入口",ref:"FW-REF callback_BLEQuery/setDataPackage"},
- {id:"R-28",pg:"all",tp:"需求",txt:"导航规则：所有“返回”回到上一页（栈式导航，OTA 传输中返回仍触发保护弹窗）；每个非首页页面右上角提供“首页”直达（清空返回栈，回到扫描页）",ref:"用户 2026-09-07"},
+ {id:"R-28",pg:"all",tp:"需求",txt:"导航规则：所有“返回”回到上一页（栈式导航，OTA 传输中返回仍触发保护弹窗）；除“参数配置”“阀门任务”“技术参数”“校准”外，每个非首页页面右上角提供“首页”直达（清空返回栈，回到扫描页）；这些嵌套/长运行页面只保留返回入口，技术参数页也不显示“✕”关闭入口",ref:"用户 2026-09-07；用户 2026-09-08"},
  {id:"R-29",pg:"all",tp:"需求",txt:"电量显示按固件口径分设备：UDS100 显示电压（mV）；DC200Family/SVC100 显示固件 1 字节估算电量（界面不标注估算来源字样——用户 2026-09-07 裁决）；版本信息（硬版+软版）可经 0xFF 查询获得并展示",ref:"用户 2026-09-07；FW-REF adc.c/setDataPackage"},
  {id:"SP-29",pg:"all",tp:"规格",txt:"UDS100 电量=TLV 0x8B（2B，mV）；DC200/SVC100=TLV 0x03（1B，估算：≥3100mV→100，2600-3100 按公式仅 0-1，DC200 另按剩余上行包数递减）；SVC 电压档位固件映射 0=12V/1=9V/2=5V；时区作用=0x06 对时换算+阀门定时任务触发时刻（配错时区=任务在错误时刻开关阀）；智能电源=插入检测自动开关机（接入阀开机/拔出关机）",ref:"FW-REF adc.c:104-113、control_center.h:42、control_center.c:166/858-868"},
  {id:"R-30",pg:"config",tp:"需求",txt:"时区选择体验：下拉按 ISO 8601 偏移升序并分组（西/零/东/半小时）；提供“与手机时区一致”快捷设置；表单显示设备当前时区（0x8A 回读）",ref:"用户 2026-09-07；FW-REF 0x8A/0x06/local_schedule"},
  {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
- {id:"R-31",pg:"detail",tp:"需求",txt:"详情页顶部“会话操作条”集中四个动作：返回 / 首页 / 固件升级 / 断开连接（用户 2026-09-08）。断开连接=停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
- {id:"SP-31",pg:"detail",tp:"规格",txt:"清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
+ {id:"R-31",pg:"detail",tp:"需求",txt:"详情页顶部“会话操作条”集中四个动作：返回 / 首页 / 固件升级 / 断开连接（用户 2026-09-08）。断开连接入口先弹出确认框；确认后=停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
+ {id:"SP-31",pg:"detail",tp:"规格",txt:"断开入口点击→确认弹窗（说明预期断开/不自动重连）→确认后清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
+ {id:"SP-G6",pg:"detail",tp:"规格",txt:"详情页顶部为会话控制卡：设备名+连接状态+版本/电量+返回/首页/固件升级/断开四按钮；字段区保持两列，值可换行并保留单位；SVC100 的阀状态/插入检测/脉冲/端口功能按阀 1/阀 2 分成通道模块，电压/稳定/智能电源/时区/周期保留参数卡；设备操作为可整行点击的电源行+动作卡，地磁设备按磁力计校准→技术参数→参数配置→时间同步排列，前四项均独立通栏，卡片带类型徽标/说明/大点击区，时间同步卡实时显示手机时间，校准运行时操作卡禁用；断开在 OTA 传输/校准中禁用",ref:"R-G6；R-31；SP-31；用户方向 2026-09-08"},
  {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连；“重新扫描”对驻留会话做信号检测：无蓝牙信号（>5s 无轮询响应）则清除徽章并自动重连",ref:"用户 2026-09-08"},
  {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连；重扫健康检测=最后成功轮询距今 >5s（连接态设备已停止广播，不能以扫描结果判活，只能看轮询心跳）→清徽章+按 R-6 自动重连 ≤3 次，失败转断开态入最近设备",ref:"SD §9.5.2；固件 1s 保活约束"},
 ];
