@@ -141,6 +141,7 @@
     <option value="otaBtOff">OTA 中蓝牙关闭</option>
     <option value="upgradeMode">连接处于升级模式的设备</option>
     <option value="switchDevice">会话切换 A→B</option>
+    <option value="residentLost">驻留会话失联→重扫重连</option>
     <option value="locateMiss">定位设备 3 轮未找到</option>
     <option value="cfgReject">UDS100 配置被静默拒绝</option>
     <option value="svcBusy">SVC100 实时任务被忙拒绝</option>
@@ -429,6 +430,18 @@ const CANDIDATES=[
 function prefixOk(name){const p=String(name||"").trim().slice(0,3).toUpperCase();return !!(p&&S.prefix[p]);}
 function toggleScan(){
   if(S.scanning){S.scanning=false;clearInterval(S.scanTimer);log(t("scanStop"));render();return;}
+  // 驻留会话健康检测（R-32 补充，用户 2026-09-08）：重扫时以最后成功轮询判定蓝牙信号
+  //（连接态设备已停止广播，不能以"扫描结果里是否可见"判活，只能看轮询心跳）
+  if(S.phase==="ready"){
+    const stale=Math.round((Date.now()-(S.lastPoll||0))/1000);
+    if(stale>5){
+      const dev={n:S.device,id:S.id||"…9C01"};
+      log(t("pollErr"),"WARN",(lang==="zh"?`重扫检测：${dev.id} 无蓝牙信号（${stale}s 无轮询响应）→ 自动重连`:`rescan health-check: ${dev.id} no signal (${stale}s stale) → reconnecting`));
+      toast(lang==="zh"?`未检测到 ${dev.id} 信号，正在重连（≤3 次）…`:`No signal from ${dev.id}, reconnecting (≤3 attempts)…`);
+      reconnectFromHome(dev,1);
+      return;
+    }
+  }
   S.scanning=true;S.found=[];log(t("scanStart"),"INFO","3 cycles × 10 s");render();
   let i=0;
   S.scanTimer=setInterval(()=>{
@@ -499,6 +512,26 @@ function P_home(){
       <button class="linkbtn" data-act="locate" style="margin-right:12px">${t("locate")}</button>
       <button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
     <div class="body">${body}</div>`+homeOverlays();
+}
+function reconnectFromHome(dev,attempt){
+  // 驻留会话失联后的自动重连（R-6 口径：≤3 次）；Scene.residentGone 演示"真无信号"的失败分支
+  if(Scene.residentGone&&attempt>3){
+    Scene.residentGone=false;
+    releaseSession();
+    log(t("pollErr"),"ERR",(lang==="zh"?"重连 3 次失败，已转断开态（设备在最近设备可手动重连）":"3 reconnect attempts failed; released (manual retry via recents)"));
+    navStack=[];S.page="home";render();
+    toast(lang==="zh"?"重连 3 次失败，已断开。可从最近设备手动重连":"Reconnect failed 3 times; disconnected. Retry from Recents");
+    return;
+  }
+  setTimeout(()=>{
+    if(Scene.residentGone){
+      toast(lang==="zh"?`第 ${attempt}/3 次重连失败，继续尝试…`:`Reconnect attempt ${attempt}/3 failed, retrying…`);
+      reconnectFromHome(dev,attempt+1);return;
+    }
+    S.phase="ready";S.device=dev.n;S.id=dev.id;S.p3="ready";S.lastPoll=Date.now();
+    startPoll();render();
+    toast((lang==="zh"?"已重连 ":"Reconnected ")+dev.id);
+  },1600);
 }
 function toggleScanAct(){toggleScan();}
 
@@ -1455,7 +1488,7 @@ document.getElementById("langBtn").onclick=()=>{lang=lang==="zh"?"en":"zh";rende
 document.getElementById("sceneSel").onchange=e=>{runScene(e.target.value);e.target.value="";};
 
 /* ═══════════ 场景注入 ═══════════ */
-const Scene={pollStall:false,otaReset:false,otaMismatch:false,upgradeModeDevice:false,locateMiss:false};
+const Scene={pollStall:false,otaReset:false,otaMismatch:false,upgradeModeDevice:false,locateMiss:false,residentGone:false};
 function runScene(id){
   if(!id)return;
   if(id==="perm"){S.perm="ask";S.page="perm";render();}
@@ -1471,6 +1504,11 @@ function runScene(id){
   if(id==="upgradeMode"){Scene.upgradeModeDevice=true;connectTo("SVC100","…B4D2",-70);}
   if(id==="switchDevice"){deviceCardClick("UDS100","…3F2A",-58);
     toast(lang==="zh"?"点选了另一台设备——弹出切换确认框，确认后原子释放 MPS100 会话再连 UDS100":"Another device tapped — confirm dialog releases the MPS100 session atomically, then connects UDS100");}
+  if(id==="residentLost"){
+    if(S.phase!=="ready"){S.device="MPS100";S.id="…9C01";S.phase="ready";S.p3="ready";startPoll();}
+    setTimeout(()=>{S.lastPoll=Date.now()-30000;Scene.residentGone=true;
+      toast(lang==="zh"?"驻留会话已静默失联（演示：30 秒无轮询响应）——点『重新扫描』观察健康检测与自动重连":"Resident session silently lost (30s stale demo) — tap Rescan to see the health check and auto-reconnect");render();},S.phase==="ready"?1200:3600);
+  }
   if(id==="locateMiss"){Scene.locateMiss=true;S.camPerm="granted";locateStart("0095690A3F2AB7C4");
     toast(lang==="zh"?"定向扫描 3 轮（演示 5 秒）未命中——观察『未找到』态与重试":"Targeted scan misses 3 cycles (5s demo) — observe the not-found state and retry");}
   if(id==="svcBusy"){Scene.svcBusy=true;connectTo("SVC100","…B4D2",-70);
@@ -1536,8 +1574,8 @@ const SPEC=[
  {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
  {id:"R-31",pg:"detail",tp:"需求",txt:"详情页“设备操作”区提供“断开连接”：停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
  {id:"SP-31",pg:"detail",tp:"规格",txt:"清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
- {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连",ref:"用户 2026-09-08"},
- {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连",ref:"SD §9.5.2；固件 1s 保活约束"},
+ {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连；“重新扫描”对驻留会话做信号检测：无蓝牙信号（>5s 无轮询响应）则清除徽章并自动重连",ref:"用户 2026-09-08"},
+ {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连；重扫健康检测=最后成功轮询距今 >5s（连接态设备已停止广播，不能以扫描结果判活，只能看轮询心跳）→清徽章+按 R-6 自动重连 ≤3 次，失败转断开态入最近设备",ref:"SD §9.5.2；固件 1s 保活约束"},
 ];
 let specView=false;
 function toggleSpec(){specView=!specView;render();}
