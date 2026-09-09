@@ -70,22 +70,44 @@ struct ResidentDetailView: View {
     }
 }
 
-/// P-01 扫描列表：能力就绪后的最小克隆；⌖ 定位入口随 M4 定位里程碑接入。
+/// P-01 扫描列表：含 ⌖ 目标设备定位入口（R-2）。
 private struct ScanListView: View {
     @Environment(ScanModel.self) private var model
     @State private var connector: ConnectModel?
     @State private var showResidentDetail = false
+    @State private var showLocate = false
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("HKT BLETools")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            model.beginLocateInput()
+                            showLocate = true
+                        } label: {
+                            Image(systemName: "location.magnifyingglass")
+                        }
+                        .accessibilityLabel("定位设备")
+                    }
+                }
                 .fullScreenCover(item: $connector) { connector in
                     ConnectOverlayView(model: connector)
                 }
+                .fullScreenCover(isPresented: $showLocate) {
+                    LocateFlowView()
+                }
                 .navigationDestination(isPresented: $showResidentDetail) {
                     ResidentDetailView()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .init("popToRoot"))) { _ in
+                    showResidentDetail = false
+                }
+                .onChange(of: model.locateHitDevice) { _, hit in
+                    guard let hit else { return }
+                    connector = model.connector(for: hit)
                 }
         }
         .background(Theme.bg)

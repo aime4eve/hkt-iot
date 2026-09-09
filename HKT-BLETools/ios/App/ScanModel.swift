@@ -25,6 +25,16 @@ final class ScanModel {
     /// R-32：返回首页时的驻留会话（nil=无会话）。
     var residentDevice: ResidentDevice?
 
+    // R-2 目标设备定位
+    public enum LocatePhase: Equatable { case input, finding, notFound }
+    private(set) var locatePhase: LocatePhase?
+    private(set) var locateSuffix: String?
+    private(set) var locateHitDevice: DiscoveredDevice?
+    /// 定位命中回调（RootView 据此弹出连接覆盖层）。
+    public var onLocateHit: ((DiscoveredDevice) -> Void)?
+    private var locateTimeoutTask: Task<Void, Never>?
+    private var savedPrefixes: Set<String>?
+
     /// 演示模式（-mockble 启动参数）：能力就绪后自动开始扫描。
     var autoStartOnReady = false
     private var autoStarted = false
@@ -56,6 +66,18 @@ final class ScanModel {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.availability = availability
+                // R-2 定位模式：后缀命中即停扫直连（优先于常规列表）
+                if self.locatePhase == .finding, let suffix = self.locateSuffix,
+                   let hit = devices.first(where: { $0.name.uppercased().contains(suffix) }) {
+                    self.locateHitDevice = hit
+                    self.locatePhase = nil
+                    self.locateSuffix = nil
+                    self.locateTimeoutTask?.cancel()
+                    self.stopScan()
+                    if let saved = self.savedPrefixes { self.allowedPrefixes = saved; self.savedPrefixes = nil }
+                    self.onLocateHit?(hit)
+                    return
+                }
                 // 驻留/列表冻结规则（R-32）：列表仅在扫描进行中刷新。
                 if self.isScanning { self.devices = devices }
             }
@@ -65,6 +87,61 @@ final class ScanModel {
     func stopScan() {
         isScanning = false
         central.stopScan()
+    }
+
+    // MARK: - R-2 目标设备定位（2026-09-07 裁决选 B）
+
+    func beginLocateInput() { locatePhase = .input }
+
+    /// SP-2 输入校验。
+    var locateInput = "0095690" {   // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
+        didSet {
+            let filtered = locateInput.uppercased().filter { $0.isHexDigit }.prefix(16)
+            if filtered != locateInput { locateInput = String(filtered) }
+        }
+    }
+    var locateInputValid: Bool { locateInput.count == 16 }
+
+    func retryLocate() {
+        guard locateSuffix != nil else { return }
+        locatePhase = .finding
+        startScan()
+        armLocateTimeout()
+    }
+
+    func beginCameraLocate() { /* 相机会话随相机里程碑接入 */ }
+
+    private func armLocateTimeout() {
+        locateTimeoutTask?.cancel()
+        locateTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(30))   // 3 轮 × 10s（与扫描节奏一致）
+            guard let self, !Task.isCancelled, self.locatePhase == .finding else { return }
+            self.locatePhase = .notFound
+            self.stopScan()
+        }
+    }
+
+    /// SP-2：校验 16 位 hex → 取后 6 位匹配广播名 → 目标模式忽略前缀过滤。
+    func startLocate(devEUI: String) {
+        let cleaned = devEUI.uppercased()
+        guard cleaned.count == 16, cleaned.allSatisfy({ $0.isHexDigit }) else { return }
+        locateSuffix = String(cleaned.suffix(6))
+        locatePhase = .finding
+        savedPrefixes = allowedPrefixes
+        allowedPrefixes = DiscoveredDevice.supportedPrefixes   // 目标模式忽略前缀过滤
+        startScan()
+        armLocateTimeout()
+    }
+
+    func cancelLocate() {
+        locateTimeoutTask?.cancel()
+        if locatePhase == .finding { stopScan() }
+        restoreAfterLocate()
+    }
+
+    private func restoreAfterLocate() {
+        locateSuffix = nil
+        if let saved = savedPrefixes { allowedPrefixes = saved; savedPrefixes = nil }
     }
 
     /// 为指定设备创建连接过程模型（P-02；端口与扫描同源）。

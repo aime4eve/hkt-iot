@@ -74,10 +74,13 @@ public final class MockCentral: BluetoothPort, @unchecked Sendable {
         }
     }
 
-    /// 场景注入：模拟一次广播发现（仅扫描中且通过过滤规则时入列）。
-    public func discover(name: String, identifier: UUID, rssi: Int) {
+    /// 场景注入：模拟一次广播发现（仅扫描中且通过过滤规则时入列；targetMode 忽略前缀过滤，R-2）。
+    public func discover(name: String, identifier: UUID, rssi: Int, targetMode: Bool = false) {
         guard isScanning, let options else { return }
-        guard options.isListable(name: name, rssi: rssi) else { return }
+        let listable = targetMode
+            ? (rssi >= options.rssiThreshold && name != nil)   // 目标模式只看信号与非空名
+            : options.isListable(name: name, rssi: rssi)
+        guard listable else { return }
         devices.removeAll { $0.identifier == identifier }
         devices.append(DiscoveredDevice(name: name, identifier: identifier, rssi: rssi))
         devices.sort { $0.rssi > $1.rssi }
