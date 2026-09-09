@@ -152,6 +152,7 @@ enum BadgeKind { case ok, warn, err, info }
 struct StateBadge: View {
     let kind: BadgeKind
     let text: String
+    var compact = false        // liveCard 变体：padding 2 8（标准 3 9）
 
     private var color: Color {
         switch kind {
@@ -167,7 +168,8 @@ struct StateBadge: View {
             Circle().fill(color).frame(width: 7, height: 7)     // .dot 7×7 currentColor
             Text(text).font(.hkt(12, .semibold))
         }
-        .padding(.horizontal, 9).padding(.vertical, 3)
+        .padding(.horizontal, compact ? 8 : 9)
+        .padding(.vertical, compact ? 2 : 3)
         .background(color.opacity(0.15), in: Capsule())
         .foregroundStyle(color)
     }
@@ -568,8 +570,21 @@ struct SvcChannelModule: View {
 struct HKTDialog<Buttons: View>: View {
     let title: String
     var centeredBody = false
-    let message: String
+    let message: Text
     @ViewBuilder var buttons: Buttons
+
+    init(title: String, centeredBody: Bool = false, message: Text,
+         @ViewBuilder buttons: () -> Buttons) {
+        self.title = title
+        self.centeredBody = centeredBody
+        self.message = message
+        self.buttons = buttons()
+    }
+
+    init(title: String, centeredBody: Bool = false, message: String,
+         @ViewBuilder buttons: () -> Buttons) {
+        self.init(title: title, centeredBody: centeredBody, message: Text(message), buttons: buttons)
+    }
 
     var body: some View {
         ZStack {
@@ -577,7 +592,7 @@ struct HKTDialog<Buttons: View>: View {
             VStack(spacing: 0) {
                 Text(title).font(.hkt(16, .bold)).multilineTextAlignment(.center)
                     .padding(.bottom, 8)
-                Text(message)
+                message
                     .font(.hkt(13))
                     .lineSpacing(1.5 * 13 - 13)
                     .foregroundStyle(Theme.text2)
@@ -593,25 +608,142 @@ struct HKTDialog<Buttons: View>: View {
     }
 }
 
-/// .btn：全宽 padding 13、r8、16px/650。secondary=card底 line描边；danger=err 10%/22%/err 字。
+/// .btn：全宽 padding 13、r8、16px/650。primary=info底白字；secondary=card底 line描边；danger=err 10%/22%/err 字。
 struct DialogButton: View {
-    enum Kind { case secondary, danger }
+    enum Kind { case primary, secondary, danger }
     let title: String
     var kind: Kind = .secondary
     let action: () -> Void
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: return .white
+        case .secondary: return Theme.text
+        case .danger: return Theme.err
+        }
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: return Theme.info
+        case .secondary: return Theme.card
+        case .danger: return Theme.err.opacity(0.10)
+        }
+    }
+
+    private var border: Color? {
+        switch kind {
+        case .primary: return nil
+        case .secondary: return Theme.line
+        case .danger: return Theme.err.opacity(0.22)
+        }
+    }
 
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.hkt(16, .semibold))
-                .foregroundStyle(kind == .danger ? Theme.err : Theme.text)
+                .foregroundStyle(foreground)
                 .frame(maxWidth: .infinity)
                 .padding(13)
-                .background(kind == .danger ? Theme.err.opacity(0.10) : Theme.card,
-                            in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius)
-                    .stroke(kind == .danger ? Theme.err.opacity(0.22) : Theme.line, lineWidth: 1))
+                .background(background, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                .overlay {
+                    if let border {
+                        RoundedRectangle(cornerRadius: Theme.controlRadius).stroke(border, lineWidth: 1)
+                    }
+                }
         }
+    }
+}
+
+// MARK: - 大标题页头（.navbar 大标题版：P-01 扫描页）
+
+struct NavbarLarge<Trailing: View>: View {
+    let title: String
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).font(.hkt(20, .bold)).foregroundStyle(Theme.text)
+            Spacer(minLength: 8)
+            trailing
+        }
+        .padding(.top, 10).padding(.horizontal, 16).padding(.bottom, 10)
+    }
+}
+
+// MARK: - 扫描状态行（.row：P-01）
+
+struct ScanStatusRow: View {
+    let title: String
+    let actionTitle: String     // 停止 / 重新扫描
+    let action: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title).font(.hkt(15)).foregroundStyle(Theme.text)
+            Spacer(minLength: 8)
+            LinkButton(title: actionTitle, action: action)
+        }
+        .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
+            .stroke(Theme.line.opacity(0.82), lineWidth: 1))
+        .hktShadow()
+        .padding(.bottom, 9)
+    }
+}
+
+// MARK: - RSSI 信号条（.rssi：4 根竖条，亮=ok、灭=fill）
+
+struct RssiBars: View {
+    /// 亮起的条数（映射：rssi>-70→4，>-85→3，否则 2；原型 .rssi s1/s2/s3）
+    let lit: Int
+
+    private let heights: [CGFloat] = [4, 7, 10, 14]
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            ForEach(0 ..< 4, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(i < lit ? Theme.ok : Theme.fill)
+                    .frame(width: 3, height: heights[i])
+            }
+        }
+        .frame(height: 14, alignment: .bottom)
+    }
+}
+
+// MARK: - 扫描设备卡（.card hcard：P-01；也用于驻留卡/最近设备卡）
+
+struct ScanDeviceCard<Trailing: View>: View {
+    let name: String
+    let subtitle: String
+    var badge: StateBadge?
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(name).font(.hkt(15, .bold)).foregroundStyle(Theme.text).lineLimit(1)
+                    if let badge { badge }
+                }
+                Text(subtitle)
+                    .font(.hkt(12))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.text2)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            trailing
+        }
+        .padding(EdgeInsets(top: 13, leading: 14, bottom: 13, trailing: 14))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
+            .stroke(Theme.line.opacity(0.82), lineWidth: 1))
+        .hktShadow()
     }
 }
 
@@ -623,9 +755,17 @@ struct CenterStateView: View {
     let title: String
     var subtitle: String?
     let buttonTitle: String
+    var secondaryButton = false    // .btn secondary：card 底 line 描边 text 字（如空态「重新扫描」）
+    var fillsRemaining = true      // true=撑满剩余空间（整页早退视图）；false=内容高（滚动区空态）
     let action: () -> Void
 
     var body: some View {
+        core
+            .frame(maxWidth: .infinity)
+            .modifier(CenterFills(fillsRemaining: fillsRemaining))
+    }
+
+    private var core: some View {
         VStack(spacing: 10) {
             Text(glyph).font(.system(size: glyphSize))
             Text(title).font(.hkt(17, .semibold))
@@ -636,13 +776,32 @@ struct CenterStateView: View {
             }
             Button(action: action) {
                 Text(buttonTitle)
-                    .font(.hkt(16, .semibold)).foregroundStyle(.white)
-                    .padding(.vertical, 12).padding(.horizontal, 34)
-                    .background(Theme.info, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                    .font(.hkt(16, .semibold))
+                    .foregroundStyle(secondaryButton ? Theme.text : .white)
+                    .padding(.vertical, secondaryButton ? 10 : 12)
+                    .padding(.horizontal, secondaryButton ? 26 : 34)
+                    .background(secondaryButton ? Theme.card : Theme.info,
+                                in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                    .overlay {
+                        if secondaryButton {
+                            RoundedRectangle(cornerRadius: Theme.controlRadius)
+                                .stroke(Theme.line, lineWidth: 1)
+                        }
+                    }
             }
             .padding(.top, 2)
         }
         .padding(.horizontal, 32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct CenterFills: ViewModifier {
+    let fillsRemaining: Bool
+    func body(content: Content) -> some View {
+        if fillsRemaining {
+            content.frame(maxHeight: .infinity)
+        } else {
+            content.frame(minHeight: 320)   // 原型 .center min-height:320（P-01 空态）
+        }
     }
 }

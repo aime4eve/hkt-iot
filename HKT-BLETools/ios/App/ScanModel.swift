@@ -63,6 +63,16 @@ final class ScanModel {
     var isReady: Bool { availability.isUsable }
 
     func startScan() {
+        // R-32 重扫健康检测（原型 toggleScan）：活会话最后成功轮询距今 >5s = 无蓝牙信号
+        //（连接态设备已停止广播，不能以扫描可见性判活，只看轮询心跳）→ 释放并原身份重连
+        if let session = activeSession, !session.linkLost,
+           let stale = session.secondsSinceLastResponse, stale > 5 {
+            activeSession?.stop()
+            activeSession = nil
+            central.disconnectDevice()
+            reconnectResident()
+            return
+        }
         guard isReady, !isScanning else { return }
         isScanning = true
         central.startScan(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
@@ -162,15 +172,16 @@ final class ScanModel {
         return session
     }
 
-    /// R-31 断开连接：停轮询 + GATT 断开 + 清驻留。
+    /// R-31 断开连接：停轮询 + GATT 断开 + 清驻留（设备进最近设备，原型 releaseSession 语义）。
     func disconnectActive() {
+        if let resident = residentDevice { lastSession = resident }
         activeSession?.stop()
         activeSession = nil
         central.disconnectDevice()
         residentDevice = nil
     }
 
-    /// P-03 断线态「重新连接」：驻留设备原身份重建会话（系统侧 peripheral 通常仍在缓存，
+    /// P-01 断线态「重新连接」：驻留设备原身份重建会话（系统侧 peripheral 通常仍在缓存，
     /// 不在扫描列表也能按 identifier 直连；完整 R-6 自动重连状态机另行接入）。
     @discardableResult
     func reconnectResident() -> DeviceSession? {
@@ -178,5 +189,51 @@ final class ScanModel {
         let device = devices.first { $0.identifier == resident.identifier }
             ?? DiscoveredDevice(name: resident.name, identifier: resident.identifier, rssi: Int.min)
         return makeAndStartSession(for: device)
+    }
+
+    // MARK: - P-01 首页卡片点击语义（R-31/R-32，原型 deviceCardClick）
+
+    /// R-32 切换确认框待连接目标（nil = 无待确认）。
+    private(set) var pendingSwitch: DiscoveredDevice?
+
+    /// 最近一次释放的会话（R-31：断开后设备进"最近设备"，空列表时显示）。
+    private(set) var lastSession: ResidentDevice?
+
+    enum CardTapOutcome {
+        case showDetail                                  // 验活通过：同一设备直接回详情
+        case confirmSwitch(target: DiscoveredDevice)     // 其他设备 → 切换确认框
+        case connect(ConnectModel)                       // 标准连接
+    }
+
+    func cardTapOutcome(for device: DiscoveredDevice) -> CardTapOutcome {
+        if let session = activeSession, !session.linkLost, let resident = residentDevice {
+            if device.identifier == resident.identifier { return .showDetail }
+            return .confirmSwitch(target: device)
+        }
+        if activeSession != nil { disconnectActive() }   // 失联兜底：原子释放旧会话
+        stopScan()                                        // 安卓同款：连接前先停扫
+        return .connect(connector(for: device))
+    }
+
+    /// R-32 确认切换：原子释放当前会话（预期断开）→ 标准连接新设备。
+    func confirmSwitch() -> ConnectModel? {
+        guard let target = pendingSwitch else { return nil }
+        pendingSwitch = nil
+        disconnectActive()
+        stopScan()
+        return connector(for: target)
+    }
+
+    func cancelSwitch() { pendingSwitch = nil }
+
+    func requestSwitch(to device: DiscoveredDevice) { pendingSwitch = device }
+
+    /// 最近设备一键连接（空列表时的 recent 卡）。
+    func connectorForLastSession() -> ConnectModel? {
+        guard let last = lastSession else { return nil }
+        let device = devices.first { $0.identifier == last.identifier }
+            ?? DiscoveredDevice(name: last.name, identifier: last.identifier, rssi: Int.min)
+        stopScan()
+        return connector(for: device)
     }
 }
