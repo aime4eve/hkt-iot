@@ -1,6 +1,6 @@
-# 校准页（P_cal）— 规格卡（从冻结原型逐条提取）
+# 校准页（P_cal）— 规格卡（从冻结原型逐条提取 + 用户 2026-09-10 流程裁决）
 
-> 事实源：`docs/ios/design/prototype/index.html`（已确认·冻结 2026-09-08）。
+> 事实源：`docs/ios/design/prototype/index.html`（已确认·冻结 2026-09-08）；**流程以本卡 §5 用户裁决为准（原型 P_cal 的确认对话框与完成按钮已废弃）**。
 > 提取位置：`P_cal()`；`calBegin()`；CSS `.card/.badge/.progress/.center/.btn`；i18n `cal/calStart/calRun/calElapsed/cal90/calDC3/calNote/calDone/calFinish/calForUDS/calForDC/calEnvUDS/calPlaceUDS/calActUDS/cancel`，`calDCGuide` 7 项（ZH L324-331 / EN L426-433）。
 > 原型变更时同一次提交更新本卡（§9 第 4 条）。
 
@@ -46,7 +46,7 @@
 ## 3. iOS 状态与数据
 
 - 入口：详情页 CAL 瓷砖（现有）→ push 校准页。
-- 状态机：idle →（确认框）→ running（1s 计时，进度条按 8s 演示周期填充）→ done → 完成回详情。**真实校准命令（长时操作、以设备上报为准）随协议里程碑接入**，当前与原型演示一致为本地计时。
+- 状态机（§5 裁决后）：idle →（无二次确认）→ running（1s 计时，进度条按 8s 演示周期填充）→ success（显示成功信息，停顿 3 秒自动返回详情）/ failure（弹窗询问是否再次尝试：再次尝试→回 running；取消→返回详情）。**真实校准命令（长时操作、以设备上报为准）随协议里程碑接入**，当前与原型演示一致为本地计时且必走 success。
 - 校准运行期间其他命令禁用（原型 opsDisabled）：iOS 为整页 push，详情页操作天然不可达。
 
 ## 4. 文案表
@@ -62,3 +62,11 @@
 | cal90 / calDC3 | 预计约 90 秒，请耐心等待 / 磁力计校准耗时较长（最长约 3 分钟），请耐心等待 | Expected ~90 seconds, please wait / Magnetometer calibration can take up to 3 minutes |
 | calNote | 校准为长时操作，期间其他命令已禁用 | Long-running operation; other commands are disabled meanwhile |
 | calDone / calFinish | ✓ 校准完成 / 完成 | ✓ Calibration complete / Done |
+| 失败弹窗（裁决 3） | 校准未成功 / 本次校准未成功。是否再次尝试校准？ / 再次尝试 / 取消 | Calibration failed / This calibration attempt did not succeed. Try again? / Try Again / Cancel |
+
+## 5. 用户 2026-09-10 流程裁决（覆盖原型行为）
+
+1. **无二次确认**：点「开始校准」直接进入进行中（原型的确认对话框废弃）。
+2. **成功**：显示成功信息（✓ 校准完成）后停顿 3 秒自动返回详情页（原型的「完成」按钮废弃）。
+3. **失败**：弹出对话框提示是否再次尝试校准；选「取消」则返回详情页（原型无失败演示，分支为 iOS 新增，真实校准接入后由设备上报驱动）。
+4. 原型 `P_cal` 已同步：去掉 confirm 分支、done 态 3 秒自动返回（同一次提交）。

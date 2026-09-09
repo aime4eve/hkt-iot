@@ -2,21 +2,23 @@ import CoreBLE
 import CoreProtocol
 import SwiftUI
 
-/// 校准页（P_cal）—— 1:1 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-cal.md`）。
-/// 三态：指引卡片 →（确认对话框）→ 进行中（计时+进度条）→ 完成态。
+/// 校准页（P_cal）—— 克隆冻结原型 + 用户 2026-09-10 三条流程裁决（规格卡 `docs/ios/design/ui-spec/P-cal.md` §5）：
+/// 1. 无二次确认，点「开始校准」直接开始；
+/// 2. 成功 → 显示成功信息，停顿 3 秒自动返回详情页；
+/// 3. 失败 → 弹窗询问是否再次尝试，取消则返回。
 /// 原型演示为本地 8s 计时；真实校准命令（以设备上报为准）随协议里程碑接入。
 struct CalibrationView: View {
     let family: DeviceFamily
 
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmVisible = false
     @State private var state: CalState = .idle
     @State private var elapsed = 0
+    @State private var showRetry = false
     @State private var timer: Timer?
 
     enum CalState: Equatable {
-        case idle, running, done
+        case idle, running, success, failure
     }
 
     private var isUDS: Bool { family == .uds100 }
@@ -34,7 +36,8 @@ struct CalibrationView: View {
                     switch state {
                     case .idle: idleCard
                     case .running: runningCard
-                    case .done: doneCenter
+                    case .success: successCenter
+                    case .failure: failureCenter
                     }
                 }
                 .padding(.horizontal, 16)
@@ -43,7 +46,7 @@ struct CalibrationView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
-        .overlay { confirmDialog }
+        .overlay { retryDialog }
         .onDisappear { stopTimer() }
     }
 
@@ -85,8 +88,9 @@ struct CalibrationView: View {
                 .stroke(Theme.line.opacity(0.82), lineWidth: 1))
             .hktShadow()
 
+            // 裁决 1：无二次确认，直接开始
             Button {
-                confirmVisible = true
+                begin()
             } label: {
                 Text(zh ? "开始校准" : "Start Calibration")
                     .font(.hkt(16, .semibold))
@@ -159,46 +163,55 @@ struct CalibrationView: View {
         }
     }
 
-    // MARK: - done 完成（规格卡 §1 done）
+    // MARK: - success 成功（裁决 2：显示成功信息，停顿 3 秒自动返回）
 
-    private var doneCenter: some View {
+    private var successCenter: some View {
         VStack(spacing: 10) {
             Text("✓").font(.system(size: 46)).foregroundStyle(Theme.ok)
-            Text(zh ? "✓ 校准完成" : "✓ Calibration complete").font(.hkt(17, .semibold))
-            Button {
-                dismiss()
-            } label: {
-                Text(zh ? "完成" : "Done")
-                    .font(.hkt(16, .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.vertical, 12).padding(.horizontal, 40)
-                    .background(Theme.info, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-            }
-            .padding(.top, 2)
+            Text(zh ? "校准完成" : "Calibration complete").font(.hkt(17, .semibold))
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, minHeight: 380)
-    }
-
-    // MARK: - 确认对话框（规格卡 §1）
-
-    @ViewBuilder
-    private var confirmDialog: some View {
-        if confirmVisible {
-            HKTDialog(title: zh ? "校准" : "Calibration",
-                      message: zh ? (isUDS ? "将设备水平静止放置，然后开始校准" : "请确认 7 项环境与操作要求后开始校准")
-                                  : (isUDS ? "Place the device level and still, then start" : "Confirm the seven environment and operation checks, then start"),
-                      buttons: {
-                DialogButton(title: zh ? "取消" : "Cancel") { confirmVisible = false }
-                DialogButton(title: zh ? "开始校准" : "Start Calibration", kind: .primary) {
-                    confirmVisible = false
-                    begin()
-                }
-            })
+        .task {
+            try? await Task.sleep(for: .seconds(3))
+            dismiss()
         }
     }
 
-    // MARK: - 状态机（原型 8s 演示周期；真实校准命令随协议里程碑接入）
+    // MARK: - failure 失败（裁决 3：弹窗询问是否再次尝试）
+
+    private var failureCenter: some View {
+        VStack(spacing: 10) {
+            Text("✕").font(.system(size: 46)).foregroundStyle(Theme.err)
+            Text(zh ? "校准未成功" : "Calibration failed").font(.hkt(17, .semibold))
+        }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: .infinity, minHeight: 380)
+        .task {
+            guard !showRetry else { return }
+            showRetry = true
+        }
+    }
+
+    @ViewBuilder
+    private var retryDialog: some View {
+        if state == .failure, showRetry {
+            HKTDialog(title: zh ? "校准未成功" : "Calibration failed",
+                      message: zh ? "本次校准未成功。是否再次尝试校准？"
+                                  : "This calibration attempt did not succeed. Try again?") {
+                DialogButton(title: zh ? "取消" : "Cancel") {
+                    stopTimer()
+                    dismiss()   // 裁决 3：取消=返回详情页
+                }
+                DialogButton(title: zh ? "再次尝试" : "Try Again", kind: .primary) {
+                    showRetry = false
+                    begin()     // 重新进入进行中
+                }
+            }
+        }
+    }
+
+    // MARK: - 状态机（原型 8s 演示周期；真实校准结果由设备上报驱动，规格卡 §3）
 
     private func begin() {
         state = .running
@@ -209,7 +222,8 @@ struct CalibrationView: View {
                 elapsed += 1
                 if elapsed >= 8 {
                     stopTimer()
-                    state = .done
+                    // 演示周期必成功；真实接入后此处按设备上报结果分流 success/failure
+                    state = .success
                 }
             }
         }

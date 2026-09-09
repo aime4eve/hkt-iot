@@ -1619,7 +1619,7 @@ function P_log(){
     `<div class="body">${lines}</div>`;
 }
 function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};nav("cal");}
-function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
+function calBegin(){S.cal.state="running";S.cal.elapsed=0;
   clearInterval(S.calTimer);
   S.calTimer=setInterval(()=>{S.cal.elapsed++;
     if(S.cal.elapsed>=8){clearInterval(S.calTimer);S.cal.state="done";}
@@ -1627,12 +1627,9 @@ function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
   render();}
 function P_cal(){
   if(!S.cal)S.cal={state:"idle",elapsed:0,confirm:false};
+  /* 用户 2026-09-10 裁决：①无二次确认；②成功显示信息后停 3 秒自动返回；③失败弹窗询问是否重试（iOS 实现，演示必成功） */
   const dc=S.device!=="UDS100"; // UDS100=倾角校准；DC200Family=磁力计校准
   const guide=dc?t("calForDC"):t("calForUDS");
-  const confirm=S.cal.confirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cal")}</div>
-      <div class="b">${guide}</div>
-      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.cal.confirm=false;render()">${t("cancel")}</button>
-      <button class="btn" style="margin:0" onclick="calBegin()">${t("calStart")}</button></div></div></div>`:"";
   let mid;
   if(S.cal.state==="idle"){
     const title=dc?(lang==="zh"?"磁力计校准":"Magnetometer Calibration"):(lang==="zh"?"倾角校准":"Tilt Calibration");
@@ -1646,7 +1643,7 @@ function P_cal(){
         <div class="kv" style="flex:1;line-height:1.6;padding-top:3px">${st[0]?`<b>${st[0]}</b>${lang==="zh"?"：":": "}`:""}${st[1]}</div></div>`).join("")}
       <div class="kv" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">⚠︎ ${t("calNote")}</div>
     </div>
-    <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
+    <button class="btn" onclick="calBegin()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
     mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
       <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
@@ -1654,10 +1651,10 @@ function P_cal(){
       <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
   } else {
     mid=`<div class="center" style="min-height:380px"><div style="font-size:46px;color:var(--ok)">✓</div>
-      <div class="big">${t("calDone")}</div>
-      <button class="btn" style="width:auto;padding:12px 40px" onclick="nav('detail')">${t("calFinish")}</button></div>`;
+      <div class="big">校准完成</div></div>`;
+    if(!S.cal.autoBackTimer){S.cal.autoBackTimer=setTimeout(()=>{S.cal.autoBackTimer=null;nav("detail");},3000);}
   }
-  return statusbar()+navbar(t("cal"),"",true,false)+`<div class="body">${mid}</div>`+confirm;
+  return statusbar()+navbar(t("cal"),"",true,false)+`<div class="body">${mid}</div>`;
 }
 function P_perm(kind){
   const m={ask:["🛡",t("permT"),t("permB"),[["secondary",t("dontAllow"),()=>{S.perm="denied";S.page="perm";render();}]],true],
