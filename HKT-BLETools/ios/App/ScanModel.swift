@@ -54,6 +54,8 @@ final class ScanModel {
     private var autoStarted = false
     /// 本次扫描已记日志的设备（防重复）
     private var loggedDiscoveries = Set<UUID>()
+    /// 演示自动导航（-demo-flow）：扫描发现该前缀设备即停扫直连进详情
+    var demoAutoConnectPrefix: String?
 
     private let central: any BluetoothPort
 
@@ -114,6 +116,14 @@ final class ScanModel {
                                                             : "Discovered \(device.name) \(device.rssi)dBm")
                     }
                     self.devices = devices
+                    // 演示自动导航：命中前缀即停扫直连进详情
+                    if let prefix = self.demoAutoConnectPrefix,
+                       let hit = devices.first(where: { $0.name.hasPrefix(prefix) }) {
+                        self.demoAutoConnectPrefix = nil
+                        self.stopScan()
+                        self.requestShowDetail = true
+                        _ = self.makeAndStartSession(for: hit)
+                    }
                 }
             }
         }

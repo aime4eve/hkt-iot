@@ -15,6 +15,7 @@ struct DeviceDetailView: View {
     @State private var confirmDisconnect = false
     @State private var confirmPowerOff = false
     @State private var showCalibration = false
+    @State private var showConfig = false
 
     private var snapshot: DeviceSnapshot { session.snapshot }
     private var zh: Bool { langStore.isZh }
@@ -61,8 +62,19 @@ struct DeviceDetailView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)      // 原型详情页无导航栏，会话卡即页头
+        .onAppear {
+            // 演示自动导航（-demo-page config）：进入详情后自动进配置页
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-demo-page config")
+                || zip(arguments, arguments.dropFirst()).contains(where: { $0 == "-demo-page" && $1 == "config" }) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { showConfig = true }
+            }
+        }
         .navigationDestination(isPresented: $showCalibration) {
             CalibrationView(family: session.family)
+        }
+        .navigationDestination(isPresented: $showConfig) {
+            ConfigView(session: session)
         }
         .overlay { confirmDialogs }
     }
@@ -259,7 +271,9 @@ struct DeviceDetailView: View {
             }
             OpCard(badge: "CFG",
                    title: zh ? "参数配置" : "Configuration",
-                   desc: zh ? "上报 / 端口 / 时区" : "Reporting / port / timezone") {}
+                   desc: zh ? "上报 / 端口 / 时区" : "Reporting / port / timezone") {
+                showConfig = true
+            }
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 OpCard(badge: "TIME", badgeKind: .ok,
                        title: zh ? "时间同步" : "Time Sync",

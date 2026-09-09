@@ -32,6 +32,12 @@ struct HKTBLEToolsApp: App {
                 mock.setAvailability(.ready)
             }
             scanModel = ScanModel(port: mock, autoStartOnReady: true)
+            // -demo-flow <设备前缀>：扫描命中即自动停扫直连进详情（演示自动导航）
+            let arguments = ProcessInfo.processInfo.arguments
+            if let flowIndex = arguments.firstIndex(of: "-demo-flow"),
+               arguments.count > flowIndex + 1 {
+                scanModel.demoAutoConnectPrefix = arguments[flowIndex + 1]
+            }
             let responder = DemoResponder()
             mock.responder = { [weak scanModel] frame in
                 let family = MainActor.assumeIsolated { scanModel?.activeSession?.family }

@@ -567,6 +567,37 @@ struct SvcChannelModule: View {
     }
 }
 
+// MARK: - 对话框（.dialog-mask + .dialog 296/r18）
+
+/// 遮罩 + 296 卡片脚手架：正文完全自定义（如配置确认框的摘要表）。
+struct DialogScaffold<Body: View, Buttons: View>: View {
+    let title: String
+    var centeredBody = false
+    @ViewBuilder var content: Body
+    @ViewBuilder var buttons: Buttons
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.42).ignoresSafeArea()
+            VStack(spacing: 0) {
+                Text(title).font(.hkt(16, .bold)).multilineTextAlignment(.center)
+                    .padding(.bottom, 8)
+                content
+                    .font(.hkt(13))
+                    .lineSpacing(1.5 * 13 - 13)
+                    .foregroundStyle(Theme.text2)
+                    .multilineTextAlignment(centeredBody ? .center : .leading)
+                    .frame(maxWidth: .infinity, alignment: centeredBody ? .center : .leading)
+                    .padding(.bottom, 14)
+                HStack(spacing: 10) { buttons }
+            }
+            .padding(EdgeInsets(top: 20, leading: 18, bottom: 20, trailing: 18))
+            .frame(width: 296)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.dialogRadius))
+        }
+    }
+}
+
 struct HKTDialog<Buttons: View>: View {
     let title: String
     var centeredBody = false
@@ -587,24 +618,8 @@ struct HKTDialog<Buttons: View>: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.42).ignoresSafeArea()
-            VStack(spacing: 0) {
-                Text(title).font(.hkt(16, .bold)).multilineTextAlignment(.center)
-                    .padding(.bottom, 8)
-                message
-                    .font(.hkt(13))
-                    .lineSpacing(1.5 * 13 - 13)
-                    .foregroundStyle(Theme.text2)
-                    .multilineTextAlignment(centeredBody ? .center : .leading)
-                    .frame(maxWidth: .infinity, alignment: centeredBody ? .center : .leading)
-                    .padding(.bottom, 14)
-                HStack(spacing: 10) { buttons }
-            }
-            .padding(EdgeInsets(top: 20, leading: 18, bottom: 20, trailing: 18))
-            .frame(width: 296)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.dialogRadius))
-        }
+        DialogScaffold(title: title, centeredBody: centeredBody,
+                       content: { message }, buttons: { buttons })
     }
 }
 
