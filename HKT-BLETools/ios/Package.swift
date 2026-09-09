@@ -19,8 +19,8 @@ let package = Package(
         .target(name: "CoreProtocol"),
         .target(name: "CoreDevice", dependencies: ["CoreProtocol"]),
         .target(name: "CoreOTA", dependencies: ["CoreProtocol"]),
-        // M4：蓝牙可用性/发现模型/传输端口协议/可编程假蓝牙源（无真机可测）。
-        .target(name: "CoreBLE"),
+        // M4：蓝牙可用性/发现模型/传输端口协议/可编程假蓝牙源/设备会话轮询（无真机可测）。
+        .target(name: "CoreBLE", dependencies: ["CoreProtocol"]),
         .testTarget(name: "CoreProtocolTests", dependencies: ["CoreProtocol"]),
         .testTarget(name: "CoreOTATests", dependencies: ["CoreOTA"]),
         .testTarget(name: "CoreDeviceTests", dependencies: ["CoreDevice"]),
