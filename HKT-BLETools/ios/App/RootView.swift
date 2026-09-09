@@ -211,9 +211,18 @@ struct ConnectOverlayView: View {
                 if model.outcome == nil {
                     Text(phaseTexts[min(model.phaseIndex, 2)])
                         .font(.subheadline).foregroundStyle(Theme.text2)
-                    Button("取消", role: .destructive) { model.cancel() }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.bordered)
+                    Button {
+                        model.cancel()
+                        // 立即关覆盖层：取消=预期动作，不留在冻结的中间态卡片
+                        dismissed = true
+                        dismiss()
+                    } label: {
+                        Text("取消")
+                            .frame(maxWidth: .infinity).frame(height: 44)
+                            .background(Theme.card2, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                            .foregroundStyle(Theme.err).font(.subheadline).fontWeight(.semibold)
+                    }
+                    .buttonStyle(.plain)
                 } else if case .failed(let failure) = model.outcome {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.err)
                     Text("连接失败：\(model.failureText ?? "未知原因")").font(.subheadline)
@@ -229,14 +238,20 @@ struct ConnectOverlayView: View {
         }
         .onChange(of: model.outcome) { _, outcome in
             guard let outcome, !dismissed else { return }
-            if case .connected = outcome {
+            switch outcome {
+            case .connected:
                 scanModel.residentDevice = ResidentDevice(
                     name: model.target.name,
                     identifier: model.target.identifier)
                 dismissed = true
                 dismiss()
+            case .cancelled:
+                // 用户主动取消：直接关闭覆盖层回扫描页（不做驻留）
+                dismissed = true
+                dismiss()
+            case .failed:
+                break   // 失败：留在原地展示原因与重试/返回
             }
-            // failed/cancelled：覆盖层留在原地展示原因与重试/返回
         }
     }
 
