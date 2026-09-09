@@ -9,8 +9,7 @@ struct LocateFlowView: View {
     @State private var connector: ConnectModel?
     @State private var locateInput: String = "0095690"   // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
     @State private var pulse = false
-
-    private var inputValid: Bool { locateInput.count == 16 }
+    @State private var inputError: String?
 
     private var zh: Bool { Locale.current.language.languageCode?.identifier == "zh" }
 
@@ -63,18 +62,23 @@ struct LocateFlowView: View {
             .padding(10)
             .background(Theme.card2, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius).stroke(Theme.line, lineWidth: 1))
-            if !locateInput.isEmpty && !inputValid {
-                Text(zh ? "须为 16 位十六进制（0-9、A-F）" : "Must be 16 hex characters (0-9, A-F)")
-                    .font(.caption2).foregroundStyle(Theme.err)
+            if let error = inputError {
+                Text(error).font(.caption2).foregroundStyle(Theme.err)
             }
             Button {
-                model.startLocate(devEUI: locateInput)
+                // 与确认原型一致：按钮始终可点，点击时校验并提示（1:1）
+                let cleaned = locateInput.uppercased()
+                if cleaned.count == 16, cleaned.allSatisfy({ $0.isHexDigit }) {
+                    inputError = nil
+                    model.startLocate(devEUI: cleaned)
+                } else {
+                    inputError = zh ? "须为 16 位十六进制（0-9、A-F）" : "Must be 16 hex characters (0-9, A-F)"
+                }
             } label: {
                 Text(zh ? "开始定位" : "Start Locating")
                     .frame(maxWidth: .infinity).frame(height: 44)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!inputValid)
             Button {
                 model.beginCameraLocate()   // 相机会话随相机里程碑接入
             } label: {
@@ -106,6 +110,11 @@ struct LocateFlowView: View {
                 .font(.headline)
             Text(zh ? "靠近目标设备可加快定位；命中后自动连接" : "Move closer to speed up; connects automatically on match")
                 .font(.subheadline).foregroundStyle(Theme.text2).multilineTextAlignment(.center)
+            if !model.isReady {
+                Text(zh ? "蓝牙未就绪：请在系统设置中允许蓝牙权限" : "Bluetooth not ready: allow Bluetooth permission in Settings")
+                    .font(.caption).fontWeight(.semibold).foregroundStyle(Theme.err)
+                    .multilineTextAlignment(.center)
+            }
             Spacer()
             Button(zh ? "取消定位" : "Cancel Locating", role: .destructive) {
                 model.cancelLocate()

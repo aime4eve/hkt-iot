@@ -93,15 +93,6 @@ final class ScanModel {
 
     func beginLocateInput() { locatePhase = .input }
 
-    /// SP-2 输入校验。
-    var locateInput = "0095690" {   // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
-        didSet {
-            let filtered = locateInput.uppercased().filter { $0.isHexDigit }.prefix(16)
-            if filtered != locateInput { locateInput = String(filtered) }
-        }
-    }
-    var locateInputValid: Bool { locateInput.count == 16 }
-
     func retryLocate() {
         guard locateSuffix != nil else { return }
         locatePhase = .finding
