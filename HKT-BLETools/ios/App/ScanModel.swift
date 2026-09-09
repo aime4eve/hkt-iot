@@ -19,6 +19,17 @@ final class ScanModel {
 
     /// SP-1：名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调并持久化）。
     var allowedPrefixes: Set<String> = DiscoveredDevice.supportedPrefixes
+
+    /// P-07 扫描过滤：勾选/取消某前缀。
+    func togglePrefix(_ prefix: String) {
+        if allowedPrefixes.contains(prefix) {
+            allowedPrefixes.remove(prefix)
+        } else {
+            allowedPrefixes.insert(prefix)
+        }
+        // 已在列的设备按新规则复筛
+        if isScanning { devices = devices.filter { DiscoveredDevice.prefix(of: $0.name).map(allowedPrefixes.contains) ?? false } }
+    }
     /// SP-1：信号强度阈值（默认 -80 dBm，设置页可调并持久化）。
     var rssiThreshold: Int = -80
 
@@ -41,6 +52,8 @@ final class ScanModel {
     /// 演示模式（-mockble 启动参数）：能力就绪后自动开始扫描。
     var autoStartOnReady = false
     private var autoStarted = false
+    /// 本次扫描已记日志的设备（防重复）
+    private var loggedDiscoveries = Set<UUID>()
 
     private let central: any BluetoothPort
 
@@ -75,6 +88,8 @@ final class ScanModel {
         }
         guard isReady, !isScanning else { return }
         isScanning = true
+        loggedDiscoveries = []
+        LogStore.shared.info(AppLocale.isZh ? "扫描启动" : "Scan started")
         central.startScan(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -92,14 +107,23 @@ final class ScanModel {
                     return
                 }
                 // 驻留/列表冻结规则（R-32）：列表仅在扫描进行中刷新。
-                if self.isScanning { self.devices = devices }
+                if self.isScanning {
+                    for device in devices where !self.loggedDiscoveries.contains(device.identifier) {
+                        self.loggedDiscoveries.insert(device.identifier)
+                        LogStore.shared.info(AppLocale.isZh ? "发现设备 \(device.name) \(device.rssi)dBm"
+                                                            : "Discovered \(device.name) \(device.rssi)dBm")
+                    }
+                    self.devices = devices
+                }
             }
         }
     }
 
     func stopScan() {
+        guard isScanning else { return }
         isScanning = false
         central.stopScan()
+        LogStore.shared.info(AppLocale.isZh ? "扫描停止" : "Scan stopped")
     }
 
     // MARK: - R-2 目标设备定位（2026-09-07 裁决选 B）
@@ -179,6 +203,7 @@ final class ScanModel {
         activeSession = nil
         central.disconnectDevice()
         residentDevice = nil
+        LogStore.shared.info(AppLocale.isZh ? "手动断开（预期断开，不自动重连）" : "Manual disconnect (expected, no auto-reconnect)")
     }
 
     /// P-01 断线态「重新连接」：驻留设备原身份重建会话（系统侧 peripheral 通常仍在缓存，

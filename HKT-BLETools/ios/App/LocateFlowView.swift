@@ -5,13 +5,14 @@ import SwiftUI
 /// 扫码（相机）入口按钮已就位，相机会话随 M4 相机里程碑接入。
 struct LocateFlowView: View {
     @Environment(ScanModel.self) private var model
+    @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var connector: ConnectModel?
     @State private var locateInput: String = "0095690"   // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
     @State private var pulse = false
     @State private var inputError: String?
 
-    private var zh: Bool { Locale.current.language.languageCode?.identifier == "zh" }
+    private var zh: Bool { langStore.isZh }
 
     var body: some View {
         NavigationStack {

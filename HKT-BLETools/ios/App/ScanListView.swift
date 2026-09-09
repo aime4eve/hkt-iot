@@ -6,11 +6,13 @@ import SwiftUI
 /// 交互=R-31/R-32：点驻留设备回详情、点其他设备弹切换确认（原子释放）、重扫带健康检测。
 struct ScanListView: View {
     @Environment(ScanModel.self) private var model
+    @Environment(LanguageStore.self) private var langStore
     @State private var connector: ConnectModel?
     @State private var showResidentDetail = false
     @State private var showLocate = false
+    @State private var showSettings = false
 
-    private var zh: Bool { AppLocale.isZh }
+    private var zh: Bool { langStore.isZh }
 
     var body: some View {
         NavigationStack {
@@ -21,7 +23,11 @@ struct ScanListView: View {
                         showLocate = true
                     }
                     .padding(.trailing, 12)
-                    LinkButton(title: "⚙︎") { /* P-07 设置页到货前占位 */ }
+                    Button("⚙︎") { showSettings = true }
+                        .font(.hkt(14, .semibold))
+                        .foregroundStyle(Theme.info)
+                        .padding(.horizontal, 9).padding(.vertical, 6)
+                        .background(Theme.info.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -38,10 +44,15 @@ struct ScanListView: View {
             .fullScreenCover(item: $connector) { connector in
                 ConnectOverlayView(model: connector)
                     .environment(model)
+                    .environment(langStore)
             }
             .fullScreenCover(isPresented: $showLocate) {
                 LocateFlowView()
                     .environment(model)
+                    .environment(langStore)
+            }
+            .navigationDestination(isPresented: $showSettings) {
+                SettingsView()
             }
             .navigationDestination(isPresented: $showResidentDetail) {
                 if let session = model.activeSession {

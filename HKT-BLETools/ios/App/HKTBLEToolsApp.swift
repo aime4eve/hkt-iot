@@ -46,6 +46,7 @@ struct HKTBLEToolsApp: App {
         WindowGroup {
             RootView()
                 .environment(scanModel)
+                .environment(LanguageStore.shared)
         }
     }
 }

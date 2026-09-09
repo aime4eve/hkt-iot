@@ -8,9 +8,10 @@ struct ConnectOverlayView: View {
     let model: ConnectModel
     @Environment(\.dismiss) private var dismiss
     @Environment(ScanModel.self) private var scanModel
+    @Environment(LanguageStore.self) private var langStore
     @State private var dismissed = false
 
-    private var zh: Bool { AppLocale.isZh }
+    private var zh: Bool { langStore.isZh }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,6 +33,7 @@ struct ConnectOverlayView: View {
             guard let outcome, !dismissed else { return }
             switch outcome {
             case .connected:
+                LogStore.shared.info(zh ? "已连接 \(model.target.name)" : "Connected \(model.target.name)")
                 scanModel.residentDevice = ResidentDevice(
                     name: model.target.name,
                     identifier: model.target.identifier)
@@ -41,10 +43,11 @@ struct ConnectOverlayView: View {
                 dismiss()
             case .cancelled:
                 // 用户主动取消：直接关闭覆盖层回扫描页（不做驻留）
+                LogStore.shared.info(zh ? "连接已取消" : "Connect cancelled")
                 dismissed = true
                 dismiss()
-            case .failed:
-                break   // 失败：留在原地展示原因与重试/返回
+            case .failed(let failure):
+                LogStore.shared.error(zh ? "连接失败：\(model.failureText ?? "\(failure)")" : "Connect failed: \(failure)")
             }
         }
     }

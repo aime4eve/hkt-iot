@@ -766,6 +766,111 @@ struct ScanDeviceCard<Trailing: View>: View {
     }
 }
 
+// MARK: - 设置行（.row：P-07；label 左 + 自定义 value 右）
+
+struct SettingsRow<Value: View>: View {
+    let label: String
+    @ViewBuilder var value: Value
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        HStack {
+            Text(label).font(.hkt(15)).foregroundStyle(Theme.text)
+            Spacer(minLength: 8)
+            value
+        }
+        .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
+            .stroke(Theme.line.opacity(0.82), lineWidth: 1))
+        .hktShadow()
+        .padding(.bottom, 9)
+        .modifier(SettingsRowTap(action: action))
+    }
+}
+
+private struct SettingsRowTap: ViewModifier {
+    let action: (() -> Void)?
+    func body(content: Content) -> some View {
+        if let action {
+            content.contentShape(Rectangle()).onTapGesture(perform: action)
+        } else {
+            content
+        }
+    }
+}
+
+/// 行右值样式（.row .value：14px text2，横排 gap 6）。
+struct RowValue<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(spacing: 6) {
+            content
+        }
+        .font(.hkt(14))
+        .foregroundStyle(Theme.text2)
+    }
+}
+
+// MARK: - 前缀过滤芯片（P-07：选中 info 底白字 / 未选中 card2 底 text2）
+
+struct PrefixChip: View {
+    let text: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .font(.hkt(13, .semibold))
+                .foregroundStyle(selected ? .white : Theme.text2)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(selected ? Theme.info : Theme.card2,
+                            in: RoundedRectangle(cornerRadius: 9))
+        }
+    }
+}
+
+// MARK: - 日志行（.logline：等宽 11px、底边 line、级别色）
+
+struct LogLine: View {
+    let timestamp: String
+    let level: String          // INFO / WARN / ERR
+    let message: String
+
+    private var levelColor: Color {
+        switch level {
+        case "ERR": return Theme.err
+        case "WARN": return Theme.warn
+        default: return Theme.info
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text(timestamp)
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .foregroundStyle(Theme.text2)
+                .padding(.trailing, 6)
+            Text(level)
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(levelColor)
+                .frame(width: 44, alignment: .leading)
+            Text(message)
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .foregroundStyle(Theme.text)
+        }
+        .lineSpacing(1.8 * 11 - 11)
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
+    }
+}
+
 // MARK: - 居中早退视图（.center：⚠︎/📵/⏻ 大图标 + 标题 + 按钮）
 
 struct CenterStateView: View {

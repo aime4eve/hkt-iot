@@ -10,12 +10,13 @@ struct DeviceDetailView: View {
     let onDisconnect: () -> Void
 
     @Environment(ScanModel.self) private var scanModel
+    @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDisconnect = false
     @State private var confirmPowerOff = false
 
     private var snapshot: DeviceSnapshot { session.snapshot }
-    private var zh: Bool { AppLocale.isZh }
+    private var zh: Bool { langStore.isZh }
 
     var body: some View {
         // 早退优先级与原型一致：关机 > 断线 > 正常（升级模式随 OTA 里程碑接入）

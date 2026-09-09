@@ -4,8 +4,9 @@ import UIKit
 
 struct RootView: View {
     @Environment(ScanModel.self) private var model
+    @Environment(LanguageStore.self) private var langStore
 
-    private var zh: Bool { AppLocale.isZh }
+    private var zh: Bool { langStore.isZh }
 
     var body: some View {
         switch model.availability {

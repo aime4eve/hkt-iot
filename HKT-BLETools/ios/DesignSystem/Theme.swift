@@ -29,6 +29,46 @@ enum AppLocale {
     }
 }
 
+// MARK: - 语言模式（P-07 设置页「跟随系统/简体中文/English」，切换全 App 即时生效）
+
+enum LanguageMode: Equatable {
+    case system, zh, en
+}
+
+/// 可观察的语言存储：视图经 @Environment 持有，`mode` 变化即重渲染。
+@MainActor
+@Observable
+final class LanguageStore {
+    static let shared = LanguageStore()
+
+    var mode: LanguageMode = .system
+
+    var isZh: Bool {
+        switch mode {
+        case .system: return Locale.preferredLanguages.first?.hasPrefix("zh") ?? false
+        case .zh: return true
+        case .en: return false
+        }
+    }
+
+    var label: String {
+        switch mode {
+        case .system: return isZh ? "跟随系统" : "Follow System"
+        case .zh: return "简体中文"
+        case .en: return "English"
+        }
+    }
+
+    /// 原型 cycleLang：跟随系统 → 简体中文 → English → 跟随系统。
+    func cycle() {
+        mode = switch mode {
+        case .system: .zh
+        case .zh: .en
+        case .en: .system
+        }
+    }
+}
+
 extension Color {
     init(light: String, dark: String) {
         self.init(uiColor: UIColor { traits in
