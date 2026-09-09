@@ -1,4 +1,5 @@
 import CoreBLE
+import CoreDevice
 import SwiftUI
 
 /// 会话驻留期可见的设备卡片模型（R-32）：已连接设备置顶带徽章，点击直接回详情。
@@ -69,5 +70,12 @@ final class ScanModel {
     /// 为指定设备创建连接过程模型（P-02；端口与扫描同源）。
     func connector(for device: DiscoveredDevice) -> ConnectModel {
         ConnectModel(target: device, port: central)
+    }
+
+    /// 连接成功后的设备会话（家族判定 + 已连接链路）。
+    func makeSession(for device: DiscoveredDevice) -> DeviceSession? {
+        guard let family = DeviceRegistry.matchBroadcast(device.name)?.family else { return nil }
+        guard let link = central.makeLink(for: device) else { return nil }
+        return DeviceSession(family: family, deviceName: device.name, link: link)
     }
 }

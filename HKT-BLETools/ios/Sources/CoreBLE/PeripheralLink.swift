@@ -1,7 +1,6 @@
 import Foundation
 
-/// 已连接外设的收发链路（SD 架构的传输缝）：SystemCentral 提供 GATT 真实现，
-/// MockLink 提供可编程假实现（0xFF 查询 → 夹具响应自动应答）。DeviceSession 只面向此协议。
+/// 已连接会话的收发链路（DeviceSession 只面向此协议；真实现 SystemLink，测试/演示 MockLink）。
 public protocol PeripheralLink: AnyObject {
     /// 发送一条协议帧（写 Write 特征）。
     func send(_ frame: Data)
@@ -11,12 +10,11 @@ public protocol PeripheralLink: AnyObject {
     var onDisconnected: (@Sendable () -> Void)? { get set }
 }
 
-/// 测试/演示用假链路：responder 按请求帧返回响应帧；记录全部已发帧供断言。
+/// 测试/预览用假链路：responder 按请求帧返回响应帧；记录已发帧供断言。
 public final class MockLink: PeripheralLink, @unchecked Sendable {
     private let lock = NSLock()
-    private var sentFrames: [Data] = []
+    private var sent: [Data] = []
 
-    /// 请求帧 → 响应帧（nil = 不响应，用于停摆场景）。
     public var responder: (@Sendable (Data) -> Data?)?
     public var onReceive: (@Sendable (Data) -> Void)?
     public var onDisconnected: (@Sendable () -> Void)?
@@ -25,7 +23,7 @@ public final class MockLink: PeripheralLink, @unchecked Sendable {
 
     public func send(_ frame: Data) {
         lock.lock()
-        sentFrames.append(frame)
+        sent.append(frame)
         lock.unlock()
         if let response = responder?(frame) {
             onReceive?(response)
@@ -40,12 +38,12 @@ public final class MockLink: PeripheralLink, @unchecked Sendable {
     public var framesSent: Int {
         lock.lock()
         defer { lock.unlock() }
-        return sentFrames.count
+        return sent.count
     }
 
     public func sentFrame(at index: Int) -> Data {
         lock.lock()
         defer { lock.unlock() }
-        return sentFrames[index]
+        return sent[index]
     }
 }

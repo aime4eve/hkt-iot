@@ -12,6 +12,12 @@ public final class MockCentral: BluetoothPort, @unchecked Sendable {
     public var scriptedDevices: [DiscoveredDevice] = []
     /// 场景注入：连接脚本（成功 / 不推进判超时）。
     public var connectScript: MockConnectScript = .success(delay: 0.3)
+    /// 当前脚本连接的目标名（演示应答按名判家族）。
+    public var connectedName: String?
+    /// 会话链路应答（App 层按目标家族注入夹具帧）。
+    public var responder: (@Sendable (Data) -> Data?)?
+    public var onReceive: (@Sendable (Data) -> Void)?
+    public var onDisconnected: (@Sendable () -> Void)?
 
     var options: ScanOptions?
     var onAvailability: (@Sendable (BLEAvailability) -> Void)?
@@ -43,6 +49,20 @@ public final class MockCentral: BluetoothPort, @unchecked Sendable {
     public func stopScan() {
         isScanning = false
     }
+
+    /// 会话链路（演示模式：DeviceSession 面向它收发）。
+    public func send(_ frame: Data) {
+        if let response = responder?(frame) {
+            deliver { [weak self] in self?.onReceive?(response) }
+        }
+    }
+
+    /// 场景注入：模拟对端断开。
+    public func simulateDisconnect() {
+        deliver { [weak self] in self?.onDisconnected?() }
+    }
+
+    public var sentFrames: [Data] = []
 
     /// 场景注入：设置系统能力状态（如 .ready / .denied / .poweredOff）。
     public func setAvailability(_ availability: BLEAvailability) {

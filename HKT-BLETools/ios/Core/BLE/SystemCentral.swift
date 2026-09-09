@@ -22,6 +22,11 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
     private(set) var connectedPeripheral: CBPeripheral?
     private(set) var connectedWriteCharacteristic: CBCharacteristic?
 
+    /// 会话层收帧回调（Indicate 数据，主线程投递）。
+    public var onReceiveFrame: (@Sendable (Data) -> Void)?
+    /// 已连接会话断开回调（会话层据此置停摆/触发 R-6）。
+    public var onLinkDisconnected: (@Sendable () -> Void)?
+
     // MARK: - BluetoothPort
 
     func activate(onUpdate: @escaping @Sendable (BLEAvailability) -> Void) {
@@ -156,8 +161,47 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
         callback?(.notificationsEnabled)
     }
 
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic == indicateCharacteristic, let value = characteristic.value else { return }
+        onReceiveFrame?(value)
+    }
+
     func peripheral(_ peripheral: CBPeripheral, didDisconnect device: CBPeripheral, error: Error?) {
+        if peripheral == connectedPeripheral {
+            connectedPeripheral = nil
+            connectedWriteCharacteristic = nil
+            onLinkDisconnected?()
+        }
         connectEvents?(.failed(.connectionLost))
+    }
+}
+
+/// HKT 透明桥服务与特征（需在类型外引用时经此转发）。
+extension SystemCentral {
+    func makeLink(for device: DiscoveredDevice) -> (any PeripheralLink)? {
+        connectedPeripheral?.identifier == device.identifier ? self : nil
+    }
+}
+
+/// 已连接会话的收发链路（DeviceSession 面向它轮询/发命令）。
+extension SystemCentral: PeripheralLink {
+    func send(_ frame: Data) {
+        guard let peripheral = connectedPeripheral, let write = connectedWriteCharacteristic else { return }
+        if peripheral.canSendWriteWithoutResponse {
+            peripheral.writeValue(frame, for: write, type: .withoutResponse)
+        } else {
+            peripheral.writeValue(frame, for: write, type: .withResponse)
+        }
+    }
+
+    var onReceive: (@Sendable (Data) -> Void)? {
+        get { onReceiveFrame }
+        set { onReceiveFrame = newValue }
+    }
+
+    var onDisconnected: (@Sendable () -> Void)? {
+        get { onLinkDisconnected }
+        set { onLinkDisconnected = newValue }
     }
 }
 

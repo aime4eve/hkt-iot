@@ -17,6 +17,7 @@ public final class DeviceSession {
     public private(set) var pollsSent = 0
     public private(set) var isPolling = false
     public private(set) var linkLost = false
+    public private(set) var isTimeSyncing = false
 
     /// R-7 停摆判定窗口（秒）。
     public var staleAfter: Int = 4
@@ -74,10 +75,24 @@ public final class DeviceSession {
         pollTask?.cancel()
     }
 
-    /// 发送一条协议帧（时间同步 0x06 / 电源 0xFE / 配置 0x02 等，由界面动作调用）。
+    /// 发送一条协议帧（界面动作调用）。
     public func send(cmd: UInt8, data: Data) {
         packNum &+= 1
         link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+    }
+
+    /// SP-25 对时：发送手机当前 Unix 秒（App 不做时区换算）。
+    public func sendTimeSync() {
+        guard !isTimeSyncing else { return }
+        isTimeSyncing = true
+        send(cmd: CommandCode.timeSync,
+             data: HKTFrameEncoder.timeSyncFrame(packNum: packNum &+ 1,
+                                                  stampBE: UInt32(Date().timeIntervalSince1970)))
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let self else { return }
+            await MainActor.run { self.isTimeSyncing = false }
+        }
     }
 
     private func pollOnce() {

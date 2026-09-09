@@ -50,4 +50,13 @@ public enum DeviceRegistry {
         }
         return DeviceProfile(family: family, advertisedName: advertisedName, capabilities: capabilities)
     }
+
+    /// 广播名匹配（Android parseDeviceType 同语义：包含型号关键字即可，如 "UDS100 3F2A"）。
+    public static func matchBroadcast(_ broadcastName: String?) -> DeviceProfile? {
+        guard let broadcastName else { return nil }
+        for (key, family) in familiesByAdvertisedName where broadcastName.contains(key) {
+            return match(advertisedName: key)
+        }
+        return nil
+    }
 }
