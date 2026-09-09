@@ -25,6 +25,9 @@ final class ScanModel {
     /// R-32：返回首页时的驻留会话（nil=无会话）。
     var residentDevice: ResidentDevice?
 
+    /// 连接成功后请求打开详情页（覆盖层内触发，扫描页 onChange 响应）。
+    var requestShowDetail = false
+
     // R-2 目标设备定位
     public enum LocatePhase: Equatable { case input, finding, notFound }
     private(set) var locatePhase: LocatePhase?
@@ -145,5 +148,25 @@ final class ScanModel {
         guard let family = DeviceRegistry.matchBroadcast(device.name)?.family else { return nil }
         guard let link = central.makeLink(for: device) else { return nil }
         return DeviceSession(family: family, deviceName: device.name, link: link)
+    }
+
+    /// R-32/R-31：当前活动会话（连接成功即建，断开即清）。
+    public private(set) var activeSession: DeviceSession?
+
+    /// 连接成功后建会话并启动 1s 轮询。
+    @discardableResult
+    func makeAndStartSession(for device: DiscoveredDevice) -> DeviceSession? {
+        guard activeSession == nil, let session = makeSession(for: device) else { return activeSession }
+        activeSession = session
+        session.start()
+        return session
+    }
+
+    /// R-31 断开连接：停轮询 + GATT 断开 + 清驻留。
+    func disconnectActive() {
+        activeSession?.stop()
+        activeSession = nil
+        central.disconnectDevice()
+        residentDevice = nil
     }
 }

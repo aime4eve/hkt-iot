@@ -43,4 +43,9 @@ extension MockCentral: PeripheralLink {
         connectTask?.cancel()
         connectEvents = nil
     }
+
+    public func disconnectDevice() {
+        connectedName = nil
+        onDisconnected?()
+    }
 }

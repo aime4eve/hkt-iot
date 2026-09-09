@@ -93,14 +93,21 @@ private struct ScanListView: View {
                         .accessibilityLabel("定位设备")
                     }
                 }
+                // fullScreenCover 不继承环境对象，必须显式重新注入（否则连接弹层访问 ScanModel 即崩）
                 .fullScreenCover(item: $connector) { connector in
                     ConnectOverlayView(model: connector)
+                        .environment(model)
                 }
                 .fullScreenCover(isPresented: $showLocate) {
                     LocateFlowView()
+                        .environment(model)
                 }
                 .navigationDestination(isPresented: $showResidentDetail) {
-                    ResidentDetailView()
+                    if let session = model.activeSession {
+                        DeviceDetailView(session: session) { model.disconnectActive() }
+                    } else {
+                        ResidentDetailView()
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .init("popToRoot"))) { _ in
                     showResidentDetail = false
@@ -108,6 +115,12 @@ private struct ScanListView: View {
                 .onChange(of: model.locateHitDevice) { _, hit in
                     guard let hit else { return }
                     connector = model.connector(for: hit)
+                }
+                .onChange(of: model.requestShowDetail) { _, request in
+                    if request {
+                        model.requestShowDetail = false
+                        showResidentDetail = true
+                    }
                 }
         }
         .background(Theme.bg)
@@ -243,6 +256,8 @@ struct ConnectOverlayView: View {
                 scanModel.residentDevice = ResidentDevice(
                     name: model.target.name,
                     identifier: model.target.identifier)
+                scanModel.makeAndStartSession(for: model.target)   // R-5：连接成功即启动会话轮询
+                scanModel.requestShowDetail = true                 // 覆盖层关闭后自动进入详情页
                 dismissed = true
                 dismiss()
             case .cancelled:

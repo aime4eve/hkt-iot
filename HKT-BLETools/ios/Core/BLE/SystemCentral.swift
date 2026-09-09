@@ -63,6 +63,14 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
         }
     }
 
+    func disconnectDevice() {
+        if let peripheral = connectedPeripheral {
+            central?.cancelPeripheralConnection(peripheral)
+        }
+        connectedPeripheral = nil
+        connectedWriteCharacteristic = nil
+    }
+
     func cancelConnect() {
         if let peripheral = connectingPeripheral {
             central?.cancelPeripheralConnection(peripheral)

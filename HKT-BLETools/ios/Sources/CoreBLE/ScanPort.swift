@@ -64,6 +64,9 @@ public protocol BluetoothPort: AnyObject {
     /// 取消底层连接尝试（编排器取消后由 App 层调用；实现须停止推进事件）。
     func cancelConnect()
 
+    /// R-31：断开当前已连接设备（GATT disconnect）。
+    func disconnectDevice()
+
     /// 连接建立后的收发链路（设备会话轮询/发命令用）；未连接或目标不符返回 nil。
     func makeLink(for device: DiscoveredDevice) -> (any PeripheralLink)?
 }
