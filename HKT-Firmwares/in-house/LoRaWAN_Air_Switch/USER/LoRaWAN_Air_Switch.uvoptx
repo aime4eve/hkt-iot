@@ -75,7 +75,7 @@
       <OPTFL>
         <tvExp>1</tvExp>
         <tvExpOptDlg>0</tvExpOptDlg>
-        <IsCurrentTarget>0</IsCurrentTarget>
+        <IsCurrentTarget>1</IsCurrentTarget>
       </OPTFL>
       <CpuCode>255</CpuCode>
       <DebugOpt>
@@ -256,260 +256,6 @@
     </TargetOption>
   </Target>
 
-  <Target>
-    <TargetName>LoRaWAN_Smart_Switch_CL</TargetName>
-    <ToolsetNumber>0x4</ToolsetNumber>
-    <ToolsetName>ARM-ADS</ToolsetName>
-    <TargetOption>
-      <CLKADS>12000000</CLKADS>
-      <OPTTT>
-        <gFlags>1</gFlags>
-        <BeepAtEnd>1</BeepAtEnd>
-        <RunSim>0</RunSim>
-        <RunTarget>1</RunTarget>
-        <RunAbUc>0</RunAbUc>
-      </OPTTT>
-      <OPTHX>
-        <HexSelection>1</HexSelection>
-        <FlashByte>65535</FlashByte>
-        <HexRangeLowAddress>0</HexRangeLowAddress>
-        <HexRangeHighAddress>0</HexRangeHighAddress>
-        <HexOffset>0</HexOffset>
-      </OPTHX>
-      <OPTLEX>
-        <PageWidth>79</PageWidth>
-        <PageLength>66</PageLength>
-        <TabStop>8</TabStop>
-        <ListingPath>.\Listings\</ListingPath>
-      </OPTLEX>
-      <ListingPage>
-        <CreateCListing>1</CreateCListing>
-        <CreateAListing>1</CreateAListing>
-        <CreateLListing>1</CreateLListing>
-        <CreateIListing>0</CreateIListing>
-        <AsmCond>1</AsmCond>
-        <AsmSymb>1</AsmSymb>
-        <AsmXref>0</AsmXref>
-        <CCond>1</CCond>
-        <CCode>0</CCode>
-        <CListInc>0</CListInc>
-        <CSymb>0</CSymb>
-        <LinkerCodeListing>0</LinkerCodeListing>
-      </ListingPage>
-      <OPTXL>
-        <LMap>1</LMap>
-        <LComments>1</LComments>
-        <LGenerateSymbols>1</LGenerateSymbols>
-        <LLibSym>1</LLibSym>
-        <LLines>1</LLines>
-        <LLocSym>1</LLocSym>
-        <LPubSym>1</LPubSym>
-        <LXref>0</LXref>
-        <LExpSel>0</LExpSel>
-      </OPTXL>
-      <OPTFL>
-        <tvExp>1</tvExp>
-        <tvExpOptDlg>0</tvExpOptDlg>
-        <IsCurrentTarget>1</IsCurrentTarget>
-      </OPTFL>
-      <CpuCode>18</CpuCode>
-      <DebugOpt>
-        <uSim>0</uSim>
-        <uTrg>1</uTrg>
-        <sLdApp>1</sLdApp>
-        <sGomain>1</sGomain>
-        <sRbreak>1</sRbreak>
-        <sRwatch>1</sRwatch>
-        <sRmem>1</sRmem>
-        <sRfunc>1</sRfunc>
-        <sRbox>1</sRbox>
-        <tLdApp>1</tLdApp>
-        <tGomain>1</tGomain>
-        <tRbreak>1</tRbreak>
-        <tRwatch>1</tRwatch>
-        <tRmem>1</tRmem>
-        <tRfunc>0</tRfunc>
-        <tRbox>1</tRbox>
-        <tRtrace>1</tRtrace>
-        <sRSysVw>1</sRSysVw>
-        <tRSysVw>1</tRSysVw>
-        <sRunDeb>0</sRunDeb>
-        <sLrtime>0</sLrtime>
-        <bEvRecOn>1</bEvRecOn>
-        <bSchkAxf>0</bSchkAxf>
-        <bTchkAxf>0</bTchkAxf>
-        <nTsel>3</nTsel>
-        <sDll></sDll>
-        <sDllPa></sDllPa>
-        <sDlgDll></sDlgDll>
-        <sDlgPa></sDlgPa>
-        <sIfile></sIfile>
-        <tDll></tDll>
-        <tDllPa></tDllPa>
-        <tDlgDll></tDlgDll>
-        <tDlgPa></tDlgPa>
-        <tIfile></tIfile>
-        <pMon>BIN\CMSIS_AGDI.dll</pMon>
-      </DebugOpt>
-      <TargetDriverDllRegistry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>UL2CM3</Key>
-          <Name>UL2CM3(-S0 -C0 -P0 )  -FN1 -FC1000 -FD20000000 -FF0STM32L0xx_64 -FL010000 -FS08000000 -FP0($$Device:STM32L051C8Tx$CMSIS\Flash\STM32L0xx_64.FLM)</Name>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>CMSIS_AGDI</Key>
-          <Name>-X"Any" -UAny -O718 -S0 -C0 -P00000000 -N00("ARM CoreSight SW-DP") -D00(0BC11477) -L00(0) -TO65554 -TC10000000 -TT10000000 -TP20 -TDS8007 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -FO15 -FD20000000 -FC1000 -FN1 -FF0STM32L0xx_64.FLM -FS08000000 -FL010000 -FP0($$Device:STM32L051C8Tx$CMSIS\Flash\STM32L0xx_64.FLM)</Name>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>DLGUARM</Key>
-          <Name></Name>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>ARMRTXEVENTFLAGS</Key>
-          <Name>-L70 -Z18 -C0 -M0 -T1</Name>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>DLGTARM</Key>
-          <Name>(1010=-1,-1,-1,-1,0)(1007=-1,-1,-1,-1,0)(1008=-1,-1,-1,-1,0)(1012=-1,-1,-1,-1,0)(1009=-1,-1,-1,-1,0)</Name>
-        </SetRegEntry>
-        <SetRegEntry>
-          <Number>0</Number>
-          <Key>ARMDBGFLAGS</Key>
-          <Name></Name>
-        </SetRegEntry>
-      </TargetDriverDllRegistry>
-      <Breakpoint>
-        <Bp>
-          <Number>0</Number>
-          <Type>0</Type>
-          <LineNumber>590</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134244956</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>.\Drive\communicate.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\LoRaWAN_Air_Switch\Drive/communicate.c\590</Expression>
-        </Bp>
-      </Breakpoint>
-      <WatchWindow1>
-        <Ww>
-          <count>0</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>as_an001_t.is_alive</ItemText>
-        </Ww>
-        <Ww>
-          <count>1</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>state</ItemText>
-        </Ww>
-        <Ww>
-          <count>2</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>count_1ms</ItemText>
-        </Ww>
-        <Ww>
-          <count>3</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>as_an001_t.slave_param,0x10</ItemText>
-        </Ww>
-        <Ww>
-          <count>4</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>as_an001_t.slave_realtime_data</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>sendBuffer</ItemText>
-        </Ww>
-        <Ww>
-          <count>6</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>LoRaWAN</ItemText>
-        </Ww>
-        <Ww>
-          <count>7</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>uartLoRa.recvData</ItemText>
-        </Ww>
-      </WatchWindow1>
-      <WatchWindow2>
-        <Ww>
-          <count>0</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>as_an001_t.slave_realtime_data</ItemText>
-        </Ww>
-      </WatchWindow2>
-      <MemoryWindow1>
-        <Mm>
-          <WinNumber>1</WinNumber>
-          <SubType>0</SubType>
-          <ItemText>as_an001_t.slave_realtime_data[0].b_phase_power_factor</ItemText>
-          <AccSizeX>0</AccSizeX>
-        </Mm>
-      </MemoryWindow1>
-      <Tracepoint>
-        <THDelay>0</THDelay>
-      </Tracepoint>
-      <DebugFlag>
-        <trace>0</trace>
-        <periodic>1</periodic>
-        <aLwin>1</aLwin>
-        <aCover>0</aCover>
-        <aSer1>0</aSer1>
-        <aSer2>0</aSer2>
-        <aPa>0</aPa>
-        <viewmode>1</viewmode>
-        <vrSel>0</vrSel>
-        <aSym>0</aSym>
-        <aTbox>0</aTbox>
-        <AscS1>0</AscS1>
-        <AscS2>0</AscS2>
-        <AscS3>0</AscS3>
-        <aSer3>0</aSer3>
-        <eProf>0</eProf>
-        <aLa>0</aLa>
-        <aPa1>0</aPa1>
-        <AscS4>0</AscS4>
-        <aSer4>0</aSer4>
-        <StkLoc>0</StkLoc>
-        <TrcWin>0</TrcWin>
-        <newCpu>0</newCpu>
-        <uProt>0</uProt>
-      </DebugFlag>
-      <LintExecutable></LintExecutable>
-      <LintConfigFile></LintConfigFile>
-      <bLintAuto>0</bLintAuto>
-      <bAutoGenD>0</bAutoGenD>
-      <LntExFlags>0</LntExFlags>
-      <pMisraName></pMisraName>
-      <pszMrule></pszMrule>
-      <pSingCmds></pSingCmds>
-      <pMultCmds></pMultCmds>
-      <pMisraNamep></pMisraNamep>
-      <pszMrulep></pszMrulep>
-      <pSingCmdsp></pSingCmdsp>
-      <pMultCmdsp></pMultCmdsp>
-      <DebugDescription>
-        <Enable>1</Enable>
-        <EnableFlashSeq>1</EnableFlashSeq>
-        <EnableLog>0</EnableLog>
-        <Protocol>2</Protocol>
-        <DbgClock>1000000</DbgClock>
-      </DebugDescription>
-    </TargetOption>
-  </Target>
-
   <Group>
     <GroupName>USER</GroupName>
     <tvExp>1</tvExp>
@@ -647,8 +393,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\System\stm32l0xx_hal_msp.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_msp.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\System\gd32f10x_it.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_it.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -659,44 +405,20 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\System\stm32l0xx_it.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_it.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\CMSIS\GD\GD32F10x\Source\system_gd32f10x.c</PathWithFileName>
+      <FilenameWithoutPath>system_gd32f10x.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
     <File>
       <GroupNumber>3</GroupNumber>
       <FileNumber>12</FileNumber>
-      <FileType>1</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\System\system_stm32l0xx.c</PathWithFileName>
-      <FilenameWithoutPath>system_stm32l0xx.c</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>3</GroupNumber>
-      <FileNumber>13</FileNumber>
       <FileType>2</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\System\startup_stm32l051xx.s</PathWithFileName>
-      <FilenameWithoutPath>startup_stm32l051xx.s</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>3</GroupNumber>
-      <FileNumber>14</FileNumber>
-      <FileType>5</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\System\stm32l0xx_hal_conf.h</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_conf.h</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\CMSIS\GD\GD32F10x\Source\ARM\startup_gd32f10x_md.s</PathWithFileName>
+      <FilenameWithoutPath>startup_gd32f10x_md.s</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -710,7 +432,7 @@
     <RteFlg>0</RteFlg>
     <File>
       <GroupNumber>4</GroupNumber>
-      <FileNumber>15</FileNumber>
+      <FileNumber>13</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
@@ -730,7 +452,7 @@
     <RteFlg>0</RteFlg>
     <File>
       <GroupNumber>5</GroupNumber>
-      <FileNumber>16</FileNumber>
+      <FileNumber>14</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
@@ -742,7 +464,7 @@
     </File>
     <File>
       <GroupNumber>5</GroupNumber>
-      <FileNumber>17</FileNumber>
+      <FileNumber>15</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
@@ -762,13 +484,37 @@
     <RteFlg>0</RteFlg>
     <File>
       <GroupNumber>6</GroupNumber>
+      <FileNumber>16</FileNumber>
+      <FileType>1</FileType>
+      <tvExp>0</tvExp>
+      <tvExpOptDlg>0</tvExpOptDlg>
+      <bDave2>0</bDave2>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_adc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_adc.c</FilenameWithoutPath>
+      <RteFlg>0</RteFlg>
+      <bShared>0</bShared>
+    </File>
+    <File>
+      <GroupNumber>6</GroupNumber>
+      <FileNumber>17</FileNumber>
+      <FileType>1</FileType>
+      <tvExp>0</tvExp>
+      <tvExpOptDlg>0</tvExpOptDlg>
+      <bDave2>0</bDave2>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_bkp.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_bkp.c</FilenameWithoutPath>
+      <RteFlg>0</RteFlg>
+      <bShared>0</bShared>
+    </File>
+    <File>
+      <GroupNumber>6</GroupNumber>
       <FileNumber>18</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_hal.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_can.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_can.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -779,8 +525,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_hal_flash.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_flash.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_crc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_crc.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -791,8 +537,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_hal_flash_ex.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_flash_ex.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_dac.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_dac.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -803,8 +549,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_hal_flash_ramfunc.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_flash_ramfunc.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_dbg.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_dbg.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -815,8 +561,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_hal_cortex.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_hal_cortex.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_dma.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_dma.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -827,8 +573,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_adc.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_adc.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_enet.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_enet.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -839,8 +585,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_comp.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_comp.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_exmc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_exmc.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -851,8 +597,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_crc.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_crc.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_exti.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_exti.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -863,8 +609,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_crs.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_crs.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_fmc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_fmc.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -875,8 +621,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_dac.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_dac.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_fwdgt.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_fwdgt.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -887,8 +633,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_dma.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_dma.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_gpio.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_gpio.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -899,8 +645,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_exti.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_exti.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_i2c.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_i2c.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -911,8 +657,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_gpio.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_gpio.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_misc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_misc.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -923,8 +669,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_i2c.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_i2c.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_pmu.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_pmu.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -935,8 +681,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_lptim.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_lptim.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_rcu.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_rcu.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -947,8 +693,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_lpuart.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_lpuart.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_rtc.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_rtc.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -959,8 +705,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_pwr.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_pwr.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_sdio.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_sdio.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -971,8 +717,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_rcc.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_rcc.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_spi.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_spi.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -983,8 +729,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_rng.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_rng.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_timer.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_timer.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -995,8 +741,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_rtc.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_rtc.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_usart.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_usart.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -1007,56 +753,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_spi.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_spi.c</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>6</GroupNumber>
-      <FileNumber>39</FileNumber>
-      <FileType>1</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_tim.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_tim.c</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>6</GroupNumber>
-      <FileNumber>40</FileNumber>
-      <FileType>1</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_usart.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_usart.c</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>6</GroupNumber>
-      <FileNumber>41</FileNumber>
-      <FileType>1</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_usb.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_usb.c</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>6</GroupNumber>
-      <FileNumber>42</FileNumber>
-      <FileType>1</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>..\Compents\Lib\STM32L0xx_HAL_Driver\Src\stm32l0xx_ll_utils.c</PathWithFileName>
-      <FilenameWithoutPath>stm32l0xx_ll_utils.c</FilenameWithoutPath>
+      <PathWithFileName>..\Compents\Lib\GD32F10x_standard_peripheral\Source\gd32f10x_wwdgt.c</PathWithFileName>
+      <FilenameWithoutPath>gd32f10x_wwdgt.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
