@@ -158,6 +158,7 @@ private struct ScanListView: View {
                     ForEach(model.devices) { device in
                         if device.identifier != model.residentDevice?.identifier {
                             Button {
+                                model.stopScan()               // 安卓同款：连接前先停扫
                                 connector = model.connector(for: device)
                             } label: {
                                 deviceCard(device)

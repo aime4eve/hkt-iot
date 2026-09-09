@@ -63,6 +63,8 @@ final class ConnectModel: Identifiable {
                 onFinished?(.connected)
             }
         }
+        // 顺序关键：先启动状态机再发起连接——同步事件（如假链路）不得在 begin 前丢失
+        orchestrator.begin()
         port.connect(to: target) { [weak self] event in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -74,7 +76,6 @@ final class ConnectModel: Identifiable {
                 }
             }
         }
-        orchestrator.begin()
     }
 
     func cancel() {

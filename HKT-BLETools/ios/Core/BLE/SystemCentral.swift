@@ -51,6 +51,7 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
     }
 
     func connect(to device: DiscoveredDevice, events: @escaping @Sendable (ConnectEvent) -> Void) {
+        print("[BLE] connect request \(device.name) state=\(central?.state.readable ?? "nil")")
         if let peripheral = peripherals[device.identifier] {
             startConnect(peripheral, events: events)
         } else if let central,
@@ -125,18 +126,21 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        print("[BLE] didConnect \(peripheral.identifier.uuidString)")
         connectEvents?(.linkEstablished)
         peripheral.delegate = self
         peripheral.discoverServices([serviceCBUUID])
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        print("[BLE] didFailToConnect \(error.map(String.init(describing:)) ?? "nil")")
         connectEvents?(.failed(.connectionLost))
     }
 
     // MARK: - CBPeripheralDelegate
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        print("[BLE] didDiscoverServices \(peripheral.services?.map(\.uuid.uuidString) ?? []) error=\(error.map(String.init(describing:)) ?? "nil")")
         guard let service = peripheral.services?.first(where: { $0.uuid == serviceCBUUID }) else {
             connectEvents?(.failed(.serviceMissing))
             return
@@ -157,6 +161,7 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
+        print("[BLE] notify state \(characteristic.uuid.uuidString) error=\(error.map(String.init(describing:)) ?? "nil")")
         guard error == nil else {
             connectEvents?(.failed(.connectionLost))
             return
@@ -214,3 +219,17 @@ extension SystemCentral: PeripheralLink {
 }
 
 extension SystemCentral: BluetoothPort {}
+
+extension CBManagerState {
+    var readable: String {
+        switch self {
+        case .unknown: return "unknown"
+        case .resetting: return "resetting"
+        case .unsupported: return "unsupported"
+        case .unauthorized: return "unauthorized"
+        case .poweredOff: return "poweredOff"
+        case .poweredOn: return "poweredOn"
+        @unknown default: return "?"
+        }
+    }
+}
