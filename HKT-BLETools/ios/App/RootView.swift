@@ -104,7 +104,11 @@ private struct ScanListView: View {
                 }
                 .navigationDestination(isPresented: $showResidentDetail) {
                     if let session = model.activeSession {
-                        DeviceDetailView(session: session) { model.disconnectActive() }
+                        // R-31：确认断开=原子释放并回扫描页（列表保留，设备进最近设备）
+                        DeviceDetailView(session: session) {
+                            model.disconnectActive()
+                            NotificationCenter.default.post(name: .init("popToRoot"), object: nil)
+                        }
                     } else {
                         ResidentDetailView()
                     }

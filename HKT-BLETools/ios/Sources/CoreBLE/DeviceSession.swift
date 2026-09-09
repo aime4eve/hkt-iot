@@ -18,6 +18,8 @@ public final class DeviceSession {
     public private(set) var isPolling = false
     public private(set) var linkLost = false
     public private(set) var isTimeSyncing = false
+    /// 对时完成提示态（原型 tsState：同步中 → 完成 2.6s 后回落）。
+    public private(set) var timeSyncDone = false
 
     /// R-7 停摆判定窗口（秒）。
     public var staleAfter: Int = 4
@@ -91,7 +93,12 @@ public final class DeviceSession {
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
             guard let self else { return }
-            await MainActor.run { self.isTimeSyncing = false }
+            await MainActor.run {
+                self.isTimeSyncing = false
+                self.timeSyncDone = true
+            }
+            try? await Task.sleep(for: .seconds(2.6))
+            await MainActor.run { self.timeSyncDone = false }
         }
     }
 

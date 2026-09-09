@@ -169,4 +169,14 @@ final class ScanModel {
         central.disconnectDevice()
         residentDevice = nil
     }
+
+    /// P-03 断线态「重新连接」：驻留设备原身份重建会话（系统侧 peripheral 通常仍在缓存，
+    /// 不在扫描列表也能按 identifier 直连；完整 R-6 自动重连状态机另行接入）。
+    @discardableResult
+    func reconnectResident() -> DeviceSession? {
+        guard activeSession == nil, let resident = residentDevice else { return nil }
+        let device = devices.first { $0.identifier == resident.identifier }
+            ?? DiscoveredDevice(name: resident.name, identifier: resident.identifier, rssi: Int.min)
+        return makeAndStartSession(for: device)
+    }
 }

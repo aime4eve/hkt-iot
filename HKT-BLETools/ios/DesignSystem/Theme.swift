@@ -15,9 +15,18 @@ enum Theme {
     static let info = Color(light: "#0A68D6", dark: "#63AAFF")
     static let fill = Color(light: "#E8ECF0", dark: "#292C31")
 
-    /// 卡片圆角 10 / 控件圆角 8（8pt 网格）。
+    /// 卡片圆角 10 / 控件圆角 8 / 对话框圆角 18（--r-card/--r-control/--r-dialog）。
     static let cardRadius: CGFloat = 10
     static let controlRadius: CGFloat = 8
+    static let dialogRadius: CGFloat = 18
+}
+
+/// 双语开关：App 不带 .lproj，Locale.current 会回退开发语言；
+/// 用系统首选语言列表（原型 ZH/EN 字典的运行时对应物）。
+enum AppLocale {
+    static var isZh: Bool {
+        Locale.preferredLanguages.first?.hasPrefix("zh") ?? false
+    }
 }
 
 extension Color {

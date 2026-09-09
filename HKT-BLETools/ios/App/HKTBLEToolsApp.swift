@@ -7,7 +7,7 @@ struct HKTBLEToolsApp: App {
 
     init() {
         if ProcessInfo.processInfo.arguments.contains("-mockble") {
-            // 演示模式（模拟器无蓝牙硬件）：假蓝牙源 + 脚本设备 + 自动扫描
+            // 演示模式（模拟器无蓝牙硬件）：假蓝牙源 + 脚本设备 + 仿真应答 + 自动扫描
             let mock = MockCentral()
             mock.setScriptedDevices([
                 .init(name: "MPS100 9C01", identifier: UUID(), rssi: -63),
@@ -18,6 +18,11 @@ struct HKTBLEToolsApp: App {
             mock.connectScript = .success(delay: 0.3)
             mock.setAvailability(.ready)
             scanModel = ScanModel(port: mock, autoStartOnReady: true)
+            let responder = DemoResponder()
+            mock.responder = { [weak scanModel] frame in
+                let family = MainActor.assumeIsolated { scanModel?.activeSession?.family }
+                return responder.respond(to: frame, family: family)
+            }
         } else {
             scanModel = ScanModel()
         }
