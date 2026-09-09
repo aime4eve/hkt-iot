@@ -871,6 +871,57 @@ struct LogLine: View {
     }
 }
 
+// MARK: - 校准步骤行（P_cal：圆形序号 + 可选粗体标题 + 文本）
+
+struct CalStepRow: View {
+    let index: Int            // 1 起；0 = 无序号（UDS 纯文本步骤）
+    let title: String?        // 可选粗体标题（DC 7 项有，UDS 无）
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            if index > 0 {
+                Text("\(index)")
+                    .font(.hkt(13, .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Theme.info, in: Circle())
+            }
+            Group {
+                if let title, !title.isEmpty {
+                    Text(title + ": ").bold() + Text(text)
+                } else {
+                    Text(text)
+                }
+            }
+            .font(.hkt(13))
+            .lineSpacing(1.6 * 13 - 13)
+            .foregroundStyle(Theme.text2)
+            .padding(.top, index > 0 ? 3 : 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 12)
+    }
+}
+
+// MARK: - 进度条（.progress：高 8 圆角 4，fill 底 info 填充）
+
+struct HKTProgress: View {
+    /// 0...1
+    let fraction: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4).fill(Theme.fill)
+                RoundedRectangle(cornerRadius: 4).fill(Theme.info)
+                    .frame(width: max(0, min(1, fraction)) * proxy.size.width)
+            }
+        }
+        .frame(height: 8)
+    }
+}
+
 // MARK: - 居中早退视图（.center：⚠︎/📵/⏻ 大图标 + 标题 + 按钮）
 
 struct CenterStateView: View {

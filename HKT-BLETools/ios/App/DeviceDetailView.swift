@@ -14,6 +14,7 @@ struct DeviceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDisconnect = false
     @State private var confirmPowerOff = false
+    @State private var showCalibration = false
 
     private var snapshot: DeviceSnapshot { session.snapshot }
     private var zh: Bool { langStore.isZh }
@@ -60,6 +61,9 @@ struct DeviceDetailView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)      // 原型详情页无导航栏，会话卡即页头
+        .navigationDestination(isPresented: $showCalibration) {
+            CalibrationView(family: session.family)
+        }
         .overlay { confirmDialogs }
     }
 
@@ -244,7 +248,9 @@ struct DeviceDetailView: View {
                 OpCard(badge: "CAL", badgeKind: .warn,
                        title: session.family == .uds100 ? (zh ? "角度校准" : "Tilt Calibration")
                                                         : (zh ? "磁力计校准" : "Mag Calibration"),
-                       desc: zh ? "环境检查 · 长时操作" : "Environment checks · long-running") {}
+                       desc: zh ? "环境检查 · 长时操作" : "Environment checks · long-running") {
+                    showCalibration = true
+                }
             }
             if session.family == .dc200Family {
                 OpCard(badge: "MAG",
