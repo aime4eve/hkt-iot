@@ -250,6 +250,7 @@ struct ConnectOverlayView: View {
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
             .padding(40)
         }
+        .onAppear { model.start() }   // 关键：弹出即启动三阶段连接（此前从未调用，连接永远不发）
         .onChange(of: model.outcome) { _, outcome in
             guard let outcome, !dismissed else { return }
             switch outcome {
