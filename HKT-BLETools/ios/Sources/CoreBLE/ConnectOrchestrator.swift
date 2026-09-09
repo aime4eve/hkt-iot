@@ -57,6 +57,9 @@ public final class ConnectOrchestrator {
     private var timeoutTask: Task<Void, Never>?
     private var finished = false
 
+    /// 终态回调（failure == nil 表示已连接）；App 层据此取消底层连接尝试并落驻留会话。
+    public var onFinish: (@MainActor (ConnectFailure?) -> Void)?
+
     public init() {}
 
     /// 会话仍在（未到终态）。
@@ -102,6 +105,7 @@ public final class ConnectOrchestrator {
         finished = true
         phase = nil
         isConnected = true
+        onFinish?(nil)
     }
 
     private func fail(_ failure: ConnectFailure) {
@@ -109,6 +113,7 @@ public final class ConnectOrchestrator {
         phase = nil
         self.failure = failure
         if failure == .cancelled { isCancelled = true }
+        onFinish?(failure)
     }
 
     private func armTimeout(_ phase: ConnectPhase) {

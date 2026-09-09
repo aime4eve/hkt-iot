@@ -51,27 +51,84 @@ private struct GateView: View {
     }
 }
 
-/// P-01 扫描列表（骨架版：能力就绪后的最小克隆；驻留徽章/定位入口随后续里程碑接入）。
+/// R-32 驻留详情占位：完整详情页随会话里程碑接入；本页验证"点击已连接设备直接回详情"。
+struct ResidentDetailView: View {
+    @Environment(ScanModel.self) private var model
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if let resident = model.residentDevice {
+                Text(resident.name).font(.title2).fontWeight(.bold)
+                Text("已连接").foregroundStyle(Theme.ok)
+                Text("详情页随 M4 会话里程碑接入").font(.footnote).foregroundStyle(Theme.text2)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.bg)
+        .navigationTitle("详情")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// P-01 扫描列表：能力就绪后的最小克隆；⌖ 定位入口随 M4 定位里程碑接入。
 private struct ScanListView: View {
     @Environment(ScanModel.self) private var model
+    @State private var connector: ConnectModel?
+    @State private var showResidentDetail = false
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("HKT BLETools")
                 .navigationBarTitleDisplayMode(.inline)
+                .fullScreenCover(item: $connector) { connector in
+                    ConnectOverlayView(model: connector)
+                }
+                .navigationDestination(isPresented: $showResidentDetail) {
+                    ResidentDetailView()
+                }
         }
         .background(Theme.bg)
     }
 
     @ViewBuilder
     private var content: some View {
-        if model.isScanning || !model.devices.isEmpty {
+        if model.isScanning || !model.devices.isEmpty || model.residentDevice != nil {
             List {
                 Section {
                     statusRow
+                    // R-32：驻留会话设备置顶带"已连接"徽章，点击直接回详情（不重连）
+                    if let resident = model.residentDevice {
+                        Button {
+                            showResidentDetail = true
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text(resident.name).fontWeight(.semibold)
+                                        Text("已连接").font(.caption2).fontWeight(.bold)
+                                            .padding(.horizontal, 6).padding(.vertical, 2)
+                                            .background(Theme.ok.opacity(0.15), in: Capsule())
+                                            .foregroundStyle(Theme.ok)
+                                    }
+                                    Text("ID …\(resident.identifier.uuidString.suffix(6))")
+                                        .font(.caption).foregroundStyle(Theme.text2)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.text2)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
                     ForEach(model.devices) { device in
-                        deviceCard(device)
+                        if device.identifier != model.residentDevice?.identifier {
+                            Button {
+                                connector = model.connector(for: device)
+                            } label: {
+                                deviceCard(device)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -111,5 +168,68 @@ private struct ScanListView: View {
             }
             Spacer()
         }
+    }
+}
+
+/// P-02 连接过程覆盖层（SP-4 三阶段 + 取消 + 失败原因/重试）。
+struct ConnectOverlayView: View {
+    let model: ConnectModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(ScanModel.self) private var scanModel
+    @State private var dismissed = false
+
+    private let phaseTexts = ["正在连接", "正在发现服务…", "正在订阅通知…"]
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.42).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 16) {
+                Text(model.target.name).font(.headline)
+                steps
+                if model.outcome == nil {
+                    Text(phaseTexts[min(model.phaseIndex, 2)])
+                        .font(.subheadline).foregroundStyle(Theme.text2)
+                    Button("取消", role: .destructive) { model.cancel() }
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.bordered)
+                } else if case .failed(let failure) = model.outcome {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.err)
+                    Text("连接失败：\(model.failureText ?? "未知原因")").font(.subheadline)
+                    Button("重新连接") { model.retry() }
+                        .buttonStyle(.borderedProminent)
+                    Button("返回") { finish() }
+                        .buttonStyle(.bordered)
+                }
+            }
+            .padding(22)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            .padding(40)
+        }
+        .onChange(of: model.outcome) { _, outcome in
+            guard let outcome, !dismissed else { return }
+            if case .connected = outcome {
+                scanModel.residentDevice = ResidentDevice(
+                    name: model.target.name,
+                    identifier: model.target.identifier)
+                dismissed = true
+                dismiss()
+            }
+            // failed/cancelled：覆盖层留在原地展示原因与重试/返回
+        }
+    }
+
+    private var steps: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { index in
+                Capsule()
+                    .fill(index <= model.phaseIndex ? Theme.info : Theme.fill)
+                    .frame(height: 4)
+            }
+        }
+    }
+
+    private func finish() {
+        dismissed = true
+        dismiss()
     }
 }

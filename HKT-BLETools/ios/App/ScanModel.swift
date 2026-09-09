@@ -24,10 +24,26 @@ final class ScanModel {
     /// R-32：返回首页时的驻留会话（nil=无会话）。
     var residentDevice: ResidentDevice?
 
+    /// 演示模式（-mockble 启动参数）：能力就绪后自动开始扫描。
+    var autoStartOnReady = false
+    private var autoStarted = false
+
     private let central: any BluetoothPort
 
-    init(port: any BluetoothPort = SystemCentral()) {
+    init(port: any BluetoothPort = SystemCentral(), autoStartOnReady: Bool = false) {
+        self.autoStartOnReady = autoStartOnReady
         central = port
+        // 启动即激活（真机：触发系统蓝牙权限弹窗，R-24）；就绪后按需自动扫描（演示模式）
+        central.activate { [weak self] availability in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.availability = availability
+                if availability.isUsable, self.autoStartOnReady, !self.autoStarted, !self.isScanning {
+                    self.autoStarted = true
+                    self.startScan()
+                }
+            }
+        }
     }
 
     var isReady: Bool { availability.isUsable }
@@ -35,7 +51,7 @@ final class ScanModel {
     func startScan() {
         guard isReady, !isScanning else { return }
         isScanning = true
-        central.start(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
+        central.startScan(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.availability = availability
@@ -48,5 +64,10 @@ final class ScanModel {
     func stopScan() {
         isScanning = false
         central.stopScan()
+    }
+
+    /// 为指定设备创建连接过程模型（P-02；端口与扫描同源）。
+    func connector(for device: DiscoveredDevice) -> ConnectModel {
+        ConnectModel(target: device, port: central)
     }
 }

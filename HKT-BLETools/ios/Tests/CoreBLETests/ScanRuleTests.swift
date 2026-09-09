@@ -55,7 +55,7 @@ final class ScanRuleTests: XCTestCase {
     func testMockCentralFiltersDedupesAndSorts() {
         let mock = MockCentral()
         let collector = UpdateCollector()
-        mock.start(options: ScanOptions(), onUpdate: { availability, devices in
+        mock.startScan(options: ScanOptions(), onUpdate: { availability, devices in
             collector.record(availability, devices)
         })
 
@@ -76,7 +76,7 @@ final class ScanRuleTests: XCTestCase {
     func testMockCentralIgnoresDiscoveryWhenNotScanning() {
         let mock = MockCentral()
         let collector = UpdateCollector()
-        mock.start(options: ScanOptions(), onUpdate: { availability, devices in
+        mock.startScan(options: ScanOptions(), onUpdate: { availability, devices in
             collector.record(availability, devices)
         })
         mock.stopScan()
@@ -87,7 +87,7 @@ final class ScanRuleTests: XCTestCase {
     func testMockCentralAvailabilityGate() {
         let mock = MockCentral()
         let collector = UpdateCollector()
-        mock.start(options: ScanOptions(), onUpdate: { availability, devices in
+        mock.startScan(options: ScanOptions(), onUpdate: { availability, devices in
             collector.record(availability, devices)
         })
         mock.setAvailability(.poweredOff)
