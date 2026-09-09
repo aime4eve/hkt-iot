@@ -90,7 +90,7 @@
 | ID | 类型 | 内容 | 依据 | 状态 |
 | --- | --- | --- | --- | --- |
 | R-18 | 需求 | 实时任务+定时任务表（16 槽）+删除（单条/0xFF 全删）进 v1 | Q1 二修；需求 §7.3 | ✅ 原型 🔜 M8 |
-| SP-18 | 规格 | 0x03=len7/载荷 6B：valve+state+时长秒(2B)+pulse(2B，0-65535)；固件按 3B 读脉冲与 len 门槛不自洽（吃到 CRC 高位）=固件缺陷待修，App 按 6B 载荷发送（与 Android 逐字节一致）；忙静默→2s 超时；0x04=len11：id(1-16 槽位可选/覆盖)+valve(0双/1/2)+pulse(2B)+起止分钟+repeat(bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05 单删/0xFF 全删/强停；无 BLE 回读→本地镜像明示 | FW-REF SVC 0x03/04/05（2026-09-07 复核）；TX-SVC-TASK-001~003；Android getTimedTask；Android PR #3 佐证（周一=bit0） | 🔜 M8 |
+| SP-18 | 规格 | 0x03=len7/载荷 6B：valve+state+时长秒(2B)+pulse(2B，0-65535)；固件 2026-09-09 已修复为按 2B 读（原 3B 读与 len 门槛不自洽缺陷闭环，App 零改动）；忙静默→2s 超时；0x04=len11：id(1-16 槽位可选/覆盖)+valve(0双/1/2)+pulse(2B)+起止分钟+repeat(bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05 单删/0xFF 全删/强停；无 BLE 回读→本地镜像明示 | FW-REF SVC 0x03/04/05（2026-09-09 复核：固件已修）；TX-SVC-TASK-001~003；Android getTimedTask；Android PR #3 佐证（周一=bit0） | 🔜 M8 |
 
 ## P-06 / P-07 / 日志 / 校准 / P-08
 
