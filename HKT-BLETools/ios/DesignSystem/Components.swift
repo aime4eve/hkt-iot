@@ -127,13 +127,14 @@ struct FieldTile: View {
                 .lineSpacing(1.25 * 16 - 16)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, minHeight: 70, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
+        // CSS min-height:70 是 border-box 总高 → frame 必须在 padding 之后
+        .frame(minHeight: 70, alignment: .topLeading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
             .stroke(Theme.line.opacity(0.82), lineWidth: 1))
         .hktShadow()
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 值 + 小号单位 span（.v .unit：11px text2/400，左距 2）。
