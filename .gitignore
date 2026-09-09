@@ -1,5 +1,6 @@
 .DS_Store
-ios/.build/
+.build/
+build/
 **/xcuserdata/
 DerivedData/
 *.ipa

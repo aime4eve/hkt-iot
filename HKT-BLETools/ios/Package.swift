@@ -5,6 +5,11 @@ import PackageDescription
 
 let package = Package(
     name: "HKTBLEToolsCore",
+    products: [
+        .library(name: "CoreProtocol", targets: ["CoreProtocol"]),
+        .library(name: "CoreDevice", targets: ["CoreDevice"]),
+        .library(name: "CoreOTA", targets: ["CoreOTA"]),
+    ],
     targets: [
         .target(name: "CoreProtocol"),
         .target(name: "CoreDevice", dependencies: ["CoreProtocol"]),
