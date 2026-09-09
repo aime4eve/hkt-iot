@@ -31,17 +31,27 @@ struct CalibrationView: View {
                          onBack: { stopTimer(); dismiss() }) {
                 EmptyView()
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    switch state {
-                    case .idle: idleCard
-                    case .running: runningCard
-                    case .success: successCenter
-                    case .failure: failureCenter
-                    }
+            // 用户 2026-09-10 裁决：等待页内容居中、取消贴底（与连接覆盖层同风格）
+            if state == .running {
+                VStack(spacing: 0) {
+                    runningCard
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    cancelButton
+                        .padding(24)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        switch state {
+                        case .idle: idleCard
+                        case .success: successCenter
+                        case .failure: failureCenter
+                        default: EmptyView()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                }
             }
         }
         .background(Theme.bg)
@@ -146,20 +156,23 @@ struct CalibrationView: View {
             .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
                 .stroke(Theme.line.opacity(0.82), lineWidth: 1))
             .hktShadow()
+        }
+    }
 
-            Button {
-                stopTimer()
-                dismiss()
-            } label: {
-                Text(zh ? "取消" : "Cancel")
-                    .font(.hkt(16, .semibold))
-                    .foregroundStyle(Theme.text)
-                    .frame(maxWidth: .infinity)
-                    .padding(13)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius)
-                        .stroke(Theme.line, lineWidth: 1))
-            }
+    /// 取消按钮：贴底全宽（与 P-02 取消同规格）。
+    private var cancelButton: some View {
+        Button {
+            stopTimer()
+            dismiss()
+        } label: {
+            Text(zh ? "取消" : "Cancel")
+                .font(.hkt(16, .semibold))
+                .foregroundStyle(Theme.text)
+                .frame(maxWidth: .infinity)
+                .padding(13)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius)
+                    .stroke(Theme.line, lineWidth: 1))
         }
     }
 

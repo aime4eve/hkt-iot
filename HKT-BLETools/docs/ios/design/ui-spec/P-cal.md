@@ -18,12 +18,13 @@
 .btn 全宽「开始校准」→ 弹确认对话框
 ```
 
-### running（进行中）
+### running（进行中；用户 2026-09-10 裁决：内容居中、取消贴底，与连接覆盖层同风格）
 ```
-.card 居中：badge(info)「校准进行中…（以设备上报为准）」
-  + 「已用时 {s} 秒 · {时长提示}」(kv 13px text2)
-  + 进度条（.progress：高 8 圆角 4 fill 底，info 填充，宽=min(100, elapsed/8×100)%）
-.btn secondary 全宽「取消」→ 回详情页
+VStack（全屏）
+  ├─ 弹性居中区：.card 居中（badge(info)「校准进行中…（以设备上报为准）」
+  │   + 「已用时 {s} 秒 · {时长提示}」kv 13px text2
+  │   + 进度条（.progress：高 8 圆角 4 fill 底，info 填充，宽=min(100, elapsed/8×100)%））
+  └─ 取消按钮（贴底全宽，左右 padding 24）：.btn secondary → 回详情页
 ```
 
 ### done（完成）

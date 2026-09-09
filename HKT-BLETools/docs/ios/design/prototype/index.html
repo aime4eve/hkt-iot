@@ -1645,10 +1645,13 @@ function P_cal(){
     </div>
     <button class="btn" onclick="calBegin()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
-    mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
-      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
-      <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
-      <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
+    /* 用户 2026-09-10 裁决：等待页内容居中、取消贴底（与连接覆盖层同风格） */
+    mid=`<div style="display:flex;flex-direction:column;height:100%">
+      <div class="card" style="text-align:center;margin:auto 0">${badge("info",t("calRun"))}
+        <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
+        <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
+      <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>
+    </div>`;
   } else {
     mid=`<div class="center" style="min-height:380px"><div style="font-size:46px;color:var(--ok)">✓</div>
       <div class="big">校准完成</div></div>`;
