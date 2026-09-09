@@ -49,7 +49,6 @@ struct LocateFlowView: View {
             Text(zh ? "输入设备的 16 位 DevEUI，定位后自动连接" : "Enter the device's 16-hex DevEUI to locate and connect automatically")
                 .font(.subheadline).foregroundStyle(Theme.text2)
             HStack(spacing: 0) {
-                Text("0095690").font(.system(.body, design: .monospaced)).foregroundStyle(Theme.text2)
                 TextField("", text: $locateInput, prompt: Text("A3F2AB7C4").font(.system(.body, design: .monospaced)))
                     .font(.system(.body, design: .monospaced))
                     .autocorrectionDisabled()
