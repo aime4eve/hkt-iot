@@ -776,6 +776,8 @@ struct CenterStateView: View {
     let buttonTitle: String
     var secondaryButton = false    // .btn secondary：card 底 line 描边 text 字（如空态「重新扫描」）
     var fillsRemaining = true      // true=撑满剩余空间（整页早退视图）；false=内容高（滚动区空态）
+    var buttonPaddingH: CGFloat = 34   // 原型按钮横向 padding：P-03 早退=34、P-08 门=30
+    var footnote: String?          // 按钮后的补充行（.sub 13px text2，如「授权后自动返回」）
     let action: () -> Void
 
     var body: some View {
@@ -793,22 +795,29 @@ struct CenterStateView: View {
                     .foregroundStyle(Theme.text2)
                     .multilineTextAlignment(.center)
             }
-            Button(action: action) {
-                Text(buttonTitle)
-                    .font(.hkt(16, .semibold))
-                    .foregroundStyle(secondaryButton ? Theme.text : .white)
-                    .padding(.vertical, secondaryButton ? 10 : 12)
-                    .padding(.horizontal, secondaryButton ? 26 : 34)
-                    .background(secondaryButton ? Theme.card : Theme.info,
-                                in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-                    .overlay {
-                        if secondaryButton {
-                            RoundedRectangle(cornerRadius: Theme.controlRadius)
-                                .stroke(Theme.line, lineWidth: 1)
+            if !buttonTitle.isEmpty {
+                Button(action: action) {
+                    Text(buttonTitle)
+                        .font(.hkt(16, .semibold))
+                        .foregroundStyle(secondaryButton ? Theme.text : .white)
+                        .padding(.vertical, secondaryButton ? 10 : 12)
+                        .padding(.horizontal, secondaryButton ? 26 : buttonPaddingH)
+                        .background(secondaryButton ? Theme.card : Theme.info,
+                                    in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                        .overlay {
+                            if secondaryButton {
+                                RoundedRectangle(cornerRadius: Theme.controlRadius)
+                                    .stroke(Theme.line, lineWidth: 1)
+                            }
                         }
-                    }
+                }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
+            if let footnote {
+                Text(footnote).font(.hkt(13))
+                    .foregroundStyle(Theme.text2)
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(.horizontal, 32)
     }
