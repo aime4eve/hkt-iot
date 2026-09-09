@@ -15,7 +15,10 @@ struct HKTBLEToolsApp: App {
                 .init(name: "SVC100 B4D2", identifier: UUID(), rssi: -70),
                 .init(name: "EPS100 77AA", identifier: UUID(), rssi: -91),
             ])
-            mock.connectScript = .success(delay: 0.3)
+            // MOCK_CONN_DELAY 可调慢连接脚本（秒），便于截取连接覆盖层各阶段
+            let delay = ProcessInfo.processInfo.environment["MOCK_CONN_DELAY"]
+                .flatMap(Double.init) ?? 0.3
+            mock.connectScript = .success(delay: delay)
             mock.setAvailability(.ready)
             scanModel = ScanModel(port: mock, autoStartOnReady: true)
             let responder = DemoResponder()

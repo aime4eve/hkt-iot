@@ -656,6 +656,25 @@ struct DialogButton: View {
     }
 }
 
+// MARK: - 分段进度条（.steps：P-02 连接三阶段）
+
+struct Steps: View {
+    let total: Int
+    /// 已点亮的段数（原型 `i<=connStep`：阶段 0 → 1 亮）。
+    let onCount: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<total, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(index < onCount ? Theme.info : Theme.fill)
+                    .frame(width: 24, height: 5)
+            }
+        }
+        .padding(.vertical, 8)          // .steps margin 8 0
+    }
+}
+
 // MARK: - 大标题页头（.navbar 大标题版：P-01 扫描页）
 
 struct NavbarLarge<Trailing: View>: View {
