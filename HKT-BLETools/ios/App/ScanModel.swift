@@ -1,3 +1,4 @@
+import CoreBLE
 import SwiftUI
 
 /// 会话驻留期可见的设备卡片模型（R-32）：已连接设备置顶带徽章，点击直接回详情。
@@ -23,10 +24,18 @@ final class ScanModel {
     /// R-32：返回首页时的驻留会话（nil=无会话）。
     var residentDevice: ResidentDevice?
 
-    private let central = SystemCentral()
+    private let central: any BluetoothPort
 
-    init() {
-        central.onUpdate = { [weak self] availability, devices in
+    init(port: any BluetoothPort = SystemCentral()) {
+        central = port
+    }
+
+    var isReady: Bool { availability.isUsable }
+
+    func startScan() {
+        guard isReady, !isScanning else { return }
+        isScanning = true
+        central.start(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.availability = availability
@@ -36,15 +45,8 @@ final class ScanModel {
         }
     }
 
-    var isReady: Bool { availability.isUsable }
-
-    func startScan() {
-        guard isReady, !isScanning else { return }
-        isScanning = true
-        central.start(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold))
-    }
-
     func stopScan() {
         isScanning = false
+        central.stopScan()
     }
 }

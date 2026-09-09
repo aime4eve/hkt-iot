@@ -10,6 +10,7 @@
 		FA000031 /* CoreProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = FA000021 /* CoreProtocol */; };
 		FA000032 /* CoreDevice in Frameworks */ = {isa = PBXBuildFile; productRef = FA000022 /* CoreDevice */; };
 		FA000033 /* CoreOTA in Frameworks */ = {isa = PBXBuildFile; productRef = FA000023 /* CoreOTA */; };
+		FA000034 /* CoreBLE in Frameworks */ = {isa = PBXBuildFile; productRef = FA000024 /* CoreBLE */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 				FA000031 /* CoreProtocol in Frameworks */,
 				FA000032 /* CoreDevice in Frameworks */,
 				FA000033 /* CoreOTA in Frameworks */,
+				FA000034 /* CoreBLE in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +90,7 @@
 				FA000021 /* CoreProtocol */,
 				FA000022 /* CoreDevice */,
 				FA000023 /* CoreOTA */,
+				FA000024 /* CoreBLE */,
 			);
 			productName = HKTBLETools;
 			productReference = FA000012 /* HKTBLETools.app */;
@@ -315,6 +318,10 @@
 		FA000023 /* CoreOTA */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CoreOTA;
+		};
+		FA000024 /* CoreBLE */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CoreBLE;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
