@@ -15,10 +15,11 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 用户 2026-09-10 裁决：二级页不显示「⌂ 首页」（与隐私页一致）
             NavbarHeader(title: zh ? "设置" : "Settings",
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
-                LinkButton(title: zh ? "⌂ 首页" : "⌂ Home") { dismiss() }
+                EmptyView()
             }
             ScrollView {
                 settingsContent
@@ -139,13 +140,11 @@ struct LogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 用户 2026-09-10 裁决：二级页不显示「⌂ 首页」（与设置页一致）
             NavbarHeader(title: zh ? "诊断日志" : "Diagnostic Log",
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
-                HStack(spacing: 8) {
-                    LinkButton(title: zh ? "⌂ 首页" : "⌂ Home") { dismiss() }
-                    LinkButton(title: zh ? "导出" : "Export") { /* 真实 txt 导出随诊断里程碑接入 */ }
-                }
+                LinkButton(title: zh ? "导出" : "Export") { /* 真实 txt 导出随诊断里程碑接入 */ }
             }
             logContent
         }

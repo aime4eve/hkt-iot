@@ -9,7 +9,7 @@
 ## 1. 设置页结构（navbar.small + body padding 0 16 24）
 
 ```
-navbar.small：back 胶囊「‹ 返回」+ 标题「设置」(17px/700)
+navbar.small：back 胶囊「‹ 返回」+ 标题「设置」（无首页按钮，用户 2026-09-10 裁决：二级页不显示）
 body
   ├─ section「语言」
   │    └─ row：label「语言」 + value「跟随系统 ▸」(点击循环 跟随系统→简体中文→English)
@@ -37,7 +37,7 @@ body
 ## 2. 日志页结构
 
 ```
-navbar.small：back 胶囊 + 标题「诊断日志」+ navright linkbtn「导出」
+navbar.small：back 胶囊 + 标题「诊断日志」+ navright linkbtn「导出」（无首页按钮，同 §1 裁决）
 body：日志行 ×N（或 空态「暂无日志」kv 居中 padding 30）
 ```
 
