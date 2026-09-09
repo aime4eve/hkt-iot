@@ -130,4 +130,19 @@ public enum BEValue {
     public static func u32(_ data: Data) -> Int {
         u24(data) << 8 | Int(data[data.startIndex + 3])
     }
+    /// 二进制补码有符号 16 位（倾角/地磁等）
+    public static func i16(_ data: Data) -> Int {
+        let v = u16(data)
+        return v >= 0x8000 ? v - 0x10000 : v
+    }
+    /// 二进制补码有符号 24 位（温度/湿度毫度）
+    public static func i24(_ data: Data) -> Int {
+        let v = u24(data)
+        return v >= 0x800000 ? v - 0x1000000 : v
+    }
+    /// 二进制补码有符号 32 位（经纬度）
+    public static func i32(_ data: Data) -> Int {
+        let v = u32(data)
+        return v >= 0x80000000 ? v - 0x100000000 : v
+    }
 }
