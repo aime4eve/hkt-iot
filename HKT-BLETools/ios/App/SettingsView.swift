@@ -8,6 +8,7 @@ struct SettingsView: View {
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var showLog = false
+    @State private var showPrivacy = false
     @State private var debugTaps = 0
 
     private var zh: Bool { langStore.isZh }
@@ -27,6 +28,9 @@ struct SettingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showLog) {
             LogView()
+        }
+        .navigationDestination(isPresented: $showPrivacy) {
+            PrivacyView()
         }
     }
 
@@ -93,7 +97,7 @@ struct SettingsView: View {
                 } action: { registerDebugTap() }
                 SettingsRow(label: zh ? "隐私说明" : "Privacy") {
                     RowValue { Text("▸") }
-                } action: { /* 隐私页（P_privacy 全文）随下一批接入 */ }
+                } action: { showPrivacy = true }
                 if debugTaps > 0, debugTaps < 7 {
                     Text(zh ? "再点 \(7 - debugTaps) 次开启调试模式" : "\(7 - debugTaps) more taps to enable Debug")
                         .font(.hkt(13))
