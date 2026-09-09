@@ -16,6 +16,8 @@ struct DeviceDetailView: View {
     @State private var confirmPowerOff = false
     @State private var showCalibration = false
     @State private var showConfig = false
+    @State private var showTasks = false
+    @State private var showOTA = false
 
     private var snapshot: DeviceSnapshot { session.snapshot }
     private var zh: Bool { langStore.isZh }
@@ -63,11 +65,12 @@ struct DeviceDetailView: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)      // 原型详情页无导航栏，会话卡即页头
         .onAppear {
-            // 演示自动导航（-demo-page config）：进入详情后自动进配置页
-            let arguments = ProcessInfo.processInfo.arguments
-            if arguments.contains("-demo-page config")
-                || zip(arguments, arguments.dropFirst()).contains(where: { $0 == "-demo-page" && $1 == "config" }) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { showConfig = true }
+            // 演示自动导航（-demo-page config/tasks/ota[-run]）：进入详情后自动进目标页
+            guard let target = DemoLaunch.page, target != "locate", target != "locate-finding" else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if target == "config" { showConfig = true }
+                if target == "tasks" { showTasks = true }
+                if target == "ota" || target == "ota-run" { showOTA = true }
             }
         }
         .navigationDestination(isPresented: $showCalibration) {
@@ -75,6 +78,12 @@ struct DeviceDetailView: View {
         }
         .navigationDestination(isPresented: $showConfig) {
             ConfigView(session: session)
+        }
+        .navigationDestination(isPresented: $showTasks) {
+            TasksView()
+        }
+        .navigationDestination(isPresented: $showOTA) {
+            OTAView(session: session)
         }
         .overlay { confirmDialogs }
     }
@@ -117,7 +126,7 @@ struct DeviceDetailView: View {
                            badge: headBadge) {
             SessionButton(title: zh ? "返回" : "Back") { dismiss() }
             SessionButton(title: zh ? "首页" : "Home") { popToRoot() }
-            SessionButton(title: zh ? "固件升级" : "Firmware Update") { /* P-04 OTA 里程碑接入 */ }
+            SessionButton(title: zh ? "固件升级" : "Firmware Update") { showOTA = true }
             SessionButton(title: zh ? "断开连接" : "Disconnect", danger: true) { confirmDisconnect = true }
         }
         .padding(.top, 8)
@@ -268,6 +277,14 @@ struct DeviceDetailView: View {
                 OpCard(badge: "MAG",
                        title: zh ? "技术参数" : "Tech Parameters",
                        desc: zh ? "三轴曲线 · 雷达频谱" : "3-axis curves · radar spectrum") {}
+            }
+            if session.family == .svc100 {
+                // SVC 专属：阀门任务入口（原型经演示工具栏进入，真机需要页面入口——规格卡 P-tasks §5）
+                OpCard(badge: "TSK", badgeKind: .info,
+                       title: zh ? "阀门任务" : "Valve Tasks",
+                       desc: zh ? "实时任务 · 定时任务表" : "Realtime task · schedule table") {
+                    showTasks = true
+                }
             }
             OpCard(badge: "CFG",
                    title: zh ? "参数配置" : "Configuration",

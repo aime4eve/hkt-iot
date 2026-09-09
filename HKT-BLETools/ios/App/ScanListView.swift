@@ -40,6 +40,17 @@ struct ScanListView: View {
             }
             .background(Theme.bg)
             .toolbar(.hidden, for: .navigationBar)      // 原型用自绘大标题页头
+            .onAppear {
+                // 演示自动导航（-demo-page locate[/-finding]）：弹出定位流程
+                if let page = DemoLaunch.page, page == "locate" || page == "locate-finding" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        if page == "locate-finding" {
+                            model.startLocate(devEUI: "0095690A3F2AB7C4")
+                        }
+                        showLocate = true
+                    }
+                }
+            }
             // fullScreenCover 不继承环境对象，必须显式重新注入（否则弹层访问 ScanModel 即崩）
             .fullScreenCover(item: $connector) { connector in
                 ConnectOverlayView(model: connector)

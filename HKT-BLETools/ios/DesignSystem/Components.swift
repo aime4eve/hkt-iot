@@ -937,6 +937,20 @@ struct HKTProgress: View {
     }
 }
 
+// MARK: - 居中内容块（.center：gap 10、水平 padding 32、弹性居中）
+
+struct CenterStateContent<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(spacing: 10) {
+            content
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 32)
+    }
+}
+
 // MARK: - 居中早退视图（.center：⚠︎/📵/⏻ 大图标 + 标题 + 按钮）
 
 struct CenterStateView: View {

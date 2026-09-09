@@ -145,16 +145,3 @@ struct ConnectOverlayView: View {
         String(model.target.identifier.uuidString.suffix(4)).uppercased()
     }
 }
-
-/// .center 布局（gap 10、水平 padding 32、弹性居中）——P-02 覆盖层内部用。
-private struct CenterStateContent<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(spacing: 10) {
-            content
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 32)
-    }
-}

@@ -77,6 +77,11 @@ extension Color {
                 : UIColor(hexString: light)
         })
     }
+
+    /// "#RRGGBB" 单值初始化（相机取景等固定色）。
+    init(hex: String) {
+        self.init(uiColor: UIColor(hexString: hex))
+    }
 }
 
 extension UIColor {
