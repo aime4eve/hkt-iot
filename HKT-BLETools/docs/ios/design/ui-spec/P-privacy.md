@@ -9,7 +9,7 @@
 ## 1. 页面结构
 
 ```
-navbar.small：back 胶囊「‹ 返回」+ 标题「隐私说明」+ navright「⌂ 首页」
+navbar.small：back 胶囊「‹ 返回」+ 标题「隐私说明」（无首页按钮，用户 2026-09-10 裁决）
 body（padding 0 16 24）
   ├─ 生效日期行：kv 13px 居中，margin 2 0 10 →「生效日期: 2026-09-08 · v1.0」
   └─ 11 张卡片（.card：padding 13 14、r10、margin-bottom 11）

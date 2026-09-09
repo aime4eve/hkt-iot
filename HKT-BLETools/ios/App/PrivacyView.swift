@@ -10,10 +10,11 @@ struct PrivacyView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 用户 2026-09-10 裁决：隐私页不显示「⌂ 首页」（二级说明页，原型 navbar showHome 残留）
             NavbarHeader(title: zh ? "隐私说明" : "Privacy",
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
-                LinkButton(title: zh ? "⌂ 首页" : "⌂ Home") { dismiss() }
+                EmptyView()
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
