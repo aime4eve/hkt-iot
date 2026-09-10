@@ -37,6 +37,7 @@ public final class DeviceSession {
     private var pollTask: Task<Void, Never>?
     private var packNum: UInt8 = 0
     private var stopped = false
+    private var pollingSuspended = false
     private var ackContinuation: CheckedContinuation<Bool, Never>?
     private var ackTimeoutTask: Task<Void, Never>?
     private var calibrationWait: CheckedContinuation<CalibrationOutcome, Never>?
@@ -92,6 +93,19 @@ public final class DeviceSession {
         packNum &+= 1
         link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
     }
+
+    /// OTA 传输期间直发引导层原始帧（自带头/长度/CRC/bootload 后缀，不再包应用帧）。
+    public func sendRaw(_ frame: Data) {
+        link.send(frame)
+    }
+
+    /// OTA 传输期间暂停 0xFF 轮询（引导层不应答询帧，Android 同款停轮询）。
+    public func setPollingSuspended(_ suspended: Bool) {
+        pollingSuspended = suspended
+    }
+
+    /// 引导层 ACK 帧旁路：返回 true 表示该帧已被 OTA 消费，不再走 TLV 解析。
+    public var rawFrameHandler: ((Data) -> Bool)?
 
     /// 写入命令 + 确认等待（0x02/0x03/0x04/0x05 通用）：固件仅在 callback_BLEAck 回含 0xFF
     /// 应答段的专用帧（轮询/状态回应不含该段），收到即视为设备确认；超时未回 = 未确认
@@ -173,7 +187,7 @@ public final class DeviceSession {
     }
 
     private func pollOnce() {
-        guard !stopped else { return }
+        guard !stopped, !pollingSuspended else { return }
         pollsSent &+= 1
         packNum &+= 1
         link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: CommandCode.query,
@@ -184,6 +198,8 @@ public final class DeviceSession {
     }
 
     private func handleReceive(_ data: Data) {
+        // OTA 传输中：引导层 ACK 帧（hkt…bootload）由引擎消费，不走 TLV 解析
+        if let handler = rawFrameHandler, handler(data) { return }
         // 校准完成上报是纯 ASCII 文本（非 hkt 帧），parse 会当坏前缀丢弃，须先查
         if calibrationWait != nil,
            let text = String(data: data.prefix(64), encoding: .ascii),

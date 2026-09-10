@@ -1,11 +1,14 @@
 import CoreBLE
+import CoreOTA
 import CoreProtocol
 import SwiftUI
 import UniformTypeIdentifiers
 
 /// OTA 升级页（P_ota）—— 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-ota.md`）。
-/// 固件包经系统文件选择窗口选取（真实文件名/大小/CRC32，期望版本从文件名解析）；
-/// 六阶段演示引擎（tick 380ms 复刻原型）；真实 OTAEngine 随协议里程碑接入。
+/// 固件包经系统文件选择窗口选取（真实文件名/大小/CRC32，期望版本从文件名解析）。
+/// 真实设备：OTAEngine ACK 驱动分页传输（设备复位重传≤2 次，进度=已确认包数）；
+/// 演示模式（-mockble）：tick 380ms 复刻原型。传输完成后的重启/重连/版本确认六段后程
+/// 仍按原型节奏推进（真机重连随真机验证里程碑接入）。
 struct OTAView: View {
     let session: DeviceSession
 
@@ -27,12 +30,14 @@ struct OTAView: View {
     @State private var showReport = false
     @State private var startedAt = Date()
     @State private var totalText = ""
+    @State private var failureReason = ""
     @State private var timer: Timer?
-
-    private let totalPackets = 1284
+    @State private var engine: OTAEngine?
+    @State private var totalPackets = 1284   // 演示包数；真实升级由所选文件决定
 
     private var zh: Bool { langStore.isZh }
     private var picked: Bool { pickedURL != nil }
+    private var isDemo: Bool { ProcessInfo.processInfo.arguments.contains("-mockble") }
     /// 当前版本：轮询快照的 固件版本（演示设备 v11.28，真机即真实版本）。
     private var currentVersion: String {
         "v\(snapshot.hardwareVersion).\(snapshot.softwareVersion)"
@@ -57,7 +62,12 @@ struct OTAView: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .overlay { dialogs }
-        .onDisappear { stopTimer() }
+        .onDisappear {
+            stopTimer()
+            engine?.cancel()
+            session.rawFrameHandler = nil
+            session.setPollingSuspended(false)
+        }
         .onAppear {
             // 演示自动导航（-demo-page ota-run）：演示包直接开始传输
             if DemoLaunch.isPage("ota-run") {
@@ -309,7 +319,7 @@ struct OTAView: View {
         VStack(spacing: 10) {
             Text("✕").font(.system(size: 48)).foregroundStyle(Theme.err)
             Text(zh ? "升级失败" : "Update failed").font(.hkt(17, .semibold))
-            Text((zh ? "原因: " : "Reason: ") + (zh ? "蓝牙连接丢失" : "Bluetooth connection lost"))
+            Text((zh ? "原因: " : "Reason: ") + failureReason)
                 .font(.hkt(13)).foregroundStyle(Theme.text2)
                 .multilineTextAlignment(.center)
             Button {
@@ -405,9 +415,78 @@ struct OTAView: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - 演示引擎（tick 380ms 复刻原型；真实 OTAEngine 随协议里程碑接入）
+    // MARK: - 引擎（真实设备 = OTAEngine ACK 驱动；演示模式 = tick 380ms 复刻原型）
 
     private func runOTA() {
+        if isDemo, pickedURL?.path.hasPrefix("/tmp/") == true {
+            runDemoOTA()
+        } else if let url = pickedURL, let data = loadFirmware(url), !data.isEmpty {
+            runRealOTA(data)
+        } else {
+            failureReason = zh ? "固件包无法读取" : "Firmware file unreadable"
+            stage = 9
+        }
+    }
+
+    private func loadFirmware(_ url: URL) -> Data? {
+        let secured = url.startAccessingSecurityScopedResource()
+        defer { if secured { url.stopAccessingSecurityScopedResource() } }
+        return try? Data(contentsOf: url)
+    }
+
+    /// 真实传输：通知帧 → 设备复位进引导 → ACK(2,n) 逐包 → ACK(3) 完成；后程六段照常推进。
+    private func runRealOTA(_ data: Data) {
+        let engine = OTAEngine(image: data)
+        self.engine = engine
+        engine.bind { [weak session] frame in session?.sendRaw(frame) }
+        session.rawFrameHandler = { [weak engine] frame in engine?.handle(frame) ?? false }
+        session.setPollingSuspended(true)   // 引导层不应答询帧，Android 同款停轮询
+        totalPackets = engine.packetCount
+        stage = 2
+        pkt = 0
+        wait = 0
+        pageWrite = false
+        startedAt = Date()
+        LogStore.shared.info("OTA " + (zh ? "通知已发（\(totalPackets) 包），等待设备进入引导"
+                                          : "notify sent (\(totalPackets) packets), waiting for bootloader"))
+        engine.begin()
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.38, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                guard let engine = self.engine else { return }
+                pkt = engine.packetsDone
+                switch engine.state {
+                case .done where stage == 2:
+                    stage = 3
+                    wait = 0
+                    session.rawFrameHandler = nil
+                    session.setPollingSuspended(false)
+                    LogStore.shared.info("OTA " + (zh ? "传输完成（设备 ACK 0x03）" : "transfer complete (ACK 0x03)"))
+                case .failed(let error) where stage <= 7:
+                    stopTimer()
+                    failureReason = Self.failureText(error, linkLost: session.linkLost, zh: zh)
+                    stage = 9
+                    LogStore.shared.info("OTA " + (zh ? "失败：\(failureReason)" : "failed: \(failureReason)"))
+                default:
+                    if stage >= 3, stage < 8 { advancePostStages() }
+                }
+            }
+        }
+    }
+
+    private static func failureText(_ error: OTAEngine.EngineError, linkLost: Bool, zh: Bool) -> String {
+        switch error {
+        case .timeout:
+            return zh ? "蓝牙连接丢失（传输超时）" : "Bluetooth connection lost (transfer timeout)"
+        case .tooManyRestarts:
+            return zh ? "设备多次复位重传，传输中止" : "Device reset too many times; transfer aborted"
+        case .cancelled:
+            return zh ? "升级已取消" : "Update cancelled"
+        }
+    }
+
+    /// 演示传输（tick 380ms，与原型演示一致）。
+    private func runDemoOTA() {
         stage = 2
         pkt = 0
         wait = 0
@@ -432,33 +511,47 @@ struct OTAView: View {
                             if pkt % 16 < 8 { pagePause = 1 }
                         }
                     }
-                } else if stage == 3 {
-                    stage = 4; wait = 0
-                    LogStore.shared.info(zh ? "OTA 阶段：等待重启" : "OTA stage: waiting reboot")
-                } else if stage == 4 {
-                    wait += 1
-                    if wait >= 4 { stage = 5; wait = 0 }
-                } else if stage == 5 {
-                    wait += 1
-                    if wait >= 3 { stage = 6; wait = 0 }
-                } else if stage == 6 {
-                    stage = 7; wait = 0
-                } else if stage == 7 {
-                    wait += 1
-                    if wait >= 2 {
-                        stopTimer()
-                        stage = 8
-                        let total = Date().timeIntervalSince(startedAt)
-                        totalText = String(format: "%dm %ds", Int(total) / 60, Int(total) % 60)
-                        LogStore.shared.info(zh ? "OTA 升级成功" : "OTA success")
-                    }
+                } else if stage >= 3, stage < 8 {
+                    advancePostStages()
                 }
             }
         }
     }
 
+    /// 六段后程（stage 3→8）：传输完成后等待重启/重新广播/重连/版本确认（原型节奏）。
+    private func advancePostStages() {
+        switch stage {
+        case 3:
+            stage = 4; wait = 0
+            LogStore.shared.info(zh ? "OTA 阶段：等待重启" : "OTA stage: waiting reboot")
+        case 4:
+            wait += 1
+            if wait >= 4 { stage = 5; wait = 0 }
+        case 5:
+            wait += 1
+            if wait >= 3 { stage = 6; wait = 0 }
+        case 6:
+            stage = 7; wait = 0
+        case 7:
+            wait += 1
+            if wait >= 2 {
+                stopTimer()
+                stage = 8
+                let total = Date().timeIntervalSince(startedAt)
+                totalText = String(format: "%dm %ds", Int(total) / 60, Int(total) % 60)
+                LogStore.shared.info(zh ? "OTA 升级成功" : "OTA success")
+            }
+        default:
+            break
+        }
+    }
+
     private func resetToSelect() {
         stopTimer()
+        engine?.cancel()
+        engine = nil
+        session.rawFrameHandler = nil
+        session.setPollingSuspended(false)
         stage = 0
         pkt = 0
         wait = 0
