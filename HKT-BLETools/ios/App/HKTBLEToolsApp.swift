@@ -31,13 +31,19 @@ struct HKTBLEToolsApp: App {
             } else {
                 mock.setAvailability(.ready)
             }
-            scanModel = ScanModel(port: mock, autoStartOnReady: true)
-            // -demo-flow <设备前缀>：扫描命中即自动停扫直连进详情（演示自动导航）
+            // -demo-flow <设备前缀>：扫描命中即自动停扫直连进详情；
+            // 无 -demo-flow 时 7 秒自动停扫（原型 toggleScan 行为 1:1）
             let arguments = ProcessInfo.processInfo.arguments
+            let demoFlowPrefix: String?
             if let flowIndex = arguments.firstIndex(of: "-demo-flow"),
                arguments.count > flowIndex + 1 {
-                scanModel.demoAutoConnectPrefix = arguments[flowIndex + 1]
+                demoFlowPrefix = arguments[flowIndex + 1]
+            } else {
+                demoFlowPrefix = nil
             }
+            scanModel = ScanModel(port: mock, autoStartOnReady: true,
+                                  demoAutoStopAfter: demoFlowPrefix == nil ? 7 : nil,
+                                  demoAutoConnectPrefix: demoFlowPrefix)
             let responder = DemoResponder()
             mock.responder = { [weak scanModel] frame in
                 let family = MainActor.assumeIsolated { scanModel?.activeSession?.family }

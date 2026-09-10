@@ -56,11 +56,16 @@ final class ScanModel {
     private var loggedDiscoveries = Set<UUID>()
     /// 演示自动导航（-demo-flow）：扫描发现该前缀设备即停扫直连进详情
     var demoAutoConnectPrefix: String?
+    /// 演示自动停止扫描（原型 7 秒自动完成，保持 1:1）
+    var demoAutoStopAfter: TimeInterval?
 
     private let central: any BluetoothPort
 
-    init(port: any BluetoothPort = SystemCentral(), autoStartOnReady: Bool = false) {
+    init(port: any BluetoothPort = SystemCentral(), autoStartOnReady: Bool = false,
+         demoAutoStopAfter: TimeInterval? = nil, demoAutoConnectPrefix: String? = nil) {
         self.autoStartOnReady = autoStartOnReady
+        self.demoAutoStopAfter = demoAutoStopAfter
+        self.demoAutoConnectPrefix = demoAutoConnectPrefix
         central = port
         // 启动即激活（真机：触发系统蓝牙权限弹窗，R-24）；就绪后按需自动扫描（演示模式）
         central.activate { [weak self] availability in
@@ -91,6 +96,12 @@ final class ScanModel {
         guard isReady, !isScanning else { return }
         isScanning = true
         loggedDiscoveries = []
+        if let autoStop = demoAutoStopAfter {
+            DispatchQueue.main.asyncAfter(deadline: .now() + autoStop) { [weak self] in
+                guard let self, self.isScanning else { return }
+                self.stopScan()
+            }
+        }
         LogStore.shared.info(AppLocale.isZh ? "扫描启动" : "Scan started")
         central.startScan(options: .init(allowedPrefixes: allowedPrefixes, rssiThreshold: rssiThreshold)) { [weak self] availability, devices in
             MainActor.assumeIsolated {

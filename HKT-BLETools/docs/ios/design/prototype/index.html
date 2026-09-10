@@ -255,8 +255,10 @@
 /* ═══════════ i18n ═══════════ */
 const ZH={
   prev:"‹ 返回", app:"HKT BLETools", settings:"设置", scanning:n=>`扫描中… 已发现 ${n} 台`, scanDone:n=>`扫描完成 · ${n} 台`,
-  stop:"停止", rescan:"重新扫描", empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
-  locate:"⌖ 定位", locateT:"定位设备", locateSub:"扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标",
+  stop:"停止", rescan:"附近设备",   // 用户 2026-09-10 裁决
+  empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
+  locate:"⌖ 扫描",   // 用户 2026-09-10 裁决（原「⌖ 定位」）
+  locateT:"定位设备", locateSub:"扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标",
   locateQr:"扫描设备二维码", locateManual:"输入 DevEUI", locateGo:"定位", euiLabel:"DevEUI（16 位十六进制）",
   errEui:"须为 16 位十六进制（0-9、A-F）",
   camPermT:"允许“HKT BLETools”使用相机？", camPermB:"用于扫描设备标签上的二维码", camHint:"对准设备标签上的二维码，自动识别",

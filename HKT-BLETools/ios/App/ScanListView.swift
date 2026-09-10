@@ -18,7 +18,7 @@ struct ScanListView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 NavbarLarge(title: "HKT BLETools") {
-                    LinkButton(title: zh ? "⌖ 定位" : "⌖ Locate") {
+                    LinkButton(title: zh ? "⌖ 扫描" : "⌖ Locate") {
                         model.beginLocateInput()
                         showLocate = true
                     }
@@ -99,7 +99,7 @@ struct ScanListView: View {
         ScanStatusRow(title: model.isScanning
             ? String(format: zh ? "扫描中… 已发现 %d 台" : "Scanning… %d found", model.devices.count)
             : String(format: zh ? "扫描完成 · %d 台" : "Scan finished · %d found", model.devices.count),
-            actionTitle: model.isScanning ? (zh ? "停止" : "Stop") : (zh ? "重新扫描" : "Rescan")) {
+            actionTitle: model.isScanning ? (zh ? "停止" : "Stop") : (zh ? "附近设备" : "Nearby Devices")) {
             model.isScanning ? model.stopScan() : model.startScan()
         }
     }
@@ -113,7 +113,7 @@ struct ScanListView: View {
             CenterStateView(glyph: "📡", glyphSize: 44,
                             title: zh ? "未发现支持设备" : "No supported devices found",
                             subtitle: zh ? "请确认设备已上电、在信号范围内" : "Make sure devices are powered and nearby",
-                            buttonTitle: zh ? "重新扫描" : "Rescan",
+                            buttonTitle: zh ? "附近设备" : "Nearby Devices",
                             secondaryButton: true, fillsRemaining: false) {
                 model.startScan()
             }
