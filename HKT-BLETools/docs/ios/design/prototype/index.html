@@ -303,6 +303,7 @@ const ZH={
   stay:"继续升级", leave:"仍然离开", cancelUp:"取消升级",
   okT:"升级成功", report:"查看升级报告", done:"完成", failT:"升级失败", retry:"重新升级",
   reason:"原因", rConnLost:"蓝牙连接丢失", rBtOff:"蓝牙已被关闭", rMismatch:"读到版本 v1.26，与期望 v1.28 不符", rNoResp:"设备长时间无响应",
+  retryConn:"重新连接",   // 用户 2026-09-10 裁决：断线重试不再误用 OTA 的 retry（「重新升级」）
   exportLog:"导出日志", back:"返回",
   rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
   rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
@@ -385,7 +386,7 @@ const EN={
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
   prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
   privUpdated:"Effective date",
-  connBadge:"Connected", discBtn:"Disconnect", discGo:"Disconnect", discConfirmT:"Disconnect?", discConfirmB:"Disconnecting stops live polling and disconnects BLE. This is an expected disconnect and will not auto-reconnect. The device will be kept in Recents.",
+  connBadge:"Connected", discBtn:"Disconnect", switchT:"Switch device?", switchGo:"Switch & Connect", discGo:"Disconnect", discConfirmT:"Disconnect?", discConfirmB:"Disconnecting stops live polling and disconnects BLE. This is an expected disconnect and will not auto-reconnect. The device will be kept in Recents.",
   confirmDisc:"Disconnect",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
@@ -404,6 +405,7 @@ const EN={
   stay:"Keep Updating", leave:"Leave", cancelUp:"Cancel Update",
   okT:"Update succeeded", report:"View update report", done:"Done", failT:"Update failed", retry:"Retry Update",
   reason:"Reason", rConnLost:"Bluetooth connection lost", rBtOff:"Bluetooth was turned off", rMismatch:"Read v1.26 but expected v1.28", rNoResp:"The device stopped responding",
+  retryConn:"Retry",   // see zh ruling: disconnect retry no longer reuses OTA retry
   exportLog:"Export Log", back:"Back",
   rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
   rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
@@ -493,7 +495,7 @@ const PRIVACY={
 };
 function P_privacy(){
   const p=PRIVACY[lang];
-  return statusbar()+navbar(t("privacy"),"",true)+`<div class="body">
+  return statusbar()+navbar(t("privacy"),"",true,false)+`<div class="body">
     <div class="kv" style="text-align:center;margin:2px 0 10px">${t("privUpdated")}: ${p.updated} · v1.0</div>
     ${p.secs.map(([h,b])=>`<div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:6px">${h}</div>
       <div class="kv" style="white-space:pre-line">${b}</div></div>`).join("")}
@@ -904,7 +906,7 @@ function P_detail(){
   let banner="";
   if(S.p3==="abnormal")banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="nav('log')">${t("exportLog")}</span></div>`;
   if(S.p3==="disconnected")banner=`<div class="center" style="min-height:480px"><div style="font-size:44px">📵</div>
-      <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retry")}</button></div>`;
+      <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retryConn")}</button></div>`;
   if(!S.powerOn){
     return statusbar()+navbar(S.device,"",true)+`<div class="center" style="min-height:600px">
       <div style="font-size:46px">⏻</div><div class="big">${t("offState")}</div>
@@ -1113,7 +1115,7 @@ function P_ota(){
       <tr><td>${t("rpTime")}</td><td>${o.report.total}</td></tr>
     </table>
     <button class="btn" onclick="S.ota.showReport=false;render()">${t("done")}</button></div></div>`:"";
-  return statusbar()+navbar(t("ota"),"",true)+`<div class="body">${inner}</div>`+guard+report;
+  return statusbar()+navbar(t("ota"),"",true,false)+`<div class="body">${inner}</div>`+guard+report;
 }
 function stageList(active){
   const names=[t("st1"),t("st2"),t("st3"),t("st4"),t("st5"),t("st6")];
@@ -1557,7 +1559,7 @@ function execRT(){
   toast("ACK ✓");render();
 }
 function P_debug(){
-  return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
+  return statusbar()+navbar(t("debug"),"",true,false)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
     <div class="row"><span class="label">${t("target")}: ${S.device} …9C01</span>${badge(S.phase==="ready"?"":"err",S.phase==="ready"?"● "+t("on"):"○ "+t("off"))}</div>
     <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3">
     <div style="display:flex;gap:7px;margin:10px 0">
@@ -1579,7 +1581,7 @@ function sendHex(){
   render();
 }
 function P_settings(){
-  return statusbar()+navbar(t("settings"),"",true)+`<div class="body">
+  return statusbar()+navbar(t("settings"),"",true,false)+`<div class="body">
     <div class="section">${t("lang")}</div>
     <div class="row" style="cursor:pointer" onclick="cycleLang()"><span class="label">${t("lang")}</span>
       <span class="value">${langLabel()} ▸</span></div>
@@ -1617,7 +1619,7 @@ function taps(){
 function P_log(){
   const lines=S.logs.length?S.logs.map(l=>`<div class="logline"><span class="ts">${l.ts}</span><span class="lv" style="color:${l.lv==="ERR"?"var(--err)":l.lv==="WARN"?"var(--warn)":"var(--info)"}">${l.lv}</span>${l.ev} ${l.detail}</div>`).join("")
     :`<div class="kv" style="text-align:center;padding:30px">${t("logEmpty")}</div>`;
-  return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true)+
+  return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true,false)+
     `<div class="body">${lines}</div>`;
 }
 function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};nav("cal");}
