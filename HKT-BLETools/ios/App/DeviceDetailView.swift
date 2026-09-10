@@ -14,6 +14,8 @@ struct DeviceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDisconnect = false
     @State private var confirmPowerOff = false
+    @State private var powerSending = false
+    @State private var powerError: String?
     @State private var showCalibration = false
     @State private var showConfig = false
     @State private var showTasks = false
@@ -89,16 +91,24 @@ struct DeviceDetailView: View {
     }
 
     /// 原型 !S.powerOn 早退：navbar.small 页头 + 居中「已关机」。
+    /// 用户裁决（2026-09-11）：开机页无「⌂ 首页」；开机命令走 ACK 确认（无确认给横幅）。
     private var powerOffView: some View {
         VStack(spacing: 0) {
             NavbarHeader(title: session.deviceName,
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
-                LinkButton(title: zh ? "⌂ 首页" : "⌂ Home") { popToRoot() }
+                EmptyView()
+            }
+            if let powerError {
+                HKTBanner(kind: .err, text: "✕ " + powerError,
+                          actionTitle: zh ? "重试" : "Retry",
+                          action: { sendPower(true) })
+                    .padding(.horizontal, 16)
             }
             CenterStateView(glyph: "⏻", glyphSize: 46,
                             title: zh ? "已关机" : "Powered off",
-                            buttonTitle: zh ? "开机" : "On",
+                            buttonTitle: powerSending ? (zh ? "发送中…" : "Sending…")
+                                                      : (zh ? "开机" : "On"),
                             action: { sendPower(true) })
         }
         .background(Theme.bg)
@@ -114,8 +124,25 @@ struct DeviceDetailView: View {
         NotificationCenter.default.post(name: .init("popToRoot"), object: nil)
     }
 
+    /// 开关机（0xFE）：固件无条件回 ACK——ACK 后等下一轮轮询快照刷新电源位；
+    /// 无 ACK 提示失败（链路或固件问题），不再 fire-and-forget 无反馈。
     private func sendPower(_ on: Bool) {
-        session.send(cmd: CommandCode.power, data: HKTFrameEncoder.powerPayload(on: on))
+        guard !powerSending else { return }
+        powerSending = true
+        powerError = nil
+        LogStore.shared.info("0xFE " + (on ? (zh ? "开机" : "power ON") : (zh ? "关机" : "power OFF"))
+                             + " → \(session.deviceName)")
+        Task {
+            let acked = await session.sendWrite(cmd: CommandCode.power,
+                                                data: HKTFrameEncoder.powerPayload(on: on))
+            powerSending = false
+            if acked {
+                LogStore.shared.info("0xFE ACK")
+            } else {
+                powerError = zh ? "设备未确认开关机命令（无 ACK）" : "Device did not acknowledge the power command"
+                LogStore.shared.warn("0xFE " + (zh ? "无 ACK" : "no ACK"))
+            }
+        }
     }
 
     // MARK: - 会话控制卡（规格卡 §3.1）
