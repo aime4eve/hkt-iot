@@ -145,6 +145,7 @@ struct OTAView: View {
     private var content: some View {
         switch stage {
         case 0: selectStage
+        case 1: EmptyView()   // 确认弹窗期间背景留空（此前误显示失败页）
         case 8: successStage
         default: failureStage
         }
@@ -343,9 +344,7 @@ struct OTAView: View {
                     .padding(.vertical, 12).padding(.horizontal, 34)
                     .background(Theme.info, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
             }
-            Button {
-                // 导出日志占位（诊断里程碑）
-            } label: {
+            ShareLink(item: LogStore.shared.exportText) {
                 Text(zh ? "导出日志" : "Export Log")
                     .font(.hkt(16, .semibold))
                     .foregroundStyle(Theme.text)
@@ -489,7 +488,10 @@ struct OTAView: View {
     private static func failureText(_ error: OTAEngine.EngineError, linkLost: Bool, zh: Bool) -> String {
         switch error {
         case .timeout:
-            return zh ? "蓝牙连接丢失（传输超时）" : "Bluetooth connection lost (transfer timeout)"
+            // linkLost=真断链；否则多半是设备未进 bootloader（可能固件版本/包类型不符）
+            return linkLost
+                ? (zh ? "蓝牙连接丢失（传输超时）" : "Bluetooth connection lost (transfer timeout)")
+                : (zh ? "设备长时间无应答，未进入升级模式" : "The device stopped responding; it did not enter update mode")
         case .tooManyRestarts:
             return zh ? "设备多次复位重传，传输中止" : "Device reset too many times; transfer aborted"
         case .cancelled:

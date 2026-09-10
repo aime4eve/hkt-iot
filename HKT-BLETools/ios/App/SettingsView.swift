@@ -144,7 +144,13 @@ struct LogView: View {
             NavbarHeader(title: zh ? "诊断日志" : "Diagnostic Log",
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
-                LinkButton(title: zh ? "导出" : "Export") { /* 真实 txt 导出随诊断里程碑接入 */ }
+                ShareLink(item: LogStore.shared.exportText) {
+                    Text(zh ? "导出" : "Export")
+                        .font(.hkt(14, .semibold))
+                        .foregroundStyle(Theme.info)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(Theme.info.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                }
             }
             logContent
         }

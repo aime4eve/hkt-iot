@@ -32,4 +32,12 @@ final class LogStore {
     func info(_ message: String) { log("INFO", message) }
     func warn(_ message: String) { log("WARN", message) }
     func error(_ message: String) { log("ERR", message) }
+
+    /// 导出文本（时间 级别 消息，倒序=最新在上），供失败页/日志页「导出日志」分享。
+    var exportText: String {
+        let header = "HKT BLETools 诊断日志 · \(entries.count) 条 · 导出于 \(Date().formatted())\n"
+        return header + entries.reversed()
+            .map { "\($0.timestamp) [\($0.level)] \($0.message)" }
+            .joined(separator: "\n")
+    }
 }

@@ -23,6 +23,33 @@ public enum OTATransferPlanner {
         return padded
     }
 
+    /// Bootloader start frame (cmd 1, carries the firmware size in bytes):
+    /// `hkt len(2)=0005 cmd(1) size(4 BE) crc(2) bootload(8)` — no pack number.
+    /// Bootloader uart.c `fromBleDataHandle` case 1 reads size at data[6..9], answers
+    /// ACK(cmd+1=2, 0) and starts requesting packets. App firmware ignores this frame
+    /// (bootload suffix), so the sender must re-send it after the device reboots into
+    /// the bootloader (Android re-sends every 500 ms while ENTER_OTA is pending).
+    public static func startFrame(sizeBytes: Int) -> Data {
+        let size = UInt32(truncatingIfNeeded: sizeBytes)
+        var body = Data([0x01,
+                         UInt8((size >> 24) & 0xFF),
+                         UInt8((size >> 16) & 0xFF),
+                         UInt8((size >> 8) & 0xFF),
+                         UInt8(size & 0xFF)])
+        var frame = Data([0x68, 0x6B, 0x74])
+        frame.append(UInt8(body.count >> 8))
+        frame.append(UInt8(body.count & 0xFF))
+        frame.append(body)
+        let crc = CRC16.ccitt(body)
+        frame.append(UInt8(crc >> 8))
+        frame.append(UInt8(crc & 0xFF))
+        frame.append(contentsOf: bootloadSuffix)
+        return frame
+    }
+
+    /// Bootloader ACK frame shape (uart.c InfoUartAck): hkt cmd count(2) bootload — 14 B.
+    /// Documented here because OTAACK.parse mirrors it.
+
     /// Builds one data packet frame. Normal packets (and the final one) use cmd 0x02 — the
     /// device completes on its own once `firmware_write_size >= firmware_size` and replies
     /// ACK(cmd=0x03). `forceFlush: true` sends the packet as cmd 0xFF, forcing a flash flush
