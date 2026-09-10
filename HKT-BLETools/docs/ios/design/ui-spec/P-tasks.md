@@ -62,7 +62,7 @@ body（.card ×6）
 | addTask / del / delAll | 新建任务 / 删除 / 全部删除 | New Task / Delete / Delete All |
 | localMirror | 设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D） | No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only) |
 | noTasks / forceStopNote | 暂无定时任务 / 删除执行中的任务将强制停止阀门动作 | No scheduled tasks / Deleting a running task force-stops the valve |
-| days | 周一…周日 | Mon…Sun |
+| days | 一 二 三 四 五 六 日（用户 2026-09-10 裁决：中文单字） | Mon Tue Wed Thu Fri Sat Sun |
 | slot(Hint) | 任务槽位（1–16；写入覆盖该槽位现有任务） | Task slot (1–16; writing overwrites the task in that slot) |
 | needDay / invalidTime | 至少选择一天 / 时间无效 | Pick at least one day / Invalid time |
 | d1..d7 | 周一 周二 周三 周四 周五 周六 周日 | Mon Tue Wed Thu Fri Sat Sun |

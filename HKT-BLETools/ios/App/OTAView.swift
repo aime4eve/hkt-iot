@@ -1,8 +1,10 @@
 import CoreBLE
 import CoreProtocol
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// OTA 升级页（P_ota）—— 1:1 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-ota.md`）。
+/// OTA 升级页（P_ota）—— 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-ota.md`）。
+/// 固件包经系统文件选择窗口选取（真实文件名/大小/CRC32，期望版本从文件名解析）；
 /// 六阶段演示引擎（tick 380ms 复刻原型）；真实 OTAEngine 随协议里程碑接入。
 struct OTAView: View {
     let session: DeviceSession
@@ -12,7 +14,12 @@ struct OTAView: View {
 
     /// 0 选择 / 1 确认 / 2-7 运行六段 / 8 成功 / 9 失败
     @State private var stage = 0
-    @State private var picked = false
+    @State private var pickedURL: URL?
+    @State private var pickedFileName = ""
+    @State private var pickedFileSize = 0
+    @State private var pickedCRC = ""
+    @State private var expectedVersion = ""
+    @State private var showImporter = false
     @State private var pkt = 0
     @State private var pageWrite = false
     @State private var wait = 0
@@ -23,9 +30,14 @@ struct OTAView: View {
     @State private var timer: Timer?
 
     private let totalPackets = 1284
-    private let fileURL = URL(fileURLWithPath: "/tmp/mps100_v1.28_full.bin")
 
     private var zh: Bool { langStore.isZh }
+    private var picked: Bool { pickedURL != nil }
+    /// 当前版本：轮询快照的 固件版本（演示设备 v11.28，真机即真实版本）。
+    private var currentVersion: String {
+        "v\(snapshot.hardwareVersion).\(snapshot.softwareVersion)"
+    }
+    private var snapshot: DeviceSnapshot { session.snapshot }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,12 +59,64 @@ struct OTAView: View {
         .overlay { dialogs }
         .onDisappear { stopTimer() }
         .onAppear {
-            // 演示自动导航（-demo-page ota-run）：选中文件并直接开始传输
+            // 演示自动导航（-demo-page ota-run）：演示包直接开始传输
             if DemoLaunch.isPage("ota-run") {
-                picked = true
+                useDemoFile()
                 runOTA()
             }
+            // 演示自动导航（-demo-page ota-importer）：弹出系统文件选择窗口
+            if DemoLaunch.isPage("ota-importer") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { showImporter = true }
+            }
         }
+        .fileImporter(isPresented: $showImporter,
+                      allowedContentTypes: [.data],
+                      allowsMultipleSelection: false) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            adoptFile(url)
+        }
+    }
+
+    /// 读取所选固件包：真实文件名/大小 + CRC32 校验值 + 文件名中的期望版本。
+    private func adoptFile(_ url: URL) {
+        let secured = url.startAccessingSecurityScopedResource()
+        defer { if secured { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        pickedURL = url
+        pickedFileName = url.lastPathComponent
+        pickedFileSize = data.count
+        pickedCRC = String(format: "CRC32 %08X", crc32(of: data))
+        // 期望版本：从文件名解析（如 mps100_v1.28_full.bin → 1.28）
+        if let match = url.lastPathComponent.range(of: #"v?(\d+)\.(\d+)"#, options: .regularExpression) {
+            expectedVersion = String(url.lastPathComponent[match]).replacingOccurrences(of: "v", with: "")
+        } else {
+            expectedVersion = "?"
+        }
+    }
+
+    /// CRC32（IEEE 802.3 查表法）。
+    private func crc32(of data: Data) -> UInt32 {
+        let table: [UInt32] = (0..<256).map { index -> UInt32 in
+            var value = UInt32(index)
+            for _ in 0..<8 {
+                value = (value & 1) != 0 ? (0xEDB88320 ^ (value >> 1)) : (value >> 1)
+            }
+            return value
+        }
+        var crc: UInt32 = 0xFFFFFFFF
+        for byte in data {
+            crc = table[Int((crc ^ UInt32(byte)) & 0xFF)] ^ (crc >> 8)
+        }
+        return crc ^ 0xFFFFFFFF
+    }
+
+    /// 演示固件包（-demo-page ota-run 自动流程用）。
+    private func useDemoFile() {
+        pickedURL = URL(fileURLWithPath: "/tmp/mps100_v1.28_full.bin")
+        pickedFileName = "mps100_v1.28_full.bin"
+        pickedFileSize = 164_352
+        pickedCRC = "CRC32 待升级时校验"
+        expectedVersion = "1.28"
     }
 
     // MARK: - 阶段内容
@@ -67,23 +131,24 @@ struct OTAView: View {
         }
     }
 
-    /// stage 0：选择固件（规格卡 §2 stage 0）。
+    /// stage 0：选择固件（规格卡 §2 stage 0；系统文件选择窗口）。
     private var selectStage: some View {
         VStack(alignment: .leading, spacing: 0) {
             SettingsRow(label: "📄 " + (zh ? "选择固件文件…" : "Select firmware file…")) {
                 RowValue { Text("▸") }
-            } action: { picked = true }
+            } action: { showImporter = true }
             if picked {
                 HKTCard {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("📄 " + (zh ? "mps100_v1.28_full.bin" : "mps100_v1.28_full.bin"))
+                        Text("📄 " + pickedFileName)
                             .font(.hkt(13)).foregroundStyle(Theme.text)
-                        Text("164,352 B · CRC ✓")
+                            .lineLimit(1)
+                        Text("\(pickedFileSize.formatted()) B · \(pickedCRC)")
                             .font(.hkt(13)).monospacedDigit().foregroundStyle(Theme.text2)
-                        Text((zh ? "当前版本" : "Current version") + " v1.26 → "
+                        Text((zh ? "当前版本" : "Current version") + " \(currentVersion) → "
                              + (zh ? "期望版本" : "Expected version") + ": ")
                             .font(.hkt(13)).foregroundStyle(Theme.text2)
-                            + Text("1.28").bold().foregroundStyle(Theme.text)
+                            + Text(expectedVersion).bold().foregroundStyle(Theme.text)
                     }
                 }
                 .padding(.bottom, 11)
@@ -207,7 +272,8 @@ struct OTAView: View {
     private var successStage: some View {
         VStack(spacing: 10) {
             Text("✓").font(.system(size: 48)).foregroundStyle(Theme.ok)
-            Text(zh ? "升级成功 1.26 → 1.28" : "Update succeeded 1.26 → 1.28")
+            Text(zh ? "升级成功 \(currentVersion) → \(expectedVersion)"
+                    : "Update succeeded \(currentVersion) → \(expectedVersion)")
                 .font(.hkt(17, .semibold))
             Text("⏱ \(totalText)")
                 .font(.hkt(13)).monospacedDigit().foregroundStyle(Theme.text2)
@@ -283,12 +349,12 @@ struct OTAView: View {
             DialogScaffold(title: zh ? "确认升级？" : "Start update?",
                            centeredBody: true,
                            content: {
-                Text(zh ? "设备 \(session.deviceName) 将从 v1.26 升级到 v1.28。升级期间请保持 App 前台、蓝牙开启，勿离开此页面。"
-                        : "Device \(session.deviceName) will update from v1.26 to v1.28. Keep the app in the foreground, keep Bluetooth on, and stay on this screen.")
+                Text(zh ? "设备 \(session.deviceName) 将从 \(currentVersion) 升级到 v\(expectedVersion)。升级期间请保持 App 前台、蓝牙开启，勿离开此页面。"
+                        : "Device \(session.deviceName) will update from \(currentVersion) to v\(expectedVersion). Keep the app in the foreground, keep Bluetooth on, and stay on this screen.")
             }, buttons: {
                 DialogButton(title: zh ? "取消" : "Cancel") {
                     stage = 0
-                    picked = false
+                    pickedURL = nil
                 }
                 DialogButton(title: zh ? "确认升级" : "Update", kind: .primary) {
                     runOTA()
@@ -315,9 +381,9 @@ struct OTAView: View {
                            content: {
                 VStack(alignment: .leading, spacing: 2) {
                     reportRow(zh ? "设备" : "Device", session.deviceName)
-                    reportRow(zh ? "升级前版本" : "Previous version", "v1.26")
-                    reportRow(zh ? "期望版本" : "Expected", "v1.28")
-                    reportRow(zh ? "实际版本" : "Actual", "v1.28")
+                    reportRow(zh ? "升级前版本" : "Previous version", currentVersion)
+                    reportRow(zh ? "期望版本" : "Expected", "v\(expectedVersion)")
+                    reportRow(zh ? "实际版本" : "Actual", "v\(expectedVersion)")
                     reportRow(zh ? "传输包数" : "Packets sent", "\(totalPackets)")
                     reportRow(zh ? "设备复位重传" : "Device reset restarts", "0")
                     reportRow(zh ? "结果" : "Result", zh ? "成功" : "Success")
@@ -384,7 +450,7 @@ struct OTAView: View {
                         stage = 8
                         let total = Date().timeIntervalSince(startedAt)
                         totalText = String(format: "%dm %ds", Int(total) / 60, Int(total) % 60)
-                        LogStore.shared.info(zh ? "OTA 升级成功 v1.28" : "OTA success v1.28")
+                        LogStore.shared.info(zh ? "OTA 升级成功" : "OTA success")
                     }
                 }
             }
@@ -394,7 +460,6 @@ struct OTAView: View {
     private func resetToSelect() {
         stopTimer()
         stage = 0
-        picked = true
         pkt = 0
         wait = 0
     }

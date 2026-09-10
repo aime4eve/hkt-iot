@@ -65,7 +65,7 @@ struct TasksView: View {
     private var zh: Bool { langStore.isZh }
     private let store = ValveTaskStore.shared
 
-    private let dayNames = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    private let dayNames = ["一", "二", "三", "四", "五", "六", "日"]   // 用户 2026-09-10 裁决：中文单字
     private let dayNamesEn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
     var body: some View {

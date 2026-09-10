@@ -70,7 +70,7 @@ struct DeviceDetailView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 if target == "config" { showConfig = true }
                 if target == "tasks" { showTasks = true }
-                if target == "ota" || target == "ota-run" { showOTA = true }
+                if target == "ota" || target == "ota-run" || target == "ota-importer" { showOTA = true }
             }
         }
         .navigationDestination(isPresented: $showCalibration) {
