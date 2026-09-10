@@ -158,4 +158,38 @@ final class DeviceSessionTests: XCTestCase {
         XCTAssertFalse(acked)   // 只有轮询回应流动，无专用 ACK → 超时
         session.stop()
     }
+
+    // MARK: 校准（0xFD：立即 ACK → 等纯 ASCII "Calibration Done" 上报）
+
+    func testCalibrationCompletesOnTextReport() async {
+        let link = MockLink()
+        let ack = fixture("686B740000FFFF")
+        link.responder = { [weak link] frame in
+            guard frame.count > 6, frame[6] == CommandCode.calibrate else { return nil }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                link?.onReceive?(Data("Calibration Done".utf8))   // 设备端完成后的纯文本上报
+            }
+            return ack
+        }
+        let session = DeviceSession(family: .uds100, deviceName: "UDS100 3F2A",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let outcome = await session.startCalibration(reportTimeout: 2)
+        XCTAssertEqual(outcome, .done)
+        session.stop()
+    }
+
+    func testCalibrationTimesOutWithoutReport() async {
+        let link = MockLink()
+        let ack = fixture("686B740000FFFF")
+        link.responder = { [ack] frame in
+            frame.count > 6 && frame[6] == CommandCode.calibrate ? ack : nil   // ACK 后不再上报
+        }
+        let session = DeviceSession(family: .dc200Family, deviceName: "MPS100 9C01",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let outcome = await session.startCalibration(reportTimeout: 0.3)
+        XCTAssertEqual(outcome, .timeout)
+        session.stop()
+    }
 }

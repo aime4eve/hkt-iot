@@ -6,6 +6,7 @@ import Foundation
 /// - 0xFF 轮询 → 回该家族的标准快照夹具帧（与 DeviceSnapshotTests 同源字节）；
 /// - 0x02 写配置 → 回专用 ACK 帧（hkt 00 seq FF 值，固件 callback_BLEAck 同构），
 ///   并把载荷写进夹具（保存后下轮轮询即回新值，与真机一致）；
+/// - 0xFD 校准 → 立即 ACK（完成文本 "Calibration Done" 由 App 层钩子延迟注入）；
 /// - 0xFE 开关机 → 改写夹具 0x8D 电源位，下次轮询生效（关机详情页早退视图可演示）；
 /// - 其余命令 → 静默（与真机行为一致）。
 /// 夹具为固定字节，电源记录 0x8D 均为帧内首现（测试夹具已验证 power=1 可解码）。
@@ -37,6 +38,9 @@ final class DemoResponder: @unchecked Sendable {
         case CommandCode.power:
             powerOn = frame.count > 7 && frame[7] == 0x01
             return nil
+        case CommandCode.calibrate:
+            // 固件 0xFD：立即 ACK，设备端开始校准（完成文本由 App 层演示钩子延迟注入）
+            return Self.ackFrame
         default:
             return nil
         }

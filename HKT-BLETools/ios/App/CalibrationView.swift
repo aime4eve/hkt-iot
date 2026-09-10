@@ -6,9 +6,10 @@ import SwiftUI
 /// 1. 无二次确认，点「开始校准」直接开始；
 /// 2. 成功 → 显示成功信息，停顿 3 秒自动返回详情页；
 /// 3. 失败 → 弹窗询问是否再次尝试，取消则返回。
-/// 原型演示为本地 8s 计时；真实校准命令（以设备上报为准）随协议里程碑接入。
+/// 真实流程：0xFD 触发（设备立即 ACK）→ 设备端执行 → "Calibration Done" 文本上报驱动成功；
+/// 超时（UDS 120s / DC 180s，Android 同源）走失败分支。
 struct CalibrationView: View {
-    let family: DeviceFamily
+    let session: DeviceSession
 
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
@@ -16,11 +17,13 @@ struct CalibrationView: View {
     @State private var elapsed = 0
     @State private var showRetry = false
     @State private var timer: Timer?
+    @State private var calTask: Task<Void, Never>?
 
     enum CalState: Equatable {
         case idle, running, success, failure
     }
 
+    private var family: DeviceFamily { session.family }
     private var isUDS: Bool { family == .uds100 }
     private var zh: Bool { langStore.isZh }
 
@@ -57,7 +60,11 @@ struct CalibrationView: View {
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
         .overlay { retryDialog }
-        .onDisappear { stopTimer() }
+        .onDisappear {
+            stopTimer()
+            calTask?.cancel()
+            session.cancelCalibrationWait()   // 中途退出=放弃等待上报，设备端校准继续
+        }
     }
 
     // MARK: - idle 指引卡片（规格卡 §1 idle）
@@ -224,21 +231,20 @@ struct CalibrationView: View {
         }
     }
 
-    // MARK: - 状态机（原型 8s 演示周期；真实校准结果由设备上报驱动，规格卡 §3）
+    // MARK: - 状态机（真实校准：0xFD ACK → 等设备上报；计时条沿用原型 elapsed/8 视觉）
 
     private func begin() {
         state = .running
         elapsed = 0
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            MainActor.assumeIsolated {
-                elapsed += 1
-                if elapsed >= 8 {
-                    stopTimer()
-                    // 演示周期必成功；真实接入后此处按设备上报结果分流 success/failure
-                    state = .success
-                }
-            }
+            MainActor.assumeIsolated { elapsed += 1 }
+        }
+        calTask = Task {
+            let outcome = await session.startCalibration()
+            guard !Task.isCancelled else { return }
+            stopTimer()
+            state = outcome == .done ? .success : .failure
         }
     }
 

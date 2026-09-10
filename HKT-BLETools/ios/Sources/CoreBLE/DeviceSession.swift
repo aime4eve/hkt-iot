@@ -9,6 +9,11 @@ import Foundation
 @MainActor
 @Observable
 public final class DeviceSession {
+    public enum CalibrationOutcome: Equatable, Sendable {
+        case done
+        case timeout
+    }
+
     public private(set) var snapshot: DeviceSnapshot
     public private(set) var unknownTail = false
     public private(set) var lastResponseAt: Date?
@@ -34,6 +39,8 @@ public final class DeviceSession {
     private var stopped = false
     private var ackContinuation: CheckedContinuation<Bool, Never>?
     private var ackTimeoutTask: Task<Void, Never>?
+    private var calibrationWait: CheckedContinuation<CalibrationOutcome, Never>?
+    private var calibrationDeadline: Task<Void, Never>?
 
     public init(family: DeviceFamily, deviceName: String, link: any PeripheralLink, pollInterval: TimeInterval = 1.0) {
         self.family = family
@@ -113,6 +120,39 @@ public final class DeviceSession {
         continuation.resume(returning: value)
     }
 
+    /// 校准（0xFD，仅 UDS/DC 家族）：设备立即 ACK，随后设备端执行，完成时以纯 ASCII 文本
+    /// "Calibration Done" 上报（非协议帧；UDS acc.c 角度基准 / DC qmc5883l.c 磁力计）。
+    /// 上报超时 = 失败（Android 同源：DC 180s / UDS 120s；demo/测试可经 timeout 覆盖）。
+    public func startCalibration(reportTimeout timeout: TimeInterval? = nil) async -> CalibrationOutcome {
+        finishCalibration(.timeout)   // 页面中断后的遗留等待先释放，避免续体泄漏
+        let acked = await sendWrite(cmd: CommandCode.calibrate,
+                                    data: HKTFrameEncoder.fillerPayload(),   // TX-CAL-001：0xFF 填充
+                                    timeout: 5)
+        guard acked else { return .timeout }
+        return await withCheckedContinuation { continuation in
+            calibrationWait = continuation
+            let budget = timeout ?? (family == .dc200Family ? 180 : 120)
+            calibrationDeadline = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(budget))
+                guard let self else { return }
+                self.finishCalibration(.timeout)
+            }
+        }
+    }
+
+    /// 页面中途退出：放弃等待本次完成上报（设备端校准继续，无需取消命令）。
+    public func cancelCalibrationWait() {
+        finishCalibration(.timeout)
+    }
+
+    private func finishCalibration(_ outcome: CalibrationOutcome) {
+        calibrationDeadline?.cancel()
+        calibrationDeadline = nil
+        guard let continuation = calibrationWait else { return }
+        calibrationWait = nil
+        continuation.resume(returning: outcome)
+    }
+
     /// SP-25 对时：发送手机当前 Unix 秒（App 不做时区换算）。
     public func sendTimeSync() {
         guard !isTimeSyncing else { return }
@@ -144,6 +184,13 @@ public final class DeviceSession {
     }
 
     private func handleReceive(_ data: Data) {
+        // 校准完成上报是纯 ASCII 文本（非 hkt 帧），parse 会当坏前缀丢弃，须先查
+        if calibrationWait != nil,
+           let text = String(data: data.prefix(64), encoding: .ascii),
+           text.contains("Calibration Done") {
+            finishCalibration(.done)
+            return
+        }
         guard let (entries, unknownTail) = try? HKTResponseParser.parse(data, family: family) else { return }
         DeviceSnapshotDecoder.decode(entries, family: family, into: &snapshot)
         self.unknownTail = unknownTail

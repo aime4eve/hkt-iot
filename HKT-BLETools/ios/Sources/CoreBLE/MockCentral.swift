@@ -57,6 +57,11 @@ public final class MockCentral: BluetoothPort, @unchecked Sendable {
         }
     }
 
+    /// 场景注入：不经发送主动向会话链路投递一帧（演示模式延迟上报校准完成文本等）。
+    public func inject(_ data: Data) {
+        deliver { [weak self] in self?.onReceive?(data) }
+    }
+
     /// 场景注入：模拟对端断开。
     public func simulateDisconnect() {
         deliver { [weak self] in self?.onDisconnected?() }

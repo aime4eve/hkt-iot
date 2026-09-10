@@ -1,4 +1,5 @@
 import CoreBLE
+import CoreProtocol
 import SwiftUI
 
 @main
@@ -47,9 +48,22 @@ struct HKTBLEToolsApp: App {
             let responder = DemoResponder()
             // MOCK_CFG_ACK=0：模拟固件静默拒绝（不回 ACK），验收配置页失败横幅
             responder.configAcks = ProcessInfo.processInfo.environment["MOCK_CFG_ACK"] != "0"
-            mock.responder = { [weak scanModel] frame in
+            // 校准演示：ACK 后延迟注入完成文本（真机由设备校准结束时上报）；
+            // MOCK_CAL_DONE_DELAY 调整延迟秒数（默认 6），MOCK_CAL_FAIL=1 不注入（走超时失败分支）
+            let calDoneDelay = ProcessInfo.processInfo.environment["MOCK_CAL_DONE_DELAY"]
+                .flatMap(Double.init) ?? 6
+            let calFails = ProcessInfo.processInfo.environment["MOCK_CAL_FAIL"] == "1"
+            mock.responder = { [weak scanModel, weak mock] frame in
                 let family = MainActor.assumeIsolated { scanModel?.activeSession?.family }
-                return responder.respond(to: frame, family: family)
+                let reply = responder.respond(to: frame, family: family)
+                if frame.count > 6, frame[6] == CommandCode.calibrate {
+                    Task { [weak mock] in
+                        try? await Task.sleep(for: .seconds(calDoneDelay))
+                        guard !calFails else { return }
+                        mock?.inject(Data("Calibration Done".utf8))
+                    }
+                }
+                return reply
             }
         } else {
             scanModel = ScanModel()

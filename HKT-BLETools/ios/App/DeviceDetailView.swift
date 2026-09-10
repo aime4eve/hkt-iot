@@ -74,7 +74,7 @@ struct DeviceDetailView: View {
             }
         }
         .navigationDestination(isPresented: $showCalibration) {
-            CalibrationView(family: session.family)
+            CalibrationView(session: session)
         }
         .navigationDestination(isPresented: $showConfig) {
             ConfigView(session: session)
