@@ -48,6 +48,8 @@ struct HKTBLEToolsApp: App {
             let responder = DemoResponder()
             // MOCK_CFG_ACK=0：模拟固件静默拒绝（不回 ACK），验收配置页失败横幅
             responder.configAcks = ProcessInfo.processInfo.environment["MOCK_CFG_ACK"] != "0"
+            // MOCK_RT_BUSY=1：模拟设备忙（0x03 静默忽略），验收任务页 busy 横幅
+            responder.realtimeBusy = ProcessInfo.processInfo.environment["MOCK_RT_BUSY"] == "1"
             // 校准演示：ACK 后延迟注入完成文本（真机由设备校准结束时上报）；
             // MOCK_CAL_DONE_DELAY 调整延迟秒数（默认 6），MOCK_CAL_FAIL=1 不注入（走超时失败分支）
             let calDoneDelay = ProcessInfo.processInfo.environment["MOCK_CAL_DONE_DELAY"]

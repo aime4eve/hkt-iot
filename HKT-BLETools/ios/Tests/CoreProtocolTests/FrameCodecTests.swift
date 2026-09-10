@@ -73,6 +73,25 @@ final class FrameCodecTests: XCTestCase {
                        "0201050119001E")   // 上方 testSVC100ConfigFrame 的 data 段
     }
 
+    // MARK: SVC 任务载荷编码器——与上方 0x03/0x04/0x05 golden 帧同源
+
+    func testSVCRealtimeTaskPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.svcRealtimeTaskPayload(valve: 1, state: 1, durationS: 5, pulse: 100).hex,
+                       "010100050064")   // 上方 testSVC100RealtimeTask 的 data 段
+    }
+
+    func testSVCTimedTaskPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.svcTimedTaskPayload(id: 1, valve: 1, state: 1, pulse: 100,
+                                                           startMinute: 8 * 60, endMinute: 18 * 60 + 30,
+                                                           repeatMask: 0x7F).hex,
+                       "010101006401E004567F")   // 上方 testSVC100TimedTask 的 data 段（起止=分钟数）
+    }
+
+    func testSVCDeleteTaskPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.svcDeleteTaskPayload(id: 0xFF).hex, "FF")
+        XCTAssertEqual(HKTFrameEncoder.svcDeleteTaskPayload(id: 3).hex, "03")
+    }
+
     func testPowerFrame() {
         // Power byte sits at payload[3] (frame offset 10) — firmware reads data[10].
         XCTAssertEqual(frame(packNum: 0, cmd: CommandCode.power, data: HKTFrameEncoder.powerPayload(on: true)),

@@ -80,7 +80,7 @@ struct DeviceDetailView: View {
             ConfigView(session: session)
         }
         .navigationDestination(isPresented: $showTasks) {
-            TasksView()
+            TasksView(session: session)
         }
         .navigationDestination(isPresented: $showOTA) {
             OTAView(session: session)

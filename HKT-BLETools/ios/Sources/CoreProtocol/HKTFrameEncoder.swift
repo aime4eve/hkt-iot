@@ -62,6 +62,35 @@ public enum HKTFrameEncoder {
         return data
     }
 
+    // MARK: SVC 阀门任务（0x03/0x04/0x05）
+    // 契约出处：Android Communicate.kt streamDevice + 固件 communicate.c data[5]==7/11/2 分支。
+    // 设备忙（本地任务执行中）时 0x03 被静默忽略（无 ACK）；0x04/0x05 参数非法同样静默拒绝。
+
+    /// 实时任务（0x03）：阀门 / 动作 / 持续秒数 u16 BE / 脉冲数 u16 BE（6B，len=7）。
+    public static func svcRealtimeTaskPayload(valve: Int, state: Int, durationS: Int, pulse: Int) -> Data {
+        var data = Data([UInt8(valve), UInt8(state)])
+        data.append(contentsOf: UInt16(durationS).dataBE)
+        data.append(contentsOf: UInt16(pulse).dataBE)
+        return data
+    }
+
+    /// 定时任务（0x04）：槽位 / 阀门 / 动作 / 脉冲 u16 BE / 起止（午夜起分钟数 u16 BE）/
+    /// 重复位（bit0=周一 … bit6=周日）。共 10B，len=11。
+    public static func svcTimedTaskPayload(id: Int, valve: Int, state: Int, pulse: Int,
+                                           startMinute: Int, endMinute: Int, repeatMask: Int) -> Data {
+        var data = Data([UInt8(id), UInt8(valve), UInt8(state)])
+        data.append(contentsOf: UInt16(pulse).dataBE)
+        data.append(contentsOf: UInt16(startMinute).dataBE)
+        data.append(contentsOf: UInt16(endMinute).dataBE)
+        data.append(UInt8(repeatMask))
+        return data
+    }
+
+    /// 删除定时任务（0x05）：槽位 id，0xFF = 全部删除（并强制停止执行中任务）。1B，len=2。
+    public static func svcDeleteTaskPayload(id: Int) -> Data {
+        Data([UInt8(id)])
+    }
+
     /// Time-sync (0x06) frame — carries a wire quirk that all three firmwares depend on:
     /// the declared len is 4 (data length only, NOT cmd+data like every other command);
     /// the firmware guard is `data[5]==4` while the stamp is read from data[7..10].

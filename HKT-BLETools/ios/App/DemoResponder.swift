@@ -14,6 +14,8 @@ final class DemoResponder: @unchecked Sendable {
     private var powerOn = true
     /// MOCK_CFG_ACK=0 时模拟固件静默拒绝（不回 ACK），用于验收配置页失败横幅。
     var configAcks = true
+    /// MOCK_RT_BUSY=1 时模拟设备忙：0x03 静默忽略（无 ACK），验收任务页 busy 横幅。
+    var realtimeBusy = false
 
     private var frames: [DeviceFamily: Data] = [
         // 夹具与 shared/fixtures/response-parse.json 同源（见 Tests/CoreProtocolTests）
@@ -35,6 +37,10 @@ final class DemoResponder: @unchecked Sendable {
             guard let family else { return nil }
             applyConfig(frame, to: family)
             return configAcks ? Self.ackFrame : nil
+        case CommandCode.svcRealtimeTask:
+            return realtimeBusy ? nil : Self.ackFrame   // 设备忙=静默忽略，与固件一致
+        case CommandCode.svcTimedTask, CommandCode.svcDeleteTask:
+            return Self.ackFrame
         case CommandCode.power:
             powerOn = frame.count > 7 && frame[7] == 0x01
             return nil

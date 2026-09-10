@@ -1,4 +1,5 @@
 import CoreBLE
+import CoreProtocol
 import SwiftUI
 
 /// 阀门任务本地镜像存储（原型 S.tasks）：0x04/0x05 的 App 侧记录，内存态。
@@ -42,11 +43,15 @@ final class ValveTaskStore {
 
 /// 阀门任务页（P_tasks）—— 1:1 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-tasks.md`）。
 /// 列表：实时任务卡(0x03) + 定时任务镜像表(0x04/0x05)；编辑页：槽位/阀门/动作/脉冲/时间/重复。
-/// 真实 0x03/0x04/0x05 发送随协议里程碑接入；当前本地镜像+日志与原型演示一致。
+/// 真实收发：设备 ACK 驱动（0x03 设备忙时静默忽略=超时，显示 busy 横幅；镜像只在确认后记录）。
 struct TasksView: View {
+    let session: DeviceSession
+
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var path: [Int] = []          // [0] = 编辑页
+    @State private var rtPending = false
+    @State private var savePending = false
 
     @State private var rtValve = 0               // 0 双阀 / 1 阀1 / 2 阀2
     @State private var rtState = 1               // 1 开 / 0 关
@@ -76,7 +81,7 @@ struct TasksView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             // 演示自动导航（-demo-page task-edit）：直接进入编辑页
-            if ProcessInfo.processInfo.arguments.contains("-demo-page task-edit") {
+            if DemoLaunch.isPage("task-edit") {
                 newTask()
                 path = [0]
             }
@@ -105,8 +110,7 @@ struct TasksView: View {
                     taskList
                     if !store.tasks.isEmpty {
                         Button {
-                            store.deleteAll()
-                            LogStore.shared.info("0x05 " + (zh ? "全部删除 (0xFF)" : "delete ALL (0xFF)"))
+                            deleteAll()
                         } label: {
                             Text(zh ? "全部删除 (0xFF)" : "Delete All (0xFF)")
                                 .font(.hkt(16, .semibold))
@@ -259,8 +263,7 @@ struct TasksView: View {
                     .padding(.leading, 8)
                 Spacer(minLength: 8)
                 Button(zh ? "删除" : "Delete") {
-                    store.delete(task.id)
-                    LogStore.shared.info("0x05 " + (zh ? "删除任务" : "delete task") + " #\(task.id)")
+                    deleteTask(task.id)
                 }
                 .font(.hkt(14, .semibold))
                 .foregroundStyle(Theme.err)
@@ -509,18 +512,59 @@ struct TasksView: View {
         .padding(.bottom, 9)
     }
 
-    // MARK: - 动作（execRT / saveTask / newTask；真实命令随协议里程碑接入）
+    // MARK: - 动作（真实 0x03/0x04/0x05：发送 → 设备 ACK 驱动结果；设备忙/拒绝=超时无 ACK）
 
-    /// 立即执行（0x03）：校验 0–65535；busy 演示 2.6s；成功更新本地演示状态。
+    /// 立即执行（0x03）：校验 0–65535 → 发送；无 ACK（设备本地任务执行中被静默忽略）显示 busy 横幅。
     private func execRT() {
         let duration = Int(rtDur)
         let pulse = Int(rtPulse)
-        guard let duration, let pulse, (0...65535).contains(duration), (0...65535).contains(pulse) else {
+        guard let duration, let pulse, (0...65535).contains(duration), (0...65535).contains(pulse), !rtPending else {
             busyVisible = false
             return
         }
+        busyVisible = false
+        rtPending = true
         LogStore.shared.info("0x03 " + (zh ? "执行 valve=\(rtValve) state=\(rtState)"
                                            : "exec valve=\(rtValve) state=\(rtState)"))
+        Task {
+            let acked = await session.sendWrite(
+                cmd: CommandCode.svcRealtimeTask,
+                data: HKTFrameEncoder.svcRealtimeTaskPayload(valve: rtValve, state: rtState,
+                                                             durationS: duration, pulse: pulse))
+            rtPending = false
+            busyVisible = !acked
+            LogStore.shared.info(acked
+                ? (zh ? "0x03 ACK（设备已开始执行）" : "0x03 ACK (device started)")
+                : (zh ? "0x03 无 ACK（设备忙或已拒绝）" : "0x03 no ACK (busy or rejected)"))
+        }
+    }
+
+    /// 删除任务（0x05）：确认后更新镜像；删除执行中任务设备会强制停止阀门动作。
+    private func deleteTask(_ id: Int) {
+        Task {
+            let acked = await session.sendWrite(cmd: CommandCode.svcDeleteTask,
+                                                data: HKTFrameEncoder.svcDeleteTaskPayload(id: id))
+            guard acked else {
+                LogStore.shared.info("0x05 " + (zh ? "无 ACK，未删除 #\(id)" : "no ACK, #\(id) not deleted"))
+                return
+            }
+            store.delete(id)
+            LogStore.shared.info("0x05 " + (zh ? "删除任务" : "delete task") + " #\(id) ACK")
+        }
+    }
+
+    /// 全部删除（0x05 id=0xFF）。
+    private func deleteAll() {
+        Task {
+            let acked = await session.sendWrite(cmd: CommandCode.svcDeleteTask,
+                                                data: HKTFrameEncoder.svcDeleteTaskPayload(id: 0xFF))
+            guard acked else {
+                LogStore.shared.info("0x05 " + (zh ? "全部删除无 ACK" : "delete ALL no ACK"))
+                return
+            }
+            store.deleteAll()
+            LogStore.shared.info("0x05 " + (zh ? "全部删除 (0xFF) ACK" : "delete ALL (0xFF) ACK"))
+        }
     }
 
     /// 新建任务：取未占用最小槽位。
@@ -537,7 +581,7 @@ struct TasksView: View {
         editPulse = "100"
     }
 
-    /// 保存任务（0x04）：前置校验 → 镜像 upsert + 日志。
+    /// 保存任务（0x04）：前置校验 → 发送；ACK 后才写入镜像（固件对非法参数静默拒绝）。
     private func saveTask() {
         let pulse = Int(editPulse)
         if editDraft.eh * 60 + editDraft.em <= editDraft.sh * 60 + editDraft.sm {
@@ -552,9 +596,30 @@ struct TasksView: View {
             validationMessage = zh ? "至少选择一天" : "Pick at least one day"
             return
         }
+        guard !savePending else { return }
         validationMessage = nil
-        store.upsert(editDraft)
-        LogStore.shared.info("0x04 " + (zh ? "任务" : "task") + " #\(editDraft.id) ACK")
-        path = []
+        savePending = true
+        // 重复位：days[0]=周一 … days[6]=周日 → bit0…bit6（固件 repeat_duty，0x7F 上限）
+        let repeatMask = editDraft.days.enumerated().reduce(0) { mask, pair in
+            pair.element ? mask | (1 << pair.offset) : mask
+        }
+        LogStore.shared.info("0x04 " + (zh ? "任务" : "task") + " #\(editDraft.id)")
+        Task {
+            let acked = await session.sendWrite(
+                cmd: CommandCode.svcTimedTask,
+                data: HKTFrameEncoder.svcTimedTaskPayload(
+                    id: editDraft.id, valve: editDraft.valve, state: editDraft.state,
+                    pulse: pulse, startMinute: editDraft.sh * 60 + editDraft.sm,
+                    endMinute: editDraft.eh * 60 + editDraft.em, repeatMask: repeatMask))
+            savePending = false
+            if acked {
+                store.upsert(editDraft)
+                LogStore.shared.info("0x04 " + (zh ? "任务" : "task") + " #\(editDraft.id) ACK")
+                path = []
+            } else {
+                validationMessage = zh ? "设备未确认（可能被固件拒绝），请检查参数后重试"
+                                       : "Device did not acknowledge (possibly rejected); check values and retry"
+            }
+        }
     }
 }
