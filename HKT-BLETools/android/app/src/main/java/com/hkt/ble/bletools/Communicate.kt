@@ -4,6 +4,13 @@ import android.bluetooth.BluetoothGatt
 import android.util.Log
 import java.util.Locale
 
+internal const val SVC_TASK_PULSE_MAX = 0xFFFF
+
+internal fun formatUInt16(value: Int): String {
+    val normalizedValue = value.coerceIn(0, SVC_TASK_PULSE_MAX)
+    return String.format("%04X", normalizedValue)
+}
+
 
 //hkt 686B74  bootloader 626F6F746C6F6164
 //hkt(3) len(2)(cmd+data) cmd(1) data(n) crc(2)(cmd+data) bootloader(8)
@@ -328,11 +335,11 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
                 dataLenString = String.format("%0${4}X", 7)
                 cmdString = String.format("%0${2}X", cmd)
                 dataString = String.format(
-                    "%0${2}X%0${2}X%0${4}X%0${4}X",
+                    "%0${2}X%0${2}X%0${4}X%s",
                     mDeviceEvent.valveRealtime,
                     mDeviceEvent.stateRealtime,
                     mDeviceEvent.timeRealtime,
-                    mDeviceEvent.pulseRealtime
+                    formatUInt16(mDeviceEvent.pulseRealtime)
                 )
             crcData = String.format("%0${2}X", cmd) + dataString
         }
@@ -340,12 +347,12 @@ class StreamThread(gatt: BluetoothGatt?):Thread () {
             //电磁阀配置 定时任务 hkt(3) packnum(1) len(2)(cmd+data) cmd(1) data(变长) crc(2)
             dataLenString = String.format("%0${4}X", 11)
             cmdString = String.format("%0${2}X", cmd)
-            dataString = String.format(
-                "%0${2}X%0${2}X%0${2}X%0${4}X%0${4}X%0${4}X%0${2}X",
-                mDeviceEvent.idTimed,
-                mDeviceEvent.valveTimed,
-                mDeviceEvent.stateTimed,
-                mDeviceEvent.pulseTimed,
+                dataString = String.format(
+                    "%0${2}X%0${2}X%0${2}X%s%0${4}X%0${4}X%0${2}X",
+                    mDeviceEvent.idTimed,
+                    mDeviceEvent.valveTimed,
+                    mDeviceEvent.stateTimed,
+                    formatUInt16(mDeviceEvent.pulseTimed),
                 mDeviceEvent.startTimeTimed,
                 mDeviceEvent.endTimeTimed,
                 mDeviceEvent.repeatTimed

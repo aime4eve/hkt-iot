@@ -1,2 +1,7 @@
 .DS_Store
+.build/
+build/
+**/xcuserdata/
+DerivedData/
+*.ipa
 .mimosa/

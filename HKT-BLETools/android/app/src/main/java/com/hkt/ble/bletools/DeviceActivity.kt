@@ -645,7 +645,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     val number: Int = pulse.toInt()
                     // 在这里使用转换后的整型
                     mDeviceEvent.pulseRealtime = number
-                    if(number > 65535) {
+                    if(number !in 0..SVC_TASK_PULSE_MAX) {
                         error++
                         pulseEditText.error = context.getString(R.string.invalid_numeric_range)
                     } else {
@@ -780,7 +780,7 @@ class ExpandableListAdapter(private val context: Context, private var groups: Li
                     val number: Int = pulse.toInt()
                     // 在这里使用转换后的整型
                     mDeviceEvent.pulseTimed = number
-                    if(number > 65535) {
+                    if(number !in 0..SVC_TASK_PULSE_MAX) {
                         error++
                         pulseEditText.error = context.getString(R.string.invalid_numeric_range)
                     } else {

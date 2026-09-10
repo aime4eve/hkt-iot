@@ -1,0 +1,221 @@
+import CoreProtocol
+import Foundation
+
+/// 设备会话（R-5/R-7/R-8）：1s 轮询 0xFF 查询 → TLV 解码 → 快照发布。
+/// 传输无关：面向 PeripheralLink（真 = SystemCentral 链路，假 = MockLink 夹具应答）。
+/// - R-7：最后成功响应距今超过 staleAfter 秒 → isStale（界面显示"最后更新 x 秒前"）；
+/// - R-8/S-6：响应尾部未知类型 → unknownTail 标记（已解析前缀保留，不崩溃不跳过）；
+/// - 字段保留上次有效值（轮询整体刷新语义，SP-5）。
+@MainActor
+@Observable
+public final class DeviceSession {
+    public enum CalibrationOutcome: Equatable, Sendable {
+        case done
+        case timeout
+    }
+
+    public private(set) var snapshot: DeviceSnapshot
+    public private(set) var unknownTail = false
+    public private(set) var lastResponseAt: Date?
+    /// 距最后成功响应的秒数（nil = 尚无响应）。
+    public private(set) var secondsSinceLastResponse: Int?
+    public private(set) var pollsSent = 0
+    public private(set) var isPolling = false
+    public private(set) var linkLost = false
+    public private(set) var isTimeSyncing = false
+    /// 对时完成提示态（原型 tsState：同步中 → 完成 2.6s 后回落）。
+    public private(set) var timeSyncDone = false
+
+    /// R-7 停摆判定窗口（秒）。
+    public var staleAfter: Int = 4
+
+    public let family: DeviceFamily
+    public let deviceName: String
+
+    private let link: any PeripheralLink
+    private let pollInterval: TimeInterval
+    private var pollTask: Task<Void, Never>?
+    private var packNum: UInt8 = 0
+    private var stopped = false
+    private var pollingSuspended = false
+    private var ackContinuation: CheckedContinuation<Bool, Never>?
+    private var ackTimeoutTask: Task<Void, Never>?
+    private var calibrationWait: CheckedContinuation<CalibrationOutcome, Never>?
+    private var calibrationDeadline: Task<Void, Never>?
+
+    public init(family: DeviceFamily, deviceName: String, link: any PeripheralLink, pollInterval: TimeInterval = 1.0) {
+        self.family = family
+        self.deviceName = deviceName
+        self.link = link
+        self.pollInterval = pollInterval
+        snapshot = DeviceSnapshot(family: family)
+    }
+
+    /// R-7：链路丢失 / 响应过旧 / 首响应迟迟不来。
+    public var isStale: Bool {
+        if linkLost { return true }
+        if let seconds = secondsSinceLastResponse { return seconds > staleAfter }
+        return pollsSent >= 3
+    }
+
+    public func start() {
+        guard !isPolling else { return }
+        isPolling = true
+        stopped = false
+        link.onReceive = { [weak self] data in
+            MainActor.assumeIsolated {
+                self?.handleReceive(data)
+            }
+        }
+        link.onDisconnected = { [weak self] in
+            MainActor.assumeIsolated {
+                self?.linkLost = true
+            }
+        }
+        pollTask = Task { [weak self] in
+            while let self, !self.stopped, !Task.isCancelled {
+                self.pollOnce()
+                try? await Task.sleep(for: .seconds(self.pollInterval))
+            }
+        }
+    }
+
+    /// R-31 手动断开 / 页面退出：停止轮询并断开链路（调用方负责关停传输层连接）。
+    public func stop() {
+        stopped = true
+        isPolling = false
+        pollTask?.cancel()
+        resumeAck(false)
+    }
+
+    /// 发送一条协议帧（界面动作调用）。
+    public func send(cmd: UInt8, data: Data) {
+        packNum &+= 1
+        link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+    }
+
+    /// OTA 传输期间直发引导层原始帧（自带头/长度/CRC/bootload 后缀，不再包应用帧）。
+    public func sendRaw(_ frame: Data) {
+        link.send(frame)
+    }
+
+    /// OTA 传输期间暂停 0xFF 轮询（引导层不应答询帧，Android 同款停轮询）。
+    public func setPollingSuspended(_ suspended: Bool) {
+        pollingSuspended = suspended
+    }
+
+    /// 引导层 ACK 帧旁路：返回 true 表示该帧已被 OTA 消费，不再走 TLV 解析。
+    public var rawFrameHandler: ((Data) -> Bool)?
+
+    /// 写入命令 + 确认等待（0x02/0x03/0x04/0x05 通用）：固件仅在 callback_BLEAck 回含 0xFF
+    /// 应答段的专用帧（轮询/状态回应不含该段），收到即视为设备确认；超时未回 = 未确认
+    /// （可能被固件静默拒绝）。Android 同语义：streamRev 收到 0xFF 段才把 START 事件转 FINISH。
+    /// 先注册等待再发送（原子），ACK 不会先于注册到达——MockLink 同步应答尤其依赖此序。
+    @discardableResult
+    public func sendWrite(cmd: UInt8, data: Data, timeout: TimeInterval = 3) async -> Bool {
+        resumeAck(false)   // 模态保证串行，此处仅防御并发重入
+        return await withCheckedContinuation { continuation in
+            ackContinuation = continuation
+            ackTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(timeout))
+                guard let self, self.ackContinuation != nil else { return }
+                self.resumeAck(false)
+            }
+            packNum &+= 1
+            link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+        }
+    }
+
+    private func resumeAck(_ value: Bool) {
+        ackTimeoutTask?.cancel()
+        ackTimeoutTask = nil
+        guard let continuation = ackContinuation else { return }
+        ackContinuation = nil
+        continuation.resume(returning: value)
+    }
+
+    /// 校准（0xFD，仅 UDS/DC 家族）：设备立即 ACK，随后设备端执行，完成时以纯 ASCII 文本
+    /// "Calibration Done" 上报（非协议帧；UDS acc.c 角度基准 / DC qmc5883l.c 磁力计）。
+    /// 上报超时 = 失败（Android 同源：DC 180s / UDS 120s；demo/测试可经 timeout 覆盖）。
+    public func startCalibration(reportTimeout timeout: TimeInterval? = nil) async -> CalibrationOutcome {
+        finishCalibration(.timeout)   // 页面中断后的遗留等待先释放，避免续体泄漏
+        let acked = await sendWrite(cmd: CommandCode.calibrate,
+                                    data: HKTFrameEncoder.fillerPayload(),   // TX-CAL-001：0xFF 填充
+                                    timeout: 5)
+        guard acked else { return .timeout }
+        return await withCheckedContinuation { continuation in
+            calibrationWait = continuation
+            let budget = timeout ?? (family == .dc200Family ? 180 : 120)
+            calibrationDeadline = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(budget))
+                guard let self else { return }
+                self.finishCalibration(.timeout)
+            }
+        }
+    }
+
+    /// 页面中途退出：放弃等待本次完成上报（设备端校准继续，无需取消命令）。
+    public func cancelCalibrationWait() {
+        finishCalibration(.timeout)
+    }
+
+    private func finishCalibration(_ outcome: CalibrationOutcome) {
+        calibrationDeadline?.cancel()
+        calibrationDeadline = nil
+        guard let continuation = calibrationWait else { return }
+        calibrationWait = nil
+        continuation.resume(returning: outcome)
+    }
+
+    /// SP-25 对时：发送手机当前 Unix 秒（App 不做时区换算）。
+    public func sendTimeSync() {
+        guard !isTimeSyncing else { return }
+        isTimeSyncing = true
+        send(cmd: CommandCode.timeSync,
+             data: HKTFrameEncoder.timeSyncFrame(packNum: packNum &+ 1,
+                                                  stampBE: UInt32(Date().timeIntervalSince1970)))
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let self else { return }
+            await MainActor.run {
+                self.isTimeSyncing = false
+                self.timeSyncDone = true
+            }
+            try? await Task.sleep(for: .seconds(2.6))
+            await MainActor.run { self.timeSyncDone = false }
+        }
+    }
+
+    private func pollOnce() {
+        guard !stopped, !pollingSuspended else { return }
+        pollsSent &+= 1
+        packNum &+= 1
+        link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: CommandCode.query,
+                                           data: HKTFrameEncoder.fillerPayload()))
+        if lastResponseAt == nil {
+            secondsSinceLastResponse = pollsSent   // 无首响应：按发送次数近似停摆进度（1 次 ≈ 1s）
+        }
+    }
+
+    private func handleReceive(_ data: Data) {
+        // OTA 传输中：引导层 ACK 帧（hkt…bootload）由引擎消费，不走 TLV 解析
+        if let handler = rawFrameHandler, handler(data) { return }
+        // 校准完成上报是纯 ASCII 文本（非 hkt 帧），parse 会当坏前缀丢弃，须先查
+        if calibrationWait != nil,
+           let text = String(data: data.prefix(64), encoding: .ascii),
+           text.contains("Calibration Done") {
+            finishCalibration(.done)
+            return
+        }
+        guard let (entries, unknownTail) = try? HKTResponseParser.parse(data, family: family) else { return }
+        DeviceSnapshotDecoder.decode(entries, family: family, into: &snapshot)
+        self.unknownTail = unknownTail
+        lastResponseAt = Date()
+        secondsSinceLastResponse = 0
+        linkLost = false
+        // 写入确认：专用 ACK 帧仅含 0xFF 应答段（三家族轮询回应均不带该段，不会误判）
+        if ackContinuation != nil, entries.contains(where: { $0.type == 0xFF }) {
+            resumeAck(true)
+        }
+    }
+}

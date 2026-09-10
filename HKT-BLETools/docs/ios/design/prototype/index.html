@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HKT BLETools iOS v1 — 高保真场景原型 v2（D3/D4）</title>
+<title>HKT BLETools iOS v1 — 高保真原型 v2（已确认·冻结 2026-09-08）</title>
 <style>
   :root{
     --bg:#eef1f4; --card:#ffffff; --card2:#f5f7f9; --text:#151a20; --text2:#5f6b77;
@@ -214,7 +214,7 @@
 </head>
 <body>
 <div class="toolbar">
-  <span class="brand">HKT BLETools · 场景原型 v2</span>
+  <span class="brand">HKT BLETools · 原型 v2（已确认·冻结）</span>
   <button class="tb" data-nav="home">扫描</button>
   <button class="tb" data-nav="detail">详情</button>
   <button class="tb" data-nav="ota">OTA</button>
@@ -255,8 +255,10 @@
 /* ═══════════ i18n ═══════════ */
 const ZH={
   prev:"‹ 返回", app:"HKT BLETools", settings:"设置", scanning:n=>`扫描中… 已发现 ${n} 台`, scanDone:n=>`扫描完成 · ${n} 台`,
-  stop:"停止", rescan:"重新扫描", empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
-  locate:"⌖ 定位", locateT:"定位设备", locateSub:"扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标",
+  stop:"停止", rescan:"附近设备",   // 用户 2026-09-10 裁决
+  empty:"未发现支持设备", emptySub:"请确认设备已上电、在信号范围内",
+  locate:"⌖ 扫描",   // 用户 2026-09-10 裁决（原「⌖ 定位」）
+  locateT:"定位设备", locateSub:"扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标",
   locateQr:"扫描设备二维码", locateManual:"输入 DevEUI", locateGo:"定位", euiLabel:"DevEUI（16 位十六进制）",
   errEui:"须为 16 位十六进制（0-9、A-F）",
   camPermT:"允许“HKT BLETools”使用相机？", camPermB:"用于扫描设备标签上的二维码", camHint:"对准设备标签上的二维码，自动识别",
@@ -299,13 +301,15 @@ const ZH={
   keepFront:"升级期间请保持 App 前台、勿锁屏", resetBanner:(n)=>`设备超时复位，已自动从包 0 重传（第 ${n}/2 次）`,
   leaveT:"升级正在进行", leaveB:"现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？",
   stay:"继续升级", leave:"仍然离开", cancelUp:"取消升级",
+  targetDev:(d,id)=>`正在升级设备 ${d} ${id}`,   // 用户 2026-09-10 裁决：运行态标注目标设备
   okT:"升级成功", report:"查看升级报告", done:"完成", failT:"升级失败", retry:"重新升级",
   reason:"原因", rConnLost:"蓝牙连接丢失", rBtOff:"蓝牙已被关闭", rMismatch:"读到版本 v1.26，与期望 v1.28 不符", rNoResp:"设备长时间无响应",
+  retryConn:"重新连接",   // 用户 2026-09-10 裁决：断线重试不再误用 OTA 的 retry（「重新升级」）
   exportLog:"导出日志", back:"返回",
   rpTitle:"OTA 升级报告", rpDev:"设备", rpOld:"升级前版本", rpExp:"期望版本", rpAct:"实际版本",
   rpStages:"阶段耗时", rpPkt:"传输包数", rpReset:"设备复位重传", rpResult:"结果", rpTime:"总耗时",
   times:(a,b)=>`${a} → ${b}`,
-  d1:"周一", d2:"周二", d3:"周三", d4:"周四", d5:"周五", d6:"周六", d7:"周日",
+  d1:"一", d2:"二", d3:"三", d4:"四", d5:"五", d6:"六", d7:"日",   // 用户 2026-09-10 裁决：中文单字
   pct:p=>`${p}%`,
   tsTitle:"时间同步", tsHint:"将手机当前时间同步到设备", tsGo:"同步到设备",
   tsSending:"正在同步…", tsDone:"✓ 设备时间已更新", power:"电源", offState:"已关机",
@@ -383,7 +387,7 @@ const EN={
   lang:"Language", sys:"Follow System", diag:"Diagnostic Log", view:"View ▸", rssiTh:"Signal threshold",
   prefixF:"Name prefix filter", prefixHint:"Only devices whose name starts with a selected prefix; unnamed devices are excluded",
   privUpdated:"Effective date",
-  connBadge:"Connected", discBtn:"Disconnect", discGo:"Disconnect", discConfirmT:"Disconnect?", discConfirmB:"Disconnecting stops live polling and disconnects BLE. This is an expected disconnect and will not auto-reconnect. The device will be kept in Recents.",
+  connBadge:"Connected", discBtn:"Disconnect", switchT:"Switch device?", switchGo:"Switch & Connect", discGo:"Disconnect", discConfirmT:"Disconnect?", discConfirmB:"Disconnecting stops live polling and disconnects BLE. This is an expected disconnect and will not auto-reconnect. The device will be kept in Recents.",
   confirmDisc:"Disconnect",
   about:"About", ver:"Version", privacy:"Privacy", taps:n=>`${7-n} more taps to enable Debug`,
   dbgOn:"Debug mode enabled", permT:"Allow “HKT BLETools” to use Bluetooth?", permB:"Used to find and connect nearby HKT devices",
@@ -400,8 +404,10 @@ const EN={
   keepFront:"Keep the app in the foreground; don't lock the screen", resetBanner:n=>`Device timed out and reset; restarted from packet 0 (attempt ${n}/2)`,
   leaveT:"Update in progress", leaveB:"Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?",
   stay:"Keep Updating", leave:"Leave", cancelUp:"Cancel Update",
+  targetDev:(d,id)=>`Upgrading device ${d} ${id}`,
   okT:"Update succeeded", report:"View update report", done:"Done", failT:"Update failed", retry:"Retry Update",
   reason:"Reason", rConnLost:"Bluetooth connection lost", rBtOff:"Bluetooth was turned off", rMismatch:"Read v1.26 but expected v1.28", rNoResp:"The device stopped responding",
+  retryConn:"Retry",   // see zh ruling: disconnect retry no longer reuses OTA retry
   exportLog:"Export Log", back:"Back",
   rpTitle:"OTA Update Report", rpDev:"Device", rpOld:"Previous version", rpExp:"Expected", rpAct:"Actual",
   rpStages:"Stage durations", rpPkt:"Packets sent", rpReset:"Device reset restarts", rpResult:"Result", rpTime:"Total time",
@@ -491,7 +497,7 @@ const PRIVACY={
 };
 function P_privacy(){
   const p=PRIVACY[lang];
-  return statusbar()+navbar(t("privacy"),"",true)+`<div class="body">
+  return statusbar()+navbar(t("privacy"),"",true,false)+`<div class="body">
     <div class="kv" style="text-align:center;margin:2px 0 10px">${t("privUpdated")}: ${p.updated} · v1.0</div>
     ${p.secs.map(([h,b])=>`<div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:6px">${h}</div>
       <div class="kv" style="white-space:pre-line">${b}</div></div>`).join("")}
@@ -902,7 +908,7 @@ function P_detail(){
   let banner="";
   if(S.p3==="abnormal")banner=`<div class="banner err">⚠︎ ${t("abnormal")}<span class="act" onclick="nav('log')">${t("exportLog")}</span></div>`;
   if(S.p3==="disconnected")banner=`<div class="center" style="min-height:480px"><div style="font-size:44px">📵</div>
-      <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retry")}</button></div>`;
+      <div class="big">${t("disconnected")}</div><button class="btn" style="width:auto;padding:12px 30px" onclick="reconnect()">${t("retryConn")}</button></div>`;
   if(!S.powerOn){
     return statusbar()+navbar(S.device,"",true)+`<div class="center" style="min-height:600px">
       <div style="font-size:46px">⏻</div><div class="big">${t("offState")}</div>
@@ -1078,13 +1084,19 @@ function P_ota(){
     let inject="";
     if(o.resetBanner)inject=`<div class="banner warn">↻ ${t("resetBanner")(o.restarts)}</div>`;
     if(o.stage>=4)inject+=`<div class="kv" style="text-align:center">⏱ ${o.wait} s</div>`;
-    inner=`${stageList(idx)}
-      <div class="card"><div style="font-weight:600">${msgs[idx]}${nd}${page}</div>
-        <div class="progress"><i style="width:${o.stage>=4?100:o.pct}%"></i></div>
-        <div class="kv" style="display:flex;justify-content:space-between"><span>${t("pkt")(o.pkt,PKTS)}</span>
-        <span>${o.stage<=3?t("pct")(Math.round(o.pkt/PKTS*100)):""}</span></div></div>
-      ${o.stage<=3?`<div class="banner warn">⚠︎ ${t("keepFront")}</div>`:""}${inject}
-      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>`;
+    /* 用户 2026-09-10 裁决：运行态标注目标设备；提示与进度居中；取消升级贴底（校准页同风格） */
+    inner=`<div style="display:flex;flex-direction:column;height:100%">
+      ${stageList(idx)}
+      <div style="margin:auto 0;display:flex;flex-direction:column;gap:9px">
+        <div class="card" style="text-align:center">
+          <div class="kv" style="font-size:11px">${t("targetDev")(S.device,S.id)}</div>
+          <div style="font-weight:600;margin-top:3px">${msgs[idx]}${nd}${page}</div>
+          <div class="progress" style="margin-top:9px"><i style="width:${o.stage>=4?100:o.pct}%"></i></div>
+          <div class="kv" style="margin-top:4px">${t("pkt")(o.pkt,PKTS)}${o.stage<=3?" · "+t("pct")(Math.round(o.pkt/PKTS*100)):""}</div></div>
+        ${o.stage<=3?`<div class="banner warn" style="text-align:center">⚠︎ ${t("keepFront")}</div>`:""}${inject}
+      </div>
+      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>
+    </div>`;
   } else if(o.result==="ok"){
     inner=`<div class="center" style="min-height:430px"><div style="font-size:48px;color:var(--ok)">✓</div>
       <div class="big">${t("okT")} 1.26 → 1.28</div><div class="sub">⏱ ${o.report.total}</div>
@@ -1111,7 +1123,7 @@ function P_ota(){
       <tr><td>${t("rpTime")}</td><td>${o.report.total}</td></tr>
     </table>
     <button class="btn" onclick="S.ota.showReport=false;render()">${t("done")}</button></div></div>`:"";
-  return statusbar()+navbar(t("ota"),"",true)+`<div class="body">${inner}</div>`+guard+report;
+  return statusbar()+navbar(t("ota"),"",true,false)+`<div class="body">${inner}</div>`+guard+report;
 }
 function stageList(active){
   const names=[t("st1"),t("st2"),t("st3"),t("st4"),t("st5"),t("st6")];
@@ -1555,7 +1567,7 @@ function execRT(){
   toast("ACK ✓");render();
 }
 function P_debug(){
-  return statusbar()+navbar(t("debug"),"",true)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
+  return statusbar()+navbar(t("debug"),"",true,false)+`<div class="body" style="display:flex;flex-direction:column;flex:1">
     <div class="row"><span class="label">${t("target")}: ${S.device} …9C01</span>${badge(S.phase==="ready"?"":"err",S.phase==="ready"?"● "+t("on"):"○ "+t("off"))}</div>
     <input class="input" value="68 6B 74 00 00 05 FF FF FF FF FF 06 C3">
     <div style="display:flex;gap:7px;margin:10px 0">
@@ -1577,7 +1589,7 @@ function sendHex(){
   render();
 }
 function P_settings(){
-  return statusbar()+navbar(t("settings"),"",true)+`<div class="body">
+  return statusbar()+navbar(t("settings"),"",true,false)+`<div class="body">
     <div class="section">${t("lang")}</div>
     <div class="row" style="cursor:pointer" onclick="cycleLang()"><span class="label">${t("lang")}</span>
       <span class="value">${langLabel()} ▸</span></div>
@@ -1615,11 +1627,11 @@ function taps(){
 function P_log(){
   const lines=S.logs.length?S.logs.map(l=>`<div class="logline"><span class="ts">${l.ts}</span><span class="lv" style="color:${l.lv==="ERR"?"var(--err)":l.lv==="WARN"?"var(--warn)":"var(--info)"}">${l.lv}</span>${l.ev} ${l.detail}</div>`).join("")
     :`<div class="kv" style="text-align:center;padding:30px">${t("logEmpty")}</div>`;
-  return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true)+
+  return statusbar()+navbar(t("logT"),`<button class="linkbtn" onclick="toast('${t("logExport")} ✓ (txt)')">${t("logExport")}</button>`,true,false)+
     `<div class="body">${lines}</div>`;
 }
 function calOpen(){S.cal={state:"idle",elapsed:0,confirm:false};nav("cal");}
-function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
+function calBegin(){S.cal.state="running";S.cal.elapsed=0;
   clearInterval(S.calTimer);
   S.calTimer=setInterval(()=>{S.cal.elapsed++;
     if(S.cal.elapsed>=8){clearInterval(S.calTimer);S.cal.state="done";}
@@ -1627,12 +1639,9 @@ function calBegin(){S.cal.confirm=false;S.cal.state="running";S.cal.elapsed=0;
   render();}
 function P_cal(){
   if(!S.cal)S.cal={state:"idle",elapsed:0,confirm:false};
+  /* 用户 2026-09-10 裁决：①无二次确认；②成功显示信息后停 3 秒自动返回；③失败弹窗询问是否重试（iOS 实现，演示必成功） */
   const dc=S.device!=="UDS100"; // UDS100=倾角校准；DC200Family=磁力计校准
   const guide=dc?t("calForDC"):t("calForUDS");
-  const confirm=S.cal.confirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("cal")}</div>
-      <div class="b">${guide}</div>
-      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.cal.confirm=false;render()">${t("cancel")}</button>
-      <button class="btn" style="margin:0" onclick="calBegin()">${t("calStart")}</button></div></div></div>`:"";
   let mid;
   if(S.cal.state==="idle"){
     const title=dc?(lang==="zh"?"磁力计校准":"Magnetometer Calibration"):(lang==="zh"?"倾角校准":"Tilt Calibration");
@@ -1646,18 +1655,21 @@ function P_cal(){
         <div class="kv" style="flex:1;line-height:1.6;padding-top:3px">${st[0]?`<b>${st[0]}</b>${lang==="zh"?"：":": "}`:""}${st[1]}</div></div>`).join("")}
       <div class="kv" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">⚠︎ ${t("calNote")}</div>
     </div>
-    <button class="btn" onclick="S.cal.confirm=true;render()">${t("calStart")}</button>`;
+    <button class="btn" onclick="calBegin()">${t("calStart")}</button>`;
   } else if(S.cal.state==="running"){
-    mid=`<div class="card" style="text-align:center">${badge("info",t("calRun"))}
-      <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
-      <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
-      <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>`;
+    /* 用户 2026-09-10 裁决：等待页内容居中、取消贴底（与连接覆盖层同风格） */
+    mid=`<div style="display:flex;flex-direction:column;height:100%">
+      <div class="card" style="text-align:center;margin:auto 0">${badge("info",t("calRun"))}
+        <div class="kv" style="margin-top:6px">${t("calElapsed")(S.cal.elapsed)}${S.device==="UDS100"?` · ${t("cal90")}`:` · ${t("calDC3")}`}</div>
+        <div class="progress"><i style="width:${Math.min(100,S.cal.elapsed/8*100)}%"></i></div></div>
+      <button class="btn secondary" onclick="clearInterval(S.calTimer);nav('detail')">${t("cancel")}</button>
+    </div>`;
   } else {
     mid=`<div class="center" style="min-height:380px"><div style="font-size:46px;color:var(--ok)">✓</div>
-      <div class="big">${t("calDone")}</div>
-      <button class="btn" style="width:auto;padding:12px 40px" onclick="nav('detail')">${t("calFinish")}</button></div>`;
+      <div class="big">校准完成</div></div>`;
+    if(!S.cal.autoBackTimer){S.cal.autoBackTimer=setTimeout(()=>{S.cal.autoBackTimer=null;nav("detail");},3000);}
   }
-  return statusbar()+navbar(t("cal"),"",true,false)+`<div class="body">${mid}</div>`+confirm;
+  return statusbar()+navbar(t("cal"),"",true,false)+`<div class="body">${mid}</div>`;
 }
 function P_perm(kind){
   const m={ask:["🛡",t("permT"),t("permB"),[["secondary",t("dontAllow"),()=>{S.perm="denied";S.page="perm";render();}]],true],
@@ -1787,7 +1799,7 @@ const SPEC=[
  {id:"SP-G7",pg:"config",tp:"规格",txt:"参数配置页采用工业表单布局：语义分区（输出与端口 / 时间与上报）；SVC100 电压用三档选择，端口 1/端口 2 分别选择开关或 PWM，界面合成单字节端口值；稳定时长由 0x80 全局位开关且仅该模式下可编辑；自动开关机用开关并显示插入/拔出触发说明；保存操作固定底部；仅改布局，不改字段、范围与 0x02 契约",ref:"R-G6；R-16；SP-16；用户方向 2026-09-08"},
  {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
  {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
- {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；固件按 3B 读脉冲与 len 门槛 7 不自洽（第 3 字节吃到 CRC 高位）=固件缺陷待修，App 严格按 6B 载荷发送（与 Android 逐字节一致）；忙=静默忽略→2s 超时提示『设备忙』；0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve(0双/1/2)+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支（2026-09-07 复核）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
+ {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；固件 2026-09-09 已修复为按 2B 读（原 3B 读与 len 门槛不自洽缺陷已闭环），App 按 6B 载荷发送（与 Android 逐字节一致）；忙=静默忽略→2s 超时提示『设备忙』；0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve(0双/1/2)+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支（2026-09-09 复核：固件已修 2B 读）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
  {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
  {id:"SP-19",pg:"debug",tp:"规格",txt:"隐藏入口：关于页连点版本 7 次开启；dev 构建默认开",ref:"Q3 裁决"},
  {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语；设置页语言行点击循环切换（跟随系统→简体中文→English）并即时生效；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
