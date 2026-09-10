@@ -5,7 +5,7 @@
 | 项目 | 内容 | 技术栈 / 构建方式 | 详细说明 |
 | --- | --- | --- | --- |
 | [HKT-BLETools](HKT-BLETools/) | Android 蓝牙配置工具，当前版本 3.16，支持设备扫描、连接、参数配置、状态查看和 OTA 升级 | Kotlin 1.8.0、AGP 7.4.2、Gradle 8.5、JDK 17 | [HKT-BLETools/Readme.md](HKT-BLETools/Readme.md) |
-| [HKT-Firmwares](HKT-Firmwares/) | 13 个 LoRaWAN 设备条目、历史固件产物和硬件/协议资料，其中 12 个有应用工程 | 以 Keil MDK5 为主，人员计数发射端为 IAR EWARM | [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) |
+| [HKT-Firmwares](HKT-Firmwares/) | 自研固件 13 个产品目录（12 个有应用工程）、外协产品资料，以及历史固件产物和硬件/协议资料 | 以 Keil MDK5 为主，人员计数发射端为 IAR EWARM | [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) |
 
 ## 设备覆盖
 
@@ -13,13 +13,13 @@ HKT-BLETools 当前支持 UDS100、DC200 系列、SVC100：
 
 | 设备 | BLETools 支持 | 固件目录 |
 | --- | --- | --- |
-| UDS100 垃圾桶满溢监测传感器 | 支持 | [LoRaWAN_Ultrasonic_Distance_Sensor](HKT-Firmwares/LoRaWAN_Ultrasonic_Distance_Sensor/) |
-| EPS100 / MPS100 地磁车位传感器 | 归入 DC200 系列界面 | [LoRaWAN_ParkingSensor](HKT-Firmwares/LoRaWAN_ParkingSensor/) |
-| SVC100 电磁阀控制器 | 支持 | [LoRaWAN_Solenoid_Valve_Controller](HKT-Firmwares/LoRaWAN_Solenoid_Valve_Controller/) |
+| UDS100 垃圾桶满溢监测传感器 | 支持 | [LoRaWAN_Ultrasonic_Distance_Sensor](HKT-Firmwares/in-house/LoRaWAN_Ultrasonic_Distance_Sensor/) |
+| EPS100 / MPS100 地磁车位传感器 | 归入 DC200 系列界面 | [LoRaWAN_ParkingSensor](HKT-Firmwares/in-house/LoRaWAN_ParkingSensor/) |
+| SVC100 电磁阀控制器 | 支持 | [LoRaWAN_Solenoid_Valve_Controller](HKT-Firmwares/in-house/LoRaWAN_Solenoid_Valve_Controller/) |
 
 BLETools 的地磁名称匹配包含 `DC200`、`EPS100`、`MPS100`；当前固件索引列出的是 EPS100 和 MPS100，没有单独的 DC200 工程目录。
 
-固件仓库还包含智能空开、车位锁、空气质量传感器、温湿度传感器、瘤胃胶囊、牛羊定位器、人流量计数器和智能门锁等产品，完整型号、MCU 和工程状态见固件目录 README。
+固件仓库按来源分为 [in-house](HKT-Firmwares/in-house/)（自研）和 [out-sourced](HKT-Firmwares/out-sourced/)（外协），自研产品包括智能空开、车位锁、空气质量传感器、温湿度传感器、瘤胃胶囊、牛羊定位器、人流量计数器和智能门锁等，完整型号、MCU 和工程状态见固件目录 README。
 
 ## 快速开始
 
