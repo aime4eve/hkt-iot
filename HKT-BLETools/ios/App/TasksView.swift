@@ -613,7 +613,9 @@ struct TasksView: View {
                     endMinute: editDraft.eh * 60 + editDraft.em, repeatMask: repeatMask))
             savePending = false
             if acked {
-                store.upsert(editDraft)
+                var saved = editDraft
+                saved.pulse = pulse   // 输入框绑定的是 editPulse 字符串，镜像须回写真实输入值
+                store.upsert(saved)
                 LogStore.shared.info("0x04 " + (zh ? "任务" : "task") + " #\(editDraft.id) ACK")
                 path = []
             } else {

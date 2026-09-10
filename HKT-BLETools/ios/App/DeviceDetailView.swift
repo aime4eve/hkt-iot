@@ -69,7 +69,7 @@ struct DeviceDetailView: View {
             guard let target = DemoLaunch.page, target != "locate", target != "locate-finding" else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 if target == "config" { showConfig = true }
-                if target == "tasks" { showTasks = true }
+                if target == "tasks" || target == "task-edit" { showTasks = true }
                 if target == "ota" || target == "ota-run" || target == "ota-importer" { showOTA = true }
             }
         }
