@@ -43,12 +43,18 @@ final class OTATransferPlannerTests: XCTestCase {
     /// answers ACK(cmd=0x03); cmd 0xFF is only the forced-flush recovery path.
     func testFinalFlushFrame() {
         let chunk = Data((0..<100).map { UInt8($0) })
-        let frame = OTATransferPlanner.dataFrame(packetIndex: 5, chunk: chunk)
-        XCTAssertEqual(frame.hex.count / 2, 122)  // hkt3+len2+cmd1+pack2+104+crc2+suffix8
-        XCTAssertEqual(frame[3...5].map { $0 }, [0x00, 0x6B, 0x02])  // len=107, cmd=0x02
-        XCTAssertEqual(frame[107], 0x63)             // last real byte (99)
-        XCTAssertEqual(frame[108...111].map { $0 }, [0xFF, 0xFF, 0xFF, 0xFF])  // minimal padding
-        XCTAssertTrue(frame.hex.hasSuffix("626F6F746C6F6164"))
+        // 审计 ❌-3：末包必须 forceFlush（cmd=0xFF）——2048B 页缓存非满页时仅 0xFF 触发落盘
+        let flushed = OTATransferPlanner.dataFrame(packetIndex: 5, chunk: chunk, forceFlush: true)
+        XCTAssertEqual(flushed.hex.count / 2, 122)  // hkt3+len2+cmd1+pack2+104+crc2+suffix8
+        XCTAssertEqual(flushed[3...5].map { $0 }, [0x00, 0x6B, 0xFF])  // len=107, cmd=0xFF
+        XCTAssertEqual(flushed[107], 0x63)             // last real byte (99)
+        XCTAssertEqual(flushed[108...111].map { $0 }, [0xFF, 0xFF, 0xFF, 0xFF])  // minimal padding
+        XCTAssertTrue(flushed.hex.hasSuffix("626F6F746C6F6164"))
+        // 对照：普通包（forceFlush=false）cmd=0x02
+        let normal = OTATransferPlanner.dataFrame(packetIndex: 5, chunk: chunk)
+        XCTAssertEqual(normal[5], 0x02)
+        XCTAssertEqual(OTATransferPlanner.finishFrame().hex,
+                       "686B74000103329B626F6F746C6F6164")   // 审计 ❌-4：finish 帧（跳转触发）
     }
 
     func testPacketsSplit() {

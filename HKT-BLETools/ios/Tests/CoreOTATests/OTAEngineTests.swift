@@ -38,6 +38,7 @@ final class OTAEngineTests: XCTestCase {
     private let firstRequest = "686B74020000626F6F746C6F6164"   // OTA-FIRST-REQUEST-001: ACK(2,0)
     private let resetAck = "686B74010000626F6F746C6F6164"       // OTA-RESET-001: ACK(1,0)
     private let completeAck = "686B74030000626F6F746C6F6164"    // ACK(3,0)
+    private let finishFrame = "686B74000103329B626F6F746C6F6164" // cmd=3 finish（跳转新固件）
     private let enterB = "686B74000005010100000017FF"             // 入口 B：len=0005 payload[0]=1
     private let enterA = "686B74000001011189"                     // 入口 A：len=0001 纯命令帧
     private let startFrame300 = "686B740005010000012CF9F2626F6F746C6F6164"   // cmd1 带 size=300
@@ -94,8 +95,14 @@ final class OTAEngineTests: XCTestCase {
         XCTAssertTrue(engine.handle(request(1)))
         XCTAssertTrue(engine.handle(request(2)))
         XCTAssertEqual(engine.packetsDone, 2)
+        // 审计 ❌-3：末包 cmd=0xFF 强制落盘
+        XCTAssertEqual(channel.frames.last!.prefix(8), hex("686B740033FF0002"))
         XCTAssertTrue(engine.handle(hex(completeAck)))
+        // 审计 ❌-4：ACK(3) 后必须回发 finish 帧（cmd=3）驱动 AppProgramRun
+        XCTAssertEqual(channel.frames.last, hex("686B74000103329B626F6F746C6F6164"))
         XCTAssertEqual(engine.state, .done)
+        XCTAssertTrue(engine.handle(hex(completeAck)))   // finish 帧的二次 ACK(3,0) 被 done 态吞掉
+        XCTAssertEqual(channel.frames.last, hex("686B74000103329B626F6F746C6F6164"))
     }
 
     func testDeviceResetRestart() async {

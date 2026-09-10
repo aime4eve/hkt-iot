@@ -2,12 +2,15 @@ import Foundation
 import CoreProtocol
 
 /// Bootloader OTA transfer framing.
-/// Firmware authority: */Compents/BootLoader/uart.c
+/// Firmware authority: */Compents/BootLoader/uart.c（页大小 FLASH_ONE_PAGE_SIZE=2048B）
 /// - frame: hkt(3) len(2 BE) cmd(1) packNum(2 BE) data(n) crc(2) "bootload"(8); `len - 15 == dataLen`
 /// - data packets: 128 bytes fixed, packet numbers start at **0** (first device ACK is (0x02, 0));
 ///   0x02 in the ACK is the command code, the following 2 bytes are the requested packet number.
-/// - final chunk padded with FF to the 8-byte boundary; a final packet sent with cmd 0xFF flushes
-///   flash and the device replies ACK(cmd=0x03) on completion.
+/// - final chunk padded with FF to the 8-byte boundary (copy granularity only) and **sent with
+///   cmd 0xFF to force the flash write**: page size is 2048 B, so a non-2048-aligned image never
+///   fills the page buffer and without the flush the transfer never completes.
+/// - completion ACK(cmd=0x03) does NOT jump — the host must follow with the cmd=3 finish frame
+///   (`finishFrame`) for `AppProgramRun()`; otherwise the device stays in the bootloader.
 /// - after ~10 s of silence the device resets the transfer and replies ACK(cmd=0x01, 0) = restart.
 /// Vectors: shared/fixtures/ota-transfer.json (OTA-*).
 public enum OTATransferPlanner {
@@ -47,13 +50,30 @@ public enum OTATransferPlanner {
         return frame
     }
 
+    /// Bootloader finish frame (cmd 3, no data/packNum): `hkt 0001 03 crc bootload` (16 B).
+    /// The ONLY jump-to-app trigger (uart.c case 3: InfoUartAck(3,0) → AppProgramRun);
+    /// the size-threshold completion path merely ACKs and never jumps — omitting this
+    /// frame leaves the device stuck in the bootloader. CRC covers the single cmd byte.
+    public static func finishFrame() -> Data {
+        let body = Data([0x03])
+        var frame = Data([0x68, 0x6B, 0x74])
+        frame.append(UInt8(body.count >> 8))
+        frame.append(UInt8(body.count & 0xFF))
+        frame.append(body)
+        let crc = CRC16.ccitt(body)
+        frame.append(UInt8(crc >> 8))
+        frame.append(UInt8(crc & 0xFF))
+        frame.append(contentsOf: bootloadSuffix)
+        return frame
+    }
+
     /// Bootloader ACK frame shape (uart.c InfoUartAck): hkt cmd count(2) bootload — 14 B.
     /// Documented here because OTAACK.parse mirrors it.
 
-    /// Builds one data packet frame. Normal packets (and the final one) use cmd 0x02 — the
-    /// device completes on its own once `firmware_write_size >= firmware_size` and replies
-    /// ACK(cmd=0x03). `forceFlush: true` sends the packet as cmd 0xFF, forcing a flash flush
-    /// (firmware case "0xFF || 2"); only needed as a recovery path.
+    /// Builds one data packet frame. Regular packets use cmd 0x02; **the final packet must use
+    /// cmd 0xFF (`forceFlush: true`)**: the page buffer is 2048 B and only `cmd == 0xFF` (or a
+    /// full 2048 B page) triggers the flash write followed by the completion ACK(3,0) — a
+    /// partially-filled last packet sent as cmd 0x02 would stall the transfer forever.
     public static func dataFrame(packetIndex: UInt16, chunk: Data, forceFlush: Bool = false) -> Data {
         let payload = padded(chunk)
         var body = Data([forceFlush ? 0xFF : 0x02])

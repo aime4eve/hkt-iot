@@ -159,6 +159,54 @@ final class DeviceSessionTests: XCTestCase {
         session.stop()
     }
 
+    // MARK: 对时分家族（审计 ❌-1/❌-2：SVC=hkt 帧有 ACK / UDS=ASCII 无回执 / DC=不支持）
+
+    func testTimeSyncSVCUsesHktFrameAndWaitsAck() async {
+        // SVC：hkt 对时帧（len=0004 特例）直发，ACK 后 acknowledged
+        let link = MockLink()
+        let ack = fixture("686B740000FFFF")
+        link.responder = { [ack] frame in
+            // 对时帧特征：len=0004、cmd=06（hkt 帧，非 bootloader 后缀）
+            frame.count >= 7 && frame[4] == 0x00 && frame[5] == 0x04 && frame[6] == 0x06 ? ack : nil
+        }
+        let session = DeviceSession(family: .svc100, deviceName: "SVC100 B4D2",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let outcome = await session.sendTimeSync()
+        XCTAssertEqual(outcome, .acknowledged)
+        let frame = link.sentFrame(at: 0)
+        XCTAssertEqual(Array(frame.prefix(7)), [0x68, 0x6B, 0x74, 0x01, 0x00, 0x04, 0x06])   // 无双重封装：packNum(1)+len(0004)+cmd(06)
+        session.stop()
+    }
+
+    func testTimeSyncUDSSendsAsciiCommand() async {
+        // UDS：hkt 对时分支固件不可达（死分支），改发 ASCII syncDeviceTimestamp
+        let link = MockLink()
+        link.responder = { _ in nil }
+        let session = DeviceSession(family: .uds100, deviceName: "UDS100 3F2A",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let outcome = await session.sendTimeSync()
+        XCTAssertEqual(outcome, .sent)
+        let sent = link.sentFrame(at: 0)
+        XCTAssertEqual(sent.prefix(20), Data("syncDeviceTimestamp:".utf8))
+        session.stop()
+    }
+
+    func testTimeSyncDCUnsupported() async {
+        // DC：ASCII 对时含 tm_mon+1 固件缺陷，iOS 暂不支持
+        let link = MockLink()
+        link.responder = { _ in nil }
+        let session = DeviceSession(family: .dc200Family, deviceName: "MPS100 9C01",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let outcome = await session.sendTimeSync()
+        XCTAssertEqual(outcome, .unsupported)
+        XCTAssertEqual(link.framesSent, 0)   // 不发任何帧
+        session.stop()
+    }
+
+
     // MARK: 校准（0xFD：立即 ACK → 等纯 ASCII "Calibration Done" 上报）
 
     func testCalibrationCompletesOnTextReport() async {

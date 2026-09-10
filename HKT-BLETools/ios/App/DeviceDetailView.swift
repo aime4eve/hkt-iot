@@ -292,14 +292,19 @@ struct DeviceDetailView: View {
                 showConfig = true
             }
             TimelineView(.periodic(from: .now, by: 1)) { context in
+                // 对时分家族（审计 ❌-1/❌-2）：SVC=hkt 帧（有 ACK）/ UDS=ASCII（无回执）/ DC=固件缺陷暂不支持
+                let outcome = session.timeSyncOutcome
                 OpCard(badge: "TIME", badgeKind: .ok,
                        title: zh ? "时间同步" : "Time Sync",
                        desc: clockText(context.date),
                        trailing: .pill(session.isTimeSyncing ? (zh ? "同步中" : "Syncing")
-                                       : session.timeSyncDone ? (zh ? "完成" : "Done")
+                                       : outcome == .acknowledged ? (zh ? "完成" : "Done")
+                                       : outcome == .sent ? (zh ? "已发送" : "Sent")
+                                       : outcome == .unsupported ? (zh ? "不支持" : "N/A")
+                                       : outcome == .failed ? (zh ? "未确认" : "No ACK")
                                        : (zh ? "同步" : "Sync")),
-                       disabled: session.isTimeSyncing) {
-                    session.sendTimeSync()
+                       disabled: session.isTimeSyncing || outcome == .unsupported) {
+                    Task { await session.sendTimeSync() }
                 }
             }
         }

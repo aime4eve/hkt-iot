@@ -23,8 +23,6 @@ public final class DeviceSession {
     public private(set) var isPolling = false
     public private(set) var linkLost = false
     public private(set) var isTimeSyncing = false
-    /// 对时完成提示态（原型 tsState：同步中 → 完成 2.6s 后回落）。
-    public private(set) var timeSyncDone = false
 
     /// R-7 停摆判定窗口（秒）。
     public var staleAfter: Int = 4
@@ -115,14 +113,28 @@ public final class DeviceSession {
     public func sendWrite(cmd: UInt8, data: Data, timeout: TimeInterval = 3) async -> Bool {
         resumeAck(false)   // 模态保证串行，此处仅防御并发重入
         return await withCheckedContinuation { continuation in
-            ackContinuation = continuation
-            ackTimeoutTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(timeout))
-                guard let self, self.ackContinuation != nil else { return }
-                self.resumeAck(false)
-            }
+            beginAckWait(continuation, timeout: timeout)
             packNum &+= 1
             link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+        }
+    }
+
+    /// 对已自行成帧的原始帧等待 0xFF 段确认（对时 SVC 路径等帧内自带 len/packNum 的帧用）。
+    public func sendRawAwaitingAck(_ frame: Data, timeout: TimeInterval = 3) async -> Bool {
+        resumeAck(false)
+        return await withCheckedContinuation { continuation in
+            beginAckWait(continuation, timeout: timeout)
+            link.send(frame)
+        }
+    }
+
+    private func beginAckWait(_ continuation: CheckedContinuation<Bool, Never>, timeout: TimeInterval) {
+        ackContinuation = continuation
+        ackTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(timeout))
+            // sleep 被取消（新等待接管）时直接退出，不得误杀新注册的等待
+            guard let self, !Task.isCancelled, self.ackContinuation != nil else { return }
+            self.resumeAck(false)
         }
     }
 
@@ -167,23 +179,47 @@ public final class DeviceSession {
         continuation.resume(returning: outcome)
     }
 
-    /// SP-25 对时：发送手机当前 Unix 秒（App 不做时区换算）。
-    public func sendTimeSync() {
-        guard !isTimeSyncing else { return }
+    /// SP-25 对时（按家族分路径，审计 ❌-1/❌-2）：
+    /// - SVC：hkt 对时帧（len=4 特例）直发，等 0xFF 段 ACK（SVC-comm:1585-1601 唯一可达路径）；
+    /// - UDS：hkt 对时分支不可达（外层 len 门互斥，UDS-comm:1183 vs :1280），改发 ASCII
+    ///   `syncDeviceTimestamp:<unix秒>`（无 ACK；固件固定 +8h 解析——缺陷已记台账）；
+    /// - DC：ASCII 路径存在 tm_mon+1 月份偏差（DC-comm:1014），同步会写错月份 → 暂不支持。
+    public enum TimeSyncOutcome: Equatable, Sendable {
+        case acknowledged   // 设备已确认（SVC）
+        case sent           // 已发送，设备无回执（UDS）
+        case unsupported    // 该设备固件暂不支持对时（DC）
+        case failed         // SVC 发送后超时未确认
+    }
+
+    /// 最近一次对时结果（UI 短暂显示后自动清除）。
+    public private(set) var timeSyncOutcome: TimeSyncOutcome?
+
+    public func sendTimeSync() async -> TimeSyncOutcome {
+        guard !isTimeSyncing else { return .failed }
         isTimeSyncing = true
-        send(cmd: CommandCode.timeSync,
-             data: HKTFrameEncoder.timeSyncFrame(packNum: packNum &+ 1,
-                                                  stampBE: UInt32(Date().timeIntervalSince1970)))
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.2))
-            guard let self else { return }
-            await MainActor.run {
-                self.isTimeSyncing = false
-                self.timeSyncDone = true
-            }
-            try? await Task.sleep(for: .seconds(2.6))
-            await MainActor.run { self.timeSyncDone = false }
+        defer { isTimeSyncing = false }
+        let outcome: TimeSyncOutcome
+        switch family {
+        case .svc100:
+            packNum &+= 1
+            let frame = HKTFrameEncoder.timeSyncFrame(packNum: packNum,
+                                                      stampBE: UInt32(Date().timeIntervalSince1970))
+            outcome = await sendRawAwaitingAck(frame) ? .acknowledged : .failed
+        case .uds100:
+            let ascii = "syncDeviceTimestamp:\(Int(Date().timeIntervalSince1970))"
+            link.send(Data(ascii.utf8))
+            outcome = .sent
+        case .dc200Family:
+            outcome = .unsupported
         }
+        timeSyncOutcome = outcome
+        let hold: TimeInterval = outcome == .acknowledged ? 2.6 : 4
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(hold))
+            guard let self, !Task.isCancelled else { return }
+            self.timeSyncOutcome = nil
+        }
+        return outcome
     }
 
     private func pollOnce() {

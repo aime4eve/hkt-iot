@@ -92,9 +92,11 @@ public final class OTAEngine {
     }
 
     /// 喂给引擎一条原始接收帧；是引导层 ACK 则消费并返回 true。
+    /// done 态继续吞 ACK(3,0)：finish 帧的应答会再回一帧同样的 ACK(3,0)。
     public func handle(_ data: Data) -> Bool {
-        guard (state == .enteringBootloader || state == .transferring),
+        guard (state == .enteringBootloader || state == .transferring || state == .done),
               let ack = OTAACK.parse(data) else { return false }
+        if state == .done { return true }
         armWatchdog()
         switch ack.kind {
         case .requestPacket:
@@ -102,8 +104,14 @@ public final class OTAEngine {
             guard Int(ack.requestedPacket) < packetCount else { return true }   // 防御：越界请求忽略
             packetsDone = Int(ack.requestedPacket)
             let packet = packets[Int(ack.requestedPacket)]
-            send?(OTATransferPlanner.dataFrame(packetIndex: packet.index, chunk: packet.chunk))
+            // 末包用 cmd=0xFF 强制落盘：页大小 2048B（uart.c:383），非对齐镜像不满页时
+            // 只有 0xFF 能触发落盘→ACK(3,0)（审计 ❌-3；Android 末包同款）
+            send?(OTATransferPlanner.dataFrame(packetIndex: packet.index, chunk: packet.chunk,
+                                               forceFlush: packet.isFinal))
         case .transferComplete:
+            // 固件收到 finish 帧（case 3）才 AppProgramRun 跳转新固件（uart.c:410-422）——
+            // 阈值完成路径只 ACK 不跳转，漏发 = 设备永久驻留 bootloader（审计 ❌-4）
+            send?(OTATransferPlanner.finishFrame())
             finish(.done)
         case .restartTransfer:
             // bootloader 静默 10 s 复位传输：计数清零、重发启动帧从头起步

@@ -91,11 +91,13 @@ public enum HKTFrameEncoder {
         Data([UInt8(id)])
     }
 
-    /// Time-sync (0x06) frame — carries a wire quirk that all three firmwares depend on:
-    /// the declared len is 4 (data length only, NOT cmd+data like every other command);
-    /// the firmware guard is `data[5]==4` while the stamp is read from data[7..10].
-    /// Android ships the same quirk (Communicate.kt streamDevice(0x06): %04X % 4).
-    /// stamp == 0 is silently ignored by the firmware (no ACK).
+    /// Time-sync (0x06) frame — **SVC100 only**: the hkt len=4/cmd=6 branch is reachable in
+    /// SVC (communicate.c:1585, answers ACK) but is dead code in UDS/DC (outer len gates make
+    /// it unreachable — audit ❌-2). UDS uses ASCII `syncDeviceTimestamp:<unix>` (no ACK,
+    /// firmware adds a fixed +8h); DC's ASCII path has a tm_mon+1 defect, so time sync is
+    /// disabled for DC. Wire quirk: declared len is 4 (data only, NOT cmd+data like every
+    /// other command); the firmware guard is `data[5]==4` while the stamp is read from
+    /// data[7..10]. stamp == 0 is silently ignored by the firmware.
     public static func timeSyncFrame(packNum: UInt8, stampBE: UInt32) -> Data {
         var frame = Data(prefix)
         frame.append(packNum)
