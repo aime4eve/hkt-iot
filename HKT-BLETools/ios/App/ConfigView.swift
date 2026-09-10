@@ -4,7 +4,7 @@ import SwiftUI
 
 /// 参数配置页（P_config）—— 1:1 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-config.md`）。
 /// 三家族三套表单 + 前置校验（与固件同规则）+ 确认摘要 + 写入中 + 结果横幅。
-/// 真实 0x02 写入随协议里程碑接入；当前与原型演示一致为 900ms 模拟 ACK。
+/// 保存走真实 0x02 写入：设备 ACK（含 0xFF 应答段的专用帧）驱动结果横幅。
 struct ConfigView: View {
     let session: DeviceSession
 
@@ -475,16 +475,35 @@ struct ConfigView: View {
         }
     }
 
-    /// cfgWrite：900ms 模拟 ACK（真实 0x02 写入随协议里程碑接入）。
+    /// cfgWrite：真实 0x02 写入——按家族编码载荷发送，等设备 ACK（含 0xFF 应答段的专用帧）。
     private func write() {
         showSaving = true
         LogStore.shared.info(zh ? "0x02 写入配置 → \(session.deviceName)" : "0x02 write config → \(session.deviceName)")
-        Timer.scheduledTimer(withTimeInterval: 0.9, repeats: false) { _ in
-            MainActor.assumeIsolated {
-                showSaving = false
-                banner = .ok
-                LogStore.shared.info("0x02 ACK")
-            }
+        let payload: Data
+        switch session.family {
+        case .uds100:
+            payload = HKTFrameEncoder.udsConfigPayload(reportMin: Int(draft.report) ?? 0,
+                                                       gpsMin: Int(draft.gps) ?? 0,
+                                                       lowMM: Int(draft.low) ?? 0,
+                                                       highMM: Int(draft.high) ?? 0)
+        case .dc200Family:
+            payload = HKTFrameEncoder.dcConfigPayload(reportMin: Int(draft.report) ?? 0,
+                                                      mode: draft.modeIndex)
+        case .svc100:
+            payload = HKTFrameEncoder.svcConfigPayload(volLevel: draft.vol,
+                                                       port: draft.port,
+                                                       stableS: Int(draft.stable) ?? 0,
+                                                       autoPower: draft.smart ? 1 : 0,
+                                                       timezone: draft.tz,
+                                                       reportMin: Int(draft.period) ?? 0)
+        }
+        Task {
+            let acked = await session.sendWrite(cmd: CommandCode.config, data: payload)
+            showSaving = false
+            banner = acked ? .ok : .fail
+            LogStore.shared.info(acked
+                ? (zh ? "0x02 ACK（设备已确认）" : "0x02 ACK (device acknowledged)")
+                : (zh ? "0x02 等待确认超时（无 ACK）" : "0x02 ACK timeout"))
         }
     }
 

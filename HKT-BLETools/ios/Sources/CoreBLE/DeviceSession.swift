@@ -32,6 +32,8 @@ public final class DeviceSession {
     private var pollTask: Task<Void, Never>?
     private var packNum: UInt8 = 0
     private var stopped = false
+    private var ackContinuation: CheckedContinuation<Bool, Never>?
+    private var ackTimeoutTask: Task<Void, Never>?
 
     public init(family: DeviceFamily, deviceName: String, link: any PeripheralLink, pollInterval: TimeInterval = 1.0) {
         self.family = family
@@ -75,12 +77,40 @@ public final class DeviceSession {
         stopped = true
         isPolling = false
         pollTask?.cancel()
+        resumeAck(false)
     }
 
     /// 发送一条协议帧（界面动作调用）。
     public func send(cmd: UInt8, data: Data) {
         packNum &+= 1
         link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+    }
+
+    /// 写入命令 + 确认等待（0x02/0x03/0x04/0x05 通用）：固件仅在 callback_BLEAck 回含 0xFF
+    /// 应答段的专用帧（轮询/状态回应不含该段），收到即视为设备确认；超时未回 = 未确认
+    /// （可能被固件静默拒绝）。Android 同语义：streamRev 收到 0xFF 段才把 START 事件转 FINISH。
+    /// 先注册等待再发送（原子），ACK 不会先于注册到达——MockLink 同步应答尤其依赖此序。
+    @discardableResult
+    public func sendWrite(cmd: UInt8, data: Data, timeout: TimeInterval = 3) async -> Bool {
+        resumeAck(false)   // 模态保证串行，此处仅防御并发重入
+        return await withCheckedContinuation { continuation in
+            ackContinuation = continuation
+            ackTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(timeout))
+                guard let self, self.ackContinuation != nil else { return }
+                self.resumeAck(false)
+            }
+            packNum &+= 1
+            link.send(HKTFrameEncoder.appFrame(packNum: packNum, cmd: cmd, data: data))
+        }
+    }
+
+    private func resumeAck(_ value: Bool) {
+        ackTimeoutTask?.cancel()
+        ackTimeoutTask = nil
+        guard let continuation = ackContinuation else { return }
+        ackContinuation = nil
+        continuation.resume(returning: value)
     }
 
     /// SP-25 对时：发送手机当前 Unix 秒（App 不做时区换算）。
@@ -120,5 +150,9 @@ public final class DeviceSession {
         lastResponseAt = Date()
         secondsSinceLastResponse = 0
         linkLost = false
+        // 写入确认：专用 ACK 帧仅含 0xFF 应答段（三家族轮询回应均不带该段，不会误判）
+        if ackContinuation != nil, entries.contains(where: { $0.type == 0xFF }) {
+            resumeAck(true)
+        }
     }
 }

@@ -45,6 +45,8 @@ struct HKTBLEToolsApp: App {
                                   demoAutoStopAfter: demoFlowPrefix == nil ? 7 : nil,
                                   demoAutoConnectPrefix: demoFlowPrefix)
             let responder = DemoResponder()
+            // MOCK_CFG_ACK=0：模拟固件静默拒绝（不回 ACK），验收配置页失败横幅
+            responder.configAcks = ProcessInfo.processInfo.environment["MOCK_CFG_ACK"] != "0"
             mock.responder = { [weak scanModel] frame in
                 let family = MainActor.assumeIsolated { scanModel?.activeSession?.family }
                 return responder.respond(to: frame, family: family)

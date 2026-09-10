@@ -55,6 +55,24 @@ final class FrameCodecTests: XCTestCase {
                        "686B7400000205FF71C0")
     }
 
+    // MARK: 0x02 载荷编码器（三家族）——与上方 golden 帧同源（Android Communicate.kt streamDevice(0x02)）
+
+    func testUDSConfigPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.udsConfigPayload(reportMin: 30, gpsMin: 60, lowMM: 300, highMM: 3000).hex,
+                       "001E003C012C0BB8")   // 上方 testUDS100ConfigFrame 的 data 段
+    }
+
+    func testDCConfigPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.dcConfigPayload(reportMin: 30, mode: 1).hex, "001E01")
+        XCTAssertEqual(HKTFrameEncoder.dcConfigPayload(reportMin: 0, mode: 1).hex, "000001")   // 周期 0 边界
+    }
+
+    func testSVCConfigPayloadBuilder() {
+        XCTAssertEqual(HKTFrameEncoder.svcConfigPayload(volLevel: 2, port: 1, stableS: 5,
+                                                        autoPower: 1, timezone: 25, reportMin: 30).hex,
+                       "0201050119001E")   // 上方 testSVC100ConfigFrame 的 data 段
+    }
+
     func testPowerFrame() {
         // Power byte sits at payload[3] (frame offset 10) — firmware reads data[10].
         XCTAssertEqual(frame(packNum: 0, cmd: CommandCode.power, data: HKTFrameEncoder.powerPayload(on: true)),

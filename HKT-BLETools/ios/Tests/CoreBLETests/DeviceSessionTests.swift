@@ -108,4 +108,54 @@ final class DeviceSessionTests: XCTestCase {
         XCTAssertEqual(frame[5], 5)                    // len 低字节 = cmd(1) + data(4)
         XCTAssertEqual(frame[6], CommandCode.timeSync)
     }
+
+    // MARK: 写入确认（sendWrite：专用 ACK 帧 = hkt 00 seq FF 值）
+
+    func testSendWriteResolvesOnSyncAckFrame() async {
+        // MockLink 同步应答：ACK 在 send 内部到达，先注册等待再发送的顺序不能丢 ACK
+        let link = MockLink()
+        let ack = fixture("686B740000FF00")
+        link.responder = { [ack] frame in
+            frame.count > 6 && frame[6] == CommandCode.config ? ack : nil   // 轮询帧不回
+        }
+        let session = DeviceSession(family: .uds100, deviceName: "UDS100 3F2A",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let acked = await session.sendWrite(cmd: CommandCode.config,
+                                            data: HKTFrameEncoder.udsConfigPayload(reportMin: 20, gpsMin: 60, lowMM: 400, highMM: 3000),
+                                            timeout: 0.5)
+        XCTAssertTrue(acked)
+        session.stop()
+    }
+
+    func testSendWriteTimesOutWithoutAck() async {
+        let link = MockLink()
+        link.responder = { [response = fixture(Self.udsResponse)] frame in
+            frame.count > 6 && frame[6] == CommandCode.query ? response : nil   // 只回轮询，写入被固件静默拒绝
+        }
+        let session = DeviceSession(family: .uds100, deviceName: "UDS100 3F2A",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        let acked = await session.sendWrite(cmd: CommandCode.config,
+                                            data: HKTFrameEncoder.udsConfigPayload(reportMin: 20, gpsMin: 60, lowMM: 400, highMM: 3000),
+                                            timeout: 0.3)
+        XCTAssertFalse(acked)
+        session.stop()
+    }
+
+    func testSendWriteIgnoresPollResponseOnly() async {
+        // 轮询回应不含 0xFF 段（固件事实），不得误判为写入确认
+        let link = MockLink()
+        link.responder = { [response = fixture(Self.udsResponse)] frame in
+            frame.count > 6 && frame[6] == CommandCode.query ? response : nil
+        }
+        let session = DeviceSession(family: .uds100, deviceName: "UDS100 3F2A",
+                                    link: link, pollInterval: 0.05)
+        session.start()
+        let acked = await session.sendWrite(cmd: CommandCode.config,
+                                            data: HKTFrameEncoder.udsConfigPayload(reportMin: 20, gpsMin: 60, lowMM: 400, highMM: 3000),
+                                            timeout: 0.25)
+        XCTAssertFalse(acked)   // 只有轮询回应流动，无专用 ACK → 超时
+        session.stop()
+    }
 }

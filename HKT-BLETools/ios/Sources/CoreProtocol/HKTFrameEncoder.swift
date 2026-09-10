@@ -31,6 +31,37 @@ public enum HKTFrameEncoder {
         Data([0x00, 0x00, 0x00, on ? 0x01 : 0x00])
     }
 
+    // MARK: 0x02 写配置载荷（三家族）
+    // 契约出处：Android Communicate.kt streamDevice(0x02)；固件核对 UDS data[5]==9 / DC data[5]==4 /
+    // SVC data[5]==8 分支（载荷顺序与宽度逐字节一致）。任一参数非法固件整包拒绝（UDS 低/高阈值非法不回 ACK），
+    // App 侧已按同规则前置校验。
+
+    /// UDS100：上报周期 + GPS 周期 + 满溢低阈值 + 高阈值，各 u16 BE（8B，len=9）。
+    public static func udsConfigPayload(reportMin: Int, gpsMin: Int, lowMM: Int, highMM: Int) -> Data {
+        var data = Data()
+        data.append(contentsOf: UInt16(reportMin).dataBE)
+        data.append(contentsOf: UInt16(gpsMin).dataBE)
+        data.append(contentsOf: UInt16(lowMM).dataBE)
+        data.append(contentsOf: UInt16(highMM).dataBE)
+        return data
+    }
+
+    /// DC200 家族：上报周期 u16 BE + 工作模式 u8（3B，len=4）。
+    public static func dcConfigPayload(reportMin: Int, mode: Int) -> Data {
+        var data = Data()
+        data.append(contentsOf: UInt16(reportMin).dataBE)
+        data.append(UInt8(mode))
+        return data
+    }
+
+    /// SVC100：电压档 / 端口功能 / 稳定时长 / 自动开关机 / 时区（各 u8）+ 上报周期 u16 BE（7B，len=8）。
+    public static func svcConfigPayload(volLevel: Int, port: Int, stableS: Int,
+                                        autoPower: Int, timezone: Int, reportMin: Int) -> Data {
+        var data = Data([UInt8(volLevel), UInt8(port), UInt8(stableS), UInt8(autoPower), UInt8(timezone)])
+        data.append(contentsOf: UInt16(reportMin).dataBE)
+        return data
+    }
+
     /// Time-sync (0x06) frame — carries a wire quirk that all three firmwares depend on:
     /// the declared len is 4 (data length only, NOT cmd+data like every other command);
     /// the firmware guard is `data[5]==4` while the stamp is read from data[7..10].
