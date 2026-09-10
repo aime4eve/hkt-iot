@@ -159,6 +159,22 @@ final class DeviceSessionTests: XCTestCase {
         session.stop()
     }
 
+    func testLateBootloaderAckAfterOTADoesNotMarkUnknownTail() async {
+        // 审计后续（2026-09-11 真机 OTA）：finish 帧引发的迟到 ACK(3,0) 在引擎收尾后到达，
+        // 属引导层帧——静默丢弃，不得置 unknownTail 让详情页误报「响应数据异常」
+        let link = MockLink()
+        link.responder = { _ in nil }
+        let session = DeviceSession(family: .svc100, deviceName: "SVC100 B4D2",
+                                    link: link, pollInterval: 3600)
+        session.start()
+        link.onReceive?(fixture("686B74030000626F6F746C6F6164"))
+        try? await Task.sleep(for: .seconds(0.05))
+        XCTAssertFalse(session.unknownTail)
+        session.rawFrameHandler = { _ in true }   // 引擎在位时照常转发
+        link.onReceive?(fixture("686B74020000626F6F746C6F6164"))
+        session.stop()
+    }
+
     // MARK: 对时分家族（审计 ❌-1/❌-2：SVC=hkt 帧有 ACK / UDS=ASCII 无回执 / DC=不支持）
 
     func testTimeSyncSVCUsesHktFrameAndWaitsAck() async {

@@ -234,8 +234,14 @@ public final class DeviceSession {
     }
 
     private func handleReceive(_ data: Data) {
-        // OTA 传输中：引导层 ACK 帧（hkt…bootload）由引擎消费，不走 TLV 解析
-        if let handler = rawFrameHandler, handler(data) { return }
+        // 引导层应答帧（hkt cmd count bootload，14 B）与 TLV 数据流永久互斥：
+        // 识别即分流，无 handler 时丢弃——OTA 完成后迟到的重复 ACK(3,0) 不得污染
+        // TLV 解析（否则详情页误报「响应数据异常」，2026-09-11 真机 OTA 实测）
+        if data.count == 14, data.starts(with: HKTResponseParser.prefix),
+           Array(data.suffix(8)) == [0x62, 0x6F, 0x6F, 0x74, 0x6C, 0x6F, 0x61, 0x64] {
+            if rawFrameHandler?(data) == true { return }
+            return   // 无 handler（OTA 已收尾）：静默丢弃
+        }
         // 校准完成上报是纯 ASCII 文本（非 hkt 帧），parse 会当坏前缀丢弃，须先查
         if calibrationWait != nil,
            let text = String(data: data.prefix(64), encoding: .ascii),
