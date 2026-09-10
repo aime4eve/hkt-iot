@@ -124,8 +124,8 @@ struct DeviceDetailView: View {
         NotificationCenter.default.post(name: .init("popToRoot"), object: nil)
     }
 
-    /// 开关机（0xFE）：固件无条件回 ACK——ACK 后等下一轮轮询快照刷新电源位；
-    /// 无 ACK 提示失败（链路或固件问题），不再 fire-and-forget 无反馈。
+    /// 开关机（0xFE）：固件无条件回 ACK——ACK 后等下一轮轮询快照刷新电源位。
+    /// 无 ACK 自动重发一次（开关机幂等，安全）；仍无确认才报失败。
     private func sendPower(_ on: Bool) {
         guard !powerSending else { return }
         powerSending = true
@@ -133,14 +133,20 @@ struct DeviceDetailView: View {
         LogStore.shared.info("0xFE " + (on ? (zh ? "开机" : "power ON") : (zh ? "关机" : "power OFF"))
                              + " → \(session.deviceName)")
         Task {
-            let acked = await session.sendWrite(cmd: CommandCode.power,
+            var acked = await session.sendWrite(cmd: CommandCode.power,
                                                 data: HKTFrameEncoder.powerPayload(on: on))
+            if !acked {
+                LogStore.shared.warn("0xFE " + (zh ? "无 ACK，700ms 后重发" : "no ACK, retrying in 700ms"))
+                try? await Task.sleep(for: .milliseconds(700))
+                acked = await session.sendWrite(cmd: CommandCode.power,
+                                                data: HKTFrameEncoder.powerPayload(on: on))
+            }
             powerSending = false
             if acked {
                 LogStore.shared.info("0xFE ACK")
             } else {
-                powerError = zh ? "设备未确认开关机命令（无 ACK）" : "Device did not acknowledge the power command"
-                LogStore.shared.warn("0xFE " + (zh ? "无 ACK" : "no ACK"))
+                powerError = zh ? "设备未确认开关机命令（重试后仍无 ACK）" : "Device did not acknowledge the power command"
+                LogStore.shared.warn("0xFE " + (zh ? "重发后仍无 ACK" : "still no ACK after retry"))
             }
         }
     }
