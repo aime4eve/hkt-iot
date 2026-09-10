@@ -325,12 +325,14 @@ struct NavbarHeader<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button(action: onBack) {
-                Text(backText)
-                    .font(.hkt(14, .semibold))
-                    .foregroundStyle(Theme.info)
-                    .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(Theme.info.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+            if !backText.isEmpty {   // 原型运行态（OTA 传输中）无返回入口，离开走页面内按钮
+                Button(action: onBack) {
+                    Text(backText)
+                        .font(.hkt(14, .semibold))
+                        .foregroundStyle(Theme.info)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(Theme.info.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                }
             }
             Text(title).font(.hkt(17, .bold)).foregroundStyle(Theme.text).lineLimit(1)
             Spacer(minLength: 8)

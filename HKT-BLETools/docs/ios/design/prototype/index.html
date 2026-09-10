@@ -301,6 +301,7 @@ const ZH={
   keepFront:"升级期间请保持 App 前台、勿锁屏", resetBanner:(n)=>`设备超时复位，已自动从包 0 重传（第 ${n}/2 次）`,
   leaveT:"升级正在进行", leaveB:"现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？",
   stay:"继续升级", leave:"仍然离开", cancelUp:"取消升级",
+  targetDev:(d,id)=>`正在升级设备 ${d} ${id}`,   // 用户 2026-09-10 裁决：运行态标注目标设备
   okT:"升级成功", report:"查看升级报告", done:"完成", failT:"升级失败", retry:"重新升级",
   reason:"原因", rConnLost:"蓝牙连接丢失", rBtOff:"蓝牙已被关闭", rMismatch:"读到版本 v1.26，与期望 v1.28 不符", rNoResp:"设备长时间无响应",
   retryConn:"重新连接",   // 用户 2026-09-10 裁决：断线重试不再误用 OTA 的 retry（「重新升级」）
@@ -403,6 +404,7 @@ const EN={
   keepFront:"Keep the app in the foreground; don't lock the screen", resetBanner:n=>`Device timed out and reset; restarted from packet 0 (attempt ${n}/2)`,
   leaveT:"Update in progress", leaveB:"Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?",
   stay:"Keep Updating", leave:"Leave", cancelUp:"Cancel Update",
+  targetDev:(d,id)=>`Upgrading device ${d} ${id}`,
   okT:"Update succeeded", report:"View update report", done:"Done", failT:"Update failed", retry:"Retry Update",
   reason:"Reason", rConnLost:"Bluetooth connection lost", rBtOff:"Bluetooth was turned off", rMismatch:"Read v1.26 but expected v1.28", rNoResp:"The device stopped responding",
   retryConn:"Retry",   // see zh ruling: disconnect retry no longer reuses OTA retry
@@ -1082,13 +1084,19 @@ function P_ota(){
     let inject="";
     if(o.resetBanner)inject=`<div class="banner warn">↻ ${t("resetBanner")(o.restarts)}</div>`;
     if(o.stage>=4)inject+=`<div class="kv" style="text-align:center">⏱ ${o.wait} s</div>`;
-    inner=`${stageList(idx)}
-      <div class="card"><div style="font-weight:600">${msgs[idx]}${nd}${page}</div>
-        <div class="progress"><i style="width:${o.stage>=4?100:o.pct}%"></i></div>
-        <div class="kv" style="display:flex;justify-content:space-between"><span>${t("pkt")(o.pkt,PKTS)}</span>
-        <span>${o.stage<=3?t("pct")(Math.round(o.pkt/PKTS*100)):""}</span></div></div>
-      ${o.stage<=3?`<div class="banner warn">⚠︎ ${t("keepFront")}</div>`:""}${inject}
-      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>`;
+    /* 用户 2026-09-10 裁决：运行态标注目标设备；提示与进度居中；取消升级贴底（校准页同风格） */
+    inner=`<div style="display:flex;flex-direction:column;height:100%">
+      ${stageList(idx)}
+      <div style="margin:auto 0;display:flex;flex-direction:column;gap:9px">
+        <div class="card" style="text-align:center">
+          <div class="kv" style="font-size:11px">${t("targetDev")(S.device,S.id)}</div>
+          <div style="font-weight:600;margin-top:3px">${msgs[idx]}${nd}${page}</div>
+          <div class="progress" style="margin-top:9px"><i style="width:${o.stage>=4?100:o.pct}%"></i></div>
+          <div class="kv" style="margin-top:4px">${t("pkt")(o.pkt,PKTS)}${o.stage<=3?" · "+t("pct")(Math.round(o.pkt/PKTS*100)):""}</div></div>
+        ${o.stage<=3?`<div class="banner warn" style="text-align:center">⚠︎ ${t("keepFront")}</div>`:""}${inject}
+      </div>
+      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>
+    </div>`;
   } else if(o.result==="ok"){
     inner=`<div class="center" style="min-height:430px"><div style="font-size:48px;color:var(--ok)">✓</div>
       <div class="big">${t("okT")} 1.26 → 1.28</div><div class="sub">⏱ ${o.report.total}</div>

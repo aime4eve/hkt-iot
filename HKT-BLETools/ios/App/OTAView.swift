@@ -46,17 +46,27 @@ struct OTAView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // R-13：运行中点返回触发离开保护弹窗（原型 backPage 同款），非运行态直接返回
             NavbarHeader(title: zh ? "固件升级" : "Firmware Update",
                          backText: zh ? "‹ 返回" : "‹ Back",
-                         onBack: { stopTimer(); dismiss() }) {
+                         onBack: {
+                if (2...7).contains(stage) { showGuard = true } else { stopTimer(); dismiss() }
+            }) {
                 EmptyView()
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    content
+            if (2...7).contains(stage) {
+                // 运行六段：内容垂直居中 + 取消贴底，不进滚动容器（校准页同款布局）
+                runningStage
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        content
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
         }
         .background(Theme.bg)
@@ -135,7 +145,6 @@ struct OTAView: View {
     private var content: some View {
         switch stage {
         case 0: selectStage
-        case 2 ... 7: runningStage
         case 8: successStage
         default: failureStage
         }
@@ -182,54 +191,57 @@ struct OTAView: View {
         }
     }
 
-    /// stage 2–7：进行中（stageList + 阶段卡 + 警告 + 取消升级）。
+    /// stage 2–7：进行中（用户 2026-09-10 裁决：标注目标设备；提示与进度居中；取消升级贴底——与校准页同风格）。
     private var runningStage: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(spacing: 0) {
             stageList(activeIndex: max(0, min(stage - 2, 5)))
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(phaseText).font(.hkt(15, .semibold)).foregroundStyle(Theme.text)
-                    if stage >= 4 {
-                        Text(zh ? "尚未完成" : "not done yet")
-                            .font(.hkt(12, .semibold))
-                            .foregroundStyle(Theme.warn)
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(Theme.warn.opacity(0.15), in: Capsule())
+            VStack(spacing: 9) {
+                VStack(spacing: 3) {
+                    Text(zh ? "正在升级设备 \(session.deviceName)"
+                            : "Upgrading device \(session.deviceName)")
+                        .font(.hkt(11))
+                        .foregroundStyle(Theme.text2)
+                    HStack(spacing: 6) {
+                        Text(phaseText).font(.hkt(15, .semibold)).foregroundStyle(Theme.text)
+                        if stage >= 4 {
+                            Text(zh ? "尚未完成" : "not done yet")
+                                .font(.hkt(12, .semibold))
+                                .foregroundStyle(Theme.warn)
+                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(Theme.warn.opacity(0.15), in: Capsule())
+                        }
+                        if stage == 2, pageWrite {
+                            Text("· " + (zh ? "页写入中…" : "page writing…"))
+                                .font(.hkt(15, .semibold)).foregroundStyle(Theme.text)
+                        }
                     }
-                    if stage == 2, pageWrite {
-                        Text("· " + (zh ? "页写入中…" : "page writing…"))
-                            .font(.hkt(15, .semibold)).foregroundStyle(Theme.text)
-                    }
+                    HKTProgress(fraction: stage >= 4 ? 1.0 : Double(pkt) / Double(totalPackets))
+                        .padding(.top, 9)
+                    Text(zh ? "包 \(pkt.formatted()) / \(totalPackets.formatted())" + (stage <= 3 ? " · \(Int(Double(pkt) / Double(totalPackets) * 100))%" : "")
+                            : "Packet \(pkt.formatted()) / \(totalPackets.formatted())" + (stage <= 3 ? " · \(Int(Double(pkt) / Double(totalPackets) * 100))%" : ""))
+                        .font(.hkt(13))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.text2)
+                        .padding(.top, 4)
                 }
-                HKTProgress(fraction: stage >= 4 ? 1.0 : Double(pkt) / Double(totalPackets))
-                HStack {
-                    Text(zh ? "包 \(pkt) / \(totalPackets)" : "Packet \(pkt) / \(totalPackets)")
-                    Spacer()
-                    if stage <= 3 {
-                        Text("\(Int(Double(pkt) / Double(totalPackets) * 100))%")
-                    }
+                .frame(maxWidth: .infinity)
+                .padding(13)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
+                    .stroke(Theme.line.opacity(0.82), lineWidth: 1))
+                .hktShadow()
+                if stage <= 3 {
+                    HKTBanner(kind: .warn,
+                              text: "⚠︎ " + (zh ? "升级期间请保持 App 前台、勿锁屏" : "Keep the app in the foreground; don't lock the screen"))
                 }
-                .font(.hkt(13))
-                .monospacedDigit()
-                .foregroundStyle(Theme.text2)
+                if stage >= 4 {
+                    Text("⏱ \(wait) s")
+                        .font(.hkt(13))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.text2)
+                }
             }
-            .padding(13)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius)
-                .stroke(Theme.line.opacity(0.82), lineWidth: 1))
-            .hktShadow()
-            if stage <= 3 {
-                HKTBanner(kind: .warn,
-                          text: "⚠︎ " + (zh ? "升级期间请保持 App 前台、勿锁屏" : "Keep the app in the foreground; don't lock the screen"))
-            }
-            if stage >= 4 {
-                Text("⏱ \(wait) s")
-                    .font(.hkt(13))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.text2)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)   // 中段垂直居中
             Button {
                 showGuard = true
             } label: {
