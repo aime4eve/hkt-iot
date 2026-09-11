@@ -98,18 +98,45 @@ struct OTAView: View {
     }
 
     /// 读取所选固件包：真实文件名/大小 + CRC32 校验值 + 文件名中的期望版本。
-    /// 镜像大小防线（审计后补）：APP 区 = 0x08004000–0x08040000（240KB），过小不可能是合法
-    /// 固件、过大 bootloader 写入会越界（固件无 size 检查——真机变砖事故 2026-09-11 的防线）。
+    /// 镜像三重防线（真机变砖事故 2026-09-11：用户选了 Intel HEX 文本被当裸镜像整包刷入）：
+    /// 1. 大小：APP 区 = 0x08004000–0x08040000（240KB），过小不可能是固件、过大 bootloader
+    ///    写入会越界（固件无 size 检查）；
+    /// 2. 栈顶指针：前 4 字节 LE 必须落在 RAM（STM32L431RC RAM 64KB @ 0x20000000）——同固件
+    ///    AppProgramRun 的跳转检查，HEX/文本文件首字节是 ':'(0x3A) 必被拒；
+    /// 3. 复位向量：第 5–8 字节 LE（去 Thumb 位）必须指向 APP 区内。
     private func adoptFile(_ url: URL) {
         let secured = url.startAccessingSecurityScopedResource()
         defer { if secured { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return }
-        guard (8192...245_760).contains(data.count) else {
+        guard var data = try? Data(contentsOf: url) else { return }
+        var rejectReason: String?
+        if !(8192...245_760).contains(data.count) {
+            rejectReason = zh ? "固件包大小 \(data.count) B 超出 App 分区合法范围（8KB–240KB）"
+                              : "Firmware size \(data.count) B outside the 8KB–240KB app partition range"
+        } else if data.count < 8 {
+            rejectReason = zh ? "文件过小，不是固件镜像" : "File too small to be a firmware image"
+        } else {
+            func u32le(_ offset: Int) -> UInt32 {
+                UInt32(data[data.startIndex + offset])
+                    | UInt32(data[data.startIndex + offset + 1]) << 8
+                    | UInt32(data[data.startIndex + offset + 2]) << 16
+                    | UInt32(data[data.startIndex + offset + 3]) << 24
+            }
+            let stackTop = u32le(0)
+            let resetVector = u32le(4) & ~UInt32(1)   // 去 Thumb 位
+            if (stackTop & 0xFFFE_0000) != 0x2000_0000 {
+                rejectReason = zh ? "不是合法的固件二进制镜像（栈顶指针不在 RAM 区，可能是 HEX/其它格式文件——请选择 .bin）"
+                                  : "Not a valid binary image (stack top not in RAM; is this a HEX file? please select .bin)"
+            } else if resetVector < 0x0800_4000 || resetVector >= 0x0804_0000 {
+                rejectReason = zh ? "固件复位向量不在 App 区（0x08004000–0x0803FFFF），与设备不匹配"
+                                  : "Reset vector outside the app partition (0x08004000-0x0803FFFF)"
+            }
+        }
+        if let rejectReason {
             pickedURL = nil
             pickedFileName = url.lastPathComponent
             pickedFileSize = data.count
-            LogStore.shared.warn(zh ? "固件包大小 \(data.count) B 超出 App 分区合法范围（8KB–240KB），已拒绝"
-                                    : "Firmware size \(data.count) B outside the 8KB–240KB app partition range; rejected")
+            LogStore.shared.warn(zh ? "固件包校验拒绝：\(rejectReason)（文件 \(url.lastPathComponent)，\(data.count) B）"
+                                    : "Firmware rejected: \(rejectReason) (\(url.lastPathComponent), \(data.count) B)")
             return
         }
         pickedURL = url
@@ -122,6 +149,7 @@ struct OTAView: View {
         } else {
             expectedVersion = "?"
         }
+        data.removeAll()
     }
 
     /// CRC32（IEEE 802.3 查表法）。
