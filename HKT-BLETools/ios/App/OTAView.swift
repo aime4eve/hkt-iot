@@ -98,10 +98,20 @@ struct OTAView: View {
     }
 
     /// 读取所选固件包：真实文件名/大小 + CRC32 校验值 + 文件名中的期望版本。
+    /// 镜像大小防线（审计后补）：APP 区 = 0x08004000–0x08040000（240KB），过小不可能是合法
+    /// 固件、过大 bootloader 写入会越界（固件无 size 检查——真机变砖事故 2026-09-11 的防线）。
     private func adoptFile(_ url: URL) {
         let secured = url.startAccessingSecurityScopedResource()
         defer { if secured { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url) else { return }
+        guard (8192...245_760).contains(data.count) else {
+            pickedURL = nil
+            pickedFileName = url.lastPathComponent
+            pickedFileSize = data.count
+            LogStore.shared.warn(zh ? "固件包大小 \(data.count) B 超出 App 分区合法范围（8KB–240KB），已拒绝"
+                                    : "Firmware size \(data.count) B outside the 8KB–240KB app partition range; rejected")
+            return
+        }
         pickedURL = url
         pickedFileName = url.lastPathComponent
         pickedFileSize = data.count
