@@ -102,6 +102,16 @@ struct TasksView: View {
                 path = [0]
             }
         }
+        .task {
+            // MOCK_RT_AUTOFIRE=v:s：自动点发一条实时任务（模拟器无 UI 自动化时验收倒计时/横幅）；
+            // MOCK_RT_DUR 覆盖高级时长初值（如 12，走完整定时回位周期）
+            guard let spec = ProcessInfo.processInfo.environment["MOCK_RT_AUTOFIRE"] else { return }
+            if let d = ProcessInfo.processInfo.environment["MOCK_RT_DUR"], Int(d) != nil { rtDur = d }
+            let vs = spec.split(separator: ":").compactMap { Int($0) }
+            guard vs.count == 2 else { return }
+            try? await Task.sleep(for: .seconds(1.5))
+            sendExec(vs[0], vs[1])
+        }
     }
 
     // MARK: - 列表页（规格卡 §1）
@@ -603,6 +613,7 @@ struct TasksView: View {
         let dur = Int(rtDur) ?? 0
         let pulse = Int(rtPulse) ?? 0
         guard (0...65535).contains(dur), (0...65535).contains(pulse) else { return }
+        countdownTask?.cancel()   // 新命令立即覆盖旧动作：旧本地倒计时不再生效
         busyVisible = false
         let cmd = RTExec(phase: .sending, valve: valve, state: state,
                          dur: dur, pulse: pulse, remain: dur, flash: nil)
@@ -620,7 +631,7 @@ struct TasksView: View {
                 if dur > 0 || pulse > 0 {
                     rt = RTExec(phase: .executing, valve: valve, state: state,
                                 dur: dur, pulse: pulse, remain: dur, flash: nil)
-                    if dur > 0 { startCountdown(cmd) }
+                    if dur > 0 { startCountdown() }
                     // dur=0 pulse>0：执行中持续（设备脉冲打满自停），直至用户下发新命令
                 } else {
                     // 纯开关：保持该状态直至下一命令（固件语义），直达完成闪条
@@ -644,12 +655,15 @@ struct TasksView: View {
     }
 
     /// 定时回位倒计时（本地镜像：固件无完成上报，结束时设备自动反向复位阀门）。
-    private func startCountdown(_ cmd: RTExec) {
+    /// 守卫按 phase 判定而非实例相等：RTExec 是值类型，remain 每秒自减即产生新实例，
+    /// 相等比较会在首次自减后断链（原型 cmd 为同一可变对象引用，无此问题）；
+    /// 覆盖/退出由 countdownTask.cancel()（sendExec 入口 / onDisappear）+ phase 守卫兜底。
+    private func startCountdown() {
         countdownTask?.cancel()
         countdownTask = Task {
-            while rt == cmd, rt?.phase == .executing, !Task.isCancelled {
+            while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
-                guard rt == cmd, rt?.phase == .executing else { return }
+                guard !Task.isCancelled, rt?.phase == .executing else { return }
                 rt?.remain -= 1
                 if rt?.remain ?? 0 <= 0 {
                     rt?.phase = .done

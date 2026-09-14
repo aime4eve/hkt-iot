@@ -933,6 +933,8 @@ struct HKTProgress: View {
                 RoundedRectangle(cornerRadius: 4).fill(Theme.fill)
                 RoundedRectangle(cornerRadius: 4).fill(Theme.info)
                     .frame(width: max(0, min(1, fraction)) * proxy.size.width)
+                    // 原型 CSS .progress i{transition:width .25s}：宽度变化 0.25s 缓动过渡
+                    .animation(.easeInOut(duration: 0.25), value: fraction)
             }
         }
         .frame(height: 8)
