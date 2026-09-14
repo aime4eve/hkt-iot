@@ -325,6 +325,11 @@ const ZH={
   rtDone:"✓ 任务完成 · 阀门已自动复位", rtEndHint:"结束后设备自动复位阀门",
   rtNoEnd:"无自动结束：持续执行，直至下发新命令（新命令立即覆盖当前动作）",
   rtPulseWait:"执行中：设备达到脉冲数后自动结束并复位阀门",
+  rtNow:"立即开关阀门，点按即执行", rtCur:"当前", rtMixed:"开/关 各异",
+  rtActed:"已执行 · 阀门已动作",
+  rtAdv:"高级：定时回位与脉冲",
+  rtAdvDurHint:"动作保持 N 秒后自动复位（0 = 保持直至下一命令）",
+  rtAdvPulseHint:"脉冲端口：发出 N 个脉冲后自动停止",
   addTask:"新建定时任务", delAll:"全部删除", del:"删除", days:"重复",
   startT:"开始", endT:"结束", noTasks:"暂无定时任务", localMirror:"设备无 BLE 回读命令，以下为本机写入记录的镜像（固件仅支持 LoRa 平台侧回读 0x3D）",
   forceStopNote:"删除执行中的任务将强制停止阀门动作", invalidTime:"时间无效", needDay:"至少选择一天",
@@ -433,6 +438,11 @@ const EN={
   rtDone:"✓ Task finished · valve restored", rtEndHint:"the device restores the valve when it ends",
   rtNoEnd:"No auto-stop: runs until a new command replaces it (replacement actuates immediately)",
   rtPulseWait:"Executing: the device stops and restores once the pulse count is reached",
+  rtNow:"Instant valve open/close - tap to actuate", rtCur:"Now", rtMixed:"mixed",
+  rtActed:"Executed · valve actuated",
+  rtAdv:"Advanced: timed revert & pulses",
+  rtAdvDurHint:"Hold the action for N seconds then auto-revert (0 = hold until the next command)",
+  rtAdvPulseHint:"PWM ports: stops automatically after N pulses",
   addTask:"New Task", delAll:"Delete All", del:"Delete", days:"Repeat",
   startT:"Start", endT:"End", noTasks:"No scheduled tasks", localMirror:"No BLE read-back; this list mirrors what was written from this phone (firmware exposes 0x3D via LoRa only)",
   forceStopNote:"Deleting a running task force-stops the valve", invalidTime:"Invalid time", needDay:"Pick at least one day",
@@ -1449,7 +1459,7 @@ function cfgWrite(){
    - 0x05 len2：id 1-16 单删；0xFF 全删；删除执行中任务强制停止；删除后 ACK
    - repeat 位序：bit0=周一 … bit5=周六，bit6=周日（(wday?wday:7)-1）
    - 任务表无 BLE 回读（0x3D 仅走 LoRa 平台侧）→ App 本地镜像 + UI 明示 */
-S.tasks=[];S.task={mode:"list",draft:{rtValve:1,rtState:1,rtDur:300,rtPulse:100},busy:false,rt:null,rtTimer:null};
+S.tasks=[];S.task={mode:"list",draft:{rtValve:1,rtState:1,rtDur:0,rtPulse:0},busy:false,rt:null,advOpen:false};
 const DAY_KEYS=["d1","d2","d3","d4","d5","d6","d7"];
 function taskInit(){S.task.mode="list";S.task.busy=false;
   if(!S.task.draft)S.task.draft={rtValve:1,rtState:1,rtDur:300,rtPulse:100};
@@ -1462,46 +1472,51 @@ function P_tasks(){
   const vlabel=v=>v===1?t("v1"):v===2?t("v2"):t("vBoth");
   const dayNames=DAY_KEYS.map(k=>t(k));
   if(S.task.mode==="edit")return P_taskEdit(dayNames);
-  /* 实时任务卡三态（2026-09-14 交互裁决，语义对照固件 control_center.c:262）：
-     rt=null 空闲（表单+立即执行）｜rt.phase=sending 发送中（等 ACK，忙=超时无 ACK 横幅）｜
-     rt.phase=executing 设备执行中（dur>0=倒计时，结束设备自动复位阀门；dur=0=持续执行，
-     脉冲优先于时长说明）｜done=完成绿条 3s 自动回落。无任何设备侧完成上报，倒计时为本地镜像 */
+  /* 实时任务=立即开关面板（2026-09-14 二次交互裁决）：每路阀一行「开阀/关阀」大按钮点按即发 0x03，
+     当前状态高亮（轮询快照）；高级折叠=定时回位+脉冲。反馈状态机：
+     sending(锁面)→ ACK 后 dur=0&pulse=0 直达 done 闪条(2s)；dur>0 倒计时镜像(执行中可随时反向覆盖，固件允许)；
+     dur=0 pulse>0 脉冲等待说明；dur=0 pulse=0 即 done。忙=发送超时无 ACK 红条（仅定时任务执行中才忙）。
+     固件语义 control_center.c:262：结束（时长到/脉冲满）自动反向复位，无完成上报 */
   const rt=S.task.rt;
-  let rtState="";
-  if(rt&&rt.phase==="sending"){
-    rtState=`<div class="banner info" style="margin-top:9px">⏳ ${t("rtSend")}</div>
-      <button class="btn" disabled style="opacity:.5">${t("exec")}</button>`;
-  } else if(rt&&rt.phase==="executing"){
+  const vsim=SIM.SVC100;
+  const vstate=v=>v===1?vsim.v1:v===2?vsim.v2:null;
+  const sending=!!(rt&&rt.phase==="sending");
+  const rowBtn=(v,st)=>{
+    const isActive=v===0?(vsim.v1===st&&vsim.v2===st):vstate(v)===st;
+    return `<div style="flex:1;text-align:center;padding:10px 0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;${sending?"pointer-events:none;opacity:.5;":""}${isActive?"background:var(--info);color:#fff":"background:var(--card2);color:var(--text2)"}" onclick="execRT(${v},${st})">${st?t("openV"):t("closeV")}</div>`;
+  };
+  const row=v=>{
+    const cur=v===0?`阀1 ${vsim.v1?t("openV"):t("closeV")} · 阀2 ${vsim.v2?t("openV"):t("closeV")}`
+                   :`${t("rtCur")} ${vstate(v)?t("openV"):t("closeV")}`;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid var(--line)">
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${vlabel(v)}</div>
+        <div class="kv" style="font-size:11px">${cur}</div></div>
+      <div style="display:flex;gap:6px;width:186px">${rowBtn(v,1)}${rowBtn(v,0)}</div></div>`;
+  };
+  let strip="";
+  if(rt&&rt.phase==="sending")strip=`<div class="banner info" style="margin-top:10px">⏳ ${t("rtSend")}</div>`;
+  else if(rt&&rt.phase==="executing"){
     const summary=`${vlabel(rt.valve)} · ${rt.state?t("openV"):t("closeV")}${rt.pulse?` · ${t("pulseN")} ${rt.pulse}`:""}`;
     const countdown=rt.dur>0?`<div class="progress" style="margin-top:8px"><i style="width:${Math.max(0,(rt.dur-rt.remain)/rt.dur*100)}%"></i></div>
-      <div class="kv" style="margin-top:4px">${t("rtRemain")(rt.remain)} / ${rt.dur} s</div>
-      <div class="kv" style="font-size:11px;color:var(--text2);margin-top:2px">${t("rtEndHint")}</div>`:"";
+      <div class="kv" style="margin-top:4px">${t("rtRemain")(rt.remain)} / ${rt.dur} s · ${t("rtEndHint")}</div>`:"";
     const note=rt.dur>0?"":(rt.pulse>0?t("rtPulseWait"):t("rtNoEnd"));
-    rtState=`<div class="banner info" style="margin-top:9px">● ${t("rtExec")} — ${summary}</div>
-      ${countdown}${note?`<div class="kv" style="font-size:11px;margin-top:6px">${note}</div>`:""}
-      ${rt.dur>0?`<button class="btn" disabled style="opacity:.5">${t("exec")}</button>`
-                :`<button class="btn" onclick="execRT()">${t("exec")}</button>`}`;
-  } else {
-    if(rt&&rt.phase==="done")rtState=`<div class="banner ok" style="margin-top:9px">${t("rtDone")}</div>`;
-    else rtState=S.task.busy?`<div class="banner err" style="margin-top:9px">⏱ ${t("busy")}</div>`:"";
+    strip=`<div class="banner info" style="margin-top:10px">● ${t("rtExec")} — ${summary}</div>${countdown}${note?`<div class="kv" style="font-size:11px;margin-top:6px">${note}</div>`:""}`;
   }
-  const formLocked=rt&&rt.phase==="sending";
-  let rtCard=`<div class="card"><div style="font-weight:700;margin-bottom:8px">${t("rt")} · 0x03</div>
-    <div class="fieldgrid" style="${formLocked?"opacity:.55;pointer-events:none":""}">
-      <div class="field"><div class="k">${t("valve")}</div><div class="v" style="font-size:14px">${[t("vBoth"),t("v1"),t("v2")][S.task.draft.rtValve]}</div>
-        <div style="display:flex;gap:4px;margin-top:6px">${[0,1,2].map((v,i)=>`<div style="flex:1;text-align:center;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;background:${S.task.draft.rtValve===v?"var(--info)":"var(--card2)"};color:${S.task.draft.rtValve===v?"#fff":"var(--text2)"}" onclick="S.task.draft.rtValve=${v};render()">${vlabel(v)}</div>`).join("")}</div></div>
-      <div class="field"><div class="k">${t("act")}</div><div class="v" style="font-size:14px">${S.task.draft.rtState?t("openV"):t("closeV")}</div>
-        <div style="display:flex;gap:4px;margin-top:6px">${[1,0].map(v=>`<div style="flex:1;text-align:center;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;background:${S.task.draft.rtState===v?"var(--info)":"var(--card2)"};color:${S.task.draft.rtState===v?"#fff":"var(--text2)"}" onclick="S.task.draft.rtState=${v};render()">${v?t("openV"):t("closeV")}</div>`).join("")}</div></div>
-    </div>
-    <div style="display:flex;gap:9px;margin-top:9px;${formLocked?"opacity:.55;pointer-events:none":""}">
+  else if(rt&&rt.phase==="done")strip=`<div class="banner ok" style="margin-top:10px">${rt.flash||t("rtDone")}</div>`;
+  else if(S.task.busy)strip=`<div class="banner err" style="margin-top:10px">⏱ ${t("busy")}</div>`;
+  const adv=S.task.advOpen?`<div style="display:flex;gap:9px;margin-top:9px">
       <div class="field" style="flex:1"><div class="k">${t("dur")}(s)</div>
         <input class="input" style="margin-top:4px" inputmode="numeric" value="${S.task.draft.rtDur}" oninput="S.task.draft.rtDur=this.value">
-        <div class="kv" style="font-size:11px;margin-top:2px">${t("durHint")}</div></div>
+        <div class="kv" style="font-size:11px;margin-top:2px">${t("rtAdvDurHint")}</div></div>
       <div class="field" style="flex:1"><div class="k">${t("pulseN")}</div>
-        <input class="input" style="margin-top:4px" inputmode="numeric" value="${S.task.draft.rtPulse}" oninput="S.task.draft.rtPulse=this.value"></div>
-    </div>
-    ${rtState}
-    ${(rt&&(rt.phase==="sending"||(rt.phase==="executing"&&rt.dur>0)))?"":`<button class="btn" onclick="execRT()">${t("exec")}</button>`}</div>`;
+        <input class="input" style="margin-top:4px" inputmode="numeric" value="${S.task.draft.rtPulse}" oninput="S.task.draft.rtPulse=this.value">
+        <div class="kv" style="font-size:11px;margin-top:2px">${t("rtAdvPulseHint")}</div></div>
+    </div>`:"";
+  let rtCard=`<div class="card"><div style="font-weight:700">${t("rt")} · 0x03</div>
+    <div class="kv" style="font-size:11px;color:var(--text2);margin:2px 0 4px">${t("rtNow")}</div>
+    ${row(1)}${row(2)}${row(0).replace('border-bottom:1px solid var(--line)','')}
+    <div class="linkbtn" style="margin-top:9px" onclick="S.task.advOpen=!S.task.advOpen;render()">${S.task.advOpen?"▾":"▸"} ${t("rtAdv")}</div>
+    ${adv}${strip}</div>`;
   const list=S.tasks.length?S.tasks.map(tk=>`<div class="card">
       <div style="display:flex;align-items:center"><b>#${tk.id}</b>
         <span class="badge info" style="margin-left:8px">${vlabel(tk.valve)} · ${tk.state?t("openV"):t("closeV")}</span>
@@ -1584,15 +1599,15 @@ function delTask(id){
 function delAllTasks(){
   S.tasks=[];log("0x05","INFO","delete ALL (0xFF)");render();
 }
-function execRT(){
-  const dur=+S.task.draft.rtDur,pul=+S.task.draft.rtPulse;
+function execRT(v,st){
+  if(S.task.rt&&S.task.rt.phase==="sending")return;   // 同一时刻仅一条在途
+  const dur=+(S.task.draft.rtDur||0),pul=+(S.task.draft.rtPulse||0);
   if(!Number.isFinite(dur)||dur<0||dur>65535||!Number.isFinite(pul)||pul<0||pul>65535){
     toast(`${t("errRange")} 0–65535`);return;}   // 0x03 time/pulse 均 2B
-  if(S.task.rt&&(S.task.rt.phase==="sending"||(S.task.rt.phase==="executing"&&S.task.rt.dur>0)))return;
-  const cmd={phase:"sending",valve:S.task.draft.rtValve,state:S.task.draft.rtState,dur,pulse:pul,remain:dur};
+  const cmd={phase:"sending",valve:v,state:st,dur,pulse:pul,remain:dur,timer:null};
   S.task.rt=cmd;S.task.busy=false;render();
-  log("0x03","INFO",`exec valve=${cmd.valve} state=${cmd.state} dur=${dur} pulse=${pul}`);
-  // 演示：600ms 后 ACK（Scene.svcBusy 场景=设备忙静默忽略，超时无 ACK → busy 横幅）
+  log("0x03","INFO",`exec valve=${v} state=${st} dur=${dur} pulse=${pul}`);
+  // 演示：600ms 后 ACK（Scene.svcBusy 场景=定时任务执行中，0x03 静默忽略→超时无 ACK 红条）
   setTimeout(()=>{
     if(S.task.rt!==cmd)return;
     if(Scene.svcBusy){
@@ -1600,22 +1615,30 @@ function execRT(){
       log("0x03","ERR","busy: local schedule running, silently ignored");
       setTimeout(()=>{S.task.busy=false;render();},2600);render();return;
     }
-    cmd.phase="executing";
     const d=SIM.SVC100;
-    if(cmd.valve===0||cmd.valve===1)d.v1=cmd.state;
-    if(cmd.valve===0||cmd.valve===2)d.v2=cmd.state;
-    render();
-    if(cmd.dur>0){   // 倒计时：固件 control_center.c:263 时长到→自动反向复位；无完成上报，本地镜像
-      S.task.rtTimer=setInterval(()=>{
-        if(S.page!=="tasks"||S.task.rt!==cmd){clearInterval(S.task.rtTimer);return;}
-        cmd.remain--;
-        if(cmd.remain<=0){
-          clearInterval(S.task.rtTimer);
-          cmd.phase="done";
-          log("0x03","INFO","real task done (local mirror); valve restored by device");
-          render();setTimeout(()=>{if(S.task.rt===cmd){S.task.rt=null;render();}},3000);
-        } else render();
-      },1000);
+    if(v===0||v===1)d.v1=st;
+    if(v===0||v===2)d.v2=st;
+    const names={0:t("vBoth"),1:t("v1"),2:t("v2")};
+    if(dur>0||pul>0){
+      cmd.phase="executing";render();
+      if(dur>0){   // 倒计时：固件 control_center.c:263 时长到→自动反向复位；无完成上报，本地镜像
+        cmd.timer=setInterval(()=>{
+          if(S.page!=="tasks"||S.task.rt!==cmd){clearInterval(cmd.timer);return;}
+          cmd.remain--;
+          if(cmd.remain<=0){
+            clearInterval(cmd.timer);
+            cmd.phase="done";cmd.flash=null;   // rtDone：阀门已自动复位
+            log("0x03","INFO","timed hold done (local mirror); valve restored by device");
+            render();setTimeout(()=>{if(S.task.rt===cmd){S.task.rt=null;render();}},3000);
+          } else render();
+        },1000);
+      }
+      // dur=0 pulse>0：执行中持续（设备脉冲打满自停），直至用户下发新命令
+    } else {
+      // 纯开关（审计语义：保持直至下一命令）：直达完成闪条 2s
+      cmd.phase="done";cmd.flash=`✓ ${names[v]} ${st?t("openV"):t("closeV")} · ${t("rtActed")}`;
+      log("0x03","INFO","valve actuated (hold until next command)");
+      render();setTimeout(()=>{if(S.task.rt===cmd){S.task.rt=null;render();}},2000);
     }
   },600);
 }
