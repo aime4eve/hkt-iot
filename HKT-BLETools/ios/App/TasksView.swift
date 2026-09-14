@@ -266,7 +266,8 @@ struct TasksView: View {
                           + " — \(name) · \(action)" + (cmd.pulse > 0 ? " · " + (zh ? "脉冲数 " : "pulses ") + "\(cmd.pulse)" : ""))
                 .padding(.top, 10)
             if cmd.dur > 0 {
-                HKTProgress(fraction: cmd.dur == 0 ? 0 : Double(cmd.dur - cmd.remain) / Double(cmd.dur))
+                // 进度条=剩余量：从满格随倒计时递减（自 0% 递增的条在长时长头几秒不可见）
+                HKTProgress(fraction: cmd.dur == 0 ? 0 : Double(cmd.remain) / Double(cmd.dur))
                     .padding(.top, 8)
                 Text((zh ? "剩余 \(cmd.remain) s / \(cmd.dur) s · " : "\(cmd.remain)s / \(cmd.dur)s left · ")
                     + (zh ? "结束后设备自动复位阀门" : "the device restores the valve when it ends"))
