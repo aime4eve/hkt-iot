@@ -38,6 +38,10 @@ final class DemoResponder: @unchecked Sendable {
             applyConfig(frame, to: family)
             return configAcks ? Self.ackFrame : nil
         case CommandCode.svcRealtimeTask:
+            // 载荷：valve(1) state(1) 时长(2) 脉冲(2)——立即驱动阀状态，写回夹具 0x3C
+            if !realtimeBusy, frame.count > 9 {
+                applyValveState(valve: Int(frame[7]), state: Int(frame[8]))
+            }
             return realtimeBusy ? nil : Self.ackFrame   // 设备忙=静默忽略，与固件一致
         case CommandCode.svcTimedTask, CommandCode.svcDeleteTask:
             return Self.ackFrame
@@ -80,6 +84,22 @@ final class DemoResponder: @unchecked Sendable {
             put(32, [request[12], request[13]])                               // 0x86 上报周期
         }
         frames[family] = response
+    }
+
+    /// 实时任务：把阀状态写进 SVC 夹具 0x3C（value@13=v1s, @17=v2s），详情页下轮轮询即见。
+    private func applyValveState(valve: Int, state: Int) {
+        guard var response = frames[.svc100] else { return }
+        func setBit(_ offset: Int, _ on: Bool) {
+            guard offset < response.count else { return }
+            response[offset] = on ? 0x01 : 0x00
+        }
+        switch valve {
+        case 1: setBit(13, state == 1)
+        case 2: setBit(17, state == 1)
+        case 0: setBit(13, state == 1); setBit(17, state == 1)
+        default: break
+        }
+        frames[.svc100] = response
     }
 
     private static func hex(_ hex: String) -> Data {

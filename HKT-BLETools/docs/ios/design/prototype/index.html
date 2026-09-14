@@ -1459,7 +1459,7 @@ function cfgWrite(){
    - 0x05 len2：id 1-16 单删；0xFF 全删；删除执行中任务强制停止；删除后 ACK
    - repeat 位序：bit0=周一 … bit5=周六，bit6=周日（(wday?wday:7)-1）
    - 任务表无 BLE 回读（0x3D 仅走 LoRa 平台侧）→ App 本地镜像 + UI 明示 */
-S.tasks=[];S.task={mode:"list",draft:{rtValve:1,rtState:1,rtDur:0,rtPulse:0},busy:false,rt:null,advOpen:false};
+S.tasks=[];S.task={mode:"list",draft:{rtValve:1,rtState:1,rtDur:60,rtPulse:100},busy:false,rt:null,advOpen:false};
 const DAY_KEYS=["d1","d2","d3","d4","d5","d6","d7"];
 function taskInit(){S.task.mode="list";S.task.busy=false;
   if(!S.task.draft)S.task.draft={rtValve:1,rtState:1,rtDur:300,rtPulse:100};
@@ -1874,8 +1874,8 @@ const SPEC=[
  {id:"SP-16",pg:"config",tp:"规格",txt:"App 前置校验=固件同规则：UDS100 任一非法整包拒绝（无 ACK）；DC200 周期 0-1440；SVC100 稳定 1-255s、时区 0-26；SVC 端口功能=7 取值（0x00-0x03/0x81-0x83：1/2 路各自脉冲/开关 × 是否带稳定时间，标签对齐 Android spinner_items_valve_mode），稳定时长仅 0x80 位模式可编辑（否则禁用并保留设备当前值，跳过校验）；保存=确认弹窗→0x02→ACK→回读；静默拒绝→超时提示；编辑草稿独立于轮询刷新，仅保存成功回读后才更新表单；输入过程不整页重绘（保持焦点与滚动位置），校验错误在保存时定位到字段",ref:"FW-REF fromBleDataHandle(0x02)；TX-*-CFG-*；Android DeviceActivity getConfigSVC100View/updateStableTimeEditor；Android PR #4 两回归反例（校验取反/Spinner 重置选中）"},
  {id:"SP-G7",pg:"config",tp:"规格",txt:"参数配置页采用工业表单布局：语义分区（输出与端口 / 时间与上报）；SVC100 电压用三档选择，端口 1/端口 2 分别选择开关或 PWM，界面合成单字节端口值；稳定时长由 0x80 全局位开关且仅该模式下可编辑；自动开关机用开关并显示插入/拔出触发说明；保存操作固定底部；仅改布局，不改字段、范围与 0x02 契约",ref:"R-G6；R-16；SP-16；用户方向 2026-09-08"},
  {id:"R-17",pg:"config",tp:"需求",txt:"周期 0 值按固件接受开放，表单提示文案已定",ref:"需求 §7.4"},
- {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；需求 §7.3"},
- {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；固件 2026-09-09 已修复为按 2B 读（原 3B 读与 len 门槛不自洽缺陷已闭环），App 按 6B 载荷发送（与 Android 逐字节一致）；忙=静默忽略→2s 超时提示『设备忙』；0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve(0双/1/2)+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支（2026-09-09 复核：固件已修 2B 读）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
+ {id:"R-18",pg:"tasks",tp:"需求",txt:"SVC100 阀门任务 UI：实时任务=立即开关面板（每路阀一行 开/关 大按钮，当前状态来自轮询快照；高级折叠=定时回位时长+脉冲数）+定时任务表（16 槽）+删除（单条/全部）进 v1",ref:"Q1 二修 2026-09-06；交互裁决 2026-09-14（开关面板）；需求 §7.3"},
+ {id:"SP-18",pg:"tasks",tp:"规格",txt:"0x03 帧=len7/载荷 6B：valve(0双/1/2)+state+时长秒(2B BE，0=不自动结束)+pulse(2B BE，0-65535)；App 按 6B 载荷发送（与 Android 逐字节一致）。交互状态机（语义对照 control_center.c:262）：空闲（阀行点按即发，当前状态侧 info 高亮）→发送中（info banner+全按钮锁定，≤3s 等专用 ACK）→纯开关(dur=0&pulse=0)直达 ok 闪条『已执行·阀门已动作』2s（保持直至下一命令）；定时回位/脉冲→执行中 info banner+本地倒计时镜像（结束设备自动反向复位且无上报），执行中按钮保持可用（新 0x03 立即覆盖）→忙=发送超时无 ACK err banner 2.6s（仅定时任务执行中才可能）。0x04=len11：id(1-16 槽位可选，写入即覆盖)+valve+state+pulse(2B)+起止分钟(2B)+repeat(≤0x7F，bit0=周一…bit6=周日)，App 前置校验含结束>开始；非法静默/合法 ACK 存 flash；0x05=单删/0xFF 全删（删执行中强制停止）；任务表无 BLE 回读→本地镜像明示",ref:"FW-REF SVC 0x03/04/05 分支+control_center.c:262（2026-09-14 交互审计）；TX-SVC-TASK-001~003；Android getTimedTask/checkboxEdit"},
  {id:"R-19",pg:"debug",tp:"需求",txt:"原始 hex 命令发送与原始收发流水查看；发送前二次确认",ref:"需求 §9.1"},
  {id:"SP-19",pg:"debug",tp:"规格",txt:"隐藏入口：关于页连点版本 7 次开启；dev 构建默认开",ref:"Q3 裁决"},
  {id:"R-20",pg:"settings",tp:"需求",txt:"中英双语；设置页语言行点击循环切换（跟随系统→简体中文→English）并即时生效；诊断日志查看/导出；扫描过滤设置持久化",ref:"需求 §9.3/§9.2；F-07"},
