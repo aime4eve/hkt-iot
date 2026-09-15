@@ -1,18 +1,21 @@
 import CoreBLE
 import SwiftUI
+import UIKit
 
 /// R-2 目标设备定位 UI —— 1:1 克隆冻结原型（定位 sheet / 输入对话框 / 相机取景 / 定位中脉冲 / 未找到）。
 /// 状态机 = ScanModel.locatePhase（input/finding/notFound，30s 超时未找到，命中 onLocateHit→连接覆盖层）。
-/// 相机取景为模拟画面，真实相机会话随相机里程碑接入。
+/// 相机=AVFoundation 真会话（CameraScanner，2026-09-14 接入）：识别文本须 16 位 hex DevEUI（Android 同规）。
 struct LocateFlowView: View {
     @Environment(ScanModel.self) private var model
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var connector: ConnectModel?
-    @State private var mode: LocateMode = .sheet      // sheet / input / camera（取景模拟）
+    @State private var mode: LocateMode = .sheet      // sheet / input / camera（真会话）
     @State private var locateInput: String = "0095690" // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
     @State private var inputError: String?
     @State private var pulse = false
+    @State private var camState: CameraScanner.RunState = .running
+    @State private var qrHint: String?
 
     enum LocateMode: Equatable {
         case sheet, input, camera
@@ -228,10 +231,13 @@ struct LocateFlowView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    /// .cam 相机取景模拟（真实相机会话随相机里程碑接入）。
+    /// .cam 相机取景真会话：识别命中→startLocate（body 随 locatePhase 切到定位中页）。
     private var cameraView: some View {
         ZStack {
             Color(hex: "#0B0B0F").ignoresSafeArea()
+            CameraScanner(onCode: handleQR, state: $camState)
+                .ignoresSafeArea()
+                .opacity(camState == .running ? 1 : 0)
             VStack(spacing: 0) {
                 NavbarHeader(title: zh ? "扫描设备二维码" : "Scan Device QR Code",
                              backText: zh ? "取消" : "Cancel",
@@ -240,18 +246,75 @@ struct LocateFlowView: View {
                 }
                 .tint(Color(hex: "#23ADE5"))
                 Spacer()
-                ZStack {
-                    CamCornerFrame()
-                        .frame(width: 240, height: 240)
+                if camState == .running {
+                    ZStack {
+                        CamCornerFrame()
+                            .frame(width: 240, height: 240)
+                    }
+                    Text(zh ? "对准设备标签上的二维码，自动识别" : "Point at the QR code on the device label to scan")
+                        .font(.hkt(13))
+                        .foregroundStyle(Color(hex: "#BBBBBB"))
+                        .padding(.top, 26)
+                    if let qrHint {
+                        Text("✕ " + qrHint)
+                            .font(.hkt(12))
+                            .foregroundStyle(Color(hex: "#FF6B6B"))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 10)
+                    }
+                } else {
+                    cameraFallback
                 }
-                Text(zh ? "对准设备标签上的二维码，自动识别" : "Point at the QR code on the device label to scan")
-                    .font(.hkt(13))
-                    .foregroundStyle(Color(hex: "#BBBBBB"))
-                    .padding(.top, 26)
                 Spacer()
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    /// 权限拒绝引导 / 无相机（模拟器）兜底。
+    private var cameraFallback: some View {
+        VStack(spacing: 14) {
+            Text(camState == .denied ? "📷" : "⚠️").font(.system(size: 44))
+            Text(camState == .denied ? (zh ? "相机权限未开启" : "Camera access is off")
+                                     : (zh ? "没有可用相机" : "No camera available"))
+                .font(.hkt(17, .semibold))
+            Text(camState == .denied
+                 ? (zh ? "请在 系统设置 › HKT BLETools › 允许「相机」后返回重试"
+                       : "Allow the camera in Settings › HKT BLETools, then come back")
+                 : (zh ? "此设备无法扫码，可返回使用「输入 DevEUI」"
+                       : "This device has no camera; use Enter DevEUI instead"))
+                .font(.hkt(13)).lineSpacing(1.5 * 13 - 13)
+                .foregroundStyle(Color(hex: "#BBBBBB"))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            if camState == .denied {
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Text(zh ? "打开设置" : "Open Settings")
+                        .font(.hkt(15, .semibold)).foregroundStyle(Color(hex: "#23ADE5"))
+                        .padding(.horizontal, 28).padding(.vertical, 11)
+                        .background(RoundedRectangle(cornerRadius: Theme.controlRadius)
+                            .stroke(Color(hex: "#23ADE5"), lineWidth: 1))
+                }
+            }
+        }
+    }
+
+    /// 识别结果处理：16 位 hex 才进定位（Android isValidDevEui 同规），否则提示并继续扫。
+    private func handleQR(_ text: String) {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if cleaned.count == 16, cleaned.allSatisfy({ $0.isHexDigit }) {
+            qrHint = nil
+            model.startLocate(devEUI: cleaned)
+        } else {
+            let short = text.count > 40 ? String(text.prefix(40)) + "…" : text
+            qrHint = zh ? "二维码内容不是 16 位 DevEUI：\(short)"
+                        : "Not a 16-hex DevEUI: \(short)"
+        }
     }
 }
 

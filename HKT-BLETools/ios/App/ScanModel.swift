@@ -158,8 +158,6 @@ final class ScanModel {
         armLocateTimeout()
     }
 
-    func beginCameraLocate() { /* 相机会话随相机里程碑接入 */ }
-
     private func armLocateTimeout() {
         locateTimeoutTask?.cancel()
         locateTimeoutTask = Task { [weak self] in
@@ -178,6 +176,9 @@ final class ScanModel {
         locatePhase = .finding
         savedPrefixes = allowedPrefixes
         allowedPrefixes = DiscoveredDevice.supportedPrefixes   // 目标模式忽略前缀过滤
+        // 系统蓝牙对同一扫描会话内的设备只报一次 didDiscover：先停再启=新会话，
+        // 否则扫描列表已发现过的目标设备永远不会再进回调，定位必然 30s 超时（2026-09-14 真机缺陷）
+        if isScanning { stopScan() }
         startScan()
         armLocateTimeout()
     }
