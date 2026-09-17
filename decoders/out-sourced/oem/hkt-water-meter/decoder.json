@@ -22,7 +22,7 @@
       "file": "hkt-water-meter_chirpstack_cn_v1.0.0.js",
       "decoderVersion": "1.0.0",
       "firmwareVersion": null,
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
@@ -39,6 +39,18 @@
       "basis": [],
       "verifiedAt": null,
       "changelog": "迁移件：英文输出版；迁移时去除 Buffer 依赖（ChirpStack/TTN 运行时无此对象）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "hkt-water-meter_chirpstack_cn_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "HKT_LoRaWAN_水表协议_中文.md（2026-09-18 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "输出键名 Address→address，与 en 变体及平台既有契约（camelCase）对齐；其余逻辑不变"
     }
   ],
   "deviations": [],
