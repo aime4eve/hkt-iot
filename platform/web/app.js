@@ -2,6 +2,21 @@
 /* HKT 负载解码器调试平台 前端逻辑（Vue3 全局构建，无构建步骤） */
 const { createApp } = Vue;
 
+// 前端错误可视化：任何未捕获错误直接显示为页面顶部红色横幅（便于用户截图反馈）
+window.APP_VER = '20260917d';
+function showFatalBanner(msg) {
+  let bar = document.getElementById('fatal-banner');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'fatal-banner';
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;padding:10px 16px;font:13px/1.5 monospace;white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;';
+    document.body.appendChild(bar);
+  }
+  bar.textContent = '⚠ 前端错误 [v' + window.APP_VER + '] ' + msg;
+}
+window.addEventListener('error', e => showFatalBanner(e.message + ' @ ' + String(e.filename || '').split('/').pop() + ':' + e.lineno));
+window.addEventListener('unhandledrejection', e => showFatalBanner(String((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+
 createApp({
   data() {
     return {

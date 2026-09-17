@@ -48,7 +48,8 @@ code, pre, .pay { font-family: "SF Mono", Menlo, Consolas, monospace; }
 .badge.cur { background: var(--brand); color: #fff; margin-left: 6px; }
 
 .main { flex: 1; padding: 20px 26px; min-width: 0; }
-.main.empty { display: flex; align-items: center; justify-content: center; }
+.main.empty { display: flex; align-items: center; justify-content: center; align-self: flex-start; height: calc(100vh - 62px); }
+/* 不随左侧长列表拉伸（否则欢迎语被顶到首屏之外，右侧看似空白） */
 .welcome { color: var(--dim); text-align: center; }
 .welcome h2 { font-weight: 600; margin-bottom: 8px; }
 
