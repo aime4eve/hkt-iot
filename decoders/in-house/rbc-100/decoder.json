@@ -1,9 +1,9 @@
 {
-  "model": "SRB100",
+  "model": "RBC-100",
   "modelKey": "rbc-100",
   "aliases": [
-    "RBC100",
-    "RBC-100"
+    "SRB100",
+    "RBC100"
   ],
   "name": "瘤胃胶囊",
   "origin": "in-house",
@@ -42,5 +42,5 @@
     }
   ],
   "deviations": [],
-  "notes": "官方索引型号 SRB100，文件名沿用 rbc-100（畜牧平台惯用名）。"
+  "notes": "2026-09-18 用户裁决型号口径：model=RBC-100（瘤胃胶囊）；官方索引名 SRB100 降为检索别名。文件名沿用 rbc-100（畜牧平台惯用名）。"
 }
