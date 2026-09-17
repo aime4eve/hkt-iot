@@ -1,0 +1,86 @@
+[
+  {
+    "name": "历史回归：中配 test-result 采集",
+    "source": "regression",
+    "payload": "681076880125000000811e921f9a2c530200002c0000000035505900002030000037211903262000001b16",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "25018876",
+      "controlCode": "0x81",
+      "serialNumber": 154,
+      "forwardFlow": {
+        "value": 0.253,
+        "unit": "m³"
+      },
+      "reverseFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "instantFlow": {
+        "value": 0.595,
+        "unit": "m³/h"
+      },
+      "temperature": {
+        "value": 30.2,
+        "unit": "℃"
+      },
+      "datetime": "2026-03-19 21:37:00",
+      "status": {
+        "valve": "Open",
+        "battery": "Normal",
+        "pipeBurst": "Normal",
+        "pipeLeak": "Normal",
+        "tempSensor": "Normal",
+        "flowSensor": "Normal",
+        "installDir": "Forward",
+        "rawHex": "0x0000"
+      }
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.0.0.js",
+    "note": "采集自 HKT-Firmwares/out-sourced/水表/中配/test-result.txt"
+  },
+  {
+    "name": "历史回归：中配 test-result 采集",
+    "source": "regression",
+    "payload": "681076880125000000811e921f9b2c560300002c000000003500000000603000005221190326200000d216",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "25018876",
+      "controlCode": "0x81",
+      "serialNumber": 155,
+      "forwardFlow": {
+        "value": 0.356,
+        "unit": "m³"
+      },
+      "reverseFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "instantFlow": {
+        "value": 0,
+        "unit": "m³/h"
+      },
+      "temperature": {
+        "value": 30.6,
+        "unit": "℃"
+      },
+      "datetime": "2026-03-19 21:52:00",
+      "status": {
+        "valve": "Open",
+        "battery": "Normal",
+        "pipeBurst": "Normal",
+        "pipeLeak": "Normal",
+        "tempSensor": "Normal",
+        "flowSensor": "Normal",
+        "installDir": "Forward",
+        "rawHex": "0x0000"
+      }
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.0.0.js",
+    "note": "采集自 HKT-Firmwares/out-sourced/水表/中配/test-result.txt"
+  }
+]

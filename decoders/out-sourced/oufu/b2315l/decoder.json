@@ -1,0 +1,44 @@
+{
+  "model": "B2315L",
+  "modelKey": "b2315l",
+  "aliases": [],
+  "name": "欧孚 LoRaWAN 智能手环",
+  "origin": "out-sourced",
+  "vendor": "欧孚（Oviphone）",
+  "category": "穿戴健康",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/B2315L-Lorawan-通信协议-V2.1.docx",
+    "section": "上行数据格式",
+    "note": null
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "b2315l_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：来源文件无版本名（chirpstack-decode.js），定为基线 v1.0.0，未核验"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "b2315l_chirpstack_v1.3.0.js",
+      "decoderVersion": "1.3.0",
+      "firmwareVersion": null,
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "来源文件名 v1.3；与 V2.1 协议文档的逐字段核对待做"
+    }
+  ],
+  "deviations": [],
+  "notes": "data/ 内含真机历史数据 xlsx（原始+已解码两份），可提炼 field 黄金样例。"
+}

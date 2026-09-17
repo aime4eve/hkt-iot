@@ -1,0 +1,33 @@
+{
+  "model": "CL100",
+  "modelKey": "dms01",
+  "aliases": [
+    "DMS01"
+  ],
+  "name": "车位锁硬件（空开软件版）·门磁状态上报",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "车位管理",
+  "authority": {
+    "type": "firmware",
+    "ref": "41ad0d9",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Air_Switch_CL"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "dms01_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    }
+  ],
+  "deviations": [],
+  "notes": "CL100 硬件运行空开软件（固件提交 92b2153 说明）；解码器与 air-switch 同源同内容，但固件权威各自独立。"
+}

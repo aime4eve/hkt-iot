@@ -1,0 +1,34 @@
+{
+  "model": "SRB100",
+  "modelKey": "rbc-100",
+  "aliases": [
+    "RBC100",
+    "RBC-100"
+  ],
+  "name": "瘤胃胶囊",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "畜牧健康",
+  "authority": {
+    "type": "firmware",
+    "ref": "41ad0d9",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Smart_Rumen_Bolus"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "rbc-100_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    }
+  ],
+  "deviations": [],
+  "notes": "官方索引型号 SRB100，文件名沿用 rbc-100（畜牧平台惯用名）。"
+}

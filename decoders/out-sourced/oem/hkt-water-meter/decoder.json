@@ -1,0 +1,46 @@
+{
+  "model": "HKT-WM",
+  "modelKey": "hkt-water-meter",
+  "aliases": [
+    "中配水表"
+  ],
+  "name": "LoRaWAN 智能水表（中配目录）",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补）",
+  "category": "表计",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/HKT_LoRaWAN_水表协议_中文.md",
+    "section": "1. LoRaWAN 水表上报协议详细解析",
+    "note": null
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "hkt-water-meter_chirpstack_cn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：中文版；迁移时去除 Buffer 依赖（ChirpStack/TTN 运行时无此对象）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "hkt-water-meter_chirpstack_en_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：英文输出版；迁移时去除 Buffer 依赖（ChirpStack/TTN 运行时无此对象）"
+    }
+  ],
+  "deviations": [],
+  "notes": "协议文档为仓库内 MD（含示例帧与字段表）；“中配”目录名含义待确认，厂商待补。"
+}

@@ -1,0 +1,46 @@
+{
+  "model": "EARTAG",
+  "modelKey": "eartag",
+  "aliases": [
+    "耳标"
+  ],
+  "name": "LoRaWAN 电子耳标",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补）",
+  "category": "畜牧",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/Lorawan ear tag protocol.pdf",
+    "section": null,
+    "note": null
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "eartag_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "eartag_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    }
+  ],
+  "deviations": [],
+  "notes": "畜牧平台扫码读 EUI 已在用（GAT-100 条目同）；产品独立型号待向厂商确认。"
+}

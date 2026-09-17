@@ -1,0 +1,46 @@
+{
+  "model": "UNI-WATER",
+  "modelKey": "uni-water",
+  "aliases": [
+    "汇中统一协议"
+  ],
+  "name": "汇中统一协议水表/阀门/采集器",
+  "origin": "out-sourced",
+  "vendor": "汇中",
+  "category": "表计",
+  "authority": {
+    "type": "protocol-doc",
+    "file": null,
+    "missing": true,
+    "note": "汇中协议规格书未入库；现存 README 仅描述工具用法（债务台账）"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "uni-water_chirpstack_en_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：README 标注“当前推荐”的英文版"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "uni-water_chirpstack_cn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：中文输出版"
+    }
+  ],
+  "deviations": [],
+  "notes": "encode-test.txt/test-result.txt 为历史批量测试资产，已提炼为黄金样例。"
+}

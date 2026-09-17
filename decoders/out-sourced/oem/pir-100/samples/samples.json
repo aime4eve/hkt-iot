@@ -1,0 +1,61 @@
+[
+  {
+    "name": "手册 §5 示例帧：防拆已触发+红外告警",
+    "source": "manual",
+    "payload": "000104040c857d0077011701",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 3.205,
+      "voltageStatus": "Normal",
+      "tamperStatus": "Tampered",
+      "infraredAlarm": "Alarm"
+    },
+    "expectError": false,
+    "note": "手册 §5 Example using Infrared Alarm Data；电池 0x0c85=3205mV÷1000"
+  },
+  {
+    "name": "构造：全通道告警帧（低电压+低电+防拆告警）",
+    "source": "regression",
+    "payload": "000104040c857d017701050103011701",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 3.205,
+      "voltageStatus": "Low Voltage",
+      "tamperStatus": "Tampered",
+      "lowBatteryAlarm": "Alarm",
+      "tamperAlarm": "Tamper Alarm",
+      "infraredAlarm": "Alarm"
+    },
+    "expectError": false,
+    "note": "按手册通道表构造"
+  },
+  {
+    "name": "守卫：0x04 电压通道截断",
+    "source": "regression",
+    "payload": "000104040c",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  },
+  {
+    "name": "守卫：未知通道 0x66",
+    "source": "regression",
+    "payload": "000104040c857d007701170166",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  },
+  {
+    "name": "守卫：仅未知通道 0xff",
+    "source": "regression",
+    "payload": "ff",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  }
+]

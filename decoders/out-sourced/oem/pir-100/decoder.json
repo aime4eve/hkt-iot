@@ -1,0 +1,74 @@
+{
+  "model": "PIR-100",
+  "modelKey": "pir-100",
+  "aliases": [],
+  "name": "人存感应器（PIR 移动侦测）",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补，手册为 HKT 贴牌）",
+  "category": "人员感知",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/HKT-PIR-Motion-Sensor-User-Manual-v1.2.pdf",
+    "section": "5. Communication Format",
+    "note": null
+  },
+  "fPortDefault": 210,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "pir-100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移存档：5 字节帧假设与手册通道式不符（越界读 bytes[5]/[6]、电池 1B÷10 错误、12 字节帧不解码）——勿用"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "pir-100_chirpstack_v2.0.0.js",
+      "decoderVersion": "2.0.0",
+      "firmwareVersion": "手册 v1.2",
+      "current": true,
+      "status": "verified",
+      "basis": [
+        "手册 §5 通道表与示例帧",
+        "黄金样例（手册示例帧+构造守卫用例）"
+      ],
+      "verifiedAt": "2026-09-17",
+      "changelog": "按手册 §5 重写：通道长度表+越界/未知通道防护；输出字段语义化（infraredAlarm 等），相对 v1 破坏性变更"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "pir-100_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移存档：同 chirpstack v1.0.0 缺陷——勿用"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "pir-100_ttn_v2.0.0.js",
+      "decoderVersion": "2.0.0",
+      "firmwareVersion": "手册 v1.2",
+      "current": true,
+      "status": "verified",
+      "basis": [
+        "手册 §5 通道表与示例帧",
+        "黄金样例"
+      ],
+      "verifiedAt": "2026-09-17",
+      "changelog": "按手册 §5 重写，与 chirpstack v2.0.0 同逻辑"
+    }
+  ],
+  "deviations": [],
+  "notes": "v1 输出字段名与 v2 不同（infraredStatus→infraredAlarm 等），接入平台规则时注意。"
+}

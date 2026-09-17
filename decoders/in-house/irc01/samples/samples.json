@@ -1,0 +1,56 @@
+[
+  {
+    "name": "历史回归：信息上报帧（版本/电量/间隔/阈值/故障）",
+    "source": "regression",
+    "payload": "686b74000001010203648601e1040105001e0600648300",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 0,
+      "hard_ver": 1,
+      "soft_ver": 2,
+      "battery": 100,
+      "reportInterval": 481,
+      "IRreportMode": 1,
+      "IRreportIntervel": 30,
+      "totalNumber": 100,
+      "faultStatus": 0
+    },
+    "expectError": false,
+    "note": "原解码器内嵌样本；2026-09-04 修复时与固件语义逐字段核对"
+  },
+  {
+    "name": "历史回归：计数上报帧（双计数器+累计值）",
+    "source": "regression",
+    "payload": "686b74005907003300220000122200002222",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 89,
+      "counterA": 51,
+      "counterB": 34,
+      "totalCounterA": 4642,
+      "totalCounterB": 8738
+    },
+    "expectError": false,
+    "note": "同上"
+  },
+  {
+    "name": "守卫：ACK 位置位 + 0x07 计数 TLV 截断",
+    "source": "firmware",
+    "payload": "686b740105070033",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "修复前该形态触发 while(dataLen--) 死循环挂死解码 worker"
+  },
+  {
+    "name": "守卫：未知 TLV 类型失步",
+    "source": "firmware",
+    "payload": "686b7400017e00",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "未知类型无法定位下一 TLV，必须报错停解"
+  }
+]
