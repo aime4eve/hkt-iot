@@ -2,15 +2,14 @@
   "model": "GAT-100",
   "modelKey": "gat-100",
   "aliases": [],
-  "name": "GPS 动物追踪器（外购）",
-  "origin": "out-sourced",
-  "vendor": "OEM（待补）",
+  "name": "GPS 动物追踪器",
+  "origin": "in-house",
+  "vendor": "HKT",
   "category": "动物定位",
   "authority": {
-    "type": "protocol-doc",
-    "file": null,
-    "missing": true,
-    "note": "无任何协议文档（债务台账），需向厂商索取后方可核验"
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Animals_Track",
+    "ref": "41ad0d9"
   },
   "fPortDefault": null,
   "codecs": [
@@ -40,5 +39,5 @@
     }
   ],
   "deviations": [],
-  "notes": "畜牧平台已在用（真机 EUI 前缀 00956906…），解码逻辑无文档可对照。"
+  "notes": "2026-09-18 用户确认自研：固件 HKT-Firmwares/in-house/LoRaWAN_Animals_Track（与 CT02/AT100 同源，定名待裁决）。原归类 out-sourced/oem 已纠正。"
 }
