@@ -1,0 +1,2371 @@
+{
+  "raw_data": "681076880125000000811e921f9a2c530200002c0000000035505900002030000037211903262000001b16",
+  "data_length": 30,
+  "serial_number": 154,
+  "reverse_flow": {
+    "unit_code": "0x2C",
+    "bcd_value": 0,
+    "unit": "m³",
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 253,
+    "value": "0.2530",
+    "raw_bytes": "2c53020000",
+    "type": "Positive cumulative flow",
+    "formatted": "0.2530 m³"
+  },
+  "frame_start": "0x68",
+  "temperature": {
+    "celsius": "2030.00",
+    "bcd_value": 203000,
+    "formatted": "2030.00 °C",
+    "raw_bytes": "203000"
+  },
+  "control_code": 129,
+  "crc": "0x1B",
+  "meter_type": 16,
+  "frame_end": "0x16",
+  "real_time": {
+    "formatted": "2026-3-19 21:37:0",
+    "raw": "00372119032620",
+    "iso": "2026-03-19T21:37:00Z",
+    "bcd": "202631921370"
+  },
+  "instant_flow": {
+    "unit_code": "0x35",
+    "type": "Instantaneous flow",
+    "formatted": "0.5950 m³/h",
+    "unit": "m³/h",
+    "bcd_value": 5950,
+    "raw_bytes": "3550590000",
+    "value": "0.5950"
+  },
+  "status_word": {
+    "raw_bytes": "0000",
+    "parsed": {
+      "battery_low": false,
+      "flow_sensor_fault": false,
+      "pipe_direction": "Forward",
+      "temp_sensor_fault": false,
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "pipe_leak": false
+    },
+    "hex": "0x0000"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  }
+}
+{
+  "frame_start": "0x68",
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921f9b2c560300002c000000003500000000603000005221190326200000d216",
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "bcd_value": 0,
+    "unit": "m³",
+    "type": "Reverse cumulative flow",
+    "value": "0.0000",
+    "unit_code": "0x2C"
+  },
+  "instant_flow": {
+    "raw_bytes": "3500000000",
+    "value": "0.0000",
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³/h"
+  },
+  "real_time": {
+    "bcd": "202631921520",
+    "iso": "2026-03-19T21:52:00Z",
+    "raw": "00522119032620",
+    "formatted": "2026-3-19 21:52:0"
+  },
+  "crc": "0xD2",
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "serial_number": 155,
+  "status_word": {
+    "hex": "0x0000",
+    "parsed": {
+      "pipe_direction": "Forward",
+      "temp_sensor_fault": false,
+      "battery_low": false,
+      "pipe_burst": false,
+      "valve_status": "Open",
+      "pipe_leak": false,
+      "flow_sensor_fault": false
+    },
+    "raw_bytes": "0000"
+  },
+  "data_length": 30,
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "unit_code": "0x2C",
+    "type": "Positive cumulative flow",
+    "unit": "m³",
+    "value": "0.3560"
+  },
+  "control_code": 129,
+  "frame_end": "0x16",
+  "temperature": {
+    "celsius": "6030.00",
+    "raw_bytes": "603000",
+    "bcd_value": 603000,
+    "formatted": "6030.00 °C"
+  }
+}
+{
+  "frame_start": "0x68",
+  "meter_type": 16,
+  "serial_number": 1,
+  "control_code": 164,
+  "forward_flow": {
+    "formatted": "106000000.0000 unknown",
+    "type": "Positive cumulative flow",
+    "value": "106000000.0000",
+    "unit": "unknown",
+    "bcd_value": 106000000,
+    "raw_bytes": "05000000a6",
+    "unit_code": "0x5"
+  },
+  "crc": "0xCA",
+  "raw_data": "681076880125000000a40816c00105000000a6ca16",
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_length": 8,
+  "data_identifier": {
+    "DI1": "0xC0",
+    "DI0": "0x16"
+  },
+  "frame_end": "0x16"
+}
+{
+  "data_length": 30,
+  "reverse_flow": {
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow"
+  },
+  "control_code": 129,
+  "frame_end": "0x16",
+  "crc": "0xD0",
+  "raw_data": "681076880125000000811e921f9c2c560300002c000000003500000000101800205721190326204000d016",
+  "serial_number": 156,
+  "temperature": {
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800",
+    "celsius": "1018.00"
+  },
+  "real_time": {
+    "formatted": "2026-3-19 21:57:20",
+    "bcd": "2026319215720",
+    "iso": "2026-03-19T21:57:20Z",
+    "raw": "20572119032620"
+  },
+  "status_word": {
+    "raw_bytes": "4000",
+    "hex": "0x0040",
+    "parsed": {
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "flow_sensor_fault": true,
+      "battery_low": false,
+      "pipe_leak": false,
+      "pipe_direction": "Forward",
+      "temp_sensor_fault": false
+    }
+  },
+  "meter_type": 16,
+  "instant_flow": {
+    "value": "0.0000",
+    "unit_code": "0x35",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³/h"
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "forward_flow": {
+    "unit": "m³",
+    "value": "0.3560",
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "bcd_value": 356,
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000"
+  },
+  "frame_start": "0x68"
+}
+{
+  "instant_flow": {
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "value": "0.0000",
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "raw_bytes": "3500000000"
+  },
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800,
+    "celsius": "1018.00",
+    "raw_bytes": "101800"
+  },
+  "real_time": {
+    "raw": "20022219032620",
+    "iso": "2026-03-19T22:02:20Z",
+    "formatted": "2026-3-19 22:2:20",
+    "bcd": "202631922220"
+  },
+  "crc": "0x7D",
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "pipe_direction": "Forward",
+      "temp_sensor_fault": false,
+      "pipe_leak": false,
+      "battery_low": false,
+      "flow_sensor_fault": true
+    },
+    "hex": "0x0040"
+  },
+  "frame_end": "0x16",
+  "reverse_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "unit": "m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "bcd_value": 0
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "raw_data": "681076880125000000811e921f9d2c560300002c0000000035000000001018002002221903262040007d16",
+  "data_length": 30,
+  "frame_start": "0x68",
+  "serial_number": 157,
+  "control_code": 129,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "meter_type": 16,
+  "forward_flow": {
+    "unit": "m³",
+    "value": "0.3560",
+    "unit_code": "0x2C",
+    "bcd_value": 356,
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "type": "Positive cumulative flow"
+  }
+}
+{
+  "real_time": {
+    "iso": "2026-03-19T22:07:20Z",
+    "raw": "20072219032620",
+    "bcd": "202631922720",
+    "formatted": "2026-3-19 22:7:20"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "serial_number": 158,
+  "frame_end": "0x16",
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "celsius": "1018.00",
+    "raw_bytes": "101800",
+    "bcd_value": 101800
+  },
+  "control_code": 129,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "status_word": {
+    "hex": "0x0040",
+    "raw_bytes": "4000",
+    "parsed": {
+      "pipe_direction": "Forward",
+      "valve_status": "Open",
+      "pipe_leak": false,
+      "battery_low": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_burst": false
+    }
+  },
+  "meter_type": 16,
+  "reverse_flow": {
+    "unit": "m³",
+    "formatted": "0.0000 m³",
+    "bcd_value": 0,
+    "raw_bytes": "2c00000000",
+    "value": "0.0000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C"
+  },
+  "data_length": 30,
+  "raw_data": "681076880125000000811e921f9e2c560300002c0000000035000000001018002007221903262040008316",
+  "forward_flow": {
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow"
+  },
+  "frame_start": "0x68",
+  "instant_flow": {
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "formatted": "0.0000 m³/h"
+  },
+  "crc": "0x83"
+}
+{
+  "reverse_flow": {
+    "bcd_value": 0,
+    "unit": "m³",
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow"
+  },
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800,
+    "celsius": "1018.00",
+    "raw_bytes": "101800"
+  },
+  "serial_number": 159,
+  "status_word": {
+    "hex": "0x0040",
+    "raw_bytes": "4000",
+    "parsed": {
+      "valve_status": "Open",
+      "battery_low": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "pipe_leak": false
+    }
+  },
+  "forward_flow": {
+    "raw_bytes": "2c56030000",
+    "formatted": "0.3560 m³",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "value": "0.3560"
+  },
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "frame_start": "0x68",
+  "raw_data": "681076880125000000811e921f9f2c560300002c0000000035000000001018002012221903262040008f16",
+  "instant_flow": {
+    "value": "0.0000",
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "bcd_value": 0
+  },
+  "real_time": {
+    "formatted": "2026-3-19 22:12:20",
+    "raw": "20122219032620",
+    "iso": "2026-03-19T22:12:20Z",
+    "bcd": "2026319221220"
+  },
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "data_length": 30,
+  "control_code": 129,
+  "frame_end": "0x16",
+  "meter_type": 16,
+  "crc": "0x8F"
+}
+{
+  "instant_flow": {
+    "value": "0.0000",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³/h"
+  },
+  "crc": "0x95",
+  "real_time": {
+    "raw": "20172219032620",
+    "bcd": "2026319221720",
+    "iso": "2026-03-19T22:17:20Z",
+    "formatted": "2026-3-19 22:17:20"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "control_code": 129,
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921fa02c560300002c0000000035000000001018002017221903262040009516",
+  "serial_number": 160,
+  "status_word": {
+    "parsed": {
+      "pipe_direction": "Forward",
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_burst": false
+    },
+    "hex": "0x0040",
+    "raw_bytes": "4000"
+  },
+  "data_length": 30,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "value": "0.3560",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "frame_end": "0x16",
+  "frame_start": "0x68",
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "bcd_value": 0,
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800
+  }
+}
+{
+  "status_word": {
+    "raw_bytes": "4000",
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_burst": false,
+      "battery_low": false,
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "valve_status": "Open"
+    }
+  },
+  "crc": "0xA1",
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "unit": "m³",
+    "bcd_value": 356,
+    "unit_code": "0x2C",
+    "raw_bytes": "2c56030000"
+  },
+  "frame_start": "0x68",
+  "serial_number": 161,
+  "instant_flow": {
+    "unit": "m³/h",
+    "value": "0.0000",
+    "raw_bytes": "3500000000",
+    "formatted": "0.0000 m³/h",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "type": "Instantaneous flow"
+  },
+  "temperature": {
+    "bcd_value": 101800,
+    "celsius": "1018.00",
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "data_length": 30,
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "raw_data": "681076880125000000811e921fa12c560300002c000000003500000000101800202222190326204000a116",
+  "meter_type": 16,
+  "reverse_flow": {
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000"
+  },
+  "control_code": 129,
+  "real_time": {
+    "formatted": "2026-3-19 22:22:20",
+    "bcd": "2026319222220",
+    "raw": "20222219032620",
+    "iso": "2026-03-19T22:22:20Z"
+  },
+  "frame_end": "0x16"
+}
+{
+  "frame_end": "0x16",
+  "serial_number": 162,
+  "data_length": 30,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "frame_start": "0x68",
+  "reverse_flow": {
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "bcd_value": 0,
+    "unit": "m³",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000"
+  },
+  "crc": "0xA7",
+  "forward_flow": {
+    "raw_bytes": "2c56030000",
+    "value": "0.3560",
+    "unit": "m³",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "formatted": "0.3560 m³"
+  },
+  "instant_flow": {
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³/h",
+    "value": "0.0000",
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "raw_bytes": "3500000000"
+  },
+  "status_word": {
+    "parsed": {
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "temp_sensor_fault": false,
+      "battery_low": false,
+      "flow_sensor_fault": true,
+      "valve_status": "Open",
+      "pipe_leak": false
+    },
+    "raw_bytes": "4000",
+    "hex": "0x0040"
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921fa22c560300002c000000003500000000101800202722190326204000a716",
+  "control_code": 129,
+  "temperature": {
+    "bcd_value": 101800,
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "real_time": {
+    "iso": "2026-03-19T22:27:20Z",
+    "bcd": "2026319222720",
+    "formatted": "2026-3-19 22:27:20",
+    "raw": "20272219032620"
+  }
+}
+{
+  "control_code": 129,
+  "frame_start": "0x68",
+  "raw_data": "681076880125000000811e921fa32c560300002c000000003500000000101800203222190326204000b316",
+  "status_word": {
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_leak": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "valve_status": "Open",
+      "temp_sensor_fault": false,
+      "battery_low": false
+    },
+    "raw_bytes": "4000"
+  },
+  "frame_end": "0x16",
+  "serial_number": 163,
+  "crc": "0xB3",
+  "real_time": {
+    "formatted": "2026-3-19 22:32:20",
+    "iso": "2026-03-19T22:32:20Z",
+    "raw": "20322219032620",
+    "bcd": "2026319223220"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "instant_flow": {
+    "unit": "m³/h",
+    "value": "0.0000",
+    "unit_code": "0x35",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "bcd_value": 0,
+    "type": "Instantaneous flow"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_length": 30,
+  "reverse_flow": {
+    "unit_code": "0x2C",
+    "formatted": "0.0000 m³",
+    "bcd_value": 0,
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "value": "0.0000",
+    "raw_bytes": "2c00000000"
+  },
+  "forward_flow": {
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "unit": "m³"
+  },
+  "temperature": {
+    "bcd_value": 101800,
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "meter_type": 16
+}
+{
+  "instant_flow": {
+    "unit_code": "0x35",
+    "formatted": "0.0000 m³/h",
+    "bcd_value": 0,
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000",
+    "unit": "m³/h",
+    "value": "0.0000"
+  },
+  "frame_start": "0x68",
+  "forward_flow": {
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000"
+  },
+  "crc": "0xB9",
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "decimal": 33363585748959230,
+    "hex": "76880125000000"
+  },
+  "raw_data": "681076880125000000811e921fa42c560300002c000000003500000000101800203722190326204000b916",
+  "control_code": 129,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "meter_type": 16,
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "celsius": "1018.00"
+  },
+  "frame_end": "0x16",
+  "reverse_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "bcd_value": 0
+  },
+  "data_length": 30,
+  "real_time": {
+    "formatted": "2026-3-19 22:37:20",
+    "iso": "2026-03-19T22:37:20Z",
+    "raw": "20372219032620",
+    "bcd": "2026319223720"
+  },
+  "serial_number": 164,
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "battery_low": false,
+      "pipe_burst": false,
+      "temp_sensor_fault": false,
+      "pipe_leak": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "valve_status": "Open"
+    },
+    "hex": "0x0040"
+  }
+}
+{
+  "crc": "0xC5",
+  "frame_start": "0x68",
+  "reverse_flow": {
+    "type": "Reverse cumulative flow",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "unit": "m³"
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_length": 30,
+  "raw_data": "681076880125000000811e921fa52c560300002c000000003500000000101800204222190326204000c516",
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "serial_number": 165,
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "unit": "m³",
+    "formatted": "0.3560 m³"
+  },
+  "real_time": {
+    "bcd": "2026319224220",
+    "raw": "20422219032620",
+    "iso": "2026-03-19T22:42:20Z",
+    "formatted": "2026-3-19 22:42:20"
+  },
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "celsius": "1018.00"
+  },
+  "frame_end": "0x16",
+  "meter_type": 16,
+  "instant_flow": {
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "type": "Instantaneous flow",
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "bcd_value": 0
+  },
+  "control_code": 129,
+  "status_word": {
+    "hex": "0x0040",
+    "raw_bytes": "4000",
+    "parsed": {
+      "flow_sensor_fault": true,
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "pipe_direction": "Forward",
+      "pipe_leak": false,
+      "battery_low": false,
+      "temp_sensor_fault": false
+    }
+  }
+}
+{
+  "control_code": 129,
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921fa62c560300002c000000003500000000101800204722190326204000cb16",
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "data_length": 30,
+  "instant_flow": {
+    "value": "0.0000",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000"
+  },
+  "forward_flow": {
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "unit_code": "0x2C",
+    "value": "0.3560",
+    "unit": "m³"
+  },
+  "temperature": {
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C"
+  },
+  "frame_start": "0x68",
+  "real_time": {
+    "formatted": "2026-3-19 22:47:20",
+    "bcd": "2026319224720",
+    "raw": "20472219032620",
+    "iso": "2026-03-19T22:47:20Z"
+  },
+  "frame_end": "0x16",
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "serial_number": 166,
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "valve_status": "Open",
+      "pipe_direction": "Forward",
+      "flow_sensor_fault": true,
+      "temp_sensor_fault": false,
+      "battery_low": false,
+      "pipe_burst": false,
+      "pipe_leak": false
+    },
+    "hex": "0x0040"
+  },
+  "crc": "0xCB",
+  "reverse_flow": {
+    "value": "0.0000",
+    "raw_bytes": "2c00000000",
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "formatted": "0.0000 m³",
+    "bcd_value": 0
+  }
+}
+{
+  "status_word": {
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_burst": false,
+      "battery_low": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_leak": false,
+      "pipe_direction": "Forward",
+      "valve_status": "Open"
+    },
+    "raw_bytes": "4000"
+  },
+  "meter_type": 16,
+  "frame_end": "0x16",
+  "frame_start": "0x68",
+  "temperature": {
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "celsius": "1018.00",
+    "raw_bytes": "101800"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "serial_number": 167,
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "bcd_value": 356,
+    "unit": "m³",
+    "raw_bytes": "2c56030000"
+  },
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "crc": "0xD7",
+  "reverse_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "bcd_value": 0,
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "raw_bytes": "2c00000000"
+  },
+  "data_length": 30,
+  "real_time": {
+    "iso": "2026-03-19T22:52:20Z",
+    "formatted": "2026-3-19 22:52:20",
+    "raw": "20522219032620",
+    "bcd": "2026319225220"
+  },
+  "instant_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "unit_code": "0x35",
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000",
+    "bcd_value": 0
+  },
+  "control_code": 129,
+  "raw_data": "681076880125000000811e921fa72c560300002c000000003500000000101800205222190326204000d716"
+}
+{
+  "crc": "0xDD",
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "real_time": {
+    "raw": "20572219032620",
+    "formatted": "2026-3-19 22:57:20",
+    "bcd": "2026319225720",
+    "iso": "2026-03-19T22:57:20Z"
+  },
+  "reverse_flow": {
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "bcd_value": 0
+  },
+  "status_word": {
+    "hex": "0x0040",
+    "raw_bytes": "4000",
+    "parsed": {
+      "pipe_burst": false,
+      "pipe_direction": "Forward",
+      "battery_low": false,
+      "temp_sensor_fault": false,
+      "pipe_leak": false,
+      "valve_status": "Open",
+      "flow_sensor_fault": true
+    }
+  },
+  "raw_data": "681076880125000000811e921fa82c560300002c000000003500000000101800205722190326204000dd16",
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_length": 30,
+  "forward_flow": {
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "value": "0.3560",
+    "formatted": "0.3560 m³"
+  },
+  "frame_start": "0x68",
+  "meter_type": 16,
+  "serial_number": 168,
+  "instant_flow": {
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "unit": "m³/h"
+  },
+  "temperature": {
+    "raw_bytes": "101800",
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800
+  },
+  "control_code": 129,
+  "frame_end": "0x16"
+}
+{
+  "data_length": 30,
+  "crc": "0x8A",
+  "real_time": {
+    "raw": "20022319032620",
+    "bcd": "202631923220",
+    "iso": "2026-03-19T23:02:20Z",
+    "formatted": "2026-3-19 23:2:20"
+  },
+  "frame_start": "0x68",
+  "serial_number": 169,
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "temp_sensor_fault": false,
+      "pipe_direction": "Forward",
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_burst": false,
+      "pipe_leak": false,
+      "flow_sensor_fault": true
+    },
+    "hex": "0x0040"
+  },
+  "frame_end": "0x16",
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "unit_code": "0x2C",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "raw_bytes": "2c00000000"
+  },
+  "raw_data": "681076880125000000811e921fa92c560300002c0000000035000000001018002002231903262040008a16",
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800",
+    "bcd_value": 101800
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "meter_type": 16,
+  "control_code": 129,
+  "forward_flow": {
+    "value": "0.3560",
+    "type": "Positive cumulative flow",
+    "bcd_value": 356,
+    "raw_bytes": "2c56030000",
+    "unit_code": "0x2C",
+    "formatted": "0.3560 m³",
+    "unit": "m³"
+  },
+  "instant_flow": {
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "unit": "m³/h",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000"
+  }
+}
+{
+  "data_length": 30,
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "temperature": {
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C",
+    "celsius": "1018.00"
+  },
+  "real_time": {
+    "iso": "2026-03-19T23:07:20Z",
+    "formatted": "2026-3-19 23:7:20",
+    "bcd": "202631923720",
+    "raw": "20072319032620"
+  },
+  "meter_type": 16,
+  "address": {
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000"
+  },
+  "crc": "0x90",
+  "forward_flow": {
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "status_word": {
+    "hex": "0x0040",
+    "parsed": {
+      "valve_status": "Open",
+      "temp_sensor_fault": false,
+      "pipe_burst": false,
+      "pipe_direction": "Forward",
+      "pipe_leak": false,
+      "flow_sensor_fault": true,
+      "battery_low": false
+    },
+    "raw_bytes": "4000"
+  },
+  "frame_start": "0x68",
+  "frame_end": "0x16",
+  "raw_data": "681076880125000000811e921faa2c560300002c0000000035000000001018002007231903262040009016",
+  "control_code": 129,
+  "serial_number": 170,
+  "instant_flow": {
+    "raw_bytes": "3500000000",
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "value": "0.0000"
+  },
+  "reverse_flow": {
+    "unit_code": "0x2C",
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "raw_bytes": "2c00000000",
+    "bcd_value": 0
+  }
+}
+{
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "frame_end": "0x16",
+  "reverse_flow": {
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "value": "0.0000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "forward_flow": {
+    "raw_bytes": "2c56030000",
+    "value": "0.3560",
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 356,
+    "formatted": "0.3560 m³"
+  },
+  "crc": "0x9C",
+  "temperature": {
+    "raw_bytes": "101800",
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800
+  },
+  "real_time": {
+    "raw": "20122319032620",
+    "formatted": "2026-3-19 23:12:20",
+    "bcd": "2026319231220",
+    "iso": "2026-03-19T23:12:20Z"
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000"
+  },
+  "instant_flow": {
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "bcd_value": 0,
+    "unit": "m³/h"
+  },
+  "frame_start": "0x68",
+  "meter_type": 16,
+  "control_code": 129,
+  "raw_data": "681076880125000000811e921fab2c560300002c0000000035000000001018002012231903262040009c16",
+  "data_length": 30,
+  "serial_number": 171,
+  "status_word": {
+    "parsed": {
+      "battery_low": false,
+      "pipe_leak": false,
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "flow_sensor_fault": true,
+      "temp_sensor_fault": false,
+      "pipe_direction": "Forward"
+    },
+    "hex": "0x0040",
+    "raw_bytes": "4000"
+  }
+}
+{
+  "frame_end": "0x16",
+  "frame_start": "0x68",
+  "serial_number": 172,
+  "instant_flow": {
+    "formatted": "0.0000 m³/h",
+    "value": "0.0000",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "bcd_value": 0
+  },
+  "status_word": {
+    "hex": "0x0040",
+    "raw_bytes": "4000",
+    "parsed": {
+      "valve_status": "Open",
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "battery_low": false
+    }
+  },
+  "reverse_flow": {
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "value": "0.0000",
+    "unit": "m³",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³"
+  },
+  "control_code": 129,
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921fac2c560300002c000000003500000000101800201723190326204000a216",
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "decimal": 33363585748959230,
+    "hex": "76880125000000"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C",
+    "bcd_value": 101800
+  },
+  "forward_flow": {
+    "bcd_value": 356,
+    "raw_bytes": "2c56030000",
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "value": "0.3560"
+  },
+  "real_time": {
+    "raw": "20172319032620",
+    "formatted": "2026-3-19 23:17:20",
+    "bcd": "2026319231720",
+    "iso": "2026-03-19T23:17:20Z"
+  },
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "data_length": 30,
+  "crc": "0xA2"
+}
+{
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "battery_low": false,
+      "pipe_direction": "Forward",
+      "pipe_leak": false,
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true
+    },
+    "hex": "0x0040"
+  },
+  "frame_end": "0x16",
+  "control_code": 129,
+  "temperature": {
+    "celsius": "1018.00",
+    "raw_bytes": "101800",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C"
+  },
+  "data_length": 30,
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "raw_data": "681076880125000000811e921fad2c560300002c000000003500000000101800202223190326204000ae16",
+  "serial_number": 173,
+  "reverse_flow": {
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "unit_code": "0x2C",
+    "value": "0.0000"
+  },
+  "instant_flow": {
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "type": "Instantaneous flow",
+    "bcd_value": 0,
+    "value": "0.0000"
+  },
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "type": "Positive cumulative flow"
+  },
+  "real_time": {
+    "bcd": "2026319232220",
+    "formatted": "2026-3-19 23:22:20",
+    "raw": "20222319032620",
+    "iso": "2026-03-19T23:22:20Z"
+  },
+  "address": {
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000"
+  },
+  "meter_type": 16,
+  "frame_start": "0x68",
+  "crc": "0xAE"
+}
+{
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "bcd_value": 356,
+    "raw_bytes": "2c56030000",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "reverse_flow": {
+    "bcd_value": 0,
+    "raw_bytes": "2c00000000",
+    "unit_code": "0x2C",
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "type": "Reverse cumulative flow",
+    "unit": "m³"
+  },
+  "real_time": {
+    "iso": "2026-03-19T23:27:20Z",
+    "bcd": "2026319232720",
+    "formatted": "2026-3-19 23:27:20",
+    "raw": "20272319032620"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "status_word": {
+    "parsed": {
+      "battery_low": false,
+      "temp_sensor_fault": false,
+      "pipe_direction": "Forward",
+      "flow_sensor_fault": true,
+      "valve_status": "Open",
+      "pipe_burst": false,
+      "pipe_leak": false
+    },
+    "raw_bytes": "4000",
+    "hex": "0x0040"
+  },
+  "frame_start": "0x68",
+  "address": {
+    "decimal": 33363585748959230,
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "control_code": 129,
+  "serial_number": 174,
+  "frame_end": "0x16",
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "raw_bytes": "101800"
+  },
+  "crc": "0xB4",
+  "instant_flow": {
+    "value": "0.0000",
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000",
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "unit_code": "0x35"
+  },
+  "data_length": 30,
+  "meter_type": 16,
+  "raw_data": "681076880125000000811e921fae2c560300002c000000003500000000101800202723190326204000b416"
+}
+{
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "real_time": {
+    "raw": "20322319032620",
+    "iso": "2026-03-19T23:32:20Z",
+    "bcd": "2026319233220",
+    "formatted": "2026-3-19 23:32:20"
+  },
+  "control_code": 129,
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "raw_bytes": "2c56030000",
+    "value": "0.3560",
+    "bcd_value": 356,
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow",
+    "unit": "m³"
+  },
+  "reverse_flow": {
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "raw_bytes": "2c00000000",
+    "bcd_value": 0,
+    "type": "Reverse cumulative flow",
+    "value": "0.0000",
+    "formatted": "0.0000 m³"
+  },
+  "frame_end": "0x16",
+  "raw_data": "681076880125000000811e921faf2c560300002c000000003500000000101800203223190326204000c016",
+  "frame_start": "0x68",
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "meter_type": 16,
+  "serial_number": 175,
+  "status_word": {
+    "raw_bytes": "4000",
+    "hex": "0x0040",
+    "parsed": {
+      "battery_low": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "temp_sensor_fault": false,
+      "pipe_leak": false,
+      "valve_status": "Open",
+      "pipe_burst": false
+    }
+  },
+  "instant_flow": {
+    "formatted": "0.0000 m³/h",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "value": "0.0000",
+    "raw_bytes": "3500000000"
+  },
+  "data_length": 30,
+  "crc": "0xC0",
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  }
+}
+{
+  "frame_end": "0x16",
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "meter_type": 16,
+  "serial_number": 176,
+  "temperature": {
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C",
+    "celsius": "1018.00"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "formatted": "76:88:01:25:00:00:00",
+    "decimal": 33363585748959230
+  },
+  "instant_flow": {
+    "unit_code": "0x35",
+    "type": "Instantaneous flow",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "unit": "m³/h",
+    "raw_bytes": "3500000000"
+  },
+  "control_code": 129,
+  "real_time": {
+    "formatted": "2026-3-19 23:37:20",
+    "raw": "20372319032620",
+    "bcd": "2026319233720",
+    "iso": "2026-03-19T23:37:20Z"
+  },
+  "frame_start": "0x68",
+  "data_length": 30,
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_leak": false
+    },
+    "hex": "0x0040"
+  },
+  "forward_flow": {
+    "value": "0.3560",
+    "bcd_value": 356,
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "type": "Positive cumulative flow"
+  },
+  "raw_data": "681076880125000000811e921fb02c560300002c000000003500000000101800203723190326204000c616",
+  "crc": "0xC6",
+  "reverse_flow": {
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³",
+    "unit": "m³",
+    "raw_bytes": "2c00000000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C"
+  }
+}
+{
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "control_code": 129,
+  "real_time": {
+    "raw": "20422319032620",
+    "bcd": "2026319234220",
+    "iso": "2026-03-19T23:42:20Z",
+    "formatted": "2026-3-19 23:42:20"
+  },
+  "serial_number": 177,
+  "data_length": 30,
+  "status_word": {
+    "raw_bytes": "4000",
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_direction": "Forward",
+      "pipe_burst": false,
+      "flow_sensor_fault": true,
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "valve_status": "Open",
+      "battery_low": false
+    }
+  },
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "raw_data": "681076880125000000811e921fb12c560300002c000000003500000000101800204223190326204000d216",
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "bcd_value": 356,
+    "unit": "m³",
+    "raw_bytes": "2c56030000",
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "unit_code": "0x2C"
+  },
+  "meter_type": 16,
+  "frame_end": "0x16",
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "reverse_flow": {
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "value": "0.0000",
+    "bcd_value": 0,
+    "type": "Reverse cumulative flow",
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000"
+  },
+  "instant_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "unit_code": "0x35",
+    "bcd_value": 0,
+    "unit": "m³/h",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow"
+  },
+  "crc": "0xD2",
+  "frame_start": "0x68"
+}
+{
+  "control_code": 129,
+  "frame_end": "0x16",
+  "frame_start": "0x68",
+  "real_time": {
+    "raw": "20472319032620",
+    "iso": "2026-03-19T23:47:20Z",
+    "formatted": "2026-3-19 23:47:20",
+    "bcd": "2026319234720"
+  },
+  "meter_type": 16,
+  "forward_flow": {
+    "type": "Positive cumulative flow",
+    "formatted": "0.3560 m³",
+    "unit": "m³",
+    "raw_bytes": "2c56030000",
+    "unit_code": "0x2C",
+    "value": "0.3560",
+    "bcd_value": 356
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "instant_flow": {
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "unit_code": "0x35",
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "formatted": "1018.00 °C"
+  },
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "serial_number": 178,
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "value": "0.0000",
+    "raw_bytes": "2c00000000",
+    "bcd_value": 0,
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "unit_code": "0x2C"
+  },
+  "status_word": {
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "battery_low": false,
+      "valve_status": "Open",
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "pipe_burst": false
+    },
+    "raw_bytes": "4000"
+  },
+  "data_length": 30,
+  "raw_data": "681076880125000000811e921fb22c560300002c000000003500000000101800204723190326204000d816",
+  "crc": "0xD8"
+}
+{
+  "crc": "0xE4",
+  "forward_flow": {
+    "raw_bytes": "2c56030000",
+    "type": "Positive cumulative flow",
+    "formatted": "0.3560 m³",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "instant_flow": {
+    "unit": "m³/h",
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000",
+    "unit_code": "0x35",
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "bcd_value": 0
+  },
+  "serial_number": 179,
+  "temperature": {
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800",
+    "bcd_value": 101800,
+    "celsius": "1018.00"
+  },
+  "status_word": {
+    "raw_bytes": "4000",
+    "parsed": {
+      "pipe_burst": false,
+      "valve_status": "Open",
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "battery_low": false,
+      "pipe_direction": "Forward"
+    },
+    "hex": "0x0040"
+  },
+  "meter_type": 16,
+  "reverse_flow": {
+    "unit": "m³",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "raw_bytes": "2c00000000"
+  },
+  "real_time": {
+    "iso": "2026-03-19T23:52:20Z",
+    "raw": "20522319032620",
+    "bcd": "2026319235220",
+    "formatted": "2026-3-19 23:52:20"
+  },
+  "frame_end": "0x16",
+  "control_code": 129,
+  "data_length": 30,
+  "raw_data": "681076880125000000811e921fb32c560300002c000000003500000000101800205223190326204000e416",
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "frame_start": "0x68"
+}
+{
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "meter_type": 16,
+  "frame_start": "0x68",
+  "forward_flow": {
+    "bcd_value": 356,
+    "value": "0.3560",
+    "raw_bytes": "2c56030000",
+    "formatted": "0.3560 m³",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "type": "Positive cumulative flow"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "status_word": {
+    "parsed": {
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_burst": false
+    },
+    "hex": "0x0040",
+    "raw_bytes": "4000"
+  },
+  "data_length": 30,
+  "raw_data": "681076880125000000811e921fb42c560300002c000000003500000000101800205723190326204000ea16",
+  "serial_number": 180,
+  "crc": "0xEA",
+  "real_time": {
+    "bcd": "2026319235720",
+    "formatted": "2026-3-19 23:57:20",
+    "raw": "20572319032620",
+    "iso": "2026-03-19T23:57:20Z"
+  },
+  "frame_end": "0x16",
+  "control_code": 129,
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "bcd_value": 0,
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "value": "0.0000",
+    "raw_bytes": "2c00000000",
+    "unit": "m³"
+  },
+  "instant_flow": {
+    "formatted": "0.0000 m³/h",
+    "unit_code": "0x35",
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "raw_bytes": "3500000000",
+    "value": "0.0000"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  }
+}
+{
+  "meter_type": 16,
+  "instant_flow": {
+    "unit_code": "0x35",
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "type": "Instantaneous flow",
+    "raw_bytes": "3500000000"
+  },
+  "forward_flow": {
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "value": "0.3560",
+    "unit_code": "0x2C",
+    "unit": "m³"
+  },
+  "reverse_flow": {
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 0,
+    "raw_bytes": "2c00000000",
+    "formatted": "0.0000 m³",
+    "type": "Reverse cumulative flow"
+  },
+  "raw_data": "681076880125000000811e921fb52c560300002c0000000035000000001018002002002003262040007a16",
+  "serial_number": 181,
+  "real_time": {
+    "iso": "2026-03-20T00:02:20Z",
+    "bcd": "20263200220",
+    "raw": "20020020032620",
+    "formatted": "2026-3-20 0:2:20"
+  },
+  "frame_start": "0x68",
+  "data_length": 30,
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "control_code": 129,
+  "crc": "0x7A",
+  "status_word": {
+    "hex": "0x0040",
+    "parsed": {
+      "pipe_direction": "Forward",
+      "battery_low": false,
+      "pipe_burst": false,
+      "pipe_leak": false,
+      "valve_status": "Open",
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true
+    },
+    "raw_bytes": "4000"
+  },
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "frame_end": "0x16"
+}
+{
+  "serial_number": 182,
+  "frame_start": "0x68",
+  "crc": "0x80",
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "forward_flow": {
+    "value": "0.3560",
+    "bcd_value": 356,
+    "type": "Positive cumulative flow",
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "raw_bytes": "2c56030000",
+    "formatted": "0.3560 m³"
+  },
+  "reverse_flow": {
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000",
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "value": "0.0000"
+  },
+  "instant_flow": {
+    "value": "0.0000",
+    "unit_code": "0x35",
+    "formatted": "0.0000 m³/h",
+    "bcd_value": 0,
+    "raw_bytes": "3500000000",
+    "unit": "m³/h",
+    "type": "Instantaneous flow"
+  },
+  "frame_end": "0x16",
+  "status_word": {
+    "parsed": {
+      "pipe_leak": false,
+      "pipe_burst": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": true,
+      "pipe_direction": "Forward",
+      "battery_low": false,
+      "valve_status": "Open"
+    },
+    "hex": "0x0040",
+    "raw_bytes": "4000"
+  },
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "raw_data": "681076880125000000811e921fb62c560300002c0000000035000000001018002007002003262040008016",
+  "temperature": {
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800",
+    "bcd_value": 101800
+  },
+  "meter_type": 16,
+  "control_code": 129,
+  "data_length": 30,
+  "real_time": {
+    "bcd": "20263200720",
+    "formatted": "2026-3-20 0:7:20",
+    "raw": "20070020032620",
+    "iso": "2026-03-20T00:07:20Z"
+  }
+}
+{
+  "real_time": {
+    "bcd": "202632001220",
+    "formatted": "2026-3-20 0:12:20",
+    "iso": "2026-03-20T00:12:20Z",
+    "raw": "20120020032620"
+  },
+  "frame_start": "0x68",
+  "control_code": 129,
+  "data_length": 30,
+  "temperature": {
+    "bcd_value": 101800,
+    "raw_bytes": "101800",
+    "celsius": "1018.00",
+    "formatted": "1018.00 °C"
+  },
+  "serial_number": 183,
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "forward_flow": {
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "unit_code": "0x2C",
+    "type": "Positive cumulative flow",
+    "unit": "m³",
+    "bcd_value": 356
+  },
+  "instant_flow": {
+    "unit": "m³/h",
+    "formatted": "0.0000 m³/h",
+    "bcd_value": 0,
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "value": "0.0000",
+    "unit_code": "0x35"
+  },
+  "meter_type": 16,
+  "crc": "0x8C",
+  "frame_end": "0x16",
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "decimal": 33363585748959230,
+    "hex": "76880125000000"
+  },
+  "raw_data": "681076880125000000811e921fb72c560300002c0000000035000000001018002012002003262040008c16",
+  "status_word": {
+    "raw_bytes": "4000",
+    "hex": "0x0040",
+    "parsed": {
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_burst": false,
+      "flow_sensor_fault": true,
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "pipe_direction": "Forward"
+    }
+  },
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "unit_code": "0x2C",
+    "raw_bytes": "2c00000000",
+    "value": "0.0000",
+    "type": "Reverse cumulative flow",
+    "unit": "m³",
+    "bcd_value": 0
+  }
+}
+{
+  "status_word": {
+    "hex": "0x0000",
+    "raw_bytes": "0000",
+    "parsed": {
+      "pipe_burst": false,
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "flow_sensor_fault": false,
+      "valve_status": "Open",
+      "pipe_direction": "Forward",
+      "battery_low": false
+    }
+  },
+  "frame_start": "0x68",
+  "control_code": 129,
+  "instant_flow": {
+    "unit": "m³/h",
+    "bcd_value": 0,
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000"
+  },
+  "reverse_flow": {
+    "unit": "m³",
+    "value": "0.0000",
+    "type": "Reverse cumulative flow",
+    "unit_code": "0x2C",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000"
+  },
+  "real_time": {
+    "iso": "2026-03-20T00:17:20Z",
+    "bcd": "202632001720",
+    "raw": "20170020032620",
+    "formatted": "2026-3-20 0:17:20"
+  },
+  "frame_end": "0x16",
+  "temperature": {
+    "celsius": "1018.00",
+    "bcd_value": 101800,
+    "formatted": "1018.00 °C",
+    "raw_bytes": "101800"
+  },
+  "crc": "0x52",
+  "meter_type": 16,
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  },
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "raw_data": "681076880125000000811e921fb82c560300002c0000000035000000001018002017002003262000005216",
+  "data_length": 30,
+  "serial_number": 184,
+  "forward_flow": {
+    "type": "Positive cumulative flow",
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000"
+  }
+}
+{
+  "data_length": 30,
+  "data_identifier": {
+    "DI0": "0x92",
+    "DI1": "0x1F"
+  },
+  "instant_flow": {
+    "value": "0.0000",
+    "formatted": "0.0000 m³/h",
+    "raw_bytes": "3500000000",
+    "type": "Instantaneous flow",
+    "unit": "m³/h",
+    "unit_code": "0x35",
+    "bcd_value": 0
+  },
+  "address": {
+    "formatted": "76:88:01:25:00:00:00",
+    "hex": "76880125000000",
+    "decimal": 33363585748959230
+  },
+  "raw_data": "681076880125000000811e921fb92c560300002c000000003500000000802600202200200326200000dc16",
+  "frame_end": "0x16",
+  "forward_flow": {
+    "unit_code": "0x2C",
+    "unit": "m³",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "formatted": "0.3560 m³",
+    "type": "Positive cumulative flow",
+    "raw_bytes": "2c56030000"
+  },
+  "crc": "0xDC",
+  "reverse_flow": {
+    "unit": "m³",
+    "value": "0.0000",
+    "unit_code": "0x2C",
+    "type": "Reverse cumulative flow",
+    "bcd_value": 0,
+    "formatted": "0.0000 m³",
+    "raw_bytes": "2c00000000"
+  },
+  "frame_start": "0x68",
+  "temperature": {
+    "formatted": "8026.00 °C",
+    "bcd_value": 802600,
+    "raw_bytes": "802600",
+    "celsius": "8026.00"
+  },
+  "serial_number": 185,
+  "real_time": {
+    "formatted": "2026-3-20 0:22:20",
+    "raw": "20220020032620",
+    "iso": "2026-03-20T00:22:20Z",
+    "bcd": "202632002220"
+  },
+  "control_code": 129,
+  "status_word": {
+    "raw_bytes": "0000",
+    "parsed": {
+      "pipe_leak": false,
+      "temp_sensor_fault": false,
+      "valve_status": "Open",
+      "battery_low": false,
+      "pipe_direction": "Forward",
+      "flow_sensor_fault": false,
+      "pipe_burst": false
+    },
+    "hex": "0x0000"
+  },
+  "meter_type": 16
+}
+{
+  "data_identifier": {
+    "DI1": "0x1F",
+    "DI0": "0x92"
+  },
+  "data_length": 30,
+  "control_code": 129,
+  "raw_data": "681076880125000000811e921fba2c560300002c0000000035000000002026002027002003262000008216",
+  "forward_flow": {
+    "unit": "m³",
+    "unit_code": "0x2C",
+    "formatted": "0.3560 m³",
+    "raw_bytes": "2c56030000",
+    "bcd_value": 356,
+    "value": "0.3560",
+    "type": "Positive cumulative flow"
+  },
+  "temperature": {
+    "bcd_value": 202600,
+    "raw_bytes": "202600",
+    "celsius": "2026.00",
+    "formatted": "2026.00 °C"
+  },
+  "real_time": {
+    "formatted": "2026-3-20 0:27:20",
+    "raw": "20270020032620",
+    "bcd": "202632002720",
+    "iso": "2026-03-20T00:27:20Z"
+  },
+  "status_word": {
+    "raw_bytes": "0000",
+    "hex": "0x0000",
+    "parsed": {
+      "pipe_leak": false,
+      "pipe_burst": false,
+      "temp_sensor_fault": false,
+      "battery_low": false,
+      "valve_status": "Open",
+      "flow_sensor_fault": false,
+      "pipe_direction": "Forward"
+    }
+  },
+  "frame_start": "0x68",
+  "instant_flow": {
+    "raw_bytes": "3500000000",
+    "unit": "m³/h",
+    "formatted": "0.0000 m³/h",
+    "type": "Instantaneous flow",
+    "unit_code": "0x35",
+    "value": "0.0000",
+    "bcd_value": 0
+  },
+  "meter_type": 16,
+  "reverse_flow": {
+    "formatted": "0.0000 m³",
+    "unit": "m³",
+    "type": "Reverse cumulative flow",
+    "raw_bytes": "2c00000000",
+    "unit_code": "0x2C",
+    "bcd_value": 0,
+    "value": "0.0000"
+  },
+  "serial_number": 186,
+  "frame_end": "0x16",
+  "crc": "0x82",
+  "address": {
+    "hex": "76880125000000",
+    "decimal": 33363585748959230,
+    "formatted": "76:88:01:25:00:00:00"
+  }
+}

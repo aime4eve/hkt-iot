@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LoRaWAN协议解析工具 - 统一版本</title>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+            color: white;
+            padding: 25px 30px;
+            border-bottom: 4px solid #f8f9fa;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: 700px;
+        }
+        
+        .input-section {
+            flex: 0 0 420px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .output-section {
+            flex: 1;
+            padding: 25px;
+            overflow: auto;
+        }
+        
+        .section-title {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #3498db;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .hex-input {
+            width: 100%;
+            height: 150px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            resize: none;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .hex-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219653;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .example-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .byte-order-info {
+            background: #e8f4fc;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        
+        .table-container {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 700px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .parse-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1300px;
+        }
+        
+        .parse-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .parse-table td {
+            padding: 10px 8px;
+            border: 1px solid #dee2e6;
+            font-size: 12px;
+            vertical-align: top;
+            line-height: 1.4;
+        }
+        
+        .parse-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .parse-table tr:hover {
+            background-color: #e8f4fc;
+        }
+        
+        .row-header { background-color: #ecf0f1 !important; font-weight: 600; }
+        .row-control { background-color: #d6eaf8 !important; }
+        .row-timestamp { background-color: #d5f4e6 !important; }
+        .row-category { background-color: #fff8e1 !important; }
+        .row-data { background-color: #f0f8ff !important; }
+        .row-alarm { background-color: #ffeaea !important; }
+        .row-footer { background-color: #f0e8ff !important; }
+        .row-id-header { background-color: #e8f5e8 !important; }
+        .row-format-byte { background-color: #e8f8f8 !important; }
+        
+        .byte-pos {
+            font-family: monospace;
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+        
+        .hex-value {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        
+        .detail-info {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+        
+        .error-message {
+            background: #ffeaea;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .summary-box {
+            background: #e8f4fc;
+            border: 1px solid #3498db;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .summary-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .control-detail {
+            font-size: 11px;
+            color: #3498db;
+            margin-top: 3px;
+        }
+        
+        .alarm-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        
+        .data-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 1400px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .input-section {
+                flex: none;
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📡 LoRaWAN协议解析工具 - 统一版本</h1>
+            <p>基于《LoRaWAN统一协议》标准，完整支持AFN=1（实时数据上报）和AFN=3（告警数据）解析</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <h3 class="section-title">🔧 输入数据</h3>
+                
+                <textarea class="hex-input" id="hexInput" placeholder="粘贴十六进制数据（支持空格、0x前缀）...
+示例：663601FFFF0112345678E404C10301BFBD8069012341CA0CC42602021507430709303038306531313530356334656532614943232F0433251516">663601FFFF0112345678E404C10301BFBD8069012341CA0CC42602021507430709303038306531313530356334656532614943232F0433251516</textarea>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="parseData()">
+                        🔍 解析数据
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearData()">
+                        🗑️ 清空
+                    </button>
+                    <button class="btn btn-success" onclick="loadExample(1)">
+                        📋 AFN=1示例
+                    </button>
+                    <button class="btn btn-warning" onclick="loadExample(2)">
+                        📋 AFN=3示例
+                    </button>
+                </div>
+                
+                <h4 style="margin-bottom: 10px;">📋 协议说明</h4>
+                <div class="byte-order-info">
+                    <strong>字节序：</strong>小端序（低字节在前）<br>
+                    <strong>传输规则：</strong>低位在前，高位在后；低字节在前，高字节在后<br>
+                    <strong>AFN定义：</strong>1=实时数据上报，3=其他数据上报
+                </div>
+                
+                <div style="flex: 1;"></div>
+                
+                <div class="legend">
+                    <div class="legend-item"><div class="color-box" style="background:#ecf0f1;"></div>帧头</div>
+                    <div class="legend-item"><div class="color-box" style="background:#d6eaf8;"></div>控制域</div>
+                    <div class="legend-item"><div class="color-box" style="background:#d5f4e6;"></div>时间戳</div>
+                    <div class="legend-item"><div class="color-box" style="background:#fff8e1;"></div>数据类别</div>
+                    <div class="legend-item"><div class="color-box" style="background:#f0f8ff;"></div>数据内容</div>
+                    <div class="legend-item"><div class="color-box" style="background:#e8f5e8;"></div>ID头</div>
+                    <div class="legend-item"><div class="color-box" style="background:#ffeaea;"></div>告警数据</div>
+                </div>
+            </div>
+            
+            <div class="output-section">
+                <h3 class="section-title">📊 解析结果</h3>
+                
+                <div id="errorMessage" class="error-message"></div>
+                
+                <div class="table-container">
+                    <table class="parse-table" id="parseTable">
+                        <thead>
+                            <tr>
+                                <th width="50">序号</th>
+                                <th width="80">字节位置</th>
+                                <th width="100">字节值</th>
+                                <th width="150">字段名称</th>
+                                <th width="100">数据类型</th>
+                                <th width="80">字节序</th>
+                                <th>解析结果/说明</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 解析结果将在这里显示 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="summaryBox" class="summary-box" style="display: none;">
+                    <div class="summary-title">📈 解析摘要</div>
+                    <div id="summaryContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============== 全局配置 ==============
+        const IS_LITTLE_ENDIAN = true; // 小端序
+        
+        // 固定帧头配置
+        const FRAME_CONFIG = [
+            { name: "帧起始符", bytes: 1, type: "HEX", expected: "66" },
+            { name: "长度L", bytes: 1, type: "UINT8" },
+            { name: "协议版本V", bytes: 1, type: "UINT8", expected: "01" },
+            { name: "地址域A", bytes: 7, type: "HEX" },
+            { name: "帧序号SEQ", bytes: 1, type: "UINT8" },
+            { name: "设备类型", bytes: 1, type: "UINT8" },
+            { name: "控制域C", bytes: 1, type: "HEX" },
+            { name: "辅助控制域CI", bytes: 1, type: "HEX" }
+        ];
+        
+        // AFN功能码定义
+        const AFN_DEFINITIONS = {
+            0x01: { name: "实时数据上报", color: "#d6eaf8" },
+            0x03: { name: "其他数据上报", color: "#d6eaf8" },
+            0x04: { name: "参数设置", color: "#d6eaf8" },
+            0x05: { name: "参数读取", color: "#d6eaf8" },
+            0x06: { name: "控制命令", color: "#d6eaf8" }
+        };
+        
+        // Fn定义
+        const FN_DEFINITIONS = {
+            0x01: { 
+                name: "上报格式1", 
+                description: "AFN=1时的上报格式",
+                parser: parseAFN1DataArea 
+            },
+            0x06: { 
+                name: "告警", 
+                description: "AFN=3时的告警数据",
+                parser: parseAFN3Fn6DataArea 
+            }
+        };
+        
+        // 设备类型映射
+        const DEVICE_TYPES = {
+            0x01: "阀门",
+            0x02: "采集器", 
+            0x03: "压力",
+            0x04: "水表"
+        };
+        
+        // 数据类别定义
+        const DATA_CATEGORIES = {
+            1: { name: "终端状态", color: "#fff8e1" },
+            2: { name: "实时数据", color: "#fff8e1" },
+            3: { name: "冻结数据", color: "#fff8e1" },
+            4: { name: "日结数据", color: "#fff8e1" },
+            5: { name: "曲线数据", color: "#fff8e1" },
+            6: { name: "告警信息", color: "#fff8e1" },
+            30: { name: "日志数据", color: "#fff8e1" }
+        };
+        
+        // 数据ID配置（各数据类别下的具体数据项）
+        const DATA_ID_CONFIGS = {
+            // 终端状态 (数据类别=1)
+            1: {
+                1: { name: "供电电压", type: "UINT16", unit: "V", scale: 0.001 },
+                4: { name: "当前时钟", type: "BCD_TIME" },
+                7: { name: "DEVEUI", type: "HEX", bytes: 16 },
+                9: { name: "厂商代码", type: "UINT16" },
+                15: { name: "设备类型", type: "UINT8" },
+                19: { name: "LoRaWAN网络RSSI", type: "UINT8", unit: "dB" }
+            },
+            // 实时数据 (数据类别=2)
+            2: {
+                1: { name: "瞬时流量", type: "FLOAT", unit: "m³/h" },
+                2: { name: "(正)累积流量", type: "BS8", unit: "m³" },
+                3: { name: "负累积流量", type: "BS8", unit: "m³" },
+                4: { name: "(正)累积运行时间", type: "UINT32", unit: "h" },
+                5: { name: "负累积运行时间", type: "UINT32", unit: "h" },
+                9: { name: "温度", type: "INT16", unit: "℃", scale: 0.01 },
+                11: { name: "压力", type: "UINT16", unit: "kPa" },
+                16: { name: "阀门状态", type: "UINT16" },
+                24: { name: "告警", type: "ALARM" },
+                25: { name: "净累积流量", type: "BS8", unit: "m³" }
+            }
+        };
+        
+        // LID到数据长度的映射
+        const LID_LENGTH_MAP = {
+            1: 1,   // 1字节
+            2: 2,   // 2字节
+            3: 3,   // 3字节
+            4: 4,   // 4字节
+            5: 5,   // 5字节
+            6: 6,   // 8字节
+            7: 16   // 16字节
+        };
+        
+        // 阀门状态映射
+        const VALVE_STATUS_MAP = {
+            0: "阀门关",
+            10000: "阀门开",
+            10001: "阀门开超时",
+            10002: "阀门关超时",
+            10003: "阀门开堵转",
+            10004: "阀门关堵转",
+            10005: "阀门开失败",
+            10006: "阀门关，有流量",
+            10007: "阀门正在开",
+            10008: "阀门正在关",
+            10009: "阀门强制开",
+            10010: "关阀门失败",
+            10011: "阀门异常",
+            10012: "没有阀门"
+        };
+        
+        // 告警类型映射（告警数据项ID=1~33）
+        const ALARM_TYPE_MAP = {
+            1: "持续低流量告警",
+            2: "持续高流量告警",
+            3: "数据被篡改告警",
+            4: "低电量告警",
+            5: "电量严重不足即将耗尽",
+            6: "内部高温告警",
+            7: "反流告警",
+            8: "高压告警",
+            9: "低压告警",
+            10: "高水温告警",
+            11: "低水温告警",
+            12: "空管告警",
+            13: "存储故障警告",
+            14: "水温传感器故障",
+            15: "内部温度传感器故障",
+            16: "压力传感器故障",
+            17: "长时间有流量告警",
+            18: "压力突变告警",
+            19: "反向持续低流量告警",
+            20: "反向持续高流量告警",
+            21: "仪表拆卸告警",
+            22: "阀门异常告警（阀控水表）",
+            33: "阀门异常告警（智能调节阀）"
+        };
+        
+        // ============== 工具函数 ==============
+        
+        function hexToBytes(hex) {
+            hex = hex.trim().replace(/\s/g, '').replace(/0x/g, '');
+            if (!hex || hex.length === 0) return [];
+            if (hex.length % 2 !== 0) {
+                throw new Error("十六进制字符串长度必须是偶数");
+            }
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(hex.substring(i, i + 2).toUpperCase());
+            }
+            return bytes;
+        }
+        
+        function parseUint(bytes, littleEndian = true) {
+            if (!bytes || bytes.length === 0) return 0;
+            let value = 0;
+            if (littleEndian) {
+                for (let i = 0; i < bytes.length; i++) {
+                    value |= parseInt(bytes[i], 16) << (i * 8);
+                }
+            } else {
+                for (let i = 0; i < bytes.length; i++) {
+                    value = (value << 8) | parseInt(bytes[i], 16);
+                }
+            }
+            return value;
+        }
+        
+        function parseFloat(bytes) {
+            if (bytes.length !== 4) return 0;
+            const buf = new ArrayBuffer(4);
+            const view = new DataView(buf);
+            for (let i = 0; i < 4; i++) {
+                view.setUint8(i, parseInt(bytes[i], 16));
+            }
+            return view.getFloat32(0, IS_LITTLE_ENDIAN);
+        }
+        
+        function parseInt16(bytes) {
+            if (bytes.length !== 2) return 0;
+            const value = parseUint(bytes, IS_LITTLE_ENDIAN);
+            return value > 32767 ? value - 65536 : value;
+        }
+        
+        function parseUnixTimestamp(bytes) {
+            if (bytes.length !== 4) return null;
+            const timestamp = parseUint(bytes, IS_LITTLE_ENDIAN) * 1000;
+            if (timestamp <= 0) return null;
+            
+            const date = new Date(timestamp);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+            
+            return {
+                raw: bytes.join(''),
+                timestamp: timestamp,
+                display: `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`
+            };
+        }
+        
+        function parseBCDTime(bytes) {
+            if (bytes.length !== 6) return `0x${bytes.join('')}`;
+            const year = parseInt(bytes[0], 16);
+            const month = parseInt(bytes[1], 16);
+            const day = parseInt(bytes[2], 16);
+            const hour = parseInt(bytes[3], 16);
+            const minute = parseInt(bytes[4], 16);
+            const second = parseInt(bytes[5], 16);
+            return `20${year.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
+        }
+        /*
+        function parseBCDTime4(bytes) {
+            if (bytes.length !== 4) return `0x${bytes.join('')}`;
+            const year = parseInt(bytes[0], 16);
+            const month = parseInt(bytes[1], 16);
+            const day = parseInt(bytes[2], 16);
+            const hour = parseInt(bytes[3], 16);
+            return `20${year.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:00:00`;
+        }*/
+        function parseBCDTime4(bytes) {
+			if (bytes.length !== 4) return `0x${bytes.join('')}`;
+			
+			// BCD时间格式：YYMMDDHH
+			const hexStr = bytes.join('');
+			const year = 2000 + parseInt(hexStr.substring(0, 2), 16);  // 0x24 = 36, 但作为BCD应该是24
+			const month = parseInt(hexStr.substring(2, 4), 16);
+			const day = parseInt(hexStr.substring(4, 6), 16);
+			const hour = parseInt(hexStr.substring(6, 8), 16);
+			
+			// 实际上0x24的BCD值就是24
+			const bcdYear = parseInt(bytes[0], 16);
+			const realYear = 2000 + bcdYear;  // 如果0x24表示24年，这就是对的
+			
+			return `20${bcdYear.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:00:00`;
+		}
+        function parseControlByte(byte) {
+            const value = parseInt(byte, 16);
+            const dir = (value >> 7) & 0x01;
+            const prm = (value >> 6) & 0x01;
+            const afn = value & 0x0F;
+            
+            return {
+                value: value,
+                dir: dir,
+                dirText: dir === 1 ? "上行(终端→主站)" : "下行(主站→终端)",
+                prm: prm,
+                prmText: prm === 1 ? "启动站" : "从动站",
+                afn: afn,
+                afnText: AFN_DEFINITIONS[afn]?.name || `未知AFN(0x${afn.toString(16)})`
+            };
+        }
+        
+        function parseControlByteCI(byte) {
+            const value = parseInt(byte, 16);
+            const hasMore = (value >> 5) & 0x01;
+            const encrypt = (value >> 4) & 0x01;
+            const fir = (value >> 3) & 0x01;
+            const fin = (value >> 2) & 0x01;
+            const con = (value >> 1) & 0x01;
+            
+            let frameType = "";
+            if (fir === 1 && fin === 1) frameType = "单帧";
+            else if (fir === 1 && fin === 0) frameType = "多帧首帧";
+            else if (fir === 0 && fin === 1) frameType = "多帧末帧";
+            else if (fir === 0 && fin === 0) frameType = "多帧中间帧";
+            
+            return {
+                value: value,
+                hasMore: hasMore,
+                hasMoreText: hasMore === 1 ? "有后续指令" : "无后续指令",
+                encrypt: encrypt,
+                encryptText: encrypt === 1 ? "加密" : "不加密",
+                fir: fir,
+                fin: fin,
+                frameType: frameType,
+                con: con,
+                conText: con === 1 ? "需要回复" : "不需要回复"
+            };
+        }
+        
+        function parseBS8Format(bytes) {
+            if (bytes.length < 1) return null;
+            const formatByte = parseInt(bytes[0], 16);
+            const dataType = (formatByte >> 4) & 0x0F;
+            const decimalPos = (formatByte & 0x0F) - 6;
+            
+            const dataBytes = bytes.slice(1);
+            let rawValue = 0;
+            let typeName = "";
+            
+            switch(dataType) {
+                case 0: // UINT8
+                    if (dataBytes.length >= 1) {
+                        rawValue = parseInt(dataBytes[0], 16);
+                        typeName = "UINT8";
+                    }
+                    break;
+                case 1: // UINT16
+                    if (dataBytes.length >= 2) {
+                        rawValue = parseUint(dataBytes.slice(0, 2), IS_LITTLE_ENDIAN);
+                        typeName = "UINT16";
+                    }
+                    break;
+                case 2: // UINT32
+                    if (dataBytes.length >= 4) {
+                        rawValue = parseUint(dataBytes.slice(0, 4), IS_LITTLE_ENDIAN);
+                        typeName = "UINT32";
+                    }
+                    break;
+                case 8: // float
+                    if (dataBytes.length >= 4) {
+                        rawValue = parseFloat(dataBytes.slice(0, 4));
+                        typeName = "Float";
+                    }
+                    break;
+                default:
+                    if (dataBytes.length > 0) {
+                        rawValue = parseUint(dataBytes, IS_LITTLE_ENDIAN);
+                        typeName = `类型${dataType}`;
+                    }
+            }
+            
+            let finalValue = rawValue;
+            if (decimalPos !== 0 && typeof rawValue === 'number') {
+                finalValue = rawValue * Math.pow(10, decimalPos);
+            }
+            
+            return {
+                formatByte: formatByte,
+                dataType: dataType,
+                typeName: typeName,
+                decimalPos: decimalPos,
+                rawValue: rawValue,
+                finalValue: finalValue
+            };
+        }
+        
+        function parseIdHeader(byte) {
+            const value = parseInt(byte, 16);
+            const lid = (value >> 5) & 0x07;
+            const id = value & 0x1F;
+            
+            let dataLength = 0;
+            if (lid >= 1 && lid <= 7) {
+                dataLength = LID_LENGTH_MAP[lid] || 0;
+            }
+            
+            return {
+                value: value,
+                lid: lid,
+                id: id,
+                dataLength: dataLength,
+                hasEid: id === 0,
+                hasElid: lid === 0
+            };
+        }
+        
+        // ============== 数据区解析函数 ==============
+        
+        // AFN=1 Fn=1 数据区解析
+        function parseAFN1DataArea(bytes, startIdx, rowIndex, bytePos) {
+            const items = [];
+            let idx = startIdx;
+            let currentBytePos = bytePos;
+            let currentRowIndex = rowIndex;
+            
+            // 1. 解析Fn
+            if (idx >= bytes.length) return items;
+            const fn = parseInt(bytes[idx], 16);
+            const fnInfo = FN_DEFINITIONS[fn] || { name: `Fn=0x${fn.toString(16)}` };
+            
+            addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "Fn", 
+                       "UINT8", "N/A", 
+                       `Fn=${fn} (${fnInfo.name})`,
+                       "功能序号", "row-category");
+            idx += 1;
+            currentBytePos += 1;
+            
+            // 2. 循环解析各数据块（时间戳+数据类别+数据）
+            while (idx < bytes.length) {
+                // 检查是否到达帧尾
+                if (idx + 1 <= bytes.length && bytes[idx] === "16") {
+                    break;
+                }
+                
+                // 解析时间戳
+                if (idx + 4 > bytes.length) {
+                    addTableRow(currentRowIndex++, currentBytePos, [], "时间戳", 
+                               "ERROR", "N/A", 
+                               "数据不足", "", "row-timestamp");
+                    break;
+                }
+                
+                const timestampBytes = bytes.slice(idx, idx + 4);
+                const timestamp = parseUnixTimestamp(timestampBytes);
+                addTableRow(currentRowIndex++, currentBytePos, timestampBytes, "采集时间", 
+                           "UNIX_TIME", "little", 
+                           timestamp ? timestamp.display : `0x${timestampBytes.join('')}`,
+                           timestamp ? "Unix时间戳" : "无效时间戳", "row-timestamp");
+                idx += 4;
+                currentBytePos += 4;
+                
+                // 解析数据类别
+                if (idx >= bytes.length) {
+                    addTableRow(currentRowIndex++, currentBytePos, [], "数据类别", 
+                               "ERROR", "N/A", "数据不足", "", "row-category");
+                    break;
+                }
+                
+                const categoryByte = parseInt(bytes[idx], 16);
+                const hasTwoByteLength = (categoryByte & 0x80) !== 0;
+                const categoryId = categoryByte & 0x7F;
+                const categoryInfo = DATA_CATEGORIES[categoryId] || { name: `未知类别(${categoryId})` };
+                
+                addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "数据类别", 
+                           "UINT8", "N/A", 
+                           categoryInfo.name,
+                           `ID: ${categoryId}, 长度格式: ${hasTwoByteLength ? '2字节' : '1字节'}`, "row-category");
+                idx += 1;
+                currentBytePos += 1;
+                
+                // 解析数据长度
+                let dataLength = 0;
+                let lengthBytes = [];
+                if (hasTwoByteLength) {
+                    if (idx + 2 > bytes.length) {
+                        addTableRow(currentRowIndex++, currentBytePos, [], "数据长度", 
+                                   "ERROR", "N/A", "数据不足", "", "row-category");
+                        break;
+                    }
+                    lengthBytes = bytes.slice(idx, idx + 2);
+                    dataLength = parseUint(lengthBytes, IS_LITTLE_ENDIAN);
+                    addTableRow(currentRowIndex++, currentBytePos, lengthBytes, "数据长度", 
+                               "UINT16", "little", 
+                               dataLength,
+                               `原始: 0x${lengthBytes.join('')}`, "row-category");
+                    idx += 2;
+                    currentBytePos += 2;
+                } else {
+                    lengthBytes = [bytes[idx]];
+                    dataLength = parseInt(bytes[idx], 16);
+                    addTableRow(currentRowIndex++, currentBytePos, lengthBytes, "数据长度", 
+                               "UINT8", "N/A", 
+                               dataLength,
+                               `原始: 0x${lengthBytes[0]}`, "row-category");
+                    idx += 1;
+                    currentBytePos += 1;
+                }
+                
+                // 解析数据内容
+                if (dataLength > 0) {
+                    if (idx + dataLength <= bytes.length) {
+                        const dataBytes = bytes.slice(idx, idx + dataLength);
+                        
+                        // 显示数据内容摘要
+                        addTableRow(currentRowIndex++, currentBytePos, dataBytes, "数据内容", 
+                                   "HEX", "N/A", 
+                                   `${dataLength}字节`,
+                                   `原始: 0x${dataBytes.join('').substring(0, 32)}${dataBytes.length > 16 ? '...' : ''}`, "row-data");
+                        
+                        // 解析数据ID列表
+                        if (categoryId === 6) {
+                            // 告警信息特殊处理
+                            parseAlarmDataBlock(dataBytes, currentRowIndex, currentBytePos);
+                            currentRowIndex += dataBytes.length * 2; // 估计行数
+                        } else {
+                            // 其他数据类别使用数据ID列表结构
+                            const idListResult = parseIdListData(dataBytes, categoryId, currentRowIndex, currentBytePos);
+                            currentRowIndex += idListResult.rowCount;
+                        }
+                        
+                        idx += dataLength;
+                        currentBytePos += dataLength;
+                    } else {
+                        const remaining = bytes.length - idx;
+                        addTableRow(currentRowIndex++, currentBytePos, [], "数据内容", 
+                                   "ERROR", "N/A", 
+                                   `数据长度不足: 需要${dataLength}字节，剩余${remaining}字节`,
+                                   "", "row-data");
+                        break;
+                    }
+                }
+            }
+            
+            return {
+                newIndex: idx,
+                newBytePos: currentBytePos,
+                newRowIndex: currentRowIndex
+            };
+        }
+        
+        // AFN=3 Fn=6 数据区解析
+        function parseAFN3Fn6DataArea(bytes, startIdx, rowIndex, bytePos) {
+            const items = [];
+            let idx = startIdx;
+            let currentBytePos = bytePos;
+            let currentRowIndex = rowIndex;
+            
+            // 1. 解析Fn
+            if (idx >= bytes.length) return items;
+            const fn = parseInt(bytes[idx], 16);
+            const fnInfo = FN_DEFINITIONS[fn] || { name: `Fn=0x${fn.toString(16)}` };
+            
+            addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "Fn", 
+                       "UINT8", "N/A", 
+                       `Fn=${fn} (${fnInfo.name})`,
+                       "告警数据", "row-category");
+            idx += 1;
+            currentBytePos += 1;
+            
+            // 2. 解析数据帧号
+            if (idx >= bytes.length) return items;
+            const frameNo = parseInt(bytes[idx], 16);
+            addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "数据帧号", 
+                       "UINT8", "N/A", 
+                       frameNo,
+                       "1~255，从1开始递增", "row-data");
+            idx += 1;
+            currentBytePos += 1;
+            
+            // 3. 解析上报标识
+            if (idx >= bytes.length) return items;
+            const reportFlag = parseInt(bytes[idx], 16);
+            const reportType = reportFlag === 0 ? "手动上报" : "自动上报";
+            addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "上报标识", 
+                       "UINT8", "N/A", 
+                       `${reportFlag} (${reportType})`,
+                       "0=手动上报，1=自动上报", "row-data");
+            idx += 1;
+            currentBytePos += 1;
+            
+            // 4. 解析告警信息（剩余所有字节都是告警数据）
+            if (idx < bytes.length) {
+                const alarmDataBytes = bytes.slice(idx);
+                addTableRow(currentRowIndex++, currentBytePos, alarmDataBytes, "告警信息", 
+                           "ALARM_DATA", "N/A", 
+                           `${alarmDataBytes.length}字节告警数据`,
+                           "使用告警数据格式(7.2.6)", "row-alarm");
+                
+                // 解析告警数据块
+                parseAlarmDataBlock(alarmDataBytes, currentRowIndex, currentBytePos);
+                currentRowIndex += alarmDataBytes.length * 2;
+                
+                idx += alarmDataBytes.length;
+                currentBytePos += alarmDataBytes.length;
+            }
+            
+            return {
+                newIndex: idx,
+                newBytePos: currentBytePos,
+                newRowIndex: currentRowIndex
+            };
+        }
+        
+		// 解析告警数据块（用于AFN=1和AFN=3）
+		function parseAlarmDataBlock(bytes, startRowIndex, startBytePos) {
+			let idx = 0;
+			let currentRowIndex = startRowIndex;
+			let currentBytePos = startBytePos;
+			let alarmCount = 0;
+			
+			while (idx < bytes.length) {
+				// 1. 告警数据ID
+				if (idx >= bytes.length) break;
+				const alarmId = parseInt(bytes[idx], 16);
+				const alarmName = ALARM_TYPE_MAP[alarmId] || `告警${alarmId}`;
+				
+				addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "告警数据ID", 
+						   "UINT8", "N/A", 
+						   `${alarmId} (${alarmName})`,
+						   "", "row-alarm");
+				idx += 1;
+				currentBytePos += 1;
+				
+				// 2. 告警数据长度
+				if (idx >= bytes.length) break;
+				const alarmLength = parseInt(bytes[idx], 16);
+				addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "告警数据长度", 
+						   "UINT8", "N/A", 
+						   alarmLength,
+						   `总长度(包括时间4字节)`, "row-alarm");
+				idx += 1;
+				currentBytePos += 1;
+				
+				// 3. 告警发生时间 - 修改这里！
+				if (idx + 4 > bytes.length) break;
+				const timeBytes = bytes.slice(idx, idx + 4);
+				const alarmTime = parseBCDTime4(timeBytes);
+				
+				// 修改：主显示为十六进制，详情显示解析后的时间
+				addTableRow(currentRowIndex++, currentBytePos, timeBytes, "告警发生时间", 
+						   "BCD_TIME", "N/A", 
+						   `${alarmTime}`,                       // 主显示：解析后的时间
+						   `原始: 0x${timeBytes.join('')}`,      // 详情：原始十六进制
+						   "row-alarm");
+				
+				idx += 4;
+				currentBytePos += 4;
+				
+				// 4. 告警数据内容
+				const contentLength = alarmLength - 4;
+				if (contentLength > 0 && idx + contentLength <= bytes.length) {
+					const contentBytes = bytes.slice(idx, idx + contentLength);
+					addTableRow(currentRowIndex++, currentBytePos, contentBytes, "告警数据内容", 
+							   "HEX", "N/A", 
+							   `${contentLength}字节`,
+							   `原始: 0x${contentBytes.join('')}`, "row-alarm");
+					
+					// 根据告警类型显示简略内容
+					const contentInfo = getAlarmContentInfo(alarmId, contentBytes);
+					if (contentInfo) {
+						addTableRow(currentRowIndex++, currentBytePos, [], "告警详情", 
+								   "TEXT", "N/A", 
+								   contentInfo,
+								   "", "row-alarm");
+					}
+					
+					idx += contentLength;
+					currentBytePos += contentLength;
+				} else if (contentLength > 0) {
+					const remaining = bytes.length - idx;
+					addTableRow(currentRowIndex++, currentBytePos, [], "告警数据内容", 
+							   "ERROR", "N/A", 
+							   `数据不足: 需要${contentLength}字节，剩余${remaining}字节`,
+							   "", "row-alarm");
+					break;
+				}
+				
+				alarmCount++;
+			}
+			
+			return alarmCount;
+		}
+        
+        // 解析数据ID列表（用于非告警数据）
+        function parseIdListData(bytes, categoryId, startRowIndex, startBytePos) {
+            let idx = 0;
+            let currentRowIndex = startRowIndex;
+            let currentBytePos = startBytePos;
+            let itemCount = 0;
+            
+            while (idx < bytes.length) {
+                // 1. 解析ID头
+                const idHeader = parseIdHeader(bytes[idx]);
+                
+                // 显示ID头
+                addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "ID头", 
+                           "ID_HEADER", "N/A", 
+                           `0x${bytes[idx]}`,
+                           `LID=${idHeader.lid}, ID=${idHeader.id}`, "row-id-header");
+                idx += 1;
+                currentBytePos += 1;
+                
+                // 2. 处理扩展ID
+                let finalId = idHeader.id;
+                if (idHeader.hasEid && idx < bytes.length) {
+                    const eid = parseInt(bytes[idx], 16);
+                    finalId = eid + 32;
+                    addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "EID", 
+                               "UINT8", "N/A", 
+                               `ID扩展: ${finalId}`,
+                               `原始ID=0，EID=${eid}`, "row-id-header");
+                    idx += 1;
+                    currentBytePos += 1;
+                }
+                
+                // 3. 处理扩展长度
+                let dataLength = idHeader.dataLength;
+                if (idHeader.hasElid && idx < bytes.length) {
+                    const elid = parseInt(bytes[idx], 16);
+                    dataLength = (elid - 1) + 8;
+                    addTableRow(currentRowIndex++, currentBytePos, [bytes[idx]], "ELID", 
+                               "UINT8", "N/A", 
+                               `长度扩展: ${dataLength}字节`,
+                               `LID=0，ELID=${elid}`, "row-id-header");
+                    idx += 1;
+                    currentBytePos += 1;
+                }
+                
+                // 4. 获取数据配置
+                const config = DATA_ID_CONFIGS[categoryId]?.[finalId];
+                const itemName = config?.name || `ID${finalId}`;
+                
+                // 5. 解析数据值
+                if (dataLength > 0 && idx + dataLength <= bytes.length) {
+                    const dataBytes = bytes.slice(idx, idx + dataLength);
+                    
+                    // 特殊处理BS8格式
+                    if (config?.type === "BS8") {
+                        // 格式字节
+                        addTableRow(currentRowIndex++, currentBytePos, [dataBytes[0]], "格式字节", 
+                                   "HEX", "N/A", 
+                                   `0x${dataBytes[0]}`,
+                                   "BS8格式字节", "row-format-byte");
+                        currentBytePos += 1;
+                        
+                        // 数据值
+                        const bs8Result = parseBS8Format(dataBytes);
+                        let displayValue = bs8Result ? bs8Result.finalValue : `0x${dataBytes.slice(1).join('')}`;
+                        if (bs8Result && typeof bs8Result.finalValue === 'number') {
+                            displayValue = bs8Result.finalValue.toFixed(4);
+                            if (config.unit) displayValue += ` ${config.unit}`;
+                        }
+                        
+                        addTableRow(currentRowIndex++, currentBytePos, dataBytes.slice(1), itemName, 
+                                   bs8Result?.typeName || "UNKNOWN", "little", 
+                                   displayValue,
+                                   bs8Result ? `类型:${bs8Result.typeName}, 小数位:10^${bs8Result.decimalPos}` : "", 
+                                   "row-data");
+                    } else {
+                        // 普通数据
+                        let displayValue = "";
+                        let detail = "";
+                        
+                        if (config) {
+                            switch(config.type) {
+                                case "FLOAT":
+                                    const floatVal = parseFloat(dataBytes);
+                                    displayValue = floatVal.toFixed(4);
+                                    detail = "小端序浮点数";
+                                    break;
+                                case "UINT16":
+                                    const uint16Val = parseUint(dataBytes, IS_LITTLE_ENDIAN);
+                                    displayValue = config.scale ? (uint16Val * config.scale).toFixed(3) : uint16Val;
+                                    detail = "小端序UINT16";
+                                    break;
+                                case "UINT32":
+                                    const uint32Val = parseUint(dataBytes, IS_LITTLE_ENDIAN);
+                                    displayValue = uint32Val;
+                                    detail = "小端序UINT32";
+                                    break;
+                                case "INT16":
+                                    const int16Val = parseInt16(dataBytes);
+                                    displayValue = config.scale ? (int16Val * config.scale).toFixed(2) : int16Val;
+                                    detail = "小端序INT16";
+                                    break;
+                                case "BCD_TIME":
+                                    const bcdTime = parseBCDTime(dataBytes);
+									displayValue = `0x${dataBytes.join('')}`;  // 主显示：十六进制
+									detail = `BCD时间: ${bcdTime}`;            // 详情：解析时间
+                                    break;
+                                case "HEX":
+                                default:
+                                    displayValue = `0x${dataBytes.join('')}`;
+                                    detail = `${dataBytes.length}字节`;
+                            }
+                            
+                            if (config.unit) displayValue += ` ${config.unit}`;
+                        } else {
+                            displayValue = `0x${dataBytes.join('')}`;
+                            detail = `${dataBytes.length}字节`;
+                        }
+                        
+                        // 阀门状态特殊处理
+                        if (finalId === 16) {
+                            const statusVal = parseUint(dataBytes, IS_LITTLE_ENDIAN);
+                            const statusText = VALVE_STATUS_MAP[statusVal] || 
+                                             (statusVal >= 1 && statusVal <= 9999 ? `阀门开度: ${statusVal}` : `未知状态(${statusVal})`);
+                            displayValue = `${statusVal} (${statusText})`;
+                        }
+                        
+                        addTableRow(currentRowIndex++, currentBytePos, dataBytes, itemName, 
+                                   config?.type || "HEX", IS_LITTLE_ENDIAN ? "little" : "N/A", 
+                                   displayValue,
+                                   detail, "row-data");
+                    }
+                    
+                    idx += dataLength;
+                    currentBytePos += dataLength;
+                    itemCount++;
+                } else if (dataLength > 0) {
+                    const remaining = bytes.length - idx;
+                    addTableRow(currentRowIndex++, currentBytePos, [], itemName, 
+                               "ERROR", "N/A", 
+                               `数据长度不足: 需要${dataLength}字节，剩余${remaining}字节`,
+                               "", "row-data");
+                    break;
+                }
+            }
+            
+            return {
+                rowCount: currentRowIndex - startRowIndex,
+                itemCount: itemCount
+            };
+        }
+        
+        function getAlarmContentInfo(alarmId, bytes) {
+            switch(alarmId) {
+                case 1: // 持续低流量告警
+                    if (bytes.length >= 5) {
+                        const status = parseInt(bytes[0], 16);
+                        const threshold = parseInt(bytes[1], 16) * 0.1;
+                        const duration = parseInt(bytes[2], 16);
+                        return `状态:${status===1?'产生':'消除'}, 门限:${threshold}L/Min, 持续时间:${duration}min`;
+                    }
+                    break;
+                case 4: // 低电量告警
+                    if (bytes.length >= 4) {
+                        const status = parseInt(bytes[0], 16);
+                        const threshold = parseUint(bytes.slice(1, 3), IS_LITTLE_ENDIAN) * 0.01;
+                        const voltage = parseUint(bytes.slice(3, 5), IS_LITTLE_ENDIAN) * 0.01;
+                        return `状态:${status===1?'产生':'消除'}, 门限:${threshold}V, 当前:${voltage}V`;
+                    }
+                    break;
+                case 22: // 阀门异常告警
+                    if (bytes.length >= 1) {
+                        const status = parseInt(bytes[0], 16);
+                        const statusText = {0:"告警消除",1:"开阀异常",2:"关阀异常",3:"洗阀异常"}[status] || `未知状态(${status})`;
+                        return `状态:${statusText}`;
+                    }
+                    break;
+                default:
+                    if (bytes.length > 0) {
+                        return `${bytes.length}字节原始数据`;
+                    }
+            }
+            return null;
+        }
+        
+        // ============== 主解析函数 ==============
+        
+        function parseData() {
+            const hexInput = document.getElementById('hexInput').value;
+            const tableBody = document.getElementById('tableBody');
+            const errorDiv = document.getElementById('errorMessage');
+            const summaryBox = document.getElementById('summaryBox');
+            
+            // 清空显示
+            tableBody.innerHTML = '';
+            errorDiv.style.display = 'none';
+            summaryBox.style.display = 'none';
+            
+            if (!hexInput || hexInput.trim() === '') {
+                showError("请输入十六进制数据！");
+                return;
+            }
+            
+            try {
+                // 转换十六进制字符串为字节数组
+                const bytes = hexToBytes(hexInput);
+                if (bytes.length === 0) {
+                    showError("没有有效的十六进制数据！");
+                    return;
+                }
+                
+                // 检查长度
+                if (bytes.length < 16) {
+                    showError(`数据长度不足: 至少需要16字节帧头，实际${bytes.length}字节`);
+                    return;
+                }
+                
+                // 开始解析
+                let currentIndex = 0;
+                let bytePosition = 1;
+                let rowIndex = 1;
+                let afnValue = null;
+                let controlInfo = null;
+                let summary = {
+                    totalBytes: bytes.length,
+                    parsedBytes: 0,
+                    dataBlocks: 0,
+                    alarmCount: 0
+                };
+                
+                // 1. 解析固定帧头
+                for (const field of FRAME_CONFIG) {
+                    if (currentIndex + field.bytes > bytes.length) {
+                        addTableRow(rowIndex++, bytePosition, [], field.name, 
+                                   "ERROR", "N/A", "数据不足", "", "row-header");
+                        break;
+                    }
+                    
+                    const fieldBytes = bytes.slice(currentIndex, currentIndex + field.bytes);
+                    let displayValue = "";
+                    let detail = "";
+                    let rowClass = "row-header";
+                    
+                    switch(field.type) {
+                        case "UINT8":
+                            const uintValue = parseInt(fieldBytes[0], 16);
+                            if (field.name === "长度L") {
+                                const lengthValue = parseUint(fieldBytes, IS_LITTLE_ENDIAN);
+                                displayValue = `${lengthValue} (0x${fieldBytes[0]})`;
+                                detail = `协议版本到校验和前的字节数`;
+                            } else if (field.name === "设备类型") {
+                                const deviceType = DEVICE_TYPES[uintValue] || `未知(0x${uintValue.toString(16)})`;
+                                displayValue = `${uintValue} (${deviceType})`;
+                                detail = `设备类型代码`;
+                            } else if (field.name === "协议版本V") {
+                                const isValid = field.expected && fieldBytes[0] === field.expected;
+                                displayValue = `${uintValue}${isValid ? " ✓" : " ✗"}`;
+                                detail = field.expected ? `应为${field.expected}` : "";
+                            } else {
+                                displayValue = `${uintValue} (0x${fieldBytes[0]})`;
+                            }
+                            break;
+                            
+                        case "HEX":
+                            displayValue = `0x${fieldBytes.join('')}`;
+                            if (field.name === "帧起始符") {
+                                const isValid = field.expected && fieldBytes[0] === field.expected;
+                                displayValue += isValid ? " ✓" : " ✗";
+                                detail = field.expected ? `应为0x${field.expected}` : "";
+                            } else if (field.name === "控制域C") {
+                                controlInfo = parseControlByte(fieldBytes[0]);
+                                afnValue = controlInfo.afn;
+                                displayValue = `0x${fieldBytes[0]}`;
+                                detail = `AFN=${controlInfo.afn} (${controlInfo.afnText})`;
+                                rowClass = "row-control";
+                            } else if (field.name === "辅助控制域CI") {
+                                const ciInfo = parseControlByteCI(fieldBytes[0]);
+                                displayValue = `0x${fieldBytes[0]}`;
+                                detail = `${ciInfo.frameType}, ${ciInfo.encryptText}, ${ciInfo.hasMoreText}`;
+                                rowClass = "row-control";
+                            }
+                            break;
+                    }
+                    
+                    addTableRow(rowIndex++, bytePosition, fieldBytes, field.name, 
+                               field.type, field.name.includes("控制域") ? "N/A" : (IS_LITTLE_ENDIAN ? "little" : "big"), 
+                               displayValue, detail, rowClass);
+                    
+                    bytePosition += field.bytes;
+                    currentIndex += field.bytes;
+                    summary.parsedBytes += field.bytes;
+                }
+                
+                // 2. 解析数据区（根据AFN选择解析器）
+                if (currentIndex < bytes.length - 2) { // 至少留2字节给帧尾
+                    const dataAreaBytes = bytes.slice(currentIndex, bytes.length - 2);
+                    
+                    if (afnValue === 0x01) {
+                        // AFN=1 实时数据上报
+                        const result = parseAFN1DataArea(dataAreaBytes, 0, rowIndex, bytePosition);
+                        rowIndex = result.newRowIndex;
+                        bytePosition = result.newBytePos;
+                        currentIndex += result.newIndex;
+                    } else if (afnValue === 0x03) {
+                        // AFN=3 其他数据上报
+                        const result = parseAFN3Fn6DataArea(dataAreaBytes, 0, rowIndex, bytePosition);
+                        rowIndex = result.newRowIndex;
+                        bytePosition = result.newBytePos;
+                        currentIndex += result.newIndex;
+                    } else {
+                        // 其他AFN暂不解析
+                        addTableRow(rowIndex++, bytePosition, dataAreaBytes, "数据区", 
+                                   "HEX", "N/A", 
+                                   `${dataAreaBytes.length}字节`,
+                                   `AFN=${afnValue}，暂不支持详细解析`, "row-data");
+                        currentIndex += dataAreaBytes.length;
+                        bytePosition += dataAreaBytes.length;
+                    }
+                }
+                
+                // 3. 解析帧尾
+                if (currentIndex < bytes.length) {
+                    // 帧校验和CS
+                    addTableRow(rowIndex++, bytePosition, [bytes[currentIndex]], "帧校验和CS", 
+                               "HEX", "N/A", 
+                               `0x${bytes[currentIndex]}`,
+                               "协议版本到校验和前的所有字节算术和", "row-footer");
+                    currentIndex += 1;
+                    bytePosition += 1;
+                    
+                    // 帧结束符
+                    if (currentIndex < bytes.length) {
+                        const endFlag = bytes[currentIndex];
+                        const isValid = endFlag === "16";
+                        addTableRow(rowIndex++, bytePosition, [endFlag], "帧结束符", 
+                                   "HEX", "N/A", 
+                                   `0x${endFlag} ${isValid ? "✓" : "✗"}`,
+                                   isValid ? "正确" : "错误，应为0x16", "row-footer");
+                    }
+                }
+                
+                // 4. 显示摘要
+                showSummary(summary, controlInfo);
+                
+            } catch (error) {
+                showError(`解析错误: ${error.message}`);
+            }
+        }
+        
+        function addTableRow(index, bytePos, hexBytes, fieldName, dataType, endian, value, detail = "", rowClass = "") {
+            const tableBody = document.getElementById('tableBody');
+            const row = document.createElement('tr');
+            
+            if (rowClass) {
+                row.className = rowClass;
+            }
+            
+            const hexValue = hexBytes.length > 0 ? 
+                hexBytes.map(b => `<span class="byte-item">${b}</span>`).join(' ') : 
+                '—';
+            
+            const displayValue = value + (detail ? `<div class="detail-info">${detail}</div>` : '');
+            
+            row.innerHTML = `
+                <td>${index}</td>
+                <td class="byte-pos">0x${(bytePos-1).toString(16).toUpperCase().padStart(2, '0')}</td>
+                <td class="hex-value">${hexValue}</td>
+                <td><span class="data-name">${fieldName}</span></td>
+                <td>${dataType}</td>
+                <td>${endian}</td>
+                <td>${displayValue}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = `<strong>错误：</strong> ${message}`;
+            errorDiv.style.display = 'block';
+        }
+        
+        function showSummary(summary, controlInfo) {
+            const summaryBox = document.getElementById('summaryBox');
+            const summaryContent = document.getElementById('summaryContent');
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+                    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div class="summary-label">总字节数</div>
+                        <div class="summary-value">${summary.totalBytes}</div>
+                    </div>
+            `;
+            
+            if (controlInfo) {
+                html += `
+                    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div class="summary-label">AFN功能码</div>
+                        <div class="summary-value">${controlInfo.afn} (${controlInfo.afnText})</div>
+                    </div>
+                    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div class="summary-label">传输方向</div>
+                        <div class="summary-value">${controlInfo.dirText}</div>
+                    </div>
+                    <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div class="summary-label">启动标志</div>
+                        <div class="summary-value">${controlInfo.prmText}</div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                </div>
+                <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">字节序说明</div>
+                    <div style="font-size: 13px; color: #7f8c8d;">
+                        低位在前，高位在后；低字节在前，高字节在后（小端序）
+                    </div>
+                </div>
+            `;
+            
+            summaryContent.innerHTML = html;
+            summaryBox.style.display = 'block';
+        }
+        
+        function clearData() {
+            document.getElementById('hexInput').value = '';
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('summaryBox').style.display = 'none';
+        }
+        
+        function loadExample(type) {
+            let exampleData = '';
+            
+            switch(type) {
+                case 1: // AFN=1示例
+                    exampleData = "663601FFFF0112345678E404C10301BFBD8069012341CA0CC42602021507430709303038306531313530356334656532614943232F0433251516";
+                    break;
+                case 2: // AFN=3示例（告警）
+                    exampleData = "662101FFFF0112345678E41304C307061400030724010420040123000000010203E803E816";
+                    // 解释：低电量告警 + 高压告警
+                    break;
+            }
+            
+            document.getElementById('hexInput').value = exampleData;
+            parseData();
+        }
+        
+        // 页面加载时自动加载示例
+        window.onload = function() {
+            loadExample(1);
+        };
+    </script>
+</body>
+</html>
