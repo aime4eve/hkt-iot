@@ -15,6 +15,9 @@ createApp({
       diff: { fileA: '', fileB: '', fPort: '', text: '', running: false, results: [], summary: null },
       codeView: { open: false, file: '', content: '' },
       syncing: false,
+      importing: false,
+      newDev: { open: false, saving: false, form: this.blankNewDev() },
+      mgmt: { saving: false, form: {}, nc: { platform: 'chirpstack', lang: '', version: '', firmwareVersion: '', changelog: '', code: '' }, samplesText: '[]' },
       toast: null,
     };
   },
@@ -36,6 +39,12 @@ createApp({
     },
   },
   methods: {
+    blankNewDev() {
+      return { model: '', modelKey: '', name: '', origin: 'out-sourced', vendor: '', category: '', fPortDefault: '', aliases: '', authType: 'protocol-doc', authPath: '', authRef: '', authSection: '', authMissing: false };
+    },
+    onOriginChange() {
+      this.newDev.form.authType = this.newDev.form.origin === 'in-house' ? 'firmware' : 'protocol-doc';
+    },
     async loadDevices() {
       const r = await fetch('/api/devices').then(r => r.json());
       this.devices = r.devices || [];
@@ -47,6 +56,7 @@ createApp({
       this.bench = { file: '', fPort: this.dev.fPortDefault == null ? '' : String(this.dev.fPortDefault), timeoutMs: '', text: '', running: false, results: [], summary: null };
       this.reg = { running: false, cases: [], summary: null };
       this.diff = { fileA: '', fileB: '', fPort: '', text: '', running: false, results: [], summary: null };
+      this.fillMgmtForm();
       const current = this.dev.codecs.filter(c => c.current);
       if (current.length) this.bench.file = current[0].file;
       if (this.dev.codecs.length) {
@@ -136,16 +146,156 @@ createApp({
       catch (e) { this.showToast('复制失败（浏览器权限）', 'bad'); }
     },
     openDoc(file) { window.open('/api/doc?path=' + encodeURIComponent(this.devicePath(file)), '_blank'); },
-    async doSync() {
-      this.syncing = true;
+    exportBackup() { window.open('/api/export', '_blank'); this.showToast('备份包开始下载'); },
+    importClick() { this.$refs.importFile.click(); },
+    async doImport(ev) {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      this.importing = true;
       try {
-        const r = await fetch('/api/sync', { method: 'POST' }).then(r => r.json());
-        this.showToast(r.ok ? '同步完成' : '同步失败', r.ok ? 'ok' : 'bad');
-        if (!r.ok && r.error) console.warn(r.error, r.output);
+        const fd = new FormData();
+        fd.append('file', f);
+        const r = await fetch('/api/import', { method: 'POST', body: fd }).then(r => r.json());
+        if (r.error) this.showToast(r.error, 'bad');
+        else {
+          const created = r.devices.filter(d => d.action === 'created').length;
+          this.showToast(`导入完成：新增 ${created} 台设备，合并 ${r.devices.length - created} 台，写入 ${r.filesWritten} 个文件${r.skipped.length ? '，跳过 ' + r.skipped.length : ''}`, 'ok');
+          await this.loadDevices();
+        }
+      } catch (e) { this.showToast('导入失败: ' + e.message, 'bad'); }
+      this.importing = false;
+    },
+    async createDevice() {
+      this.newDev.saving = true;
+      try {
+        const f = this.newDev.form;
+        const body = {
+          model: f.model, modelKey: f.modelKey, name: f.name, origin: f.origin,
+          vendor: f.vendor, category: f.category, fPortDefault: f.fPortDefault,
+          aliases: f.aliases ? f.aliases.split(/[,，\s]+/).filter(Boolean) : [],
+          authority: f.authType === 'firmware'
+            ? { type: 'firmware', path: f.authPath, ref: f.authRef }
+            : { type: 'protocol-doc', file: null, section: f.authSection, missing: !!f.authMissing, note: f.authMissing ? '暂缺协议文档（债务台账）' : null },
+        };
+        const r = await fetch('/api/devices', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+        if (r.error) return this.showToast(r.error, 'bad');
+        this.showToast('设备已创建: ' + r.id);
+        this.newDev.open = false;
+        this.newDev.form = this.blankNewDev();
         await this.loadDevices();
-        if (this.currentId) await this.openDevice(this.currentId);
-      } catch (e) { this.showToast('同步请求失败: ' + e.message, 'bad'); }
-      this.syncing = false;
+        await this.openDevice(r.id);
+        this.tab = 'manage';
+      } catch (e) { this.showToast('创建失败: ' + e.message, 'bad'); }
+      this.newDev.saving = false;
+    },
+    fillMgmtForm() {
+      const d = this.dev;
+      this.mgmt.form = {
+        name: d.name, model: d.model, vendor: d.vendor, category: d.category,
+        aliases: (d.aliases || []).join(', '), notes: d.notes || '',
+        fPortDefault: d.fPortDefault == null ? '' : String(d.fPortDefault),
+        authType: d.authority.type, authPath: d.authority.path || '', authRef: d.authority.ref || '',
+        authFile: d.authority.file || '', authSection: d.authority.section || '', authMissing: !!d.authority.missing,
+      };
+      this.mgmt.nc = { platform: 'chirpstack', lang: '', version: '', firmwareVersion: '', changelog: '', code: '' };
+      this.mgmt.samplesText = JSON.stringify(this.dev.samples || [], null, 2);
+    },
+    async saveMeta() {
+      this.mgmt.saving = true;
+      try {
+        const f = this.mgmt.form;
+        const r = await fetch('/api/device', {
+          method: 'PATCH', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            id: this.currentId,
+            patch: {
+              name: f.name, model: f.model, vendor: f.vendor, category: f.category,
+              aliases: f.aliases, notes: f.notes, fPortDefault: f.fPortDefault,
+              authority: f.authType === 'firmware'
+                ? { type: 'firmware', path: f.authPath, ref: f.authRef }
+                : { type: 'protocol-doc', file: f.authFile, section: f.authSection },
+            },
+          }),
+        }).then(r => r.json());
+        if (r.error) return this.showToast(r.error, 'bad');
+        this.showToast('台账已保存');
+        await this.openDevice(this.currentId); this.tab = 'manage';
+      } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
+      this.mgmt.saving = false;
+    },
+    mgmtFilePicked(ev) {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.mgmt.nc.code = String(reader.result);
+        const m = f.name.match(/_v(\d+\.\d+\.\d+)\.js$/);
+        if (m && !this.mgmt.nc.version) this.mgmt.nc.version = m[1];
+        const pm = f.name.match(/_(chirpstack|ttn|thingsboard)/);
+        if (pm) this.mgmt.nc.platform = pm[1];
+      };
+      reader.readAsText(f);
+    },
+    async addCodec() {
+      this.mgmt.saving = true;
+      try {
+        const nc = this.mgmt.nc;
+        const r = await fetch('/api/device/codecs', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: this.currentId, platform: nc.platform, lang: nc.lang || null, version: nc.version, firmwareVersion: nc.firmwareVersion, changelog: nc.changelog, code: nc.code }),
+        }).then(r => r.json());
+        if (r.error) return this.showToast(r.error, 'bad');
+        this.showToast('新版本已保存: ' + r.file);
+        await this.openDevice(this.currentId); this.tab = 'manage';
+      } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
+      this.mgmt.saving = false;
+    },
+    async setCurrent(file) {
+      const r = await fetch('/api/device/codec-current', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('current 已切换: ' + file);
+      await this.openDevice(this.currentId); this.tab = 'codecs';
+    },
+    async verifyClick(c) {
+      const basis = prompt('填写核验依据（每行一条）\n例如：\n手册 v1.2 §5 通道表\n黄金样例全部通过');
+      if (basis === null) return;
+      const arr = basis.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const r = await fetch('/api/device/codec-status', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file: c.file, status: 'verified', basis: arr }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('已标记为已核验: ' + c.file);
+      await this.openDevice(this.currentId); this.tab = 'codecs';
+    },
+    async deleteCodec(file) {
+      if (!confirm('确认删除 ' + file + ' ？\n（文件会移入服务器回收站，不直接销毁）')) return;
+      const r = await fetch('/api/device/codec', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('已删除: ' + file);
+      await this.openDevice(this.currentId); this.tab = 'codecs';
+    },
+    async saveSamples() {
+      let samples;
+      try { samples = JSON.parse(this.mgmt.samplesText); } catch (e) { return this.showToast('JSON 格式错误: ' + e.message, 'bad'); }
+      this.mgmt.saving = true;
+      try {
+        const r = await fetch('/api/device/samples', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, samples }) }).then(r => r.json());
+        if (r.error) return this.showToast(r.error, 'bad');
+        this.showToast('样例已保存（' + r.count + ' 条）');
+        await this.openDevice(this.currentId); this.tab = 'manage';
+      } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
+      this.mgmt.saving = false;
+    },
+    async uploadDoc(ev) {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      const fd = new FormData();
+      fd.append('file', f);
+      const r = await fetch('/api/device/docs?id=' + encodeURIComponent(this.currentId), { method: 'POST', body: fd }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('文档已上传: ' + r.file);
+      await this.openDevice(this.currentId); this.tab = 'manage';
     },
     showToast(text, type) {
       this.toast = { text, type: type || 'ok' };

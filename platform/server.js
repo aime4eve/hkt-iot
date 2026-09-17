@@ -1,10 +1,13 @@
 'use strict';
-/** HKT 负载解码器调试平台 — Fastify 服务 */
+/** HKT 负载解码器管理调试平台 — Fastify 服务
+ *  平台专属数据目录（DATA_DIR）是解码器唯一权威存储：检索/测试/回归/对比 + 管理（录入/更新/导入导出）。
+ */
 const path = require('path');
-const { execFile } = require('child_process');
 const fs = require('fs');
 const Fastify = require('fastify');
 const fastifyStatic = require('@fastify/static');
+const multipart = require('@fastify/multipart');
+const AdmZip = require('adm-zip');
 
 const repo = require('./lib/repo');
 const { runDecode } = require('./lib/sandbox');
@@ -13,12 +16,13 @@ const { parsePayload, stableStringify, deepEqual, judgeResult } = require('./lib
 const PORT = Number(process.env.PORT || 8620);
 const DEFAULT_TIMEOUT = Number(process.env.DECODE_TIMEOUT_MS || 3000);
 
-const app = Fastify({ bodyLimit: 8 * 1024 * 1024, logger: false });
+const app = Fastify({ bodyLimit: 64 * 1024 * 1024, logger: false });
 app.register(fastifyStatic, { root: path.join(__dirname, 'web'), prefix: '/' });
+app.register(multipart, { limits: { fileSize: 48 * 1024 * 1024 } });
 
-/* ---------------- 设备与文件 ---------------- */
+/* ---------------- 读：设备与文件 ---------------- */
 
-app.get('/api/devices', async () => ({ devices: repo.listDevices(), generatedAt: new Date().toISOString() }));
+app.get('/api/devices', async () => ({ devices: repo.listDevices(), dataDir: repo.DATA_DIR }));
 
 app.get('/api/device', async (req, reply) => {
   const d = repo.deviceDetail(String(req.query.id || ''));
@@ -39,10 +43,163 @@ app.get('/api/doc', async (req, reply) => {
   if (!info) return reply.code(404).send({ error: '文件不存在' });
   const ext = path.extname(info.abs).toLowerCase();
   reply.type(MIME[ext] || 'application/octet-stream');
-  if (ext === '.pdf' || ext === '.docx' || ext === '.xlsx' || ext === '.doc') {
+  if (['.pdf', '.docx', '.xlsx', '.doc'].includes(ext)) {
     reply.header('content-disposition', 'inline; filename="' + encodeURIComponent(path.basename(info.abs)) + '"');
   }
   return fs.createReadStream(info.abs);
+});
+
+/* ---------------- 写：管理 ---------------- */
+
+app.post('/api/devices', async (req, reply) => {
+  const b = req.body || {};
+  const errs = repo.validateDevicePayload(b);
+  if (errs.length) return reply.code(400).send({ error: errs.join('；') });
+  const r = repo.createDevice(b);
+  if (r.error) return reply.code(400).send(r);
+  return r;
+});
+
+app.patch('/api/device', async (req, reply) => {
+  const r = repo.updateMeta(String((req.body || {}).id || ''), (req.body || {}).patch || {});
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true };
+});
+
+app.post('/api/device/codecs', async (req, reply) => {
+  const b = req.body || {};
+  const r = repo.addCodec(String(b.id || ''), b, String(b.code || ''));
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true, file: r.file };
+});
+
+app.post('/api/device/codec-current', async (req, reply) => {
+  const { id, file } = req.body || {};
+  const r = repo.setCurrent(String(id || ''), String(file || ''));
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true };
+});
+
+app.post('/api/device/codec-status', async (req, reply) => {
+  const { id, file, status, basis } = req.body || {};
+  const r = repo.setStatus(String(id || ''), String(file || ''), String(status || ''), Array.isArray(basis) ? basis : []);
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true };
+});
+
+app.delete('/api/device/codec', async (req, reply) => {
+  const { id, file } = req.body || {};
+  const r = repo.deleteCodec(String(id || ''), String(file || ''));
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true };
+});
+
+app.post('/api/device/samples', async (req, reply) => {
+  const { id, samples } = req.body || {};
+  const r = repo.saveSamples(String(id || ''), samples);
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true, count: r.count };
+});
+
+app.post('/api/device/docs', async (req, reply) => {
+  const data = await req.file();
+  if (!data) return reply.code(400).send({ error: '未收到文件' });
+  const buf = await data.toBuffer();
+  const r = repo.saveDoc(String(req.query.id || ''), data.filename, buf);
+  if (r.error) return reply.code(400).send(r);
+  return r;
+});
+
+/** zip 批量导入：zip 内按目录结构携带若干设备目录（含 decoder.json）。
+ *  策略：新增设备直接入库；已存在的设备只补缺文件（js/docs/samples），不覆盖服务器上的台账与已改内容。 */
+app.post('/api/import', async (req, reply) => {
+  const data = await req.file();
+  if (!data) return reply.code(400).send({ error: '未收到文件' });
+  if (!/\.zip$/i.test(data.filename)) return reply.code(400).send({ error: '请上传 .zip 包' });
+  repo.ensureDataDir();
+  let zip;
+  try { zip = new AdmZip(await data.toBuffer()); } catch (e) { return reply.code(400).send({ error: 'zip 解析失败: ' + e.message }); }
+  const result = { devices: [], skipped: [], filesWritten: 0 };
+  // 以 decoder.json 为锚点收集设备目录
+  const deviceDirs = new Map(); // dirInZip -> Set(files)
+  for (const e of zip.getEntries()) {
+    if (e.isDirectory) continue;
+    const rel = e.entryName.replace(/\\/g, '/').replace(/^\.\//, '');
+    if (rel.split('/').some(p => p.startsWith('.') || p === 'node_modules')) continue;
+    const parts = rel.split('/');
+    parts.pop();
+    let dir = parts.join('/');
+    while (dir && !deviceDirs.has(dir)) {
+      const probe = zip.getEntry(dir + '/decoder.json') || zip.getEntry(dir + '/');
+      if (probe) break;
+      const idx = dir.lastIndexOf('/');
+      dir = idx < 0 ? '' : dir.slice(0, idx);
+    }
+    // 找到包含 decoder.json 的最内层目录
+    let d = parts.join('/');
+    while (d) {
+      if (zip.getEntry(d + '/decoder.json')) { if (!deviceDirs.has(d)) deviceDirs.set(d, new Set()); deviceDirs.get(d).add(rel); break; }
+      const idx = d.lastIndexOf('/');
+      d = idx < 0 ? '' : d.slice(0, idx);
+    }
+  }
+  if (!deviceDirs.size) return reply.code(400).send({ error: 'zip 内未找到任何含 decoder.json 的设备目录' });
+  for (const [dirInZip, files] of deviceDirs) {
+    // 设备 id = decoder.json 所在目录相对路径；剥掉包内可能的顶层公共前缀已由收集逻辑处理
+    const metaEntry = zip.getEntry(dirInZip + '/decoder.json');
+    let meta;
+    try { meta = JSON.parse(zip.readAsText(metaEntry)); } catch (e) { result.skipped.push(dirInZip + '（decoder.json 无法解析）'); continue; }
+    if (!meta.modelKey || !meta.origin) { result.skipped.push(dirInZip + '（元数据缺 modelKey/origin）'); continue; }
+    const id = dirInZip.replace(/^decoders\//, '');
+    const dstDir = path.join(repo.DEC, id);
+    const existed = fs.existsSync(path.join(dstDir, 'decoder.json'));
+    fs.mkdirSync(dstDir, { recursive: true });
+    for (const rel of files) {
+      const inDev = rel.slice(dirInZip.length + 1);
+      if (!inDev) continue;
+      const dst = path.join(dstDir, inDev);
+      if (fs.existsSync(dst)) continue; // 增量：不覆盖
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.writeFileSync(dst, zip.readFile(zip.getEntry(rel)));
+      result.filesWritten++;
+    }
+    if (!existed) {
+      // 新设备：直接采用包内台账
+      result.devices.push({ id, action: 'created' });
+    } else {
+      // 已存在：若服务器台账缺少包内新增的 codec 文件，补录 codecs 记录
+      const srvMeta = JSON.parse(fs.readFileSync(path.join(dstDir, 'decoder.json'), 'utf8'));
+      let changed = false;
+      for (const c of (meta.codecs || [])) {
+        if (!srvMeta.codecs.some(x => x.file === c.file) && fs.existsSync(path.join(dstDir, c.file))) {
+          srvMeta.codecs.push({ ...c, current: false });
+          changed = true;
+        }
+      }
+      if (changed) { fs.writeFileSync(path.join(dstDir, 'decoder.json'), JSON.stringify(srvMeta, null, 2) + '\n'); }
+      result.devices.push({ id, action: 'merged' });
+    }
+  }
+  return result;
+});
+
+/** 全量导出备份（zip 下载） */
+app.get('/api/export', async (req, reply) => {
+  repo.ensureDataDir();
+  const zip = new AdmZip();
+  const add = (dir, base) => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (ent.name.startsWith('.')) continue;
+      const p = path.join(dir, ent.name);
+      const rel = base ? base + '/' + ent.name : ent.name;
+      if (ent.isDirectory()) add(p, rel); else zip.addLocalFile(p, base || '');
+    }
+  };
+  add(repo.DEC, 'decoders');
+  const buf = zip.toBuffer();
+  reply.type('application/zip');
+  reply.header('content-disposition', 'attachment; filename="hkt-decoders-backup-' + new Date().toISOString().slice(0, 10) + '.zip"');
+  return buf;
 });
 
 /* ---------------- 解码 ---------------- */
@@ -110,7 +267,7 @@ app.post('/api/regression', async (req, reply) => {
   const detail = repo.deviceDetail(String(device || ''));
   if (!detail) return reply.code(404).send({ error: '设备不存在' });
   const samples = detail.samples || [];
-  if (!samples.length) return { cases: [], summary: { total: 0, pass: 0, fail: 0, note: '该设备暂无黄金样例（迁移债务台账）' } };
+  if (!samples.length) return { cases: [], summary: { total: 0, pass: 0, fail: 0, note: '该设备暂无黄金样例' } };
   const current = detail.codecs.filter(c => c.current).map(c => c.file);
   const all = detail.codecs.map(c => c.file);
   const cache = new Map();
@@ -175,20 +332,10 @@ app.post('/api/diff', async (req, reply) => {
   return { results, summary: { total: results.length, same: results.filter(r => r.equal).length, changed: results.filter(r => !r.equal).length } };
 });
 
-/* ---------------- 仓库同步 ---------------- */
-
-app.post('/api/sync', async (req, reply) => {
-  if (!fs.existsSync(path.join(repo.ROOT, '.git'))) return reply.code(400).send({ error: '解码器目录不是 git 仓库' });
-  return new Promise((resolve) => {
-    execFile('git', ['-C', repo.ROOT, 'pull', '--ff-only'], { timeout: 30000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, output: (stdout || '') + (stderr || ''), error: err ? String(err.message) : null });
-    });
-  });
-});
-
 app.setNotFoundHandler((req, reply) => {
   if (req.raw.url && req.raw.url.startsWith('/api/')) return reply.code(404).send({ error: '接口不存在' });
   return reply.code(200).sendFile('index.html');
 });
 
-app.listen({ port: PORT, host: '0.0.0.0' }).then(() => console.log(`HKT 负载解码器调试平台: http://0.0.0.0:${PORT}  仓库根: ${repo.ROOT}`));
+repo.ensureDataDir();
+app.listen({ port: PORT, host: '0.0.0.0' }).then(() => console.log(`HKT 负载解码器管理调试平台: http://0.0.0.0:${PORT}  数据目录: ${repo.DATA_DIR}`));

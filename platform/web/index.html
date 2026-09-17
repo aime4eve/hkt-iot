@@ -16,7 +16,12 @@
         <p class="sub">解码器唯一权威仓库 · 自研以固件代码为准 / 采购以协议文档为准</p>
       </div>
     </div>
-    <button class="btn ghost" @click="doSync" :disabled="syncing">{{ syncing ? '同步中…' : '⟳ 同步最新' }}</button>
+    <div class="topbar-ops">
+      <button class="btn ghost" @click="newDev.open = true">＋ 新增设备</button>
+      <button class="btn ghost" @click="importClick" :disabled="importing">{{ importing ? '导入中…' : '⬆ 导入' }}</button>
+      <button class="btn ghost" @click="exportBackup">⬇ 导出备份</button>
+      <input type="file" ref="importFile" accept=".zip" style="display:none" @change="doImport">
+    </div>
   </header>
 
   <div class="toast" v-if="toast" :class="toast.type">{{ toast.text }}</div>
@@ -100,6 +105,7 @@
         <button :class="{on: tab==='bench'}" @click="tab='bench'">解码测试台</button>
         <button :class="{on: tab==='regression'}" @click="tab='regression'">样例回归 ({{ dev.samples.length }})</button>
         <button :class="{on: tab==='diff'}" @click="tab='diff'">版本对比</button>
+        <button :class="{on: tab==='manage'}" @click="tab='manage'">管理</button>
       </nav>
 
       <!-- 解码器台账 -->
@@ -120,6 +126,9 @@
                 <button class="btn tiny" @click="viewCode(c.file)">代码</button>
                 <button class="btn tiny" @click="copyCode(c.file)">复制</button>
                 <button class="btn tiny" @click="useInBench(c)">测试</button>
+                <button class="btn tiny" v-if="!c.current" @click="setCurrent(c.file)">设为 current</button>
+                <button class="btn tiny" v-if="c.status!=='verified'" @click="verifyClick(c)">标核验</button>
+                <button class="btn tiny danger" v-if="!c.current" @click="deleteCodec(c.file)">删</button>
               </td>
             </tr>
           </tbody>
@@ -229,6 +238,67 @@
           </div>
         </div>
       </section>
+
+      <!-- 管理 -->
+      <section v-if="tab==='manage'" class="panel">
+        <h3 class="sec-title">台账信息</h3>
+        <div class="form grid2">
+          <label>名称 <input v-model="mgmt.form.name"></label>
+          <label>型号 <input v-model="mgmt.form.model"></label>
+          <label>厂商 <input v-model="mgmt.form.vendor"></label>
+          <label>类别 <input v-model="mgmt.form.category"></label>
+          <label>别名（逗号分隔）<input v-model="mgmt.form.aliases"></label>
+          <label>默认 fPort <input v-model="mgmt.form.fPortDefault" placeholder="可空"></label>
+          <label class="span2">备注 <input v-model="mgmt.form.notes"></label>
+        </div>
+        <div class="form">
+          <b class="lbl">正确性依据</b>
+          <div class="row">
+            <select v-model="mgmt.form.authType" style="min-width:150px">
+              <option value="firmware">固件代码（自研）</option>
+              <option value="protocol-doc">协议文档（采购）</option>
+            </select>
+            <template v-if="mgmt.form.authType==='firmware'">
+              <input v-model="mgmt.form.authPath" placeholder="固件代码路径" style="flex:1;min-width:220px">
+              <input v-model="mgmt.form.authRef" placeholder="commit/版本号（可空）" style="width:180px">
+            </template>
+            <template v-else>
+              <input v-model="mgmt.form.authFile" placeholder="docs/文档文件名" style="flex:1;min-width:220px" readonly>
+              <input v-model="mgmt.form.authSection" placeholder="章节（可空）" style="width:200px">
+              <label class="btn tiny filebtn">上传文档<input type="file" accept=".pdf,.docx,.doc,.md,.txt,.xlsx" @change="uploadDoc"></label>
+            </template>
+          </div>
+        </div>
+        <button class="btn primary" @click="saveMeta" :disabled="mgmt.saving">保存台账</button>
+
+        <h3 class="sec-title">新增解码器版本</h3>
+        <div class="form">
+          <div class="row">
+            <select v-model="mgmt.nc.platform" style="min-width:150px">
+              <option value="chirpstack">ChirpStack</option><option value="ttn">TTN</option><option value="thingsboard">ThingsBoard</option>
+            </select>
+            <select v-model="mgmt.nc.lang" style="min-width:100px">
+              <option value="">语言不限</option><option value="cn">cn</option><option value="en">en</option>
+            </select>
+            <input v-model="mgmt.nc.version" placeholder="版本 x.y.z" style="width:120px">
+            <input v-model="mgmt.nc.firmwareVersion" placeholder="对应固件/协议版本（可空）" style="width:200px">
+          </div>
+          <input class="full" v-model="mgmt.nc.changelog" placeholder="变更说明（必填，如：修复截断帧死循环）">
+          <label class="lbl">代码（粘贴，或选择 .js 文件上传；入口须为 decodeUplink(input) 或 Decoder(bytes, port)）</label>
+          <textarea class="payloads" v-model="mgmt.nc.code" rows="8" spellcheck="false" placeholder="function decodeUplink(input) { ... }"></textarea>
+          <div class="row btns">
+            <label class="btn filebtn">选择 js 文件<input type="file" accept=".js" @change="mgmtFilePicked"></label>
+            <button class="btn primary" @click="addCodec" :disabled="mgmt.saving">保存新版本</button>
+          </div>
+        </div>
+
+        <h3 class="sec-title">黄金样例（samples.json，整体编辑）</h3>
+        <textarea class="payloads" v-model="mgmt.samplesText" rows="8" spellcheck="false"></textarea>
+        <div class="row btns">
+          <button class="btn primary" @click="saveSamples" :disabled="mgmt.saving">保存样例</button>
+          <span class="hint inline">格式：[{"name":"…","source":"manual|firmware|field|regression","payload":"hex","fPort":210,"expectData":{…},"expectError":false,"note":"…"}]</span>
+        </div>
+      </section>
     </main>
 
     <main class="main empty" v-else>
@@ -249,6 +319,52 @@
         </span>
       </div>
       <pre class="code">{{ codeView.content }}</pre>
+    </div>
+  </div>
+
+  <div class="modal" v-if="newDev.open" @click.self="newDev.open=false">
+    <div class="modal-box narrow">
+      <div class="modal-head"><b>新增设备</b>
+        <button class="btn tiny ghost" @click="newDev.open=false">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form grid2">
+          <label>型号 * <input v-model.trim="newDev.form.model" placeholder="如 GM-200"></label>
+          <label>modelKey * <input v-model.trim="newDev.form.modelKey" placeholder="小写连字符，如 gm-200"></label>
+          <label>名称 * <input v-model.trim="newDev.form.name" placeholder="如 LoRaWAN 智能燃气表二代"></label>
+          <label>来源 *
+            <select v-model="newDev.form.origin" @change="onOriginChange">
+              <option value="in-house">自研</option>
+              <option value="out-sourced">采购</option>
+            </select>
+          </label>
+          <label>厂商 <input v-model.trim="newDev.form.vendor" placeholder="自研默认 HKT"></label>
+          <label>类别 <input v-model.trim="newDev.form.category" placeholder="如 表计"></label>
+          <label>默认 fPort <input v-model.trim="newDev.form.fPortDefault" placeholder="可空"></label>
+          <label>别名 <input v-model.trim="newDev.form.aliases" placeholder="逗号分隔，可空"></label>
+        </div>
+        <div class="form">
+          <b class="lbl">正确性依据 *</b>
+          <div class="row">
+            <select v-model="newDev.form.authType" style="min-width:150px">
+              <option value="firmware">固件代码（自研）</option>
+              <option value="protocol-doc">协议文档（采购）</option>
+            </select>
+            <input v-if="newDev.form.authType==='firmware'" v-model.trim="newDev.form.authPath" placeholder="固件代码路径" style="flex:1">
+            <template v-else>
+              <select v-model="newDev.form.authMissing" style="min-width:170px">
+                <option :value="false">已有文档（建后上传）</option>
+                <option :value="true">暂缺（记入债务台账）</option>
+              </select>
+            </template>
+          </div>
+          <input v-if="newDev.form.authType==='protocol-doc' && !newDev.form.authMissing" class="full" v-model.trim="newDev.form.authSection" placeholder="文档章节（可空）">
+        </div>
+        <div class="row btns">
+          <button class="btn primary" @click="createDevice" :disabled="newDev.saving">创建</button>
+          <span class="hint inline">创建后到「管理」页上传解码器版本与文档</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

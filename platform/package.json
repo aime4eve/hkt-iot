@@ -4,9 +4,16 @@
   "private": true,
   "description": "HKT 设备负载解码器调试平台（解码器仓库内建）",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "fastify": "^4.28.1",
-    "@fastify/static": "^7.0.4"
+    "@fastify/multipart": "^8.3.1",
+    "@fastify/static": "^7.0.4",
+    "adm-zip": "^0.6.1",
+    "fastify": "^4.28.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.63.0"
   }
 }

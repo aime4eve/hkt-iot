@@ -1,58 +1,92 @@
-# 部署指南（团队服务器）
+# 部署指南（172.22.1.123 已按此部署）
 
-平台 = 本仓库内的 `platform/`（Node.js + Fastify + Vue3，无数据库），解码器数据 = 本仓库 `decoders/` 目录。容器以只读挂载方式使用仓库，不修改解码器。
+平台 = `platform/`（Node.js + Fastify + Vue3，无数据库），解码器数据 = 平台专属数据目录 `DATA_DIR`（**不在代码包里，不入 git，不随部署分发**；解码器通过平台「导入」功能进入数据目录）。
 
-## 首次部署（约 5 分钟）
+服务器现状（2026-09-17 部署）：`agentic@172.22.1.123`，代码在 `~/hkt-decoder-platform/`，数据在 `~/hkt-decoder-data/`，systemd 用户服务 `hkt-decoder-platform`（Linger=yes 开机自启），端口 8620。
+
+## 首次部署（全新服务器）
+
+前提：服务器有 Node.js ≥ 18 与 SSH 账号；无需 root、无需 docker。
 
 ```bash
-# 1. 服务器装好 Docker 与 git 后，克隆本仓库（放哪都行，建议 /opt/HKT-Decoders）
-cd /opt
-git clone <本仓库远端地址> HKT-Decoders
+# 1. 本机打包（排除开发依赖与数据目录）
 cd HKT-Decoders
+tar --exclude='platform/node_modules/playwright-core' --exclude='platform/platform-data' \
+    -czf /tmp/hkt-decoder-platform.tar.gz platform
 
-# 2. 构建并启动
-docker compose -f platform/docker-compose.yml up -d --build
+# 2. 上传解压（依赖为纯 JS，node_modules 可直接随包走）
+scp /tmp/hkt-decoder-platform.tar.gz user@server:/tmp/
+ssh user@server
+mkdir -p ~/hkt-decoder-platform ~/hkt-decoder-data
+tar -xzf /tmp/hkt-decoder-platform.tar.gz -C ~/hkt-decoder-platform --strip-components=1
 
-# 3. 验证
-curl -s http://localhost:8620/api/devices | head -c 200
+# 3. systemd 用户服务（若 Linger 未开启，请管理员执行 loginctl enable-linger <user>）
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/hkt-decoder-platform.service <<EOF
+[Unit]
+Description=HKT Decoder Platform (负载解码器管理调试平台)
+After=network.target
+
+[Service]
+WorkingDirectory=%h/hkt-decoder-platform
+Environment=DATA_DIR=%h/hkt-decoder-data
+Environment=PORT=8620
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user daemon-reload
+systemctl --user enable --now hkt-decoder-platform
 ```
 
-浏览器访问 `http://<服务器IP>:8620` 即可使用。内网直接访问，v1 无账号体系；如需加一道口令，用 nginx 反代加 basic auth 即可。
-
-## 日常使用
-
-- **看最新解码器**：页面右上角「⟳ 同步最新」按钮会执行 `git pull --ff-only`。前提：仓库目录的 git 远端已配好且可拉取（有写权限问题就配成只读拉取方式，如 `https://` 或部署密钥）。
-- **更新解码器的正确姿势**：本地改 `decoders/` → 按规范改名/加版本/补 changelog → 提交推送 → 平台点「同步最新」。
-
-## 升级平台
+## 初始数据录入（平台导入，不是拷目录）
 
 ```bash
-cd /opt/HKT-Decoders
-git pull
-docker compose -f platform/docker-compose.yml up -d --build
+# 本机把 decoders/ 打成 zip，浏览器顶栏「⬆ 导入」上传；或命令行：
+cd HKT-Decoders/decoders && zip -qr /tmp/decoders-import.zip . 
+curl -X POST http://server:8620/api/import -F "file=@/tmp/decoders-import.zip"
 ```
 
-## 配置项（环境变量，见 docker-compose.yml）
+导入策略：新增设备直接入库；**已存在的设备只补缺文件，绝不覆盖**服务器上的台账与已修改内容——重复导入是安全的。
+
+## 升级平台代码
+
+```bash
+# 本机重新打包 scp 后，服务器上：
+tar -xzf /tmp/hkt-decoder-platform.tar.gz -C ~/hkt-decoder-platform --strip-components=1
+systemctl --user restart hkt-decoder-platform
+```
+
+数据目录与升级无关，解码器数据不受影响。
+
+## 日常运维
+
+| 操作 | 命令 |
+| --- | --- |
+| 状态/日志 | `systemctl --user status hkt-decoder-platform` / `journalctl --user -u hkt-decoder-platform -f` |
+| 重启 | `systemctl --user restart hkt-decoder-platform` |
+| 备份 | 页面「⬇ 导出备份」下载全量 zip；或 `tar -czf backup.tar.gz ~/hkt-decoder-data` |
+| 恢复 | 停服务 → 解开备份到 `~/hkt-decoder-data` → 起服务 |
+
+## 配置（环境变量，见 unit 文件）
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| DECODERS_ROOT | 仓库根 | 解码器仓库路径（容器内 /data/repo） |
+| DATA_DIR | `platform/../platform-data`（本地开发） | 解码器数据目录（服务器上 `~/hkt-decoder-data`） |
 | PORT | 8620 | 服务端口 |
-| DECODE_TIMEOUT_MS | 3000 | 单条负载解码硬超时，超时即熔断并标记该条失败 |
-
-## 健康检查与排障
-
-```bash
-docker logs hkt-decoder-platform --tail 50
-curl -s http://localhost:8620/api/devices | jq '.devices | length'   # 应为 16
-```
-
-- 某条负载一直转圈？该条会被硬超时熔断（默认 3 秒），不会拖垮服务；若要放宽，调大 `DECODE_TIMEOUT_MS`。
-- 「同步最新」报错？多为远端认证问题：进容器 `git -C /data/repo pull` 看具体输出。
-- 手册 PDF 打不开？确认对应设备目录 `docs/` 里文件存在且 decoder.json 的 `authority.file` 指向正确。
+| DECODE_TIMEOUT_MS | 3000 | 单条解码硬超时（死循环熔断） |
 
 ## 安全说明
 
-- 解码脚本在独立 worker 线程 + vm 受限上下文中执行，无网络、无文件系统访问，死循环被双重超时熔断。
-- 所有文件读取接口限制在仓库根内，路径穿越返回 404（已测）。
-- 服务面向团队内网；不要把 8620 端口直接暴露到公网。
+- 解码脚本在 worker 线程 + vm 受限上下文执行：无网络、无文件系统，双超时熔断。
+- 文件读写锁死在数据目录内，路径穿越返回 404（已测）。
+- 面向团队内网；写接口（管理/导入）无鉴权，**不要暴露公网**。需要加门禁时用 nginx 反代 + basic auth。
+- 备份建议：每周「导出备份」存档一次，或直接备份 `~/hkt-decoder-data` 目录。
+
+## Docker（可选，未用于当前部署）
+
+`Dockerfile` + `docker-compose.yml` 仍在仓库内（compose 将仓库目录挂为 DECODERS_ROOT 的旧形态已过时，用 docker 部署时请按 DATA_DIR 卷挂载自行调整）。当前生产采用 systemd 裸 Node 方案，更贴合该服务器权限（无 sudo）。
