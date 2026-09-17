@@ -7,5 +7,742 @@
     "expectData": null,
     "expectError": null,
     "note": "真机串口/NS 采集帧，仅要求不崩溃；期望值待按手册补齐"
+  },
+  {
+    "name": "版本帧（§5.3 0x01 示例）",
+    "source": "manual",
+    "payload": "686b740001010105",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x01",
+          "hardware_version": 1,
+          "software_version": 5
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x01 示例原文 68 6B 74 00 01 01 01 05：同步头686B74(§5.2)+特殊类型00(BIT0=0无需应答)+序号01+类型0x01+数据01 05→前1字节硬件版本=1、后1字节软件版本=5（仅上行）。期望=手册推导的扁平黄金契约。"
+  },
+  {
+    "name": "电池百分比（§5.3 0x03 示例）",
+    "source": "manual",
+    "payload": "686b7400030364",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 3,
+      "blocks": [
+        {
+          "data_type": "0x03",
+          "battery_percentage": 100
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x03 示例原文 68 6B 74 00 03 03 64（power 100%）：序号03+类型0x03+数据64(hex)=100→电池百分比100%（仅上行）。"
+  },
+  {
+    "name": "累计用量（§5.3 0x35 示例）",
+    "source": "manual",
+    "payload": "686b7400013500003214",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x35",
+          "total_usage_m3": 128.2
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x35 示例原文 68 6B 74 00 01 35 00 00 32 14：数据4字节大端 0x00003214=12820，单位0.01m³→128.20m³。"
+  },
+  {
+    "name": "剩余气量（§5.3 0x36 示例）",
+    "source": "manual",
+    "payload": "686b7400013600003214",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x36",
+          "remaining_m3": 128.2
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x36 示例原文 68 6B 74 00 01 36 00 00 32 14：0x00003214=12820，单位0.01m³→剩余128.20m³。"
+  },
+  {
+    "name": "余额（§5.3 0x37 示例）",
+    "source": "manual",
+    "payload": "686b7400013700003214",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x37",
+          "balance": 128.2
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x37 示例原文 68 6B 74 00 01 37 00 00 32 14：0x00003214=12820→余额128.2。§5.3标注单位0.01/m³、§5.4表格余额10标注¥，单位语义含糊（¥ 与 m³ 混写），数值=raw/100 无疑。"
+  },
+  {
+    "name": "阀门开（§5.3 0x38 示例）",
+    "source": "manual",
+    "payload": "686b7400013801",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x38",
+          "valve": "open"
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x38 示例原文 68 6B 74 00 01 38 01（Report valve open）：1字节，00=Valve closed / 01=Valve open。"
+  },
+  {
+    "name": "对时请求（§5.3 0x80 示例）",
+    "source": "manual",
+    "payload": "686b74010180021c0c00",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 1,
+      "ack_required": true,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x80",
+          "time_request": true,
+          "data_hex": "021C0C00"
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x80 上行请求示例原文 68 6B 74 01 01 80 02 1C 0C 00：特殊类型01→BIT0=1需应答(§5.2)；类型0x80后跟4字节 02 1C 0C 00。手册未解释该上行4字节（疑似下行时间样例 16 02 1C 0C 00 去掉年字节的残影），期望按原样保留 data_hex=021C0C00，time_request=true。文档含糊点。"
+  },
+  {
+    "name": "故障正常（§5.3 0x83 示例）",
+    "source": "manual",
+    "payload": "686b7400018300",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x83",
+          "fault": "cleared"
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x83 示例原文 68 6B 74 00 01 83 00（Normal status）：1字节，0=fault cleared，1=device failure / counting interference alarm（仅上行）。"
+  },
+  {
+    "name": "电压状态正常（§5.3 0x89 示例）",
+    "source": "manual",
+    "payload": "686b7400018901",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x89",
+          "battery_status": "normal"
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x89 示例原文 68 6B 74 00 01 89 01（Normal power）：1字节，0=under voltage alarm / 1=normal（仅上行）。"
+  },
+  {
+    "name": "同步周期1440（§5.3 0x86 示例）",
+    "source": "manual",
+    "payload": "686b7400018605a0",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x86",
+          "sync_period_minutes": 1440
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.3 0x86 示例原文 68 6B 74 00 01 86 05 A0（Set 1440 minutes）：2字节大端 0x05A0=1440，单位分钟，范围10–1440（本例为上限）。"
+  },
+  {
+    "name": "周期上报全帧（§5.4 示例）",
+    "source": "manual",
+    "payload": "686b740004010c0103333300000000350000000036000003e837000003e838008300890086001e",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 4,
+      "blocks": [
+        {
+          "data_type": "0x01",
+          "hardware_version": 12,
+          "software_version": 1
+        },
+        {
+          "data_type": "0x03",
+          "battery_percentage": 51
+        },
+        {
+          "data_type": "0x33",
+          "unit_price": 0
+        },
+        {
+          "data_type": "0x35",
+          "total_usage_m3": 0
+        },
+        {
+          "data_type": "0x36",
+          "remaining_m3": 10
+        },
+        {
+          "data_type": "0x37",
+          "balance": 10
+        },
+        {
+          "data_type": "0x38",
+          "valve": "closed"
+        },
+        {
+          "data_type": "0x83",
+          "fault": "cleared"
+        },
+        {
+          "data_type": "0x89",
+          "battery_status": "under_voltage_alarm"
+        },
+        {
+          "data_type": "0x86",
+          "sync_period_minutes": 30
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "§5.4 示例原文逐块推导（39字节）：686B74+00+序号04+01 0C 01(HW12/SW1)+03 33(0x33=51%)+33 00000000(单价0)+35 00000000(累计0)+36 000003E8(1000→10m³)+37 000003E8(余额10)+38 00(阀关)+83 00(故障清除)+89 00(§5.3定义0=欠压告警；§5.4表格标Normal与之矛盾，按§5.3类型表为准)+86 001E(30分钟)。注意：0x33标注仅下行但出现在上行示例中（文档矛盾，见报告）。"
+  },
+  {
+    "name": "边界-剩余气量32位上限",
+    "source": "manual",
+    "payload": "686b74000136ffffffff",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x36",
+          "remaining_m3": 42949672.95
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "边界值：类型0x36数据 FF FF FF FF=0xFFFFFFFF=4294967295，单位0.01m³→42949672.95m³（4字节无符号上限，§5.3）。"
+  },
+  {
+    "name": "边界-同步周期下限10分钟",
+    "source": "manual",
+    "payload": "686b74000186000a",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x86",
+          "sync_period_minutes": 10
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "边界值：类型0x86数据 00 0A=10，§5.3范围10–1440的下限，应正常解码且不告警。"
+  },
+  {
+    "name": "边界-电池0%",
+    "source": "manual",
+    "payload": "686b7400030300",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 3,
+      "blocks": [
+        {
+          "data_type": "0x03",
+          "battery_percentage": 0
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "边界值：类型0x03数据00→电量0%（§5.3 百分比语义，100%=0x64，0%=0x00）。"
+  },
+  {
+    "name": "守卫-同步头非686B74",
+    "source": "regression",
+    "payload": "676b7400018901",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "坏帧守卫：同步头 67 6B 74 ≠ §5.2 固定 0x68 0x6B 0x74，整帧应判非法并报错，不得静默解码。"
+  },
+  {
+    "name": "守卫-帧过短无TLV",
+    "source": "regression",
+    "payload": "686b7400",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "坏帧守卫：68 6B 74 00 仅4字节（同步头+特殊类型+序号），按§5.1结构至少还应有1个数据类型字节，应判非法。"
+  },
+  {
+    "name": "守卫-0x36数据不足4字节",
+    "source": "regression",
+    "payload": "686b7400013600",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "坏帧守卫：类型0x36数据长度固定4字节(§5.3)，帧尾仅剩1字节(00)，截断帧应报错。"
+  },
+  {
+    "name": "守卫-未定义类型0x99",
+    "source": "regression",
+    "payload": "686b7400019901020304",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "坏帧守卫：数据类型0x99不在§5.3类型表（0x01/03/33/34/35/36/37/38/80/83/85/86/89），未定义类型应报错。"
+  },
+  {
+    "name": "版本帧（§5.3 0x01 示例）[ttn]",
+    "source": "manual",
+    "forFile": "gm-100_ttn_v1.1.0.js",
+    "payload": "686b740001010105",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x01",
+          "hardware_version": 1,
+          "software_version": 5
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "ttn 变体绑定（其输出形状与 current 完全一致，期望同扁平黄金契约）。§5.3 0x01 示例：HW=1、SW=5。"
+  },
+  {
+    "name": "周期上报全帧（§5.4 示例）[ttn]",
+    "source": "manual",
+    "forFile": "gm-100_ttn_v1.1.0.js",
+    "payload": "686b740004010c0103333300000000350000000036000003e837000003e838008300890086001e",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 4,
+      "blocks": [
+        {
+          "data_type": "0x01",
+          "hardware_version": 12,
+          "software_version": 1
+        },
+        {
+          "data_type": "0x03",
+          "battery_percentage": 51
+        },
+        {
+          "data_type": "0x33",
+          "unit_price": 0
+        },
+        {
+          "data_type": "0x35",
+          "total_usage_m3": 0
+        },
+        {
+          "data_type": "0x36",
+          "remaining_m3": 10
+        },
+        {
+          "data_type": "0x37",
+          "balance": 10
+        },
+        {
+          "data_type": "0x38",
+          "valve": "closed"
+        },
+        {
+          "data_type": "0x83",
+          "fault": "cleared"
+        },
+        {
+          "data_type": "0x89",
+          "battery_status": "under_voltage_alarm"
+        },
+        {
+          "data_type": "0x86",
+          "sync_period_minutes": 30
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "ttn 变体绑定。§5.4 全帧逐块推导，同主样例；0x89=00 按 §5.3 为欠压告警。"
+  },
+  {
+    "name": "同步周期1440（§5.3 0x86 示例）[ttn]",
+    "source": "manual",
+    "forFile": "gm-100_ttn_v1.1.0.js",
+    "payload": "686b7400018605a0",
+    "fPort": null,
+    "expectData": {
+      "sync_head": "686B74",
+      "special_type_raw": 0,
+      "ack_required": false,
+      "packet_serial": 1,
+      "blocks": [
+        {
+          "data_type": "0x86",
+          "sync_period_minutes": 1440
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "ttn 变体绑定。§5.3 0x86 示例：0x05A0=1440分钟。"
+  },
+  {
+    "name": "守卫-0x36数据不足4字节[ttn]",
+    "source": "regression",
+    "forFile": "gm-100_ttn_v1.1.0.js",
+    "payload": "686b7400013600",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "ttn 变体绑定。截断帧守卫：0x36 数据固定4字节(§5.3)，仅1字节应报错。"
+  },
+  {
+    "name": "版本帧（§5.3 0x01 示例）[cn]",
+    "source": "manual",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b740001010105",
+    "fPort": null,
+    "expectData": {
+      "meta": {
+        "byte_length": 8,
+        "payload_hex": "686B740001010105"
+      },
+      "frame": {
+        "sync_head": "0x686B74",
+        "special_type": {
+          "hex": "0x00",
+          "decimal": 0,
+          "bit0_ack_required": false,
+          "reserved_bits_1_to_7": 0
+        },
+        "packet_serial": 1
+      },
+      "tlv_blocks": [
+        {
+          "block_index": 1,
+          "data_type_hex": "0x01",
+          "function_5_3": "Device software and hardware version",
+          "payload_hex": "0x0105",
+          "data_byte_length": 2,
+          "decoded": {
+            "hardware_version": 1,
+            "software_version": 5
+          }
+        }
+      ],
+      "warnings": []
+    },
+    "expectError": false,
+    "note": "cn 变体单独绑定。差异说明：cn 版输出为层级 meta/frame/tlv_blocks/warnings 形状（字段名实为英文而非中文，与 decoder.json『中文输出版』描述不符），与扁平黄金契约不同，故 cn 期望按其层级结构给出；块内数值仍为手册独立推导（§5.3 0x01 示例 HW=1/SW=5）。"
+  },
+  {
+    "name": "电池百分比（§5.3 0x03 示例）[cn]",
+    "source": "manual",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b7400030364",
+    "fPort": null,
+    "expectData": {
+      "meta": {
+        "byte_length": 7,
+        "payload_hex": "686B7400030364"
+      },
+      "frame": {
+        "sync_head": "0x686B74",
+        "special_type": {
+          "hex": "0x00",
+          "decimal": 0,
+          "bit0_ack_required": false,
+          "reserved_bits_1_to_7": 0
+        },
+        "packet_serial": 3
+      },
+      "tlv_blocks": [
+        {
+          "block_index": 1,
+          "data_type_hex": "0x03",
+          "function_5_3": "Device Battery Information",
+          "payload_hex": "0x64",
+          "data_byte_length": 1,
+          "decoded": {
+            "battery_percentage": 100
+          }
+        }
+      ],
+      "warnings": []
+    },
+    "expectError": false,
+    "note": "cn 变体单独绑定（层级形状）。§5.3 0x03 示例：0x64=100→电量100%。"
+  },
+  {
+    "name": "周期上报全帧（§5.4 示例）[cn]",
+    "source": "manual",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b740004010c0103333300000000350000000036000003e837000003e838008300890086001e",
+    "fPort": null,
+    "expectData": {
+      "meta": {
+        "byte_length": 39,
+        "payload_hex": "686B740004010C0103333300000000350000000036000003E837000003E838008300890086001E"
+      },
+      "frame": {
+        "sync_head": "0x686B74",
+        "special_type": {
+          "hex": "0x00",
+          "decimal": 0,
+          "bit0_ack_required": false,
+          "reserved_bits_1_to_7": 0
+        },
+        "packet_serial": 4
+      },
+      "tlv_blocks": [
+        {
+          "block_index": 1,
+          "data_type_hex": "0x01",
+          "function_5_3": "Device software and hardware version",
+          "payload_hex": "0x0C01",
+          "data_byte_length": 2,
+          "decoded": {
+            "hardware_version": 12,
+            "software_version": 1
+          }
+        },
+        {
+          "block_index": 2,
+          "data_type_hex": "0x03",
+          "function_5_3": "Device Battery Information",
+          "payload_hex": "0x33",
+          "data_byte_length": 1,
+          "decoded": {
+            "battery_percentage": 51
+          }
+        },
+        {
+          "block_index": 3,
+          "data_type_hex": "0x33",
+          "function_5_3": "Gas Unit Price",
+          "payload_hex": "0x00000000",
+          "data_byte_length": 4,
+          "decoded": {
+            "raw_0_01_per_m3": 0,
+            "value_m3": 0
+          }
+        },
+        {
+          "block_index": 4,
+          "data_type_hex": "0x35",
+          "function_5_3": "Total usage",
+          "payload_hex": "0x00000000",
+          "data_byte_length": 4,
+          "decoded": {
+            "raw_0_01_m3": 0,
+            "total_usage_m3": 0
+          }
+        },
+        {
+          "block_index": 5,
+          "data_type_hex": "0x36",
+          "function_5_3": "Gas remaining amount",
+          "payload_hex": "0x000003E8",
+          "data_byte_length": 4,
+          "decoded": {
+            "raw_0_01_m3": 1000,
+            "gas_remaining_amount_m3": 10
+          }
+        },
+        {
+          "block_index": 6,
+          "data_type_hex": "0x37",
+          "function_5_3": "Gas balance",
+          "payload_hex": "0x000003E8",
+          "data_byte_length": 4,
+          "decoded": {
+            "raw_0_01_m3": 1000,
+            "gas_balance_m3": 10
+          }
+        },
+        {
+          "block_index": 7,
+          "data_type_hex": "0x38",
+          "function_5_3": "Valve status",
+          "payload_hex": "0x00",
+          "data_byte_length": 1,
+          "decoded": {
+            "code": 0,
+            "text_5_3": "Valve closed"
+          }
+        },
+        {
+          "block_index": 8,
+          "data_type_hex": "0x83",
+          "function_5_3": "Fault Status",
+          "payload_hex": "0x00",
+          "data_byte_length": 1,
+          "decoded": {
+            "code": 0,
+            "text_5_3": "fault cleared"
+          }
+        },
+        {
+          "block_index": 9,
+          "data_type_hex": "0x89",
+          "function_5_3": "Battery status",
+          "payload_hex": "0x00",
+          "data_byte_length": 1,
+          "decoded": {
+            "code": 0,
+            "text_5_3": "under voltage alarm"
+          }
+        },
+        {
+          "block_index": 10,
+          "data_type_hex": "0x86",
+          "function_5_3": "Data Synchronization Period",
+          "payload_hex": "0x001E",
+          "data_byte_length": 2,
+          "decoded": {
+            "minutes": 30
+          }
+        }
+      ],
+      "warnings": []
+    },
+    "expectError": false,
+    "note": "cn 变体单独绑定（层级形状，值全部按 §5.4 原文逐字节推导）。0x89=00 的 decoded 文本按 §5.3『0: under voltage alarm』。§5.4 表格把该字节标为 Normal，与 §5.3 矛盾，此处以 §5.3 为规格。"
+  },
+  {
+    "name": "同步周期1440（§5.3 0x86 示例）[cn]",
+    "source": "manual",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b7400018605a0",
+    "fPort": null,
+    "expectData": {
+      "meta": {
+        "byte_length": 8,
+        "payload_hex": "686B7400018605A0"
+      },
+      "frame": {
+        "sync_head": "0x686B74",
+        "special_type": {
+          "hex": "0x00",
+          "decimal": 0,
+          "bit0_ack_required": false,
+          "reserved_bits_1_to_7": 0
+        },
+        "packet_serial": 1
+      },
+      "tlv_blocks": [
+        {
+          "block_index": 1,
+          "data_type_hex": "0x86",
+          "function_5_3": "Data Synchronization Period",
+          "payload_hex": "0x05A0",
+          "data_byte_length": 2,
+          "decoded": {
+            "minutes": 1440
+          }
+        }
+      ],
+      "warnings": []
+    },
+    "expectError": false,
+    "note": "cn 变体单独绑定（层级形状）。§5.3 0x86 示例 0x05A0=1440，处于 10–1440 合规区间内，warnings 应为空。"
+  },
+  {
+    "name": "守卫-0x36数据不足4字节[cn]",
+    "source": "regression",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b7400013600",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "cn 变体绑定。截断帧守卫：0x36 数据固定4字节(§5.3)，仅1字节应报错。"
+  },
+  {
+    "name": "守卫-未定义类型0x99[cn]",
+    "source": "regression",
+    "forFile": "gm-100_chirpstack_cn_v1.0.0.js",
+    "payload": "686b7400019901020304",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "cn 变体绑定。类型0x99不在§5.3类型表，应报错。"
   }
 ]
