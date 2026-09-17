@@ -263,21 +263,31 @@ function setStatus(id, file, status, basis) {
   return { meta };
 }
 
-/** 删除版本：移入 .trash/（不直接销毁），current 不允许删 */
+/** 删除版本：移入 .trash/（不直接销毁）。current 也可删（强确认在前端），
+ *  删除后该平台+语言槽可能无 current（设备可正常展示，回归跳过该槽）。 */
 function deleteCodec(id, file) {
   const { dir, meta } = getMeta(id) || {};
   if (!meta) return { error: '设备不存在' };
   const c = meta.codecs.find(x => x.file === file);
   if (!c) return { error: '版本不存在: ' + file };
-  if (c.current) return { error: 'current 版本不允许删除，请先切换 current 到其他版本' };
   const src = path.join(dir, file);
   if (fs.existsSync(src)) {
     const dst = path.join(TRASH, Date.now() + '_' + file.replace(/\//g, '_'));
     fs.renameSync(src, dst);
   }
   meta.codecs = meta.codecs.filter(x => x.file !== file);
+  // 清理绑定到被删文件的样例指向，回退为"跑全部 current"逻辑
+  const sp = path.join(dir, 'samples', 'samples.json');
+  if (fs.existsSync(sp)) {
+    try {
+      const samples = JSON.parse(fs.readFileSync(sp, 'utf8'));
+      let changed = false;
+      for (const s of samples) { if (s.forFile === file) { delete s.forFile; changed = true; } }
+      if (changed) writeJson(sp, samples);
+    } catch (e) { /* 样例损坏时不阻塞删除 */ }
+  }
   writeJson(path.join(dir, 'decoder.json'), meta);
-  return { meta };
+  return { meta, wasCurrent: !!c.current };
 }
 
 /** 保存黄金样例（整体替换，JSON 结构校验） */

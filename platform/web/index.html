@@ -129,7 +129,7 @@
                 <button class="btn tiny" @click="useInBench(c)">测试</button>
                 <button class="btn tiny" v-if="!c.current" @click="setCurrent(c.file)">设为 current</button>
                 <button class="btn tiny" v-if="c.status!=='verified'" @click="verifyClick(c)">标核验</button>
-                <button class="btn tiny danger" v-if="!c.current" @click="deleteCodec(c.file)">删</button>
+                <button class="btn tiny danger" @click="deleteCodec(c)">删</button>
               </td>
             </tr>
           </tbody>

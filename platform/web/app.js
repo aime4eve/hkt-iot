@@ -267,11 +267,14 @@ createApp({
       this.showToast('已标记为已核验: ' + c.file);
       await this.openDevice(this.currentId); this.tab = 'codecs';
     },
-    async deleteCodec(file) {
-      if (!confirm('确认删除 ' + file + ' ？\n（文件会移入服务器回收站，不直接销毁）')) return;
-      const r = await fetch('/api/device/codec', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file }) }).then(r => r.json());
+    async deleteCodec(c) {
+      const msg = c.current
+        ? '⚠ ' + c.file + ' 是 current 版本！\n\n删除后该平台' + (c.lang ? '/' + c.lang.toUpperCase() : '') + '将没有任何可用版本，\n绑定它的样例将回退为按全部 current 回归。\n\n文件会移入服务器回收站（不直接销毁）。\n\n确认删除？'
+        : '确认删除 ' + c.file + ' ？\n（文件会移入服务器回收站，不直接销毁）';
+      if (!confirm(msg)) return;
+      const r = await fetch('/api/device/codec', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file: c.file }) }).then(r => r.json());
       if (r.error) return this.showToast(r.error, 'bad');
-      this.showToast('已删除: ' + file);
+      this.showToast('已删除: ' + c.file);
       await this.openDevice(this.currentId); this.tab = 'codecs';
     },
     async saveSamples() {
