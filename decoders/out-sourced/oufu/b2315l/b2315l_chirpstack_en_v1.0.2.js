@@ -1,10 +1,8 @@
 // ============================================================================
-// Oufu B2315L LoRaWAN band - ChirpStack uplink payload codec.
+// HKT B2315L LoRaWAN band - ChirpStack uplink payload codec.
 // Protocol reference: B2315L LoRaWAN communication protocol V2.1.
 //
 // ================================ CHANGELOG =================================
-// 2026-09-17 v2.1.1 - dateFormat 固定输出北京时间（UTC+8 偏移 + getUTC*），
-//   修复 v2.1 在非 +8 时区宿主（如 UTC 服务器）上时间字段偏 8 小时的问题。
 // 2026-09-09 v2.1 - Aligned decoder with B2315L LoRaWAN protocol V2.1:
 //   1. [add] 0xBB firmware version (4.3.1): Version_len + ASCII string; this
 //      handler was missing entirely.
@@ -449,14 +447,12 @@ function hex8(value) {
 }
 
 function dateFormat(timestamp) {
-    // 协议 4.1.1：时间戳需转为北京时间（UTC+8）。固定偏移 + getUTC*，
-    // 不依赖解码器宿主时区（v2.1.0 在 UTC 宿主上会偏 8 小时，v2.1.1 修复）。
-    var date = new Date(timestamp * 1000 + 8 * 3600 * 1000);
-    var Y = date.getUTCFullYear();
-    var M = String(date.getUTCMonth() + 1).padStart(2, '0');
-    var D = String(date.getUTCDate()).padStart(2, '0');
-    var h = String(date.getUTCHours()).padStart(2, '0');
-    var m = String(date.getUTCMinutes()).padStart(2, '0');
-    var s = String(date.getUTCSeconds()).padStart(2, '0');
+    var date = new Date(timestamp * 1000);
+    var Y = date.getFullYear();
+    var M = String(date.getMonth() + 1).padStart(2, '0');
+    var D = String(date.getDate()).padStart(2, '0');
+    var h = String(date.getHours()).padStart(2, '0');
+    var m = String(date.getMinutes()).padStart(2, '0');
+    var s = String(date.getSeconds()).padStart(2, '0');
     return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
