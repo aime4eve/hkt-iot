@@ -34,7 +34,7 @@
       "file": "w200pl_chirpstack_v1.0.0.js",
       "decoderVersion": "1.0.0",
       "firmwareVersion": "协议 LoRaWAN 通用版本 V2.1",
-      "current": true,
+      "current": false,
       "status": "verified",
       "basis": [
         "真机数据测试通过"
@@ -44,15 +44,15 @@
     },
     {
       "platform": "chirpstack",
-      "lang": "en",
-      "file": "w200pl_chirpstack_en_v1.0.2.js",
+      "lang": null,
+      "file": "w200pl_chirpstack_v1.0.2.js",
       "decoderVersion": "1.0.2",
-      "firmwareVersion": "v2.3",
+      "firmwareVersion": "协议 LoRaWAN 通用版本 V2.1",
       "current": true,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
-      "changelog": "删除原厂商信息"
+      "changelog": "删除原厂商信息（v1.0.0 的注释清理版，解码逻辑不变）。此前误传为 EN 语言槽，已修正槽位与协议标注"
     }
   ],
   "deviations": [],
