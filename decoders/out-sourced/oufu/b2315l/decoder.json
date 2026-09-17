@@ -20,13 +20,25 @@
       "file": "b2315l_chirpstack_en_v1.0.2.js",
       "decoderVersion": "1.0.2",
       "firmwareVersion": "v2.1",
-      "current": true,
+      "current": false,
       "status": "verified",
       "basis": [
         "手册v2.1样例全部通过"
       ],
       "verifiedAt": "2026-09-17",
       "changelog": "删除原厂商信息"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "b2315l_chirpstack_en_v1.0.3.js",
+      "decoderVersion": "1.0.3",
+      "firmwareVersion": "v2.1",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "dateFormat 固定北京时间（UTC+8 偏移 + getUTC*），修复 v1.0.2 依赖宿主时区的问题——在 UTC 服务器上时间字段偏 8 小时（黄金样例服务器回归暴露）；其余与 v1.0.2 一致"
     }
   ],
   "deviations": [],
