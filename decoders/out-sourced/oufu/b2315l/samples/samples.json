@@ -1,0 +1,288 @@
+[
+  {
+    "name": "手册示例：4.1.1 佩戴报警",
+    "source": "manual",
+    "payload": "BD020001E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "100",
+      "alarm": [
+        "wearing"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文；Timestamp 0x67BD77E3=2025-02-25 15:57:23（北京时间）。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 脱落报警",
+    "source": "manual",
+    "payload": "BD021000E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "10",
+      "alarm": [
+        "taken_off"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 SOS报警",
+    "source": "manual",
+    "payload": "BD020200E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "2",
+      "alarm": [
+        "sos"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 SOS取消",
+    "source": "manual",
+    "payload": "BD028000E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "80",
+      "alarm": [
+        "sos_cancel"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 跌落报警",
+    "source": "manual",
+    "payload": "BD020040E377BD67E7",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "4000",
+      "alarm": [
+        "fall"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文（文档此条 checksum 与其余变体算法不一致，解码器不强制校验）。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 久坐报警",
+    "source": "manual",
+    "payload": "BD022000E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "20",
+      "alarm": [
+        "sedentary"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 低电量报警",
+    "source": "manual",
+    "payload": "BD020100E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "1",
+      "alarm": [
+        "low_battery"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.1 关机报警",
+    "source": "manual",
+    "payload": "BD020400E377BD678A",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "4",
+      "alarm": [
+        "shutdown"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.2 充电关机(21)",
+    "source": "manual",
+    "payload": "BD21010004000000E377BD6767",
+    "fPort": null,
+    "expectData": {
+      "WarnType": "1",
+      "Upl_warn": "4",
+      "alarm": [
+        "power_off_charging"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.2 低电关机(21)",
+    "source": "manual",
+    "payload": "BD21010002000000E377BD6767",
+    "fPort": null,
+    "expectData": {
+      "WarnType": "1",
+      "Upl_warn": "2",
+      "alarm": [
+        "power_off_low_battery"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.1.2 主动关机(21)",
+    "source": "manual",
+    "payload": "BD21010001000000E377BD6767",
+    "fPort": null,
+    "expectData": {
+      "WarnType": "1",
+      "Upl_warn": "1",
+      "alarm": [
+        "power_off_manual"
+      ],
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.2.1 GPS/BDS定位",
+    "source": "manual",
+    "payload": "BD03963E870C3E675E40FF2110C2B6343F404E4541E377BD6799",
+    "fPort": null,
+    "expectData": {
+      "lon": 121.61316216666668,
+      "lat": 31.20591366666667,
+      "north_south": "N",
+      "east_west": "E",
+      "status": "A",
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文；文档期望 lon=121.6131622 lat=31.2059137 N E A。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.2.2 蓝牙定位",
+    "source": "manual",
+    "payload": "BDD60001E377BD670443271794AC43273094AA4327B956A54327FE94A56A",
+    "fPort": null,
+    "expectData": {
+      "Type": 0,
+      "Total_groups": 1,
+      "ALL": [
+        {
+          "Timestamp": "2025-02-25 15:57:23",
+          "Total_PackCount": 4,
+          "beacons": [
+            {
+              "Major": 10051,
+              "Minor": 37911,
+              "Rssi": -84
+            },
+            {
+              "Major": 10051,
+              "Minor": 37936,
+              "Rssi": -86
+            },
+            {
+              "Major": 10051,
+              "Minor": 22201,
+              "Rssi": -91
+            },
+            {
+              "Major": 10051,
+              "Minor": 38142,
+              "Rssi": -91
+            }
+          ]
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "示例帧原文；4 信标 major=10051，RSSI -84/-86/-91/-91。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.3.1 固件版本",
+    "source": "manual",
+    "payload": "BDBB1043323331304C2E3437302E41412E30311A",
+    "fPort": null,
+    "expectData": {
+      "Version_len": 16,
+      "Version": "C2310L.470.AA.01"
+    },
+    "expectError": false,
+    "note": "示例帧原文；版本 C2310L.470.AA.01。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.3.2 电量信号",
+    "source": "manual",
+    "payload": "BDF90104000050000095000000E377BD67AA",
+    "fPort": null,
+    "expectData": {
+      "Bat_type": 1,
+      "Bat_volt": 4,
+      "Signal_type": 0,
+      "Signal_strength": 80,
+      "other_type": 0,
+      "num": 149,
+      "timestamp": "2025-02-25 15:57:23"
+    },
+    "expectError": false,
+    "note": "示例帧原文；5 级制电量 4(100%)、信号 80%、全量计步 149。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.4.1 健康数据",
+    "source": "manual",
+    "payload": "BD3200E377BD6711000A1E00114B314A39711A4A0122bc00416212",
+    "fPort": null,
+    "expectData": {
+      "health_type": 0,
+      "timestamp": "2025-02-25 15:57:23",
+      "step": 30,
+      "Bp_heart": 75,
+      "bp_low": 74,
+      "bp_high": 113,
+      "Body_Temp": 33,
+      "Wrist_Temp": 18.8,
+      "BloodOxygen": 98
+    },
+    "expectError": false,
+    "note": "示例帧原文；计步30 心率75 舒张74 收缩113 体温33.0 腕温18.8 血氧98。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "手册示例：4.5.1 下行反馈",
+    "source": "manual",
+    "payload": "BDC0011720",
+    "fPort": null,
+    "expectData": {
+      "feedbackcount": 1,
+      "feedback": [
+        "17"
+      ]
+    },
+    "expectError": false,
+    "note": "示例帧原文；回执 MSGID 0x17。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  }
+]
