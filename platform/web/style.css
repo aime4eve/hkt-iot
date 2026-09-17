@@ -7,7 +7,9 @@
   --ok: #178a4c; --ok-bg: #e6f6ec; --warn: #b97900; --warn-bg: #fdf3df;
   --bad: #c0392b; --bad-bg: #fdecea;
 }
-body { font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--txt); }
+html, body { height: 100%; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+body { font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--txt); display: flex; flex-direction: column; }
 code, pre, .pay { font-family: "SF Mono", Menlo, Consolas, monospace; }
 
 .topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: linear-gradient(120deg, #0a68d6, #06479c); color: #fff; }
@@ -19,8 +21,8 @@ code, pre, .pay { font-family: "SF Mono", Menlo, Consolas, monospace; }
 .toast { position: fixed; top: 68px; right: 24px; z-index: 99; padding: 10px 16px; border-radius: 8px; color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
 .toast.ok { background: var(--ok); } .toast.bad { background: var(--bad); }
 
-.layout { display: flex; min-height: calc(100vh - 62px); }
-.sidebar { width: 320px; flex: none; background: var(--card); border-right: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.layout { display: flex; flex: 1; min-height: 0; }
+.sidebar { width: 320px; flex: none; background: var(--card); border-right: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 .search { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; outline: none; }
 .search:focus { border-color: var(--brand); }
 .filters { display: flex; gap: 6px; }
@@ -47,9 +49,8 @@ code, pre, .pay { font-family: "SF Mono", Menlo, Consolas, monospace; }
 .badge.neutral { background: #eef1f6; color: var(--dim); }
 .badge.cur { background: var(--brand); color: #fff; margin-left: 6px; }
 
-.main { flex: 1; padding: 20px 26px; min-width: 0; }
-.main.empty { display: flex; align-items: center; justify-content: center; align-self: flex-start; height: calc(100vh - 62px); }
-/* 不随左侧长列表拉伸（否则欢迎语被顶到首屏之外，右侧看似空白） */
+.main { flex: 1; padding: 20px 26px; min-width: 0; overflow-y: auto; }
+.main.empty { display: flex; align-items: center; justify-content: center; }
 .welcome { color: var(--dim); text-align: center; }
 .welcome h2 { font-weight: 600; margin-bottom: 8px; }
 

@@ -70,8 +70,9 @@ createApp({
       const data = await fetch('/api/device?id=' + encodeURIComponent(id)).then(r => r.json()).catch(e => ({ error: e.message }));
       if (data.error) { this.showToast('设备详情加载失败: ' + data.error, 'bad'); this.currentId = null; return; }
       this.dev = data;
-      // 切换设备后滚回顶部：否则上个设备遗留的滚动位置会让新详情"从中部开始"，看似内容缺失
-      window.scrollTo({ top: 0 });
+      // 切换设备后右侧内容区滚回自己的顶部（左右分屏，互不影响左侧列表）
+      var mainEl = document.querySelector('.main');
+      if (mainEl) mainEl.scrollTop = 0;
       this.tab = 'codecs';
       this.bench = { file: '', fPort: this.dev.fPortDefault == null ? '' : String(this.dev.fPortDefault), timeoutMs: '', text: '', running: false, results: [], summary: null };
       this.reg = { running: false, cases: [], summary: null };
