@@ -1,0 +1,107 @@
+[
+  {
+    "name": "行为锁定：心跳帧（液位100cm/电池10.0V正常）",
+    "source": "regression",
+    "payload": "0501640064",
+    "fPort": null,
+    "expectData": {
+      "sensorType": 5,
+      "frameType": 1,
+      "frame": "Heartbeat",
+      "batteryVoltage": 10,
+      "batteryStatus": "Normal",
+      "liquidLevel": 100,
+      "unit": "cm"
+    },
+    "expectError": false,
+    "note": "【行为锁定样例】该设备无协议文档（债务台账已记），样例锁定 v1.0.0 解码器现状行为：05|01|64|0064 → frame=Heartbeat, battery=(0x64&0x7F)/10=10.0, Normal, liquidLevel=0x0064=100cm。权威性降级，待文档到位后重审升级为 manual。"
+  },
+  {
+    "name": "行为锁定：告警帧（低电位置位+液位500cm）",
+    "source": "regression",
+    "payload": "0502c801f4",
+    "fPort": null,
+    "expectData": {
+      "sensorType": 5,
+      "frameType": 2,
+      "frame": "Alert",
+      "batteryVoltage": 7.2,
+      "batteryStatus": "Low",
+      "liquidLevel": 500,
+      "unit": "cm",
+      "alert": "Alert"
+    },
+    "expectError": false,
+    "note": "【行为锁定样例】05|02|C8|01F4 → frame=Alert, battery=(0xC8&0x7F)=0x48=72/10=7.2, 0x80 位=1→Low, liquidLevel=500, alert 字段=液位>0→Alert。"
+  },
+  {
+    "name": "行为锁定：心跳帧低电位置位（1.0V）",
+    "source": "regression",
+    "payload": "05018a0005",
+    "fPort": null,
+    "expectData": {
+      "sensorType": 5,
+      "frameType": 1,
+      "frame": "Heartbeat",
+      "batteryVoltage": 1,
+      "batteryStatus": "Low",
+      "liquidLevel": 5,
+      "unit": "cm"
+    },
+    "expectError": false,
+    "note": "【行为锁定样例】0x8A：低电位置位且数值 0x0A→1.0V；心跳帧无 alert 字段。"
+  },
+  {
+    "name": "行为锁定：告警帧液位为0（alert=Normal 边界）",
+    "source": "regression",
+    "payload": "0502640000",
+    "fPort": null,
+    "expectData": {
+      "sensorType": 5,
+      "frameType": 2,
+      "frame": "Alert",
+      "batteryVoltage": 10,
+      "batteryStatus": "Normal",
+      "liquidLevel": 0,
+      "unit": "cm",
+      "alert": "Normal"
+    },
+    "expectError": false,
+    "note": "【行为锁定样例】帧型=告警但液位=0 → alert=Normal（解码器 alert 判定分支的零值边界）。"
+  },
+  {
+    "name": "行为锁定：未知帧型（frame=Unknown 透传）",
+    "source": "regression",
+    "payload": "050764000a",
+    "fPort": null,
+    "expectData": {
+      "sensorType": 5,
+      "frameType": 7,
+      "frame": "Unknown",
+      "batteryVoltage": 10,
+      "batteryStatus": "Normal",
+      "liquidLevel": 10,
+      "unit": "cm"
+    },
+    "expectError": false,
+    "note": "【行为锁定样例】帧型字节非 01/02 → frame=Unknown，数值字段照常解出（现状行为，是否应报错待文档裁决）。"
+  },
+  {
+    "name": "守卫：帧首字节非0x05",
+    "source": "regression",
+    "payload": "0401640064",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "【行为锁定样例】解码器校验 bytes[0]===0x05，非法帧头应报 Invalid data。"
+  },
+  {
+    "name": "守卫：长度不足5字节",
+    "source": "regression",
+    "payload": "05016400",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "【行为锁定样例】解码器校验 length===5，4 字节帧应报 Invalid data。"
+  }
+]
