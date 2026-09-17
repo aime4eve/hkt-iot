@@ -46,12 +46,15 @@ createApp({
       this.newDev.form.authType = this.newDev.form.origin === 'in-house' ? 'firmware' : 'protocol-doc';
     },
     async loadDevices() {
-      const r = await fetch('/api/devices').then(r => r.json());
+      const r = await fetch('/api/devices').then(r => r.json()).catch(e => ({ error: e.message }));
+      if (r.error) return this.showToast('设备列表加载失败: ' + r.error, 'bad');
       this.devices = r.devices || [];
     },
     async openDevice(id) {
       this.currentId = id;
-      this.dev = await fetch('/api/device?id=' + encodeURIComponent(id)).then(r => r.json());
+      const data = await fetch('/api/device?id=' + encodeURIComponent(id)).then(r => r.json()).catch(e => ({ error: e.message }));
+      if (data.error) { this.showToast('设备详情加载失败: ' + data.error, 'bad'); this.currentId = null; return; }
+      this.dev = data;
       this.tab = 'codecs';
       this.bench = { file: '', fPort: this.dev.fPortDefault == null ? '' : String(this.dev.fPortDefault), timeoutMs: '', text: '', running: false, results: [], summary: null };
       this.reg = { running: false, cases: [], summary: null };

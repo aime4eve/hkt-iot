@@ -17,7 +17,15 @@ const PORT = Number(process.env.PORT || 8620);
 const DEFAULT_TIMEOUT = Number(process.env.DECODE_TIMEOUT_MS || 3000);
 
 const app = Fastify({ bodyLimit: 64 * 1024 * 1024, logger: false });
-app.register(fastifyStatic, { root: path.join(__dirname, 'web'), prefix: '/' });
+app.register(fastifyStatic, {
+  root: path.join(__dirname, 'web'),
+  prefix: '/',
+  setHeaders(res, absPath) {
+    // 前端发版后浏览器必须拿新文件：HTML 不缓存，JS/CSS 每次复核
+    if (absPath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+    else if (absPath.endsWith('.js') || absPath.endsWith('.css')) res.setHeader('Cache-Control', 'no-cache');
+  },
+});
 app.register(multipart, { limits: { fileSize: 48 * 1024 * 1024 } });
 
 /* ---------------- 读：设备与文件 ---------------- */
