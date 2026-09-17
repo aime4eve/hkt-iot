@@ -16,39 +16,17 @@
   "codecs": [
     {
       "platform": "chirpstack",
-      "lang": null,
-      "file": "b2315l_chirpstack_v1.0.0.js",
-      "decoderVersion": "1.0.0",
-      "firmwareVersion": null,
-      "current": false,
-      "status": "unverified",
-      "basis": [],
-      "verifiedAt": null,
-      "changelog": "迁移件：来源文件无版本名（chirpstack-decode.js），定为基线 v1.0.0，未核验"
-    },
-    {
-      "platform": "chirpstack",
-      "lang": null,
-      "file": "b2315l_chirpstack_v1.3.0.js",
-      "decoderVersion": "1.3.0",
-      "firmwareVersion": null,
-      "current": false,
-      "status": "unverified",
-      "basis": [],
-      "verifiedAt": null,
-      "changelog": "来源文件名 v1.3；与 V2.1 协议文档的逐字段核对待做"
-    },
-    {
-      "platform": "chirpstack",
-      "lang": null,
-      "file": "b2315l_chirpstack_v2.1.1.js",
-      "decoderVersion": "2.1.1",
-      "firmwareVersion": "协议 V2.1",
+      "lang": "en",
+      "file": "b2315l_chirpstack_en_v1.0.2.js",
+      "decoderVersion": "1.0.2",
+      "firmwareVersion": "v2.1",
       "current": true,
-      "status": "unverified",
-      "basis": [],
-      "verifiedAt": null,
-      "changelog": "对齐协议 V2.1（承接 v2.1.0）：dateFormat 固定输出北京时间（UTC+8 偏移+getUTC*），修复在非 +8 时区宿主（UTC 服务器）上时间字段偏 8 小时；其余同 v2.1.0——0xBD 帧头+宽松校验和、0xF9/0x32/0x21/0xC0、GPS IEEE-754 修正、D6 多组、32 TLV、02/21 语义 alarm 数组。兼容存量无 BD 头旧帧（F6/C2/BA，实测 98 条真机帧全解）"
+      "status": "verified",
+      "basis": [
+        "手册v2.1样例全部通过"
+      ],
+      "verifiedAt": "2026-09-17",
+      "changelog": "删除原厂商信息"
     }
   ],
   "deviations": [],

@@ -22,7 +22,7 @@
       "file": "rbc-100_ttn_v1.0.0.js",
       "decoderVersion": "1.0.0",
       "firmwareVersion": null,
-      "current": false,
+      "current": true,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,

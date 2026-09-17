@@ -70,17 +70,21 @@ createApp({
       const data = await fetch('/api/device?id=' + encodeURIComponent(id)).then(r => r.json()).catch(e => ({ error: e.message }));
       if (data.error) { this.showToast('设备详情加载失败: ' + data.error, 'bad'); this.currentId = null; return; }
       this.dev = data;
+      // 切换设备后滚回顶部：否则上个设备遗留的滚动位置会让新详情"从中部开始"，看似内容缺失
+      window.scrollTo({ top: 0 });
       this.tab = 'codecs';
       this.bench = { file: '', fPort: this.dev.fPortDefault == null ? '' : String(this.dev.fPortDefault), timeoutMs: '', text: '', running: false, results: [], summary: null };
       this.reg = { running: false, cases: [], summary: null };
       this.diff = { fileA: '', fileB: '', fPort: '', text: '', running: false, results: [], summary: null };
       this.fillMgmtForm();
       const current = this.dev.codecs.filter(c => c.current);
-      if (current.length) this.bench.file = current[0].file;
+      this.bench.file = current.length ? current[0].file : (this.dev.codecs[0] ? this.dev.codecs[0].file : '');
       if (this.dev.codecs.length) {
         this.diff.fileA = (current[0] || this.dev.codecs[0]).file;
         const other = (current[1] || this.dev.codecs.find(c => c.file !== this.diff.fileA));
         this.diff.fileB = other ? other.file : this.diff.fileA;
+      } else {
+        this.diff.fileA = this.diff.fileB = '';
       }
       history.replaceState(null, '', '#' + encodeURIComponent(id));
     },
