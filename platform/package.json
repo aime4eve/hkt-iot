@@ -1,0 +1,12 @@
+{
+  "name": "hkt-decoder-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HKT 设备负载解码器调试平台（解码器仓库内建）",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "fastify": "^4.28.1",
+    "@fastify/static": "^7.0.4"
+  }
+}
