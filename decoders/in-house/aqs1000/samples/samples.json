@@ -1,0 +1,216 @@
+[
+  {
+    "name": "标准传感器上报帧-常规值(十项TLV全序)",
+    "source": "firmware",
+    "payload": "686b74002a09005ba00a00ddd520032c1a0121021903f51b031c00231d004e1e0076",
+    "fPort": 10,
+    "expectData": {
+      "temperature": 23.456,
+      "humidity": 56.789,
+      "co2": 812,
+      "pir": 1,
+      "tvoc": 2,
+      "pressure": 1013,
+      "light_level": 3,
+      "pm2_5": 35,
+      "pm10": 78,
+      "hcho": 0.118
+    },
+    "expectError": false,
+    "note": "头:68 6B 74 同步字+00 特殊类型+2A 包序号(UART透传,模组fPort=10)。TLV按固件 Device_SensorDataReport 顺序无长度字段: 09 温度=00 5B A0(BE,毫℃,int24)→23456/1000=23.456℃; 0A 湿度=00 DD D5→56.789%RH; 20 CO2=03 2C(BE u16)→812ppm; 1A PIR=01(触发置1,上报后清0); 21 TVOC等级=02; 19 气压=03 F5(BE u16,hPa整数,HP203B:Pa/100)→1013; 1B 光照等级=03; 1C PM2.5=00 23→35μg/m³; 1D PM10=00 4E→78μg/m³; 1E HCHO=00 76(BE u16,ppb)→118/1000=0.118ppm。"
+  },
+  {
+    "name": "O3变体传感器上报帧(含1F臭氧等级)",
+    "source": "firmware",
+    "payload": "686b74002b090053fc0a00bd742002801a0021011903f01b011c000c1d00121e00211f02",
+    "fPort": 10,
+    "expectData": {
+      "temperature": 21.5,
+      "humidity": 48.5,
+      "co2": 640,
+      "pir": 0,
+      "tvoc": 1,
+      "pressure": 1008,
+      "light_level": 1,
+      "pm2_5": 12,
+      "pm10": 18,
+      "hcho": 0.033,
+      "o3_level": 2
+    },
+    "expectError": false,
+    "note": "O3 编译变体(如 IAQ900_..._O3 固件)在标准序列末尾追加 1F: 臭氧等级=02(单字节等级值)。其余推导同标准帧: 温度 00 53 FC→21.5℃; 湿度 00 BD 64→48.5%; CO2 02 80→640ppm; 气压 03 F0→1008hPa; HCHO 00 21→0.033ppm。"
+  },
+  {
+    "name": "周期配置同步帧(PeriodicReport,01/81/03可解码)",
+    "source": "firmware",
+    "payload": "686b74000101030f8101035529012a002b002c002d0005003c8601e0",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 3,
+      "soft_ver": 15,
+      "pwr_way": 1,
+      "battery": 85
+    },
+    "expectError": false,
+    "note": "固件 Device_PeriodicReport 顺序: 01 软硬件版本=03 0F(config.h HW=0x03,SW=0x0F)→hard_ver=3,soft_ver=15; 81 供电方式=01; 03 电量=55→85(仅市电时携带); 29 LED模式=01、2A 蜂鸣=00、2B 温度单位=00、2C EPD模式=00、2D 翻转=00、05 传感器周期=00 3C→60min、86 同步周期=01 E0→480min 均为固件真实上行类型,但解码器词表无对应字段,期望输出仅含可表达投影(上述4字段),且这些 TLV 的存在不得扰动已知字段的取值。"
+  },
+  {
+    "name": "设备ID帧-无零字节(正对照)",
+    "source": "firmware",
+    "payload": "686b74003302606b74abcdef",
+    "fPort": 10,
+    "expectData": {
+      "id": "606b74abcdef"
+    },
+    "expectError": false,
+    "note": "02 + 6字节: memcpy(DevEUI+2,6)=60 6B 74 AB CD EF; 期望 id 为逐字节两位小写hex拼接 \"606b74abcdef\"。"
+  },
+  {
+    "name": "设备ID帧-含零字节(前导零语义)",
+    "source": "firmware",
+    "payload": "686b7400340260050a002b7f",
+    "fPort": 10,
+    "expectData": {
+      "id": "60050a002b7f"
+    },
+    "expectError": false,
+    "note": "02 + 60 05 0A 00 2B 7F; 每字节必须输出两位hex,期望 \"60050a002b7f\"(12字符)。任何按 parseInt(n).toString(16) 的窄化(丢每字节前导零)都改变设备标识,判不通过。"
+  },
+  {
+    "name": "单TLV电量更新帧(100%满电)",
+    "source": "firmware",
+    "payload": "686b7400400364",
+    "fPort": 10,
+    "expectData": {
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "03 + 64: batteryLevel 为百分比(adc.c: (U-1200)*100/300 限幅0..100); 0x64→100。"
+  },
+  {
+    "name": "全零边界帧(传感器冷启动)",
+    "source": "firmware",
+    "payload": "686b74007f090000000a0000002000001a0021001900001b001c00001d00001e0000",
+    "fPort": 10,
+    "expectData": {
+      "temperature": 0,
+      "humidity": 0,
+      "co2": 0,
+      "pir": 0,
+      "tvoc": 0,
+      "pressure": 0,
+      "light_level": 0,
+      "pm2_5": 0,
+      "pm10": 0,
+      "hcho": 0
+    },
+    "expectError": false,
+    "note": "所有值字段全 0 线上合法: 温度/湿度 3字节0→0; CO2/气压/PM/HCHO 2字节0→0; 各等级单字节0→0。"
+  },
+  {
+    "name": "满量程边界帧(高字节非零)",
+    "source": "firmware",
+    "payload": "686b74007e09014c080a0186a020ffff1a01210519ffff1b051cffff1dffff1effff",
+    "fPort": 10,
+    "expectData": {
+      "temperature": 85,
+      "humidity": 100,
+      "co2": 65535,
+      "pir": 1,
+      "tvoc": 5,
+      "pressure": 65535,
+      "light_level": 5,
+      "pm2_5": 65535,
+      "pm10": 65535,
+      "hcho": 65.535
+    },
+    "expectError": false,
+    "note": "温度 01 4B B8→85000/1000=85℃; 湿度 01 86 A0→100%RH; CO2/气压/PM2.5/PM10=FF FF→65535(BE u16 线上满量程); HCHO FF FF→65535ppb=65.535ppm; PIR=01; TVOC/光照=05(等级上限)。高字节非零考察多字节权重的正确性。"
+  },
+  {
+    "name": "负温边界帧(-15.5℃补码)",
+    "source": "firmware",
+    "payload": "686b74007d09ffc3740a00afc82001c21a00",
+    "fPort": 10,
+    "expectData": {
+      "temperature": -15.5,
+      "humidity": 45,
+      "co2": 450,
+      "pir": 0
+    },
+    "expectError": false,
+    "note": "温度 -15.5℃: 固件 int32 补码取低3字节=FF C3 74(0x1000000-0x3C8C),应按24位有符号→-15500/1000=-15.5; 湿度 00 AF C8→45%RH; CO2 01 C2→450ppm; PIR=00。"
+  },
+  {
+    "name": "服务器应答ACK帧(FF)",
+    "source": "firmware",
+    "payload": "686b740040ffff",
+    "fPort": 10,
+    "expectData": {},
+    "expectError": false,
+    "note": "fromLoRaWANDataHandle: 服务器置 data[3]&0x01 时,固件回 TLV FF+FF(值固定0xFF)。合法帧;解码器词表无此类型,期望投影为空对象。"
+  },
+  {
+    "name": "时间同步请求帧(80)",
+    "source": "firmware",
+    "payload": "686b74004180",
+    "fPort": 10,
+    "expectData": {},
+    "expectError": false,
+    "note": "syncLocalTime 事件入 lwrb 队列,setDataPackage 对 80 无 case→sendNum=1,帧体仅 1 字节类型 80(无值字段)。合法帧;期望空投影。"
+  },
+  {
+    "name": "CO2强制校准应答帧(58)",
+    "source": "firmware",
+    "payload": "686b74004258ff",
+    "fPort": 10,
+    "expectData": {},
+    "expectError": false,
+    "note": "校准流程结束回 58+FF(成功)/FE(失败),此处取成功应答 FF。合法帧;期望空投影。"
+  },
+  {
+    "name": "温度偏移设置应答帧(5B)",
+    "source": "firmware",
+    "payload": "686b7400435bfe",
+    "fPort": 10,
+    "expectData": {},
+    "expectError": false,
+    "note": "5B+回显值;越界(>100/-100)时值为错误码 FE。合法帧;期望空投影。"
+  },
+  {
+    "name": "坏头帧-首字节非0x68",
+    "source": "regression",
+    "payload": "6a6b74002a0364",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "同步字 68 6B 74 被 IEEE 传输破坏为 6A 6B 74;固件 checkDataSyncHead 判 FAIL。解码器必须报错,不得输出数据。"
+  },
+  {
+    "name": "过短帧-仅3字节同步头",
+    "source": "regression",
+    "payload": "686b74",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "长度不足5字节头+数据区,固件侧 len-5 为负即非法。解码器不得死循环/挂起,必须以错误终止。"
+  },
+  {
+    "name": "截断帧-温度TLV缺1字节",
+    "source": "regression",
+    "payload": "686b74000109007d",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "类型 09 需 3 字节值,帧在 00 7D 后截断。传输半包场景;必须报错,不得产出 NaN 等伪数据。"
+  },
+  {
+    "name": "未知类型帧-类型码0x77",
+    "source": "regression",
+    "payload": "686b74000177aa",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "0x77 不在固件 DataType 枚举(01/02/03/05/09/0A/19..21/29..2D/58/5B/80/81/85/86/FF)中,固件永不发送;须报错而非静默空输出。"
+  }
+]
