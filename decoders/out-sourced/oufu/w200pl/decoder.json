@@ -1,0 +1,34 @@
+{
+  "model": "W200PL",
+  "modelKey": "w200pl",
+  "aliases": [],
+  "name": "欧孚 W200PL LoRa 私有协议手表",
+  "origin": "out-sourced",
+  "vendor": "欧孚（Oviphone）",
+  "category": "穿戴健康",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/W200PL-Lora私有-通信协议-V2.3.docx",
+    "section": null,
+    "missing": false,
+    "note": "V2.3 协议文档待上传",
+    "exists": true
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "private",
+      "lang": null,
+      "file": "w200pl_private_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "协议 V2.3",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "按 W200PL Lora 私有协议 V2.3 §4 实现 12 类上行帧：02 报警位图/21 关机细分+健康阈值/B5 SOS/03 GPS/D6 蓝牙/C3 充电/F9 电量/BB 版本/A5 组号/32 健康(固定布局)/C0 反馈/28 消息状态；帧=BD+DEVID(8B)+MSGID+payload+checksum，校验和宽松不阻断；时间戳固定北京时间。输出字段名与 B2315L 系对齐并新增 devId"
+    }
+  ],
+  "deviations": [],
+  "notes": ""
+}

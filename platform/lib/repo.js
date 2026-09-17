@@ -139,7 +139,7 @@ function getMeta(id) {
 /* ---------------- 写 ---------------- */
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
-const FILE_RE = /^[a-z0-9][a-z0-9-]*_(chirpstack|ttn|thingsboard)(_(cn|en))?_v\d+\.\d+\.\d+\.js$/;
+const FILE_RE = /^[a-z0-9][a-z0-9-]*_(chirpstack|ttn|thingsboard|private)(_(cn|en))?_v\d+\.\d+\.\d+\.js$/;
 const VER_RE = /^\d+\.\d+\.\d+$/;
 
 function validateDevicePayload(b) {
@@ -155,10 +155,12 @@ function validateDevicePayload(b) {
   return errs;
 }
 
-/** 新建设备目录 + decoder.json */
+/** 新建设备目录 + decoder.json；out-sourced 时 vendorKey 决定厂商目录名（默认 oem） */
 function createDevice(b) {
   ensureDataDir();
-  const id = (b.origin === 'in-house' ? 'in-house/' : 'out-sourced/oem/') + b.modelKey;
+  const vendorKey = String(b.vendorKey || '').trim() || 'oem';
+  if (vendorKey !== 'oem' && !NAME_RE.test(vendorKey)) return { error: 'vendorKey 需为小写字母/数字/连字符' };
+  const id = (b.origin === 'in-house' ? 'in-house/' : 'out-sourced/' + vendorKey + '/') + b.modelKey;
   const dir = path.join(DEC, id);
   if (fs.existsSync(dir)) return { error: '设备已存在: ' + id };
   const meta = {
@@ -207,7 +209,7 @@ function addCodec(id, b, codeText) {
   const { dir, meta } = getMeta(id) || {};
   if (!meta) return { error: '设备不存在' };
   const platform = b.platform, lang = b.lang || null;
-  if (!['chirpstack', 'ttn', 'thingsboard'].includes(platform)) return { error: 'platform 必须是 chirpstack/ttn/thingsboard' };
+  if (!['chirpstack', 'ttn', 'thingsboard', 'private'].includes(platform)) return { error: 'platform 必须是 chirpstack/ttn/thingsboard/private' };
   if (lang !== null && !['cn', 'en'].includes(lang)) return { error: 'lang 只能是 cn/en 或空' };
   if (!VER_RE.test(b.version || '')) return { error: '版本号需为 x.y.z 三段数字' };
   if (!String(b.changelog || '').trim()) return { error: 'changelog 必填（变更说明）' };
@@ -280,8 +282,9 @@ function deleteCodec(id, file) {
 
 /** 保存黄金样例（整体替换，JSON 结构校验） */
 function saveSamples(id, samples) {
-  const { dir } = getMeta(id) || {};
-  if (!dir) return { error: '设备不存在' };
+  const meta = getMeta(id);
+  if (!meta || !fs.existsSync(path.join(meta.dir, 'decoder.json'))) return { error: '设备不存在: ' + id };
+  const dir = meta.dir;
   if (!Array.isArray(samples)) return { error: 'samples 必须是数组' };
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];

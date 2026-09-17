@@ -40,6 +40,7 @@
           <option value="chirpstack">ChirpStack</option>
           <option value="ttn">TTN</option>
           <option value="thingsboard">ThingsBoard</option>
+          <option value="private">私有协议</option>
         </select>
         <select v-model="filters.status">
           <option value="">全部状态</option>
@@ -275,7 +276,7 @@
         <div class="form">
           <div class="row">
             <select v-model="mgmt.nc.platform" style="min-width:150px">
-              <option value="chirpstack">ChirpStack</option><option value="ttn">TTN</option><option value="thingsboard">ThingsBoard</option>
+              <option value="chirpstack">ChirpStack</option><option value="ttn">TTN</option><option value="thingsboard">ThingsBoard</option><option value="private">私有协议</option>
             </select>
             <select v-model="mgmt.nc.lang" style="min-width:100px">
               <option value="">语言不限</option><option value="cn">cn</option><option value="en">en</option>
@@ -340,6 +341,7 @@
           </label>
           <label>厂商 <input v-model.trim="newDev.form.vendor" placeholder="自研默认 HKT"></label>
           <label>类别 <input v-model.trim="newDev.form.category" placeholder="如 表计"></label>
+          <label v-if="newDev.form.origin==='out-sourced'">厂商目录名 * <input v-model.trim="newDev.form.vendorKey" placeholder="如 oufu（设备落在 out-sourced/下）"></label>
           <label>默认 fPort <input v-model.trim="newDev.form.fPortDefault" placeholder="可空"></label>
           <label>别名 <input v-model.trim="newDev.form.aliases" placeholder="逗号分隔，可空"></label>
         </div>

@@ -40,7 +40,7 @@ createApp({
   },
   methods: {
     blankNewDev() {
-      return { model: '', modelKey: '', name: '', origin: 'out-sourced', vendor: '', category: '', fPortDefault: '', aliases: '', authType: 'protocol-doc', authPath: '', authRef: '', authSection: '', authMissing: false };
+      return { model: '', modelKey: '', name: '', origin: 'out-sourced', vendor: '', vendorKey: '', category: '', fPortDefault: '', aliases: '', authType: 'protocol-doc', authPath: '', authRef: '', authSection: '', authMissing: false };
     },
     onOriginChange() {
       this.newDev.form.authType = this.newDev.form.origin === 'in-house' ? 'firmware' : 'protocol-doc';
@@ -66,7 +66,7 @@ createApp({
       }
       history.replaceState(null, '', '#' + encodeURIComponent(id));
     },
-    platformLabel(p) { return { chirpstack: 'ChirpStack', ttn: 'TTN', thingsboard: 'ThingsBoard' }[p] || p; },
+    platformLabel(p) { return { chirpstack: 'ChirpStack', ttn: 'TTN', thingsboard: 'ThingsBoard', private: '私有协议' }[p] || p; },
     shortFile(f) { return String(f || '').replace(/_[^_]*\.js$/, '').replace(/_/g, ' ') || f; },
     fmtJson(v) { return v == null ? '—' : JSON.stringify(v, null, 2); },
     devicePath(file) { return 'decoders/' + this.currentId + '/' + file; },
@@ -172,7 +172,7 @@ createApp({
         const f = this.newDev.form;
         const body = {
           model: f.model, modelKey: f.modelKey, name: f.name, origin: f.origin,
-          vendor: f.vendor, category: f.category, fPortDefault: f.fPortDefault,
+          vendor: f.vendor, vendorKey: f.vendorKey, category: f.category, fPortDefault: f.fPortDefault,
           aliases: f.aliases ? f.aliases.split(/[,，\s]+/).filter(Boolean) : [],
           authority: f.authType === 'firmware'
             ? { type: 'firmware', path: f.authPath, ref: f.authRef }
