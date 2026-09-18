@@ -1,0 +1,57 @@
+{
+  "model": "WB100",
+  "modelKey": "wb100",
+  "aliases": [],
+  "name": "欧孚 WB100 手环",
+  "origin": "out-sourced",
+  "vendor": "欧孚（Oviphone）",
+  "category": "穿戴健康",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/Oviphone B2315L LoRaWAN Protocal_20231214.docx",
+    "section": "2.1-2.7 上行消息",
+    "missing": false,
+    "note": "V1.3 代协议（2023-12-14），文档标题为 B2315L（欧孚两型号共用该代文档）"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "wb100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "WB100 手环固件（V1.3 代协议，2023-12-14 文档）",
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "现场在用脚本原样入库（2026-09-09 v1.3，与 B2315L v1.3.0 基线同源仅头部改名）。dateFormat 依赖宿主时区，UTC 宿主时间字段偏 8 小时，由 v1.1.0 修复"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "wb100_chirpstack_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "WB100 手环固件（V1.3 代协议，2023-12-14 文档）",
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "v1.0.0 + dateFormat 固定北京时间（UTC+8 偏移 + getUTC*，b2315l v1.0.3 同款修复）；其余与现场脚本逐字节一致"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "wb100_chirpstack_v1.2.0.js",
+      "decoderVersion": "1.2.0",
+      "firmwareVersion": "WB100 手环固件（V1.3 代协议，2023-12-14 文档）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "v1.1.0 + 非法帧改报错并终止解析（未知 MessageId/帧头截断/消息截断/0xC1 无定义/0xBA 非法 flag·type），黄金样例守卫 × 文档裁定"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 纳管：现场在用解码脚本 WB100-chirpstack-decode-b2315l-v1.3.js（2026-09-09 v1.3）与 B2315L v1.3.0 基线逻辑同源（仅头部改名），实现 V1.3 紧凑帧协议（MessageId+payload，无 BD 头无校验和）——与现役 B2315L 的 V2.1 BD 帧是两代协议，故独立立户。用户提供的 V2.1 docx 经 md5 比对为 b2315l 文档重复副本，未重复归档。"
+}

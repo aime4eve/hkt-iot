@@ -1,0 +1,305 @@
+[
+  {
+    "name": "固件版本号上传（文档2.1示例帧）",
+    "source": "manual",
+    "payload": "bb1042323331332e4f563836382e54483031",
+    "fPort": null,
+    "expectData": {
+      "Version_len": 16,
+      "Version": "B2313.OV868.TH01"
+    },
+    "expectError": false,
+    "note": "文档2.1：BB=MessageId；10=Version_len=16（开机上报固件版本）；随后16字节ASCII 42 32 33 31 33 2E 4F 56 38 36 38 2E 54 48 30 31='B2313.OV868.TH01'。注意：文档正文'上报内容 B3213.OV868.TH01'与其自身hex字节矛盾（B2313被误写为B3213），以hex字节为准。帧长1+1+16=18字节。"
+  },
+  {
+    "name": "电量计步信号上传（文档2.2示例帧）",
+    "source": "manual",
+    "payload": "f60300940400005028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Bat_volt": 3,
+      "Bat_percent": 100,
+      "Step_num": 1172,
+      "Signal_strength": 80,
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.2：F6=MessageId；0300小端=0x0003=3格电量（文档'Value 0-3 Mean 0%-100%'，示例明示3格）；94040000小端=0x00000494=1172步（文档同值）；50=信号强度80（文档'80%'）；28F2CD5F小端=0x5FCDF228=1607332392→北京时间2020-12-07 17:13:12（文档同值）。帧长1+2+4+1+4=12字节。"
+  },
+  {
+    "name": "GPS定位上传（文档2.3示例帧）",
+    "source": "manual",
+    "payload": "0322fb20cb827a5c4021ea3e00a99536404e4541cf084e5f",
+    "fPort": null,
+    "expectData": {
+      "lon": 113.914233,
+      "lat": 22.58461,
+      "north_south": "N",
+      "east_west": "E",
+      "status": "A",
+      "timestamp": "2020-09-01 16:39:43"
+    },
+    "expectError": false,
+    "note": "文档2.3：03=MessageId；22fb20cb827a5c40小端=0x405C7A82CB20FB22，IEEE-754双精度=113.914233（文档同值）；21ea3e00a9953640小端=0x403695A9003EEA21=22.58461（文档同值）；4E='N'北纬；45='E'东经；41='A'定位有效；cf084e5f小端=0x5F4E08CF=1598949583→北京时间2020-09-01 16:39:43（文档'2020/9/1 16:39:43'）。帧长1+8+8+1+1+1+4=24字节。"
+  },
+  {
+    "name": "心率血压上传（文档2.4示例帧）",
+    "source": "manual",
+    "payload": "c275004d00480028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "bp_high": 117,
+      "bp_low": 77,
+      "Bp_heart": 72,
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.4：C2=MessageId；7500小端=0x0075=收缩压117；4D00小端=0x004D=舒张压77；4800小端=0x0048=心率72；28F2CD5F小端=0x5FCDF228=1607332392→北京时间2020-12-07 17:13:12（文档同值）。帧长1+2+2+2+4=11字节。"
+  },
+  {
+    "name": "体温上传-带时间戳类型1（文档2.5构造）",
+    "source": "manual",
+    "payload": "ba0028f2cd5f016d017001",
+    "fPort": null,
+    "expectData": {
+      "Timestamp_flag": 0,
+      "timestamp": "2020-12-07 17:13:12",
+      "Temp_type": 1,
+      "Wrist_Temp": 36.5,
+      "Body_Temp": 36.8
+    },
+    "expectError": false,
+    "note": "文档2.5（无示例帧，按字段表构造）：BA=MessageId；00=时间戳标识'带时间戳'；28F2CD5F小端=0x5FCDF228→北京时间2020-12-07 17:13:12；01=温度类型1（体表+体温两个字段）；6D01小端S16=0x016D=365，×10→36.5℃；7001小端S16=0x0170=368→36.8℃。帧长1+1+4+1+2+2=11字节。"
+  },
+  {
+    "name": "体温上传-无时间戳类型2含负环境温度（文档2.5构造）",
+    "source": "manual",
+    "payload": "ba01026a017701ccff",
+    "fPort": null,
+    "expectData": {
+      "Timestamp_flag": 1,
+      "Temp_type": 2,
+      "Wrist_Temp": 36.2,
+      "Body_Temp": 37.5,
+      "Env_Temp": -5.2
+    },
+    "expectError": false,
+    "note": "文档2.5（无示例帧，按字段表构造）：BA=MessageId；01=时间戳标识'不带时间戳'（时间戳字段省略）；02=温度类型2（体表+体温+环境三个字段）；6A01小端S16=0x016A=362→36.2℃；7701小端S16=0x0177=375→37.5℃；CCFF小端S16=0xFFCC有符号=-52→-5.2℃（验证×10有符号负温）。帧长1+1+1+2+2+2=9字节。"
+  },
+  {
+    "name": "报警-跌落（文档2.6示例帧）",
+    "source": "manual",
+    "payload": "02004028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "4000",
+      "alarm": [
+        "fall"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：02=MessageId；0040小端U16=0x4000=bit14跌落报警（文档位表'调整后16进制4000'）；28F2CD5F小端=0x5FCDF228→北京时间2020-12-07 17:13:12。Upl_warn以该值的小写十六进制串呈现（文档位表0004/0100等为4位记法，数值相同）。帧长1+2+4=7字节。"
+  },
+  {
+    "name": "报警-关机（文档2.6示例帧）",
+    "source": "manual",
+    "payload": "02040028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "4",
+      "alarm": [
+        "shutdown"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：0400小端U16=0x0004=bit2关机Power off（文档位表0004/十进制4）；时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "报警-低电量（文档2.6示例帧）",
+    "source": "manual",
+    "payload": "02010028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "1",
+      "alarm": [
+        "low_battery"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：0100小端U16=0x0001=bit0低电量Low Power（文档位表0001/十进制1）；时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "报警-佩戴（文档2.6示例帧）",
+    "source": "manual",
+    "payload": "02000128f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "100",
+      "alarm": [
+        "wearing"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：0001小端U16=0x0100=bit8设备佩戴Wear status（文档位表0100/十进制256）；时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "报警-摘掉（文档2.6示例帧）",
+    "source": "manual",
+    "payload": "02100028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "10",
+      "alarm": [
+        "taken_off"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：1000小端U16=0x0010=bit4摘掉设备Takeoff status（文档位表0010/十进制16）；时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "报警-SOS（文档2.6位表构造）",
+    "source": "manual",
+    "payload": "02020028f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "2",
+      "alarm": [
+        "sos"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6（示例帧未含SOS，按位表构造）：0200小端U16=0x0002=bit1 SOS（文档位表0002/十进制2）；时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "报警-全部位同时置位（边界）",
+    "source": "manual",
+    "payload": "02174128f2cd5f",
+    "fPort": null,
+    "expectData": {
+      "Upl_warn": "4117",
+      "alarm": [
+        "low_battery",
+        "sos",
+        "shutdown",
+        "taken_off",
+        "wearing",
+        "fall"
+      ],
+      "timestamp": "2020-12-07 17:13:12"
+    },
+    "expectError": false,
+    "note": "文档2.6：1741小端U16=0x4117=0x4000|0x0100|0x0010|0x0004|0x0002|0x0001，位表定义的六个报警位全部置位；标志数组按位从低到高（bit0低电量、bit1 SOS、bit2关机、bit4摘掉、bit8佩戴、bit14跌落）。时间戳同上→北京时间2020-12-07 17:13:12。"
+  },
+  {
+    "name": "蓝牙定位-单包（文档2.7示例帧）",
+    "source": "manual",
+    "payload": "d60070daf8610143271794ac",
+    "fPort": null,
+    "expectData": {
+      "Type": 0,
+      "ALL": [
+        {
+          "Timestamp": "2022-02-01 15:00:00",
+          "Total_PackCount": 1,
+          "beacons": [
+            {
+              "Major": 10051,
+              "Minor": 37911,
+              "Rssi": -84
+            }
+          ]
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "文档2.7：D6=MessageId；00=Type固定0；70DAF861小端=0x61F8DA70=1643698800→北京时间2022-02-01 15:00:00（文档同值）；01='当前有1笔蓝牙定位信息'；4327小端=0x2743=10051 Major；1794小端=0x9417=37911 Minor；ac=0xAC有符号int8=172-256=-84 Rssi（注意：文档文字'ac -85'与其自身字节矛盾，按字节算为-84）。示例帧在首笔信标后另有4327 3094 aa 6a共6字节未见于文档文字解释（疑为示例冗余），按文档文字'1笔'解码，其后字节无上行定义。【修订】文档示例帧自带 4 字节无法解释的尾随内容（4327 3094 aa 6a，正文又明示仅 1 笔），属示例冗余；v1.2.0 起按规格拒绝尾渣，故样例取按文档布局的干净 12 字节帧。"
+  },
+  {
+    "name": "蓝牙定位-多包count=2（文档2.7构造）",
+    "source": "manual",
+    "payload": "d60070daf8610243271794ac43273094aa",
+    "fPort": null,
+    "expectData": {
+      "Type": 0,
+      "ALL": [
+        {
+          "Timestamp": "2022-02-01 15:00:00",
+          "Total_PackCount": 2,
+          "beacons": [
+            {
+              "Major": 10051,
+              "Minor": 37911,
+              "Rssi": -84
+            },
+            {
+              "Major": 10051,
+              "Minor": 37936,
+              "Rssi": -86
+            }
+          ]
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "文档2.7：字段表含可重复的Major/Minor/Rssi组；02=2笔；第一笔4327/1794/ac=10051/37911/-84（0xAC有符号int8=-84，文档文字-85与其字节矛盾）；第二笔4327=0x2743=10051；3094小端=0x9430=37936；aa=0xAA有符号=-86。帧长1+1+4+1+2*5=17字节。时间戳70DAF861→北京时间2022-02-01 15:00:00。"
+  },
+  {
+    "name": "时间同步请求（文档4.1示例帧）",
+    "source": "manual",
+    "payload": "ff00ff",
+    "fPort": null,
+    "expectData": {
+      "time_request": 1
+    },
+    "expectError": false,
+    "note": "文档4.1：FF=HEADER(0xFF)；00=SeqId(0x00)；FF=End(0xFF)；设备开机后自动上报的时间校准请求指令，无MessageId头。data仅标记时间同步请求（键名随被测解码器契约，语义出自文档4.1：需服务器回复4.2时间数据帧）。"
+  },
+  {
+    "name": "多帧拼接-心率血压帧+时间同步请求（边界）",
+    "source": "manual",
+    "payload": "c275004d00480028f2cd5fff00ff",
+    "fPort": null,
+    "expectData": {
+      "bp_high": 117,
+      "bp_low": 77,
+      "Bp_heart": 72,
+      "timestamp": "2020-12-07 17:13:12",
+      "time_request": 1
+    },
+    "expectError": false,
+    "note": "V1.3为紧凑帧（MessageId+payload，无BD头无校验和），帧间无分隔符，同一上行可顺序携带多条消息：字节0-10为文档2.4 C2帧（117/77/72，北京时间2020-12-07 17:13:12），字节11-13为文档4.1 FF00FF时间同步请求；按各帧定长依序解析。"
+  },
+  {
+    "name": "守卫-下行帧误入上行（0xD2无上行定义）",
+    "source": "regression",
+    "payload": "d2170e0103000000130000000000000000",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档第三章：0xD2仅为下行报文（3.1设置周期定位/3.2定位优先），Message ID表未定义其上行布局；本帧即文档3.1下行示例。上行负载以无上行布局定义的MessageId开头，按文档帧结构无法解码，应报错而非静默跳过。"
+  },
+  {
+    "name": "守卫-0xF6帧截断（缺时间戳尾字节）",
+    "source": "regression",
+    "payload": "f60300940400005028f2cd",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档2.2帧定长12字节（1+2+4+1+4），本帧仅11字节，时间戳字段被截断，字段不完整无法按文档布局解码，应报错。"
+  },
+  {
+    "name": "守卫-0xBB版本号长度声明越界",
+    "source": "regression",
+    "payload": "bb1042323331",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档2.1：Version_len=0x10=16，要求其后跟16字节ASCII版本号；本帧仅4字节（42 32 33 31='B231'），声明长度与实际负载不符，按文档帧结构为非法帧，应报错。"
+  }
+]
