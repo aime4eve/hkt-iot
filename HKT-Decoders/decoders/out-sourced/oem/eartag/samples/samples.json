@@ -1,0 +1,157 @@
+[
+  {
+    "name": "文档示例帧-3002mV/36.26°C/96步/4h",
+    "source": "manual",
+    "payload": "aa063002362600600455",
+    "fPort": null,
+    "expectData": {
+      "protocol_version": 6,
+      "battery_voltage": 3002,
+      "temperature": 36.26,
+      "step_count": 96,
+      "report_interval": 4
+    },
+    "expectError": false,
+    "note": "文档§1原文示例帧 AA 06 30 02 36 26 00 60 04 55。§2 Protocol Analysis 逐字段推导：[0]=0xAA头；[1]=0x06→协议版本6；[2-3]=0x3002 BCD→3002mV；[4-5]=0x3626 BCD→3626/100=36.26°C；[6-7]=0x0060 十六进制→96步；[8]=0x04→上报间隔4小时；[9]=0x55尾。文档未定义fPort，取null。"
+  },
+  {
+    "name": "边界-各字段全零",
+    "source": "manual",
+    "payload": "aa060000000000000055",
+    "fPort": null,
+    "expectData": {
+      "protocol_version": 6,
+      "battery_voltage": 0,
+      "temperature": 0,
+      "step_count": 0,
+      "report_interval": 0
+    },
+    "expectError": false,
+    "note": "各字段取编码下界，按§2字段定义推导：[1]=0x06→6；[2-3]=0x0000 BCD→0mV；[4-5]=0x0000 BCD→0/100=0°C；[6-7]=0x0000→0步；[8]=0x00→0小时。BCD全零为合法BCD编码，帧头尾合法，不应报错。"
+  },
+  {
+    "name": "边界-BCD最大9999/步数间隔满值",
+    "source": "manual",
+    "payload": "aa0699999999ffffff55",
+    "fPort": null,
+    "expectData": {
+      "protocol_version": 6,
+      "battery_voltage": 9999,
+      "temperature": 99.99,
+      "step_count": 65535,
+      "report_interval": 255
+    },
+    "expectError": false,
+    "note": "各字段取编码上界，按§2字段定义推导：[2-3]=0x9999 BCD→9999mV（BCD四位最大）；[4-5]=0x9999 BCD→9999/100=99.99°C；[6-7]=0xFFFF 十六进制→65535步；[8]=0xFF→255小时；[9]=0x55尾。"
+  },
+  {
+    "name": "中间值-混合BCD位与高位步数",
+    "source": "manual",
+    "payload": "aa061234401727101855",
+    "fPort": null,
+    "expectData": {
+      "protocol_version": 6,
+      "battery_voltage": 1234,
+      "temperature": 40.17,
+      "step_count": 10000,
+      "report_interval": 24
+    },
+    "expectError": false,
+    "note": "按§2字段定义逐字节推导：[2-3]=0x12,0x34 BCD→1234mV；[4-5]=0x40,0x17 BCD→4017/100=40.17°C；[6-7]=0x27,0x10 十六进制→0x2710=10000步（验证步数高字节权重）；[8]=0x18→24小时。"
+  },
+  {
+    "name": "坏帧-截断缺尾字节",
+    "source": "regression",
+    "payload": "aa0630023626006004",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档§1/§2帧结构定长10字节且以0x55结尾；本帧仅9字节缺尾，应报错。"
+  },
+  {
+    "name": "坏帧-头部非0xAA",
+    "source": "regression",
+    "payload": "ab063002362600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档§2规定[0]=0xAA Header；本帧[0]=0xAB，应报头错误。"
+  },
+  {
+    "name": "坏帧-电压字段非BCD(0x3F)",
+    "source": "regression",
+    "payload": "aa063f02362600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档§2规定[2-3]电压为BCD格式（如0x3002→3002mV）；本帧0x3F02含半字节F，非合法BCD数字，应报错。"
+  },
+  {
+    "name": "坏帧-温度字段非BCD(0x3C)",
+    "source": "regression",
+    "payload": "aa0630023c2600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档§2规定[4-5]温度为BCD格式（如0x3626→36.26°C）；本帧0x3C26含半字节C，非合法BCD数字，应报错。"
+  },
+  {
+    "name": "坏帧-下行指令帧误作上行",
+    "source": "regression",
+    "payload": "aa0155",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "文档§3/§4定义 AA 01 55 为网关下发指令（设置1小时上报），非上行帧；上行解码仅接受§2的10字节帧，3字节应报长度错误（对应未知/非法帧型守卫）。"
+  },
+  {
+    "name": "坏帧-截断缺尾字节(ttn)",
+    "source": "regression",
+    "payload": "aa0630023626006004",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "eartag_ttn_v1.0.0.js",
+    "note": "同坏帧-截断样例，绑定非current的ttn解码器，验证其报错行为一致。"
+  },
+  {
+    "name": "坏帧-头部非0xAA(ttn)",
+    "source": "regression",
+    "payload": "ab063002362600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "eartag_ttn_v1.0.0.js",
+    "note": "同坏帧-坏头样例，绑定ttn解码器验证报错行为。"
+  },
+  {
+    "name": "坏帧-电压字段非BCD(0x3F)(ttn)",
+    "source": "regression",
+    "payload": "aa063f02362600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "eartag_ttn_v1.0.0.js",
+    "note": "同坏BCD电压样例，绑定ttn解码器验证报错行为。"
+  },
+  {
+    "name": "坏帧-温度字段非BCD(0x3C)(ttn)",
+    "source": "regression",
+    "payload": "aa0630023c2600600455",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "eartag_ttn_v1.0.0.js",
+    "note": "同坏BCD温度样例，绑定ttn解码器验证报错行为。"
+  },
+  {
+    "name": "坏帧-下行指令帧误作上行(ttn)",
+    "source": "regression",
+    "payload": "aa0155",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "eartag_ttn_v1.0.0.js",
+    "note": "同下行帧误作上行样例，绑定ttn解码器验证报错行为。"
+  }
+]

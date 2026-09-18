@@ -1,0 +1,202 @@
+[
+  {
+    "name": "历史回归：信息上报帧（版本/电量/间隔/阈值/故障）",
+    "source": "regression",
+    "payload": "686b74000001010203648601e1040105001e0600648300",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 0,
+      "hard_ver": 1,
+      "soft_ver": 2,
+      "battery": 100,
+      "reportInterval": 481,
+      "IRreportMode": 1,
+      "IRreportIntervel": 30,
+      "totalNumber": 100,
+      "faultStatus": 0
+    },
+    "expectError": false,
+    "note": "原解码器内嵌样本；2026-09-04 修复时与固件语义逐字段核对"
+  },
+  {
+    "name": "历史回归：计数上报帧（双计数器+累计值）",
+    "source": "regression",
+    "payload": "686b74005907003300220000122200002222",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 89,
+      "counterA": 51,
+      "counterB": 34,
+      "totalCounterA": 4642,
+      "totalCounterB": 8738
+    },
+    "expectError": false,
+    "note": "同上"
+  },
+  {
+    "name": "守卫：ACK 位置位 + 0x07 计数 TLV 截断",
+    "source": "firmware",
+    "payload": "686b740105070033",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "修复前该形态触发 while(dataLen--) 死循环挂死解码 worker"
+  },
+  {
+    "name": "守卫：未知 TLV 类型失步",
+    "source": "firmware",
+    "payload": "686b7400017e00",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "未知类型无法定位下一 TLV，必须报错停解"
+  },
+  {
+    "name": "设备ID DevEUI（0x02，EUI 后 6 字节）",
+    "source": "firmware",
+    "payload": "686b7400110201a2b3c4d5e6",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 17,
+      "devEUI": "01a2b3c4d5e6"
+    },
+    "expectError": false,
+    "note": "sendLoRaWANData：[0..2]=同步头68 6B 74，[3]=flags 恒0，[4]=packSyncNumber++取0x11=17；setDataPackage(DATATYPE_DEVICE_ADDR_ID=0x02)：memcpy(dest+1, LoRaWAN.DevEUI+2, 6)——取8字节EUI的后6字节 01 A2 B3 C4 D5 E6 原样拷贝，dataLen=7；解码器 bytesToHex 逐字节小写无分隔输出 devEUI"
+  },
+  {
+    "name": "防拆状态上报（0x84=1 设备未安装）",
+    "source": "firmware",
+    "payload": "686b7400128401",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 18,
+      "tamperState": 1
+    },
+    "expectError": false,
+    "note": "帧=68 6B 74 | 00 | 12 | 84 01；setDataPackage(DATATYPE_DEVICE_TAMPER_STATE=0x84)：dest[1]=device_t.tamperAlarm（0设备已安装/1设备未安装），取1=防拆触发事件帧，dataLen=2 → tamperState=1"
+  },
+  {
+    "name": "通讯应答 ACK（0xFF=255）",
+    "source": "firmware",
+    "payload": "686b740013ffff",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 19,
+      "ackResponse": 255
+    },
+    "expectError": false,
+    "note": "帧=68 6B 74 | 00 | 13 | FF FF；fromLoRaWANDataHandle 检测下行 flags bit0=1 后调 setDataPackage(DATATYPE_DEVICE_COMMUNICATE_RESPONSE_ACK=0xFF)：dest[1]=0xFF 写死，dataLen=2 → ackResponse=255"
+  },
+  {
+    "name": "工作模式上报（0x82 恒为节能模式 1）",
+    "source": "firmware",
+    "payload": "686b7400148201",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 20,
+      "workMode": 1
+    },
+    "expectError": false,
+    "note": "帧=68 6B 74 | 00 | 14 | 82 01；setDataPackage(DATATYPE_DEVICE_WORK_MODE=0x82)：dest[1]=1 为固件写死值（0正常/1节能，本固件恒发1），dataLen=2 → workMode=1"
+  },
+  {
+    "name": "ACK 请求位置位 + 电量上边界 100（0x03）",
+    "source": "firmware",
+    "payload": "686b7401150364",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": true,
+      "seqNo": 21,
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "flags=0x01：bit0 语义出自固件 fromLoRaWANDataHandle 的 (validStr[3]&0x01)==1 即请求应答（固件上行 sendLoRaWANData 恒写 [3]=0，本条为协议位判能力样例）→ ackRequested=true；TLV 0x03 电量：dest[1]=batteryLevel=0x64（adc.c 钳位上限 100）→ battery=100"
+  },
+  {
+    "name": "电量下边界 0（0x03=00）",
+    "source": "firmware",
+    "payload": "686b7400160300",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 22,
+      "battery": 0
+    },
+    "expectError": false,
+    "note": "帧=68 6B 74 | 00 | 16 | 03 00；setDataPackage(DATATYPE_DEVICE_BATTERY_INFO=0x03)：dest[1]=batteryLevel=0x00（adc.c：batteryVoltage≤2600mV 时 batteryLevel=0，u8 下边界），dataLen=2 → battery=0"
+  },
+  {
+    "name": "计数边界：u16 最大计数值 + u32 最大累计值（0x07）",
+    "source": "firmware",
+    "payload": "686b74001707ffffffffffffffffffffffff",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 23,
+      "counterA": 65535,
+      "counterB": 65535,
+      "totalCounterA": 4294967295,
+      "totalCounterB": 4294967295
+    },
+    "expectError": false,
+    "note": "帧=68 6B 74 | 00 | 17 | 07 + 12B 全FF；setDataPackage(DATATYPE_DEVICE_IR_REPORT_COUNT=0x07)：dest[1..2]=counter_a_value BE u16=FFFF=65535，dest[3..4]=counter_b_value=FFFF=65535，dest[5..8]=counter_a_count BE u32=FFFFFFFF=4294967295，dest[9..12]=counter_b_count=FFFFFFFF=4294967295；JS 中 0xFF<<24 为负数，固件语义为无符号 u32，期望 4294967295"
+  },
+  {
+    "name": "周期同步上报整帧（当前固件版本常量，7 TLV 组合）",
+    "source": "firmware",
+    "payload": "686b74002a01010a03648601e004010502580603e88300",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 42,
+      "hard_ver": 1,
+      "soft_ver": 10,
+      "battery": 100,
+      "reportInterval": 480,
+      "IRreportMode": 1,
+      "IRreportIntervel": 600,
+      "totalNumber": 1000,
+      "faultStatus": 0
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 固定 TLV 顺序逐项推导：0x01 版本=01 0A（config.h HARDWARE_VER=0x01/SOFTWARE_VER=0x0A → hard_ver=1, soft_ver=10）；0x03 电量=64=100；0x86 同步周期 BE=01E0=480（默认8小时，范围10-1440）；0x04 IR模式=01（PERIOD_REPORT_MODE）；0x05 IR间隔 BE=0258=600s（范围1-1439）；0x06 阈值 BE=03E8=1000（范围1-1999）；0x83 故障=00（故障解除）；seqNo=0x2A=42，flags=0"
+  },
+  {
+    "name": "事件缓存拼帧：电量+故障组合（0x03+0x83）",
+    "source": "firmware",
+    "payload": "686b74001803468301",
+    "fPort": null,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 24,
+      "battery": 70,
+      "faultStatus": 1
+    },
+    "expectError": false,
+    "note": "DeviceEvent_Process 先后将 0x03 电量（dest[1]=batteryLevel=0x46=70）与 0x83 故障（dest[1]=faultState=0x01 设备故障）各以 长度+内容 写入 lwrb 环形缓冲，DeviceStateProcess 读出拼接为一帧 03 46 83 01 经 sendLoRaWANData 加头发送；seqNo=0x18=24"
+  },
+  {
+    "name": "守卫：坏同步头（首字节 0x67）",
+    "source": "regression",
+    "payload": "676b7400000300",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "首字节 0x67≠同步头 0x68，固件 checkDataSyncHead/checkReportSync 均判失败，解码器须报 error=invalid frame header，不得输出任何字段"
+  },
+  {
+    "name": "守卫：过短帧（仅 4 字节）",
+    "source": "regression",
+    "payload": "686b7400",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "仅同步头3字节+flags 1字节，不足最短帧 5 字节（头3+flags+seqNo），须报 error=invalid frame header"
+  }
+]

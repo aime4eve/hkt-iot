@@ -1,0 +1,32 @@
+{
+  "model": "LIQUID-LEVEL",
+  "modelKey": "liquid-level",
+  "aliases": [],
+  "name": "液位传感器",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补）",
+  "category": "液位监测",
+  "authority": {
+    "type": "protocol-doc",
+    "file": null,
+    "missing": true,
+    "note": "无协议文档（债务台账）；5 字节帧格式仅见解码器自述"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "liquid-level_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    }
+  ],
+  "deviations": [],
+  "notes": "原散落在汇中目录的 Sample_chirpstack.js，@product 为 Liquid level sensor，与汇中水表无关，已独立立户。"
+}

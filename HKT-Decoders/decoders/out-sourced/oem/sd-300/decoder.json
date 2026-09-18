@@ -1,0 +1,68 @@
+{
+  "model": "SD-300",
+  "modelKey": "sd-300",
+  "aliases": [],
+  "name": "LoRaWAN 烟感探测器（外购）",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补，手册为 HKT 贴牌）",
+  "category": "消防",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/（烟感）HKT SD-300 LoRaWAN Smoke Detector User Manual_V1.pdf",
+    "section": null,
+    "note": null
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "sd-300_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "sd-300_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "sd-300_chirpstack_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "SD-300 手册 V1（2026-09-18 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "黄金样例 × 手册互证：过短帧报错（原静默空对象）；0x85 恢复出厂为下行专属命令，上行方向出现即报错（原解出 factory_reset）"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "sd-300_ttn_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "SD-300 手册 V1（2026-09-18 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "黄金样例 × 手册互证：过短帧报错（原静默空对象）；0x85 恢复出厂为下行专属命令，上行方向出现即报错（原解出 factory_reset）"
+    }
+  ],
+  "deviations": [],
+  "notes": "注意与自研烟感 SD300（LoRaWAN_SmokeAlarm_KWX，暂无解码器）型号相近，检索时勿混淆。"
+}

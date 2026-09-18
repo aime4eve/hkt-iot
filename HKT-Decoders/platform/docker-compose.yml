@@ -1,0 +1,14 @@
+services:
+  decoder-platform:
+    build: ./platform
+    container_name: hkt-decoder-platform
+    ports:
+      - "8620:8620"
+    volumes:
+      - .:/data/repo
+    environment:
+      - DECODERS_ROOT=/data/repo
+      - PORT=8620
+      # 单条解码硬超时（毫秒），死循环脚本会被熔断
+      - DECODE_TIMEOUT_MS=3000
+    restart: unless-stopped

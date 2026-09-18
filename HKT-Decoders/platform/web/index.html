@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HKT 负载解码器调试平台</title>
+<link rel="stylesheet" href="style.css?v=20260918b">
+</head>
+<body>
+<div id="app" v-cloak>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">HKT</span>
+      <div>
+        <h1>负载解码器调试平台</h1>
+        <p class="sub">解码器唯一权威仓库 · 自研以固件代码为准 / 采购以协议文档为准</p>
+      </div>
+    </div>
+    <div class="topbar-ops">
+      <button class="btn ghost" @click="newDev.open = true">＋ 新增设备</button>
+      <button class="btn ghost" @click="importClick" :disabled="importing">{{ importing ? '导入中…' : '⬆ 导入' }}</button>
+      <button class="btn ghost" @click="exportBackup">⬇ 导出备份</button>
+      <input type="file" ref="importFile" accept=".zip" style="display:none" @change="doImport">
+    </div>
+  </header>
+
+  <div class="toast" v-if="toast" :class="toast.type">{{ toast.text }}</div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <input class="search" v-model.trim="filters.q" placeholder="搜索 型号 / 名称 / 厂商 / 别名…">
+      <div class="filters">
+        <select v-model="filters.origin">
+          <option value="">全部来源</option>
+          <option value="in-house">自研</option>
+          <option value="out-sourced">采购</option>
+        </select>
+        <select v-model="filters.platform">
+          <option value="">全部平台</option>
+          <option value="chirpstack">ChirpStack</option>
+          <option value="ttn">TTN</option>
+          <option value="thingsboard">ThingsBoard</option>
+          <option value="private">私有协议</option>
+        </select>
+        <select v-model="filters.status">
+          <option value="">全部状态</option>
+          <option value="verified">已核验</option>
+          <option value="unverified">待核验</option>
+          <option value="missing">缺依据</option>
+        </select>
+      </div>
+      <div class="devlist">
+        <div v-for="d in filteredDevices" :key="d.id" class="devcard" :class="{active: d.id===currentId}" @click="openDevice(d.id)">
+          <div class="devcard-top">
+            <span class="model">{{ d.model }}</span>
+            <span class="origin-tag" :class="d.origin">{{ d.origin==='in-house' ? '自研' : '采购' }}</span>
+          </div>
+          <div class="devcard-name">{{ d.name }}</div>
+          <div class="devcard-meta">
+            <span>{{ d.vendor }}</span>
+            <span class="dot">·</span>
+            <span>{{ d.stats.platforms.join('/') || '—' }}</span>
+          </div>
+          <div class="devcard-badges">
+            <span v-if="d.stats.verifiedCount" class="badge ok">已核验 {{ d.stats.verifiedCount }}</span>
+            <span v-if="d.stats.unverifiedCount" class="badge warn">待核验 {{ d.stats.unverifiedCount }}</span>
+            <span v-if="d.stats.missingAuthority" class="badge bad">缺依据</span>
+            <span v-if="d.stats.sampleCount" class="badge neutral">样例 {{ d.stats.sampleCount }}</span>
+          </div>
+        </div>
+        <div v-if="!filteredDevices.length" class="empty small">没有匹配的设备</div>
+      </div>
+    </aside>
+
+    <main class="main" v-if="dev">
+      <div class="devhead">
+        <div class="devhead-title">
+          <h2>{{ dev.name }}</h2>
+          <span class="model big">{{ dev.model }}</span>
+          <span class="origin-tag" :class="dev.origin">{{ dev.origin==='in-house' ? '自研' : '采购' }}</span>
+        </div>
+        <div class="devhead-sub">
+          <span>厂商：{{ dev.vendor }}</span><span class="dot">·</span>
+          <span>类别：{{ dev.category }}</span>
+          <template v-if="dev.aliases.length"><span class="dot">·</span><span>别名：{{ dev.aliases.join(' / ') }}</span></template>
+        </div>
+        <div class="authority" :class="dev.authority.type==='firmware' ? 'fw' : (dev.authority.exists ? 'doc' : 'missing')">
+          <b>正确性依据（{{ dev.authority.type==='firmware' ? '固件代码' : '协议文档' }}）：</b>
+          <template v-if="dev.authority.type==='firmware'">
+            <code>{{ dev.authority.path }}</code><span v-if="dev.authority.ref"> @ {{ dev.authority.ref }}</span>
+          </template>
+          <template v-else-if="dev.authority.exists">
+            <a href="javascript:void(0)" @click="openDoc(dev.authority.file)">{{ dev.authority.file }}</a>
+            <span v-if="dev.authority.section">（{{ dev.authority.section }}）</span>
+          </template>
+          <template v-else>
+            <span class="bad-text">缺失（{{ dev.authority.note || '待补' }}）</span>
+          </template>
+        </div>
+        <p class="notes" v-if="dev.notes">备注：{{ dev.notes }}</p>
+        <p class="notes deviation" v-if="dev.deviations.length">⚠ 实测与文档偏差 {{ dev.deviations.length }} 条（以文档为准，待厂商确认）</p>
+      </div>
+
+      <nav class="tabs">
+        <button :class="{on: tab==='codecs'}" @click="tab='codecs'">解码器 ({{ dev.codecs.length }})</button>
+        <button :class="{on: tab==='bench'}" @click="tab='bench'">解码测试台</button>
+        <button :class="{on: tab==='regression'}" @click="tab='regression'">样例回归 ({{ dev.samples.length }})</button>
+        <button :class="{on: tab==='diff'}" @click="tab='diff'">版本对比</button>
+        <button :class="{on: tab==='manage'}" @click="tab='manage'">管理</button>
+      </nav>
+
+      <!-- 解码器台账 -->
+      <section v-if="tab==='codecs'" class="panel">
+        <table class="tbl">
+          <thead><tr>
+            <th>平台</th><th>语言</th><th>版本</th><th>状态</th><th>固件/协议版本</th><th>变更说明</th><th class="ops">操作</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="c in dev.codecs" :key="c.file" :class="{dim: !c.current}">
+              <td><span class="plat" :class="c.platform">{{ platformLabel(c.platform) }}</span><span v-if="c.current" class="badge cur">current</span></td>
+              <td>{{ c.lang ? c.lang.toUpperCase() : '—' }}</td>
+              <td><code>v{{ c.decoderVersion }}</code></td>
+              <td><span class="badge" :class="c.status==='verified' ? 'ok':'warn'">{{ c.status==='verified' ? '已核验' : '待核验' }}</span></td>
+              <td>{{ c.firmwareVersion || '—' }}</td>
+              <td class="cl">{{ c.changelog }}</td>
+              <td class="ops">
+                <button class="btn tiny" @click="viewCode(c.file)">代码</button>
+                <button class="btn tiny" @click="copyCode(c.file)">复制</button>
+                <button class="btn tiny" @click="useInBench(c)">测试</button>
+                <button class="btn tiny" v-if="!c.current" @click="setCurrent(c.file)">设为 current</button>
+                <button class="btn tiny" v-if="c.status!=='verified'" @click="verifyClick(c)">标核验</button>
+                <button class="btn tiny danger" @click="deleteCodec(c)">删</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="hint">灰底行 = 非 current 历史版本；采购设备核验以 <a href="javascript:void(0)" @click="openDoc(dev.authority.file)" v-if="dev.authority.exists && dev.authority.type==='protocol-doc'">协议文档</a><span v-else>协议文档</span> 为准，自研以固件代码为准。</p>
+      </section>
+
+      <!-- 测试台 -->
+      <section v-if="tab==='bench'" class="panel">
+        <div class="bench-form">
+          <div class="row">
+            <label>解码器</label>
+            <select v-model="bench.file">
+              <option v-for="c in dev.codecs" :key="c.file" :value="c.file">
+                {{ platformLabel(c.platform) }}{{ c.lang ? ' / '+c.lang.toUpperCase() : '' }} — v{{ c.decoderVersion }}{{ c.current ? '（current）' : '' }}{{ c.status==='verified' ? ' ✔' : '' }}
+              </option>
+            </select>
+            <label>fPort</label>
+            <input class="fport" v-model="bench.fPort" placeholder="如 210，可空">
+            <label>超时 ms</label>
+            <input class="fport" v-model="bench.timeoutMs" placeholder="3000">
+          </div>
+          <label class="lbl">负载（每行一条；支持 hex / base64 自动识别，空格分隔可粘贴；可用 <code>hex:</code>、<code>b64:</code> 前缀强制；行首 <code>[fPort=N]</code> 覆盖该行端口）</label>
+          <textarea class="payloads" v-model="bench.text" rows="7" spellcheck="false" placeholder="000104040c857d0077011701&#10;68 6b 74 00 59 07 …&#10;b64:AAEEBMiFfQBdARcQAQ=="></textarea>
+          <div class="row btns">
+            <button class="btn primary" @click="runBench" :disabled="bench.running">{{ bench.running ? '解码中…' : '▶ 逐条解码' }}</button>
+            <button class="btn" @click="loadSamplePayloads">载入黄金样例负载</button>
+            <button class="btn ghost" @click="bench.text=''; bench.results=[]">清空</button>
+            <span v-if="bench.summary" class="sum">共 {{ bench.summary.total }} 条：成功 {{ bench.summary.ok }} / 失败 {{ bench.summary.failed }}</span>
+          </div>
+        </div>
+        <div class="cards">
+          <div v-for="(r,i) in bench.results" :key="i" class="card" :class="{bad: !r.ok}">
+            <div class="card-head">
+              <span class="lineno">#{{ i+1 }}</span>
+              <code class="pay">{{ r.raw.length > 64 ? r.raw.slice(0,64)+'…' : r.raw }}</code>
+              <span v-if="r.format" class="badge neutral">{{ r.format }} · {{ r.byteLen }}B</span>
+              <span v-if="r.fPort!=null" class="badge neutral">fPort {{ r.fPort }}</span>
+              <span v-if="r.durationMs!=null" class="badge neutral">{{ r.durationMs }}ms</span>
+              <span class="badge" :class="r.timedOut ? 'bad' : (r.ok ? 'ok':'warn')">
+                {{ r.timedOut ? '超时熔断' : (r.ok ? '成功' : (r.format ? '解码报错' : '输入错误')) }}
+              </span>
+            </div>
+            <div v-if="r.errors.length" class="errs"><div v-for="e in r.errors" :key="e">✕ {{ e }}</div></div>
+            <div v-if="r.warnings.length" class="warns"><div v-for="w in r.warnings" :key="w">⚠ {{ w }}</div></div>
+            <pre v-if="r.data" class="json">{{ fmtJson(r.data) }}</pre>
+            <details v-if="r.logs && r.logs.length"><summary>脚本 console 输出（{{ r.logs.length }}）</summary><pre class="logs">{{ r.logs.join('\n') }}</pre></details>
+          </div>
+        </div>
+      </section>
+
+      <!-- 样例回归 -->
+      <section v-if="tab==='regression'" class="panel">
+        <div class="row btns">
+          <button class="btn primary" @click="runRegression()" :disabled="reg.running">{{ reg.running ? '回归中…' : '▶ 跑全部 current 版本回归' }}</button>
+          <span v-if="reg.summary" class="sum" :class="reg.summary.fail ? 'bad-text':'ok-text'">
+            {{ reg.summary.total }} 条：通过 {{ reg.summary.pass }} / 失败 {{ reg.summary.fail }}
+          </span>
+        </div>
+        <p v-if="!dev.samples.length" class="hint">该设备暂无黄金样例（见迁移债务台账）。补样例方式：把已验证负载与期望输出写入 <code>samples/samples.json</code> 并提交。</p>
+        <table v-if="reg.cases.length" class="tbl">
+          <thead><tr><th>样例</th><th>来源</th><th>文件</th><th>结果</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr v-for="(c,i) in reg.cases" :key="i" :class="c.ok ? 'row-ok':'row-bad'">
+              <td><code class="pay">{{ c.payload }}</code><div class="casename">{{ c.name }}</div>
+                <div v-if="c.errors.length" class="errs"><div v-for="e in c.errors" :key="e">✕ {{ e }}</div></div>
+                <div v-if="c.diff && c.diff.length" class="diffs">
+                  <div v-for="d in c.diff" :key="d.key"><code>{{ d.key }}</code>：期望 <code>{{ fmtJson(d.expected) }}</code>，实际 <code>{{ fmtJson(d.got) }}</code></div>
+                </div>
+              </td>
+              <td><span class="badge neutral">{{ c.source }}</span></td>
+              <td><code class="small">{{ c.file }}</code></td>
+              <td><span class="badge" :class="c.ok ? 'ok':'bad'">{{ c.ok ? '通过' : '失败' }}</span></td>
+              <td class="cl">{{ c.note }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 版本对比 -->
+      <section v-if="tab==='diff'" class="panel">
+        <div class="row">
+          <label>版本 A</label>
+          <select v-model="diff.fileA">
+            <option v-for="c in dev.codecs" :key="c.file" :value="c.file">{{ platformLabel(c.platform) }}{{ c.lang?'/'+c.lang.toUpperCase():'' }} v{{ c.decoderVersion }}{{ c.current?'（current）':'' }}</option>
+          </select>
+          <label>版本 B</label>
+          <select v-model="diff.fileB">
+            <option v-for="c in dev.codecs" :key="c.file" :value="c.file">{{ platformLabel(c.platform) }}{{ c.lang?'/'+c.lang.toUpperCase():'' }} v{{ c.decoderVersion }}{{ c.current?'（current）':'' }}</option>
+          </select>
+        </div>
+        <label class="lbl">负载（每行一条，规则同测试台；全局 fPort：<input class="fport inline" v-model="diff.fPort" placeholder="可空">）</label>
+        <textarea class="payloads" v-model="diff.text" rows="5" spellcheck="false"></textarea>
+        <div class="row btns">
+          <button class="btn primary" @click="runDiff" :disabled="diff.running">{{ diff.running ? '对比中…' : '▶ 对比' }}</button>
+          <span v-if="diff.summary" class="sum">共 {{ diff.summary.total }} 条：<b class="ok-text">一致 {{ diff.summary.same }}</b> / <b class="bad-text">不一致 {{ diff.summary.changed }}</b></span>
+        </div>
+        <div v-for="(r,i) in diff.results" :key="i" class="card" :class="{bad: !r.equal}">
+          <div class="card-head">
+            <span class="lineno">#{{ i+1 }}</span>
+            <code class="pay">{{ r.raw.length > 64 ? r.raw.slice(0,64)+'…' : r.raw }}</code>
+            <span class="badge" :class="r.equal ? 'ok':'bad'">{{ r.equal ? '输出一致' : '输出不一致' }}</span>
+          </div>
+          <div class="twocol">
+            <div><div class="colhead">A：{{ shortFile(r.a.file) }} {{ r.a.ok ? '' : '（报错）' }} <span v-if="r.a.durationMs!=null" class="dim-text">{{ r.a.durationMs }}ms</span></div><pre class="json">{{ fmtJson(r.a.data) }}<template v-if="r.a.errors.length">{{ '\n' }}✕ {{ r.a.errors.join('; ') }}</template></pre></div>
+            <div><div class="colhead">B：{{ shortFile(r.b.file) }} {{ r.b.ok ? '' : '（报错）' }} <span v-if="r.b.durationMs!=null" class="dim-text">{{ r.b.durationMs }}ms</span></div><pre class="json">{{ fmtJson(r.b.data) }}<template v-if="r.b.errors.length">{{ '\n' }}✕ {{ r.b.errors.join('; ') }}</template></pre></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 管理 -->
+      <section v-if="tab==='manage'" class="panel">
+        <h3 class="sec-title">台账信息</h3>
+        <div class="form grid2">
+          <label>名称 <input v-model="mgmt.form.name"></label>
+          <label>型号 <input v-model="mgmt.form.model"></label>
+          <label>厂商 <input v-model="mgmt.form.vendor"></label>
+          <label>类别 <input v-model="mgmt.form.category"></label>
+          <label>别名（逗号分隔）<input v-model="mgmt.form.aliases"></label>
+          <label>默认 fPort <input v-model="mgmt.form.fPortDefault" placeholder="可空"></label>
+          <label class="span2">备注 <input v-model="mgmt.form.notes"></label>
+        </div>
+        <div class="form">
+          <b class="lbl">正确性依据</b>
+          <div class="row">
+            <select v-model="mgmt.form.authType" style="min-width:150px">
+              <option value="firmware">固件代码（自研）</option>
+              <option value="protocol-doc">协议文档（采购）</option>
+            </select>
+            <template v-if="mgmt.form.authType==='firmware'">
+              <input v-model="mgmt.form.authPath" placeholder="固件代码路径" style="flex:1;min-width:220px">
+              <input v-model="mgmt.form.authRef" placeholder="commit/版本号（可空）" style="width:180px">
+            </template>
+            <template v-else>
+              <input v-model="mgmt.form.authFile" placeholder="docs/文档文件名" style="flex:1;min-width:220px" readonly>
+              <input v-model="mgmt.form.authSection" placeholder="章节（可空）" style="width:200px">
+              <label class="btn tiny filebtn">上传文档<input type="file" accept=".pdf,.docx,.doc,.md,.txt,.xlsx" @change="uploadDoc"></label>
+            </template>
+          </div>
+        </div>
+        <button class="btn primary" @click="saveMeta" :disabled="mgmt.saving">保存台账</button>
+
+        <h3 class="sec-title">新增解码器版本</h3>
+        <div class="form">
+          <div class="row">
+            <select v-model="mgmt.nc.platform" style="min-width:150px">
+              <option value="chirpstack">ChirpStack</option><option value="ttn">TTN</option><option value="thingsboard">ThingsBoard</option><option value="private">私有协议</option>
+            </select>
+            <select v-model="mgmt.nc.lang" style="min-width:100px">
+              <option value="">语言不限</option><option value="cn">cn</option><option value="en">en</option>
+            </select>
+            <input v-model="mgmt.nc.version" placeholder="版本 x.y.z" style="width:120px">
+            <input v-model="mgmt.nc.firmwareVersion" placeholder="对应固件/协议版本（可空）" style="width:200px">
+          </div>
+          <input class="full" v-model="mgmt.nc.changelog" placeholder="变更说明（必填，如：修复截断帧死循环）">
+          <label class="lbl">代码（粘贴，或选择 .js 文件上传；入口须为 decodeUplink(input) 或 Decoder(bytes, port)）</label>
+          <textarea class="payloads" v-model="mgmt.nc.code" rows="8" spellcheck="false" placeholder="function decodeUplink(input) { ... }"></textarea>
+          <div class="row btns">
+            <label class="btn filebtn">选择 js 文件<input type="file" accept=".js" @change="mgmtFilePicked"></label>
+            <button class="btn primary" @click="addCodec" :disabled="mgmt.saving">保存新版本</button>
+          </div>
+        </div>
+
+        <h3 class="sec-title">黄金样例（samples.json，整体编辑）</h3>
+        <textarea class="payloads" v-model="mgmt.samplesText" rows="8" spellcheck="false"></textarea>
+        <div class="row btns">
+          <button class="btn primary" @click="saveSamples" :disabled="mgmt.saving">保存样例</button>
+          <span class="hint inline">格式：[{"name":"…","source":"manual|firmware|field|regression","payload":"hex","fPort":210,"expectData":{…},"expectError":false,"note":"…"}]</span>
+        </div>
+      </section>
+    </main>
+
+    <main class="main empty" v-else>
+      <div class="welcome">
+        <h2>← 从左侧选择设备开始</h2>
+        <p>检索设备 → 查看解码器台账与正确性依据 → 测试台逐条解码 → 黄金样例回归 → 版本对比。</p>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal" v-if="codeView.open" @click.self="codeView.open=false">
+    <div class="modal-box">
+      <div class="modal-head">
+        <b>{{ codeView.file }}</b>
+        <span>
+          <button class="btn tiny" @click="copyViewed">复制全部</button>
+          <button class="btn tiny ghost" @click="codeView.open=false">关闭</button>
+        </span>
+      </div>
+      <pre class="code">{{ codeView.content }}</pre>
+    </div>
+  </div>
+
+  <div class="modal" v-if="newDev.open" @click.self="newDev.open=false">
+    <div class="modal-box narrow">
+      <div class="modal-head"><b>新增设备</b>
+        <button class="btn tiny ghost" @click="newDev.open=false">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form grid2">
+          <label>型号 * <input v-model.trim="newDev.form.model" placeholder="如 GM-200"></label>
+          <label>modelKey * <input v-model.trim="newDev.form.modelKey" placeholder="小写连字符，如 gm-200"></label>
+          <label>名称 * <input v-model.trim="newDev.form.name" placeholder="如 LoRaWAN 智能燃气表二代"></label>
+          <label>来源 *
+            <select v-model="newDev.form.origin" @change="onOriginChange">
+              <option value="in-house">自研</option>
+              <option value="out-sourced">采购</option>
+            </select>
+          </label>
+          <label>厂商 <input v-model.trim="newDev.form.vendor" placeholder="自研默认 HKT"></label>
+          <label>类别 <input v-model.trim="newDev.form.category" placeholder="如 表计"></label>
+          <label v-if="newDev.form.origin==='out-sourced'">厂商目录名 * <input v-model.trim="newDev.form.vendorKey" placeholder="如 oufu（设备落在 out-sourced/下）"></label>
+          <label>默认 fPort <input v-model.trim="newDev.form.fPortDefault" placeholder="可空"></label>
+          <label>别名 <input v-model.trim="newDev.form.aliases" placeholder="逗号分隔，可空"></label>
+        </div>
+        <div class="form">
+          <b class="lbl">正确性依据 *</b>
+          <div class="row">
+            <select v-model="newDev.form.authType" style="min-width:150px">
+              <option value="firmware">固件代码（自研）</option>
+              <option value="protocol-doc">协议文档（采购）</option>
+            </select>
+            <input v-if="newDev.form.authType==='firmware'" v-model.trim="newDev.form.authPath" placeholder="固件代码路径" style="flex:1">
+            <template v-else>
+              <select v-model="newDev.form.authMissing" style="min-width:170px">
+                <option :value="false">已有文档（建后上传）</option>
+                <option :value="true">暂缺（记入债务台账）</option>
+              </select>
+            </template>
+          </div>
+          <input v-if="newDev.form.authType==='protocol-doc' && !newDev.form.authMissing" class="full" v-model.trim="newDev.form.authSection" placeholder="文档章节（可空）">
+        </div>
+        <div class="row btns">
+          <button class="btn primary" @click="createDevice" :disabled="newDev.saving">创建</button>
+          <span class="hint inline">创建后到「管理」页上传解码器版本与文档</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="vendor/vue.global.prod.js"></script>
+<script>
+// 加载兜底：若 8 秒后 Vue 仍未挂载（JS 加载失败等），强制显示提示而非白屏
+setTimeout(function () {
+  var app = document.getElementById('app');
+  if (app && app.hasAttribute('v-cloak')) {
+    app.removeAttribute('v-cloak');
+    var tip = document.createElement('div');
+    tip.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;padding:12px 16px;font:14px/1.6 sans-serif;';
+    tip.innerHTML = '前端资源加载失败（页面无法初始化）。请刷新重试；若反复出现，说明服务器正在重启或网络不通，稍等几秒再刷新。';
+    document.body.appendChild(tip);
+  }
+}, 8000);
+</script>
+<script src="app.js?v=20260918a"></script>
+</body>
+</html>

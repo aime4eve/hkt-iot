@@ -1,0 +1,164 @@
+[
+  {
+    "name": "手册 §5 示例帧：防拆已触发+红外告警",
+    "source": "manual",
+    "payload": "000104040c857d0077011701",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 3.205,
+      "voltageStatus": "Normal",
+      "tamperStatus": "Tampered",
+      "infraredAlarm": "Alarm"
+    },
+    "expectError": false,
+    "note": "手册 §5 Example using Infrared Alarm Data；电池 0x0c85=3205mV÷1000"
+  },
+  {
+    "name": "构造：全通道告警帧（低电压+低电+防拆告警）",
+    "source": "regression",
+    "payload": "000104040c857d017701050103011701",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 3.205,
+      "voltageStatus": "Low Voltage",
+      "tamperStatus": "Tampered",
+      "lowBatteryAlarm": "Alarm",
+      "tamperAlarm": "Tamper Alarm",
+      "infraredAlarm": "Alarm"
+    },
+    "expectError": false,
+    "note": "按手册通道表构造"
+  },
+  {
+    "name": "守卫：0x04 电压通道截断",
+    "source": "regression",
+    "payload": "000104040c",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  },
+  {
+    "name": "守卫：未知通道 0x66",
+    "source": "regression",
+    "payload": "000104040c857d007701170166",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  },
+  {
+    "name": "守卫：仅未知通道 0xff",
+    "source": "regression",
+    "payload": "ff",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": ""
+  },
+  {
+    "name": "构造：心跳全通道正常帧（§5.1 各通道 00 值）",
+    "source": "manual",
+    "payload": "000104040e107d007700050003001700",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 3.6,
+      "voltageStatus": "Normal",
+      "tamperStatus": "Normal",
+      "lowBatteryAlarm": "Normal",
+      "tamperAlarm": "Normal",
+      "infraredAlarm": "Normal"
+    },
+    "expectError": false,
+    "note": "手册 §5.1 通道表逐字节推导：00 占位|01 04|04 0x0e10=3600mV÷1000=3.6V|7d 00=Normal|77 00=Normal|05 00=Normal|03 00=Normal|17 00=Normal；规格 3.6V 与 §1.3 Supply Voltage DC 3.6V 一致"
+  },
+  {
+    "name": "构造：通道乱序组合帧（17→04→01→00）",
+    "source": "manual",
+    "payload": "1701040fa0010200",
+    "fPort": 210,
+    "expectData": {
+      "infraredAlarm": "Alarm",
+      "batteryVoltage": 4,
+      "productModel": 2
+    },
+    "expectError": false,
+    "note": "手册 §5 通道式格式未规定通道出现顺序，乱序应逐通道独立解码：17 01=Alarm|04 0x0fa0=4000mV→4V|01 0x02 型号 1B 透传（手册仅示例 04=传感器，非 04 值按 1B 原值）|00 占位无值"
+  },
+  {
+    "name": "构造：低电压告警组合帧（省略防拆通道）",
+    "source": "manual",
+    "payload": "00010404028f7d0105011700",
+    "fPort": 210,
+    "expectData": {
+      "productModel": 4,
+      "batteryVoltage": 0.655,
+      "voltageStatus": "Low Voltage",
+      "lowBatteryAlarm": "Alarm",
+      "infraredAlarm": "Normal"
+    },
+    "expectError": false,
+    "note": "手册 §5.1 逐字节推导：00 占位|01 04|04 0x028f=655mV→0.655V|7d 01=Low Voltage|05 01=Alarm|17 00=Normal；77/03 防拆类通道按报告类型省略（§5 示例帧即省略 05/03，证通道可省略）"
+  },
+  {
+    "name": "边界：电池电压 0x0000（0 mV）",
+    "source": "manual",
+    "payload": "040000",
+    "fPort": 210,
+    "expectData": {
+      "batteryVoltage": 0
+    },
+    "expectError": false,
+    "note": "手册 §5.1 ch04：2B 大端 mV÷1000；0x0000=0mV→0V，下边界；仅含 ch04 的最小帧（通道可按报告类型省略）"
+  },
+  {
+    "name": "边界：电池电压 0xFFFF（65535 mV 满量程）",
+    "source": "manual",
+    "payload": "04ffff",
+    "fPort": 210,
+    "expectData": {
+      "batteryVoltage": 65.535
+    },
+    "expectError": false,
+    "note": "手册 §5.1 ch04：2B 大端 mV÷1000；0xffff=65535mV→65.535V，上边界（超出物理量程但格式合法，按公式换算）"
+  },
+  {
+    "name": "守卫：ch01 产品型号通道截断",
+    "source": "regression",
+    "payload": "0001",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": "手册 §5.1 ch01 定长 1B；00 占位后 01 通道缺值字节，应判截断报错"
+  },
+  {
+    "name": "守卫：ch7d 电压状态通道截断",
+    "source": "regression",
+    "payload": "000104040c857d",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": "手册 §5.1 ch7d 定长 1B；帧尾 7d 后无值字节，应判截断报错"
+  },
+  {
+    "name": "守卫：仅保留占位通道（无任何有效数据）",
+    "source": "regression",
+    "payload": "0000",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": "手册 §5.1：00 为保留通道仅占位无值；全帧仅保留通道则无可解码数据，应报错而非空输出"
+  },
+  {
+    "name": "守卫：未知通道 0x66 中段截停",
+    "source": "regression",
+    "payload": "000104040c85667701",
+    "fPort": 210,
+    "expectData": null,
+    "expectError": true,
+    "note": "手册 §5.1 通道表无 0x66；偏移 6 处未知通道应立即报错停止解析，其后 77 01 不得解码出 tamperStatus"
+  }
+]

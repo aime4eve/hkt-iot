@@ -1,0 +1,310 @@
+[
+  {
+    "name": "周期正常上报：温湿度/状态/移动/电量全字段",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31342c312c302c32352e342c35382e332c312c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 14,
+      "event": 1,
+      "state": 0,
+      "temperature": 25.4,
+      "humidity": 58.3,
+      "moved": 1,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "帧=T,S1+大写DEVEUI(16字符,%02X)+软版本SOFTWARE_VER 0x29=41+包序14+事件1(周期上报,communicate.c Device_PeriodicReport)+状态0(tamper/move/低电均无)+温度(毫摄氏度/1000后%.1f=25.4)+湿度(毫百分数/1000后%.1f=58.3)+移动1+battery=2.6+batteryLevel/100=2.6+90/100=3.5(%.1f);fPort=LoRaWAN_DEFAULT_PORT 10"
+  },
+  {
+    "name": "温度过低报警：-35.5℃ 低于默认低温阈值-30",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31352c322c302c2d33352e352c34352e322c302c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 15,
+      "event": 2,
+      "state": 0,
+      "temperature": -35.5,
+      "humidity": 45.2,
+      "moved": 0,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "事件链:temp(-35500m℃)<low(-30*1000)→DATATYPE_DEVICE_LOW_THRESHOLD_TEMP_ALARM=2;%.1f输出\"-35.5\"带负号,parseFloat=-35.5;负温为边界样例"
+  },
+  {
+    "name": "湿度过高报警：100.0%RH 饱和",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31362c352c302c32382e302c3130302e302c302c332e34",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 16,
+      "event": 5,
+      "state": 0,
+      "temperature": 28,
+      "humidity": 100,
+      "moved": 0,
+      "battery": 3.4
+    },
+    "expectError": false,
+    "note": "humi(100000m%)>high(99*1000)→DATATYPE_DEVICE_HIGH_THRESHOLD_HUMI_ALARM=5;%.1f打印\"100.0\",parseFloat=100(整数);batteryLevel=80→2.6+0.8=3.4;温度28.0→28"
+  },
+  {
+    "name": "边界：0.0℃ 与 0.0%RH",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31372c312c302c302e302c302e302c302c332e33",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 17,
+      "event": 1,
+      "state": 0,
+      "temperature": 0,
+      "humidity": 0,
+      "moved": 0,
+      "battery": 3.3
+    },
+    "expectError": false,
+    "note": "sensor_t.temperature=0毫摄氏度→%.1f\"0.0\"→parseFloat 0;湿度同理;batteryLevel=70→3.3;0值边界确认无符号/缺省丢失"
+  },
+  {
+    "name": "移动报警：事件7+状态1+moved=1",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31382c372c312c32342e382c35352e362c312c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 18,
+      "event": 7,
+      "state": 1,
+      "temperature": 24.8,
+      "humidity": 55.6,
+      "moved": 1,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "move_state&&move_isable→DATATYPE_DEVICE_MOVE_DETECTION=7(事件链最高优先);state=1(move_state置位);moved=sprintf%d(move_state=1,发送后清零)"
+  },
+  {
+    "name": "防拆报警：事件8+状态1",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c31392c382c312c32332e312c35302e322c302c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 19,
+      "event": 8,
+      "state": 1,
+      "temperature": 23.1,
+      "humidity": 50.2,
+      "moved": 0,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "tamper_status置位→DATATYPE_DEVICE_TAMPER_ALARM=8;state=1;tamper/move/低电→state1分支;moved=move_state=0"
+  },
+  {
+    "name": "低电量报警：事件6+电量2.7V",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32302c362c312c32322e302c34382e302c302c322e37",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 20,
+      "event": 6,
+      "state": 1,
+      "temperature": 22,
+      "humidity": 48,
+      "moved": 0,
+      "battery": 2.7
+    },
+    "expectError": false,
+    "note": "batteryLevel=10<20→state=1;battery_value=(double)2.6+(float)10/100=2.7<2.8→DATATYPE_DEVICE_BATTERY_LOW=6;%.1f→\"2.7\""
+  },
+  {
+    "name": "温度超上限：固件实际仍发事件码2（固件缺陷原样回归）",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32312c322c302c3130352e302c34302e302c302c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 21,
+      "event": 2,
+      "state": 0,
+      "temperature": 105,
+      "humidity": 40,
+      "moved": 0,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "固件communicate.c高温分支误用DATATYPE_DEVICE_LOW_THRESHOLD_TEMP_ALARM(=2)而非3,故空口帧事件字段就是\"2\";期望按固件真实输出推导;高温>99*1000触发"
+  },
+  {
+    "name": "移动/电量检测关闭：\"*\"占位→null",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32322c312c302c32312e352c35322e352c2a2c2a",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 22,
+      "event": 1,
+      "state": 0,
+      "temperature": 21.5,
+      "humidity": 52.5,
+      "moved": null,
+      "battery": null
+    },
+    "expectError": false,
+    "note": "move_isable=0→moved字段sprintf\"*\";battery_isable=0→battery字段\"*\";解码parseInt/parseFloat(\"*\")=NaN,JSON序列化为null,期望值即null"
+  },
+  {
+    "name": "GPS定位：北纬东经+时间戳",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32332c32312c453131322e3835303833302c4e32382e3234363338392c323032322e30372e31322030393a32303a34342c32382e38",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 23,
+      "event": 21,
+      "lon": 112.85083,
+      "lat": 28.246389,
+      "time": "2022.07.12 09:20:44",
+      "temperature": 28.8
+    },
+    "expectError": false,
+    "note": "DATATYPE_DEVICE_GPS_INFO=21;经度\"%s%lf\"→E+6位小数\"E112.850830\";纬度\"N28.246389\";时间\"%d.%02d.%02d %02d:%02d:%02d\";E/N前缀→正值;parseFloat(\"112.850830\")=112.85083(尾零消失)为规格值"
+  },
+  {
+    "name": "GPS定位：西经南纬+负温",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32342c32312c5738382e3132333435362c5333332e3936353332302c323032332e30312e30352031383a33303a30302c2d31322e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 24,
+      "event": 21,
+      "lon": -88.123456,
+      "lat": -33.96532,
+      "time": "2023.01.05 18:30:00",
+      "temperature": -12.5
+    },
+    "expectError": false,
+    "note": "经纬度为负时前缀取反+fabs输出:W88.123456/S33.965320;W/S→lon/lat取负;温度-12500m℃→\"-12.5\"→-12.5"
+  },
+  {
+    "name": "GPS无定位：\"*,*,*\"占位→null",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32352c32312c2a2c2a2c2a2c32372e33",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 25,
+      "event": 21,
+      "lon": null,
+      "lat": null,
+      "time": "*",
+      "temperature": 27.3
+    },
+    "expectError": false,
+    "note": "gps_l76k经纬度为0时固件strcat\"*,*,*,\";slice(1)后parseFloat(\"\")=NaN→lon/lat为null;time字段原样\"*\""
+  },
+  {
+    "name": "缓存温湿度补报：事件22",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32362c32322c302c31382e322c36362e302c302c332e35",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 26,
+      "event": 22,
+      "state": 0,
+      "temperature": 18.2,
+      "humidity": 66,
+      "moved": 0,
+      "battery": 3.5
+    },
+    "expectError": false,
+    "note": "FLASH_Read_Cache_Data:头T,S1+DEVEUI+41+seq+22,+EEPROM回读的cacheBuf(state,temp,humi,moved,battery,U32打包回读后strcat止于填充0,故尾部仍为纯ASCII);结构同11字段帧,湿度66.0→66"
+  },
+  {
+    "name": "组合：移动报警与低电量同时发生",
+    "source": "firmware",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32372c372c312c31392e392c36332e342c312c322e37",
+    "fPort": 10,
+    "expectData": {
+      "deveui": "0095690600002E25",
+      "soft_ver": 41,
+      "que_num": 27,
+      "event": 7,
+      "state": 1,
+      "temperature": 19.9,
+      "humidity": 63.4,
+      "moved": 1,
+      "battery": 2.7
+    },
+    "expectError": false,
+    "note": "事件链优先级:移动(7)先于低电量(6),故event=7;state=1(move或batteryLevel<20均置1);moved=1;battery=2.7;验证多告警并存时各字段取值规则"
+  },
+  {
+    "name": "101配置响应帧：固件真实上行,含11组配置参数",
+    "source": "firmware",
+    "payload": "522c303039353639303630303030324532352c34312c33312c3130312c312c36303b322c2d33303b332c39393b342c313b352c39393b362c313b372c313b382c313b392c313434303b392c313434303b31302c3235",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "SendConfigInfo下行101请求的应答,经sendLoRaWANData空口上行:\"R,\"+DEVEUI+软版本+包序+101,+类型,值;分隔的配置段(1上报间隔/2低温/3高温/4湿低/5湿高/6电量使能/7移动使能/8系统使能/9GPS间隔(固件重复发两次)/10角度);规格要求:固件上行帧不得报错;当前解码器同步头只认T,S1→预期判失败,记缺陷"
+  },
+  {
+    "name": "守卫：坏同步头(X,S1)必须报错",
+    "source": "regression",
+    "payload": "582c53312c303039353639303630303030324532352c34312c32382c312c302c32352e342c35382e332c312c332e35",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "checkReportSync要求前4字节恰为\"T,S1\";\"X,S1\"→解码器返回undefined→平台报\"decoder returned nothing\""
+  },
+  {
+    "name": "守卫：过短帧(仅3字节\"T,S\")必须报错",
+    "source": "regression",
+    "payload": "542c53",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "3字节负载slice(0,4)=\"T,S\"≠\"T,S1\"→同步失败必须报错;同时验证解码器对超短输入不崩溃"
+  },
+  {
+    "name": "守卫：GPS帧中途截断必须报错而非静默输出",
+    "source": "regression",
+    "payload": "542c53312c303039353639303630303030324532352c34312c32392c32312c453131322e3835",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "同步头合法但字段仅7个(非10/11):规格要求截断帧报错停解;当前解码器跳过分支后仍输出deveui/soft_ver/que_num/event部分数据且无错误→预期判失败,记缺陷"
+  },
+  {
+    "name": "守卫：未知结构帧(6字段/未知事件99)必须报错",
+    "source": "regression",
+    "payload": "542c53312c303039353639303630303030324532352c34312c33302c3939",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件从不发送该形态;字段数∉{10,11}且事件码未知,规格要求报错;当前解码器静默输出公共头4字段→预期判失败,记缺陷"
+  }
+]

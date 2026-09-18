@@ -1,0 +1,292 @@
+[
+  {
+    "name": "周期上报-多TLV完整帧",
+    "source": "firmware",
+    "payload": "686b74002a010404035510015898041106ca9ad01504d20b08000cfe000d1000390100140800121e003c13001700001e",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 4,
+      "soft_ver": 4,
+      "battery": 85,
+      "latitude": 22.5833,
+      "longitude": 113.9412,
+      "step": 1234,
+      "x_acc": 0.125,
+      "y_acc": -0.03125,
+      "z_acc": 0.25,
+      "work_mode": 1,
+      "report_interval_time1": 20,
+      "start_hour_time1": 8,
+      "start_min_time1": 0,
+      "end_hour_time1": 18,
+      "end_min_time1": 30,
+      "report_interval_time2": 60,
+      "start_hour_time2": 19,
+      "start_min_time2": 0,
+      "end_hour_time2": 23,
+      "end_min_time2": 0,
+      "idle_interval": 30
+    },
+    "expectError": false,
+    "note": "固件Device_PeriodicReport固定顺序组包: 帧头686b74+标志00+序号; 01|0404→hard_ver=4,soft_ver=4(HARDWARE_VER/SOFTWARE_VER=0x04); 03|55→battery=85; 10|01589804→22583300/1e6=22.5833(度*1e6大端); 11|06ca9ad0→113941200/1e6=113.9412; 15|04d2→step=1234(固件2字节大端,dest[1]=step>>8); 0B|0800→x_acc原始计数2048; 0C|fe00→y_acc=-512(补码); 0D|1000→z_acc=4096; 39|15字节运行配置: runMode=1,interval1=20min(0014),08:00-18:30,interval2=60min(003c),19:00-23:00,idle=30min(001e)。字段缩放: gat-100 x/y/z_acc=原始计数/16384(g); ct02契约无0x0B/0C/0D/0x39字段。"
+  },
+  {
+    "name": "版本+电量0(低电边界)",
+    "source": "firmware",
+    "payload": "686b7400020104040300",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 4,
+      "soft_ver": 4,
+      "battery": 0
+    },
+    "expectError": false,
+    "note": "01|0404→hard_ver=4,soft_ver=4; 03|00→battery=0(边界0)。"
+  },
+  {
+    "name": "电量满值100(电池事件单TLV帧)",
+    "source": "firmware",
+    "payload": "686b7400030364",
+    "fPort": 10,
+    "expectData": {
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "DeciceEvent_Process电量更新单发03|64→battery=100(上限100)。"
+  },
+  {
+    "name": "经纬度全零(未定位)",
+    "source": "firmware",
+    "payload": "686b74000410000000001100000000",
+    "fPort": 10,
+    "expectData": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "expectError": false,
+    "note": "10|00000000→latitude=0; 11|00000000→longitude=0(gps.c未定位清零)。"
+  },
+  {
+    "name": "南纬西经(负值符号位编码)",
+    "source": "firmware",
+    "payload": "686b740005108204cc141188f2b3c0",
+    "fPort": 10,
+    "expectData": {
+      "latitude": -33.86882,
+      "longitude": -150.123456
+    },
+    "expectError": false,
+    "note": "10|8204cc14→bit31=1,abs=33868820→latitude=-33.86882; 11|88f2b3c0→abs=150123456→longitude=-150.123456。gps.c负值=(u32)(fabs*1e6)|0x80000000。"
+  },
+  {
+    "name": "三轴加速度边界值",
+    "source": "firmware",
+    "payload": "686b7400060b7fff0c80000d0001",
+    "fPort": 10,
+    "expectData": {
+      "x_acc": 1.99993896484375,
+      "y_acc": -2,
+      "z_acc": 0.00006103515625
+    },
+    "expectError": false,
+    "note": "0B|7fff→32767(正向上限); 0C|8000→补码-32768(负向下限); 0D|0001→1。原始计数大端, 除以16384→g: 1.99993896484375 / -2 / 0.00006103515625。"
+  },
+  {
+    "name": "步数65535(上限)",
+    "source": "firmware",
+    "payload": "686b74000715ffff",
+    "fPort": 10,
+    "expectData": {
+      "step": 65535
+    },
+    "expectError": false,
+    "note": "15|ffff→step=0xFFFF=65535(2字节大端)。"
+  },
+  {
+    "name": "步数0(下限)",
+    "source": "firmware",
+    "payload": "686b740008150000",
+    "fPort": 10,
+    "expectData": {
+      "step": 0
+    },
+    "expectError": false,
+    "note": "15|0000→step=0(上电未计步边界)。"
+  },
+  {
+    "name": "运行配置上报-常规",
+    "source": "firmware",
+    "payload": "686b740009390100140800121e003c13001700001e",
+    "fPort": 10,
+    "expectData": {
+      "work_mode": 1,
+      "report_interval_time1": 20,
+      "start_hour_time1": 8,
+      "start_min_time1": 0,
+      "end_hour_time1": 18,
+      "end_min_time1": 30,
+      "report_interval_time2": 60,
+      "start_hour_time2": 19,
+      "start_min_time2": 0,
+      "end_hour_time2": 23,
+      "end_min_time2": 0,
+      "idle_interval": 30
+    },
+    "expectError": false,
+    "note": "39|0100140800121e003c13001700001e→work_mode=1, report_interval_time1=20(0x0014大端,固件dest[2]=hi), 08:00-18:30, report_interval_time2=60(0x003c), 19:00-23:00, idle_interval=30(0x001e)。"
+  },
+  {
+    "name": "运行配置上报-边界(mode0/idle1440)",
+    "source": "firmware",
+    "payload": "686b74000a390000010000000000000000000005a0",
+    "fPort": 10,
+    "expectData": {
+      "work_mode": 0,
+      "report_interval_time1": 1,
+      "start_hour_time1": 0,
+      "start_min_time1": 0,
+      "end_hour_time1": 0,
+      "end_min_time1": 0,
+      "report_interval_time2": 0,
+      "start_hour_time2": 0,
+      "start_min_time2": 0,
+      "end_hour_time2": 0,
+      "end_min_time2": 0,
+      "idle_interval": 1440
+    },
+    "expectError": false,
+    "note": "39|0000010000000000000000000005a0→mode=0(仅idle有效,固件校验1..1440), interval1=1(0x0001下限), 时段全0, idle_interval=1440(0x05a0上限24h)。"
+  },
+  {
+    "name": "主动同步数据帧(0x32)",
+    "source": "firmware",
+    "payload": "686b74000b3200",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "Device_SyncData固定发32|00。gat-100无0x32分支→契约缺字段, 期望仅验证不报错不挂起(缺陷已记录报告)。"
+  },
+  {
+    "name": "服务器应答ACK帧(0xFF)",
+    "source": "firmware",
+    "payload": "686b74000cffff",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "下行data[3]&1=1时固件回FF|FF。gat-100无0xFF分支, 期望仅验证不报错不挂起。"
+  },
+  {
+    "name": "时间同步回执帧(0x80无数据quirk)",
+    "source": "firmware",
+    "payload": "686b74000d80",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "固件quirk: setDataPackage无0x80分支→只发类型字节, 帧尾仅80。gat-100无0x80分支, 期望仅验证不报错不挂起。"
+  },
+  {
+    "name": "守卫-坏帧头(同步字非686b74)",
+    "source": "regression",
+    "payload": "686b7500010340",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件上行帧头恒为SYNC_HEAD={0x68,0x6B,0x74}(communicate.c sendLoRaWANData)。此帧第3字节0x75≠0x74, 属非法帧, 解码器应报错而非静默返回。"
+  },
+  {
+    "name": "守卫-过短帧(仅3字节帧头)",
+    "source": "regression",
+    "payload": "686b74",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件最短上行=帧头3+标志1+序号1+TLV≥2字节。仅3字节连标志/序号位都没有, dataLen=bytes.length-5=-2, 解码器应报错。"
+  },
+  {
+    "name": "守卫-TLV截断(纬度声明4字节实到3字节)",
+    "source": "regression",
+    "payload": "686b7400031000e4e1",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "0x10纬度TLV定长4字节(gps.c 度*1e6大端)。帧尾仅剩3字节00e4e1即被截断, 剩余字节不足以构成完整TLV, 解码器应报错而非用残字节拼值。"
+  },
+  {
+    "name": "守卫-未知TLV类型(7f aa 55 cc)",
+    "source": "regression",
+    "payload": "686b7400047faa55cc",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件DataType枚举中无0x7F类型; 该TLV携带3字节定长数据aa55cc。解码器无法识别长度时应报错, 而非把数据字节误当后续类型号继续解析。"
+  },
+  {
+    "name": "TTN-周期上报-多TLV完整帧",
+    "source": "firmware",
+    "payload": "686b74002a010404035510015898041106ca9ad01504d20b08000cfe000d1000390100140800121e003c13001700001e",
+    "fPort": 10,
+    "forFile": "gat-100_ttn_v1.1.0.js",
+    "expectData": {
+      "hard_ver": 4,
+      "soft_ver": 4,
+      "battery": 85,
+      "latitude": 22.5833,
+      "longitude": 113.9412,
+      "step": 1234,
+      "x_acc": 0.125,
+      "y_acc": -0.03125,
+      "z_acc": 0.25,
+      "work_mode": 1,
+      "report_interval_time1": 20,
+      "start_hour_time1": 8,
+      "start_min_time1": 0,
+      "end_hour_time1": 18,
+      "end_min_time1": 30,
+      "report_interval_time2": 60,
+      "start_hour_time2": 19,
+      "start_min_time2": 0,
+      "end_hour_time2": 23,
+      "end_min_time2": 0,
+      "idle_interval": 30
+    },
+    "expectError": false,
+    "note": "固件Device_PeriodicReport固定顺序组包: 帧头686b74+标志00+序号; 01|0404→hard_ver=4,soft_ver=4(HARDWARE_VER/SOFTWARE_VER=0x04); 03|55→battery=85; 10|01589804→22583300/1e6=22.5833(度*1e6大端); 11|06ca9ad0→113941200/1e6=113.9412; 15|04d2→step=1234(固件2字节大端,dest[1]=step>>8); 0B|0800→x_acc原始计数2048; 0C|fe00→y_acc=-512(补码); 0D|1000→z_acc=4096; 39|15字节运行配置: runMode=1,interval1=20min(0014),08:00-18:30,interval2=60min(003c),19:00-23:00,idle=30min(001e)。字段缩放: gat-100 x/y/z_acc=原始计数/16384(g); ct02契约无0x0B/0C/0D/0x39字段。 v1.1.0 起 ttn 与 chirpstack 统一输出 g。"
+  },
+  {
+    "name": "TTN-三轴加速度边界值",
+    "source": "firmware",
+    "payload": "686b7400060b7fff0c80000d0001",
+    "fPort": 10,
+    "forFile": "gat-100_ttn_v1.1.0.js",
+    "expectData": {
+      "x_acc": 1.99993896484375,
+      "y_acc": -2,
+      "z_acc": 0.00006103515625
+    },
+    "expectError": false,
+    "note": "0B|7fff→32767; 0C|8000→-32768; 0D|0001→1。v1.1.0 起 ttn 与 chirpstack 统一 /16384 输出 g。"
+  },
+  {
+    "name": "TTN-南纬西经(负值符号位编码)",
+    "source": "firmware",
+    "payload": "686b740005108204cc141188f2b3c0",
+    "fPort": 10,
+    "forFile": "gat-100_ttn_v1.1.0.js",
+    "expectData": {
+      "latitude": -33.86882,
+      "longitude": -150.123456
+    },
+    "expectError": false,
+    "note": "与chirpstack版同帧同期望: bit31符号位→-33.86882/-150.123456。ttn与chirpstack的经纬度逻辑一致。"
+  },
+  {
+    "name": "TTN-守卫-坏帧头(同步字非686b74)",
+    "source": "regression",
+    "payload": "686b7500010340",
+    "fPort": 10,
+    "forFile": "gat-100_ttn_v1.1.0.js",
+    "expectData": null,
+    "expectError": true,
+    "note": "ttn版decodeUplink带平台适配层: 帧头非法时easy_decode返回undefined→报\"decoder returned nothing\"。chirpstack版同帧静默返回(缺陷对照)。"
+  }
+]

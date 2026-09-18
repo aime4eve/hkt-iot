@@ -1,0 +1,80 @@
+{
+  "model": "GM-100",
+  "modelKey": "gm-100",
+  "aliases": [],
+  "name": "LoRaWAN 智能燃气表",
+  "origin": "out-sourced",
+  "vendor": "OEM（待补，手册为 HKT 贴牌）",
+  "category": "表计",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/HKT GM-100 LoRaWAN Smart Gas Meter User Manual.md",
+    "section": null,
+    "note": null
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "gm-100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "gm-100_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "gm-100_chirpstack_cn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件：中文输出版（gm100-decode-cn.js）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "gm-100_chirpstack_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "GM-100 手册（2026-09-18 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "按手册 §5.1–5.4 全量重写（扁平契约：sync_head/ack_required/packet_serial/blocks[]）。v1.0.0 系 PAFDS 产品移植件（仅认 bytes[0]==0x02），对 GM-100 的 686B74 帧全部返回空对象，协议完全错配，保留存档非 current"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "gm-100_ttn_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "GM-100 手册（2026-09-18 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "按手册 §5.1–5.4 全量重写（扁平契约：sync_head/ack_required/packet_serial/blocks[]）。v1.0.0 系 PAFDS 产品移植件（仅认 bytes[0]==0x02），对 GM-100 的 686B74 帧全部返回空对象，协议完全错配，保留存档非 current"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 黄金样例工程发现：v1.0.0（chirpstack/ttn）为 PAFDS 错产品移植件，gm-100_chirpstack_cn_v1.0.0 实为按本协议的正确实现（层级输出，保留为存档变体）；v1.1.0 按手册扁平契约重写。"
+}

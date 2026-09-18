@@ -1,0 +1,37 @@
+{
+  "model": "IRC01",
+  "modelKey": "irc01",
+  "aliases": [
+    "PC100",
+    "HKT-IRC01"
+  ],
+  "name": "红外人流量计数器（接收端）",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "人员感知",
+  "authority": {
+    "type": "firmware",
+    "ref": "41ad0d9",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_People_Counter/LoRaWAN_People_Counter_Recv/USER/Drive/communicate.c"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "irc01_chirpstack_v1.0.1.js",
+      "decoderVersion": "1.0.1",
+      "firmwareVersion": "官方索引未标注（2026-09-04 对照固件核验）",
+      "current": true,
+      "status": "verified",
+      "basis": [
+        "固件 communicate.c sendLoRaWANData/setDataPackage 与 communicate.h 枚举",
+        "黄金样例（含死循环守卫用例）"
+      ],
+      "verifiedAt": "2026-09-17",
+      "changelog": "2026-09-04 防御性修复 8 项：截断帧死循环/uint32 符号溢出/未知类型失步/越界静默错值/补齐缺失类型/透出 ackRequested+seqNo/坏帧恒返回对象/删死代码"
+    }
+  ],
+  "deviations": [],
+  "notes": "官方设备索引型号为 PC100（接收端），解码器头注释为 HKT-IRC01，检索别名已并列，定名待裁决。"
+}

@@ -1,0 +1,273 @@
+[
+  {
+    "name": "版本上报：硬件1软件5（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b740001010105",
+    "fPort": null,
+    "expectData": {
+      "hard_ver": 1,
+      "soft_ver": 5
+    },
+    "expectError": false,
+    "note": "§6.2：68 6B 74=固定同步头\"hkt\"；00=special type(BIT0=0无需应答)；01=包序列号；§6.3 0x01：01=版本类型，数据固定2字节，首字节=硬件版本、末字节=软件版本 → 01=硬版本1、05=软版本5。§6.3 0x01 与 §6.4 示例原帧逐字入样例。"
+  },
+  {
+    "name": "温度上报 25.23℃（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b7400010900628e",
+    "fPort": null,
+    "expectData": {
+      "temperature": 25.23
+    },
+    "expectError": false,
+    "note": "§6.2：68 6B 74=同步头；00=special；01=序列号；§6.3 0x09：09=温度，数据固定3字节大端，℃×1000；00 62 8E=0x00628E=25230 → 25230/1000=25.23℃，最高位0为正。手册§6.3 0x09 示例原帧。"
+  },
+  {
+    "name": "温度上报 -25.23℃（手册示例原帧，负温原码符号位）",
+    "source": "manual",
+    "payload": "686b7400010980628e",
+    "fPort": null,
+    "expectData": {
+      "temperature": -25.23
+    },
+    "expectError": false,
+    "note": "§6.3 0x09：80 62 8E=0x80628E，最高位(bit23)=1 表示负数（原码/符号位，非补码，见§6.3\"When the data is a negative value, the highest bit is 1\"），幅值 0x00628E=25230 → -25.23℃。手册§6.3 0x09 负温示例原帧。"
+  },
+  {
+    "name": "烟感报警触发（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b7400012701",
+    "fPort": null,
+    "expectData": {
+      "smoke_warning": 1
+    },
+    "expectError": false,
+    "note": "§6.3 0x27：27=烟感状态，数据1字节，1=triggers smoke detector → 01=报警触发 → smoke_warning=1。手册§6.3 0x27 示例原帧 68 6B 74 00 01 27 01。"
+  },
+  {
+    "name": "高温报警触发（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b7400012801",
+    "fPort": null,
+    "expectData": {
+      "temperature_warning": 1
+    },
+    "expectError": false,
+    "note": "§6.3 0x28：28=高温报警，数据1字节，1=trigger high temperature alarm → 01 → temperature_warning=1。手册§6.3 0x28 示例原帧 68 6B 74 00 01 28 01（手册该示例文字误写为\"Trigger smoke detector\"，属文档笔误，类型定义以 0x28=高温报警为准）。"
+  },
+  {
+    "name": "时间同步请求（手册示例原帧，special=01）",
+    "source": "manual",
+    "payload": "686b74010180",
+    "fPort": null,
+    "expectData": {
+      "time_sync_request": 1
+    },
+    "expectError": false,
+    "note": "§6.3 0x80：80=同步系统时间，上行时数据位无效（无数据）仅表示请求；01=special type BIT0=1（需应答），01=序列号。手册§6.3 0x80 上行示例原帧 68 6B 74 01 01 80 → time_sync_request=1。"
+  },
+  {
+    "name": "上报周期 1440 分钟（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b7400018605a0",
+    "fPort": null,
+    "expectData": {
+      "report_interval": 1440
+    },
+    "expectError": false,
+    "note": "§6.3 0x86：86=数据同步周期，数据固定2字节大端，单位分钟，支持上行与下行；05 A0=0x05A0=1440 分钟（24h）。手册§6.3 0x86 示例原帧 68 6B 74 00 01 86 05 A0。"
+  },
+  {
+    "name": "电池状态正常（手册示例原帧）",
+    "source": "manual",
+    "payload": "686b7400018901",
+    "fPort": null,
+    "expectData": {
+      "battery": 1
+    },
+    "expectError": false,
+    "note": "§6.3 0x89：89=电池状态，数据1字节，1=Battery is normal → 01 → battery=1。手册§6.3 0x89 示例原帧 68 6B 74 00 01 89 01。"
+  },
+  {
+    "name": "烟感报警恢复",
+    "source": "manual",
+    "payload": "686b7400022700",
+    "fPort": null,
+    "expectData": {
+      "smoke_warning": 0
+    },
+    "expectError": false,
+    "note": "§6.3 0x27：0=Alarm recovery → 00 → smoke_warning=0。序列号取 02（§6.2 序列号仅标识包序，任意值不影响解码），验证 0x27 的恢复态。"
+  },
+  {
+    "name": "高温报警恢复",
+    "source": "manual",
+    "payload": "686b7400022800",
+    "fPort": null,
+    "expectData": {
+      "temperature_warning": 0
+    },
+    "expectError": false,
+    "note": "§6.3 0x28：0=Alarm recovery → 00 → temperature_warning=0。验证 0x28 的恢复态。"
+  },
+  {
+    "name": "电池欠压报警",
+    "source": "manual",
+    "payload": "686b7400038900",
+    "fPort": null,
+    "expectData": {
+      "battery": 0
+    },
+    "expectError": false,
+    "note": "§6.3 0x89：0=Under voltage alarm → 00 → battery=0。§3.2 低电压报警阈值<2.6V。验证 0x89 的欠压态。"
+  },
+  {
+    "name": "版本上报：硬件16软件10（多字节版本值）",
+    "source": "manual",
+    "payload": "686b74001001100a",
+    "fPort": null,
+    "expectData": {
+      "hard_ver": 16,
+      "soft_ver": 10
+    },
+    "expectError": false,
+    "note": "§6.3 0x01：版本两字节按原始字节值上报 → 10=0x10=16（硬版本）、0A=0x0A=10（软版本）。验证版本字节不做 BCD/字符串变换。"
+  },
+  {
+    "name": "组合帧：温度25.23℃+电池正常",
+    "source": "manual",
+    "payload": "686b7400050900628e8901",
+    "fPort": null,
+    "expectData": {
+      "temperature": 25.23,
+      "battery": 1
+    },
+    "expectError": false,
+    "note": "§6.1 帧结构允许 N 个(数据类型+数据)段：68 6B 74=同步头；00=special；05=序列号；09 00 62 8E → §6.3 0x09 温度 25230/1000=25.23℃；89 01 → §6.3 0x89 电池正常=1。验证多 TLV 段连续解析不丢段。"
+  },
+  {
+    "name": "组合帧：烟感报警+高温报警",
+    "source": "manual",
+    "payload": "686b74000627012801",
+    "fPort": null,
+    "expectData": {
+      "smoke_warning": 1,
+      "temperature_warning": 1
+    },
+    "expectError": false,
+    "note": "§6.1 帧结构 N 段：68 6B 74；00=special；06=序列号；27 01 → §6.3 0x27 smoke_warning=1；28 01 → §6.3 0x28 temperature_warning=1。复合报警上行。"
+  },
+  {
+    "name": "边界：温度 60℃（§3.2 高温报警阈值）",
+    "source": "manual",
+    "payload": "686b7400110900ea60",
+    "fPort": null,
+    "expectData": {
+      "temperature": 60
+    },
+    "expectError": false,
+    "note": "§6.3 0x09：00 EA 60=0x00EA60=60000 → 60000/1000=60℃。60℃ 为 §3.2\"Ambient temperature exceeds 60 degrees Celsius\"高温报警判定阈值，验证整百数值无精度损失。"
+  },
+  {
+    "name": "边界：上报周期下限 10 分钟",
+    "source": "manual",
+    "payload": "686b74001286000a",
+    "fPort": null,
+    "expectData": {
+      "report_interval": 10
+    },
+    "expectError": false,
+    "note": "§6.3 0x86：值范围 10-1440 分钟，00 0A=0x000A=10 为下限 → report_interval=10。"
+  },
+  {
+    "name": "边界：上报周期 0（禁用主动上报）",
+    "source": "manual",
+    "payload": "686b740013860000",
+    "fPort": null,
+    "expectData": {
+      "report_interval": 0
+    },
+    "expectError": false,
+    "note": "§6.3 0x86：\"when set to 0, data will not be actively synchronized\" → 00 00=0 为合法禁用值 → report_interval=0。"
+  },
+  {
+    "name": "守卫：同步头首字节错误",
+    "source": "regression",
+    "payload": "6a6b7400012701",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_chirpstack_v1.1.0.js",
+    "note": "§6.2：同步头固定为 0x68 0x6B 0x74（\"hkt\"），6A≠0x68 → 非法帧，解码器必须报错。守卫同时绑定两份解码器确认报错行为一致。"
+  },
+  {
+    "name": "守卫：同步头首字节错误",
+    "source": "regression",
+    "payload": "6a6b7400012701",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_ttn_v1.1.0.js",
+    "note": "同上，TTN 件守卫副本：6A≠0x68 违反 §6.2 固定同步头，必须报错。"
+  },
+  {
+    "name": "守卫：同步头次字节错误",
+    "source": "regression",
+    "payload": "686c7400018901",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_chirpstack_v1.1.0.js",
+    "note": "§6.2：6C≠0x6B → 同步头不匹配，非法帧，必须报错。"
+  },
+  {
+    "name": "守卫：同步头次字节错误",
+    "source": "regression",
+    "payload": "686c7400018901",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_ttn_v1.1.0.js",
+    "note": "同上，TTN 件守卫副本：6C≠0x6B 违反 §6.2 固定同步头，必须报错。"
+  },
+  {
+    "name": "守卫：截断帧（缺序列号与数据段）",
+    "source": "regression",
+    "payload": "686b7400",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_chirpstack_v1.1.0.js",
+    "note": "§6.1 帧结构要求 同步头3B+special type 1B+包序列号 1B+至少一段(类型+数据)：本帧仅 4 字节，缺包序列号与数据段，结构不完整 → 必须报错而非静默返回空对象。"
+  },
+  {
+    "name": "守卫：截断帧（缺序列号与数据段）",
+    "source": "regression",
+    "payload": "686b7400",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_ttn_v1.1.0.js",
+    "note": "同上，TTN 件守卫副本：4 字节帧不满足 §6.1 帧结构（缺序列号与数据段），必须报错。"
+  },
+  {
+    "name": "守卫：下行专属命令 0x85 出现在上行",
+    "source": "regression",
+    "payload": "686b7400018501",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_chirpstack_v1.1.0.js",
+    "note": "§6.3 0x85：恢复出厂设置为下行专属命令（\"Downstream command, upstream command is invalid\"），手册示例原帧 68 6B 74 00 01 85 01 即此帧；该帧出现在上行方向属协议违例，上行解码必须报错而非解出 factory_reset。"
+  },
+  {
+    "name": "守卫：下行专属命令 0x85 出现在上行",
+    "source": "regression",
+    "payload": "686b7400018501",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "forFile": "sd-300_ttn_v1.1.0.js",
+    "note": "同上，TTN 件守卫副本：§6.3 0x85 明示上行无效（downstream only），出现在上行必须报错。"
+  }
+]

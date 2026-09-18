@@ -1,0 +1,67 @@
+{
+  "model": "GAT-100",
+  "modelKey": "gat-100",
+  "aliases": [],
+  "name": "GPS 动物追踪器",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "动物定位",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Animals_Track",
+    "ref": "41ad0d9"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "gat-100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "gat-100_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移件（2026-09-17 规范化迁移，未核验）"
+    },
+    {
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "LoRaWAN_Animals_Track（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "gat-100_chirpstack_v1.1.0.js",
+      "changelog": "防御性重写：坏帧头/TLV 截断/未知类型一律报错（原静默返回或拼残值）；补齐 0x32/0x80/0xFF；负坐标符号位修复；0x39 运行配置字段与大端序逐一对应"
+    },
+    {
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "LoRaWAN_Animals_Track（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "platform": "ttn",
+      "lang": null,
+      "file": "gat-100_ttn_v1.1.0.js",
+      "changelog": "与 chirpstack v1.1.0 同源重写；三轴加速度统一输出 g（v1.0.0 输出原始计数，同帧跨平台值不一致）"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 用户确认自研：固件 HKT-Firmwares/in-house/LoRaWAN_Animals_Track（与 CT02/AT100 同源，定名待裁决）。原归类 out-sourced/oem 已纠正。"
+}

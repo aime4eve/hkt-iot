@@ -1,0 +1,59 @@
+{
+  "model": "W200PL",
+  "modelKey": "w200pl",
+  "aliases": [],
+  "name": "欧孚 W200PL LoRa 私有协议手表",
+  "origin": "out-sourced",
+  "vendor": "欧孚（Oviphone）",
+  "category": "穿戴健康",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/W200PL-Lora私有-通信协议-V2.3.docx",
+    "section": null,
+    "missing": false,
+    "note": "V2.3 协议文档待上传"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "private",
+      "lang": null,
+      "file": "w200pl_private_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "协议 V2.3",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "按 W200PL Lora 私有协议 V2.3 §4 实现 12 类上行帧：02 报警位图/21 关机细分+健康阈值/B5 SOS/03 GPS/D6 蓝牙/C3 充电/F9 电量/BB 版本/A5 组号/32 健康(固定布局)/C0 反馈/28 消息状态；帧=BD+DEVID(8B)+MSGID+payload+checksum，校验和宽松不阻断；时间戳固定北京时间。输出字段名与 B2315L 系对齐并新增 devId"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "w200pl_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "协议 LoRaWAN 通用版本 V2.1",
+      "current": false,
+      "status": "verified",
+      "basis": [
+        "真机数据测试通过"
+      ],
+      "verifiedAt": "2026-09-17",
+      "changelog": "按 W200PL Lorawan 通用版本 V2.1 §4 实现：02/21(type1+type5健康阈值)/B5/03/D6/C3/E9设备状态(新增)/F9/BB/32TLV/C0/28；帧=BD+MSGID+payload+checksum（无 DEVID，与私有版 V2.3 的核心差异），校验和宽松不阻断；时间戳固定北京时间；保留 A2313 紧凑帧自动兼容。基于 b2315l v2.1.1 复制增强"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "w200pl_chirpstack_v1.0.2.js",
+      "decoderVersion": "1.0.2",
+      "firmwareVersion": "协议 LoRaWAN 通用版本 V2.1",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "删除原厂商信息（v1.0.0 的注释清理版，解码逻辑不变）。此前误传为 EN 语言槽，已修正槽位与协议标注"
+    }
+  ],
+  "deviations": [],
+  "notes": ""
+}

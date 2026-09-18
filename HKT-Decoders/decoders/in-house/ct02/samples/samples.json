@@ -1,0 +1,210 @@
+[
+  {
+    "name": "周期上报-多TLV完整帧",
+    "source": "firmware",
+    "payload": "686b74002a010404035510015898041106ca9ad01504d20b08000cfe000d1000390100140800121e003c13001700001e",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 4,
+      "soft_ver": 4,
+      "battery": 85,
+      "latitude": 22.5833,
+      "longitude": 113.9412,
+      "step": 1234,
+      "x_acc": 0.125,
+      "y_acc": -0.03125,
+      "z_acc": 0.25,
+      "work_mode": 1,
+      "report_interval_time1": 20,
+      "start_hour_time1": 8,
+      "start_min_time1": 0,
+      "end_hour_time1": 18,
+      "end_min_time1": 30,
+      "report_interval_time2": 60,
+      "start_hour_time2": 19,
+      "start_min_time2": 0,
+      "end_hour_time2": 23,
+      "end_min_time2": 0,
+      "idle_interval": 30
+    },
+    "expectError": false,
+    "note": "固件Device_PeriodicReport固定顺序组包: 帧头686b74+标志00+序号; 01|0404→hard_ver=4,soft_ver=4(HARDWARE_VER/SOFTWARE_VER=0x04); 03|55→battery=85; 10|01589804→22583300/1e6=22.5833(度*1e6大端); 11|06ca9ad0→113941200/1e6=113.9412; 15|04d2→step=1234(固件2字节大端,dest[1]=step>>8); 0B|0800→x_acc原始计数2048; 0C|fe00→y_acc=-512(补码); 0D|1000→z_acc=4096; 39|15字节运行配置: runMode=1,interval1=20min(0014),08:00-18:30,interval2=60min(003c),19:00-23:00,idle=30min(001e)。字段缩放: gat-100 x/y/z_acc=原始计数/16384(g); ct02契约无0x0B/0C/0D/0x39字段。 期望值step按固件语义=1234(2字节大端); ct02把0x15按1字节读取属于缺陷, 不迁就。"
+  },
+  {
+    "name": "版本+电量0(低电边界)",
+    "source": "firmware",
+    "payload": "686b7400020104040300",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 4,
+      "soft_ver": 4,
+      "battery": 0
+    },
+    "expectError": false,
+    "note": "01|0404→hard_ver=4,soft_ver=4; 03|00→battery=0(adc.c电量下限0)。低电边界值。"
+  },
+  {
+    "name": "电量满值100(电池事件单TLV帧)",
+    "source": "firmware",
+    "payload": "686b7400030364",
+    "fPort": 10,
+    "expectData": {
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "固件DeciceEvent_Process在updateBattery时单发03|<battery>(经lwrb缓存后整帧上行)。03|64→battery=100(adc.c上限100)。"
+  },
+  {
+    "name": "经纬度全零(未定位)",
+    "source": "firmware",
+    "payload": "686b74000410000000001100000000",
+    "fPort": 10,
+    "expectData": {
+      "latitude": 0,
+      "longitude": 0
+    },
+    "expectError": false,
+    "note": "gps.c未获定位时sensor_t.latitude/longitude=0, 周期帧照发(communicate.c注释:未获取到GPS信息上报为0)。10|00000000→0; 11|00000000→0。"
+  },
+  {
+    "name": "南纬西经(负值符号位编码)",
+    "source": "firmware",
+    "payload": "686b740005108204cc141188f2b3c0",
+    "fPort": 10,
+    "expectData": {
+      "latitude": -33.86882,
+      "longitude": -150.123456
+    },
+    "expectError": false,
+    "note": "gps.c负值编码=(u32)(fabs(度)*1e6)|0x80000000: 10|8204cc14→bit31=1,abs=33868820→-33.86882; 11|88f2b3c0→abs=150123456→-150.123456。"
+  },
+  {
+    "name": "步数65535(2字节大端上限)",
+    "source": "firmware",
+    "payload": "686b74000615ffff",
+    "fPort": 10,
+    "expectData": {
+      "step": 65535
+    },
+    "expectError": false,
+    "note": "15|ffff→dest[1]=step>>8=0xFF,dest[2]=step&0xFF=0xFF→step=65535。固件步数为2字节大端, 期望按固件语义=65535(ct02只读1字节属缺陷)。"
+  },
+  {
+    "name": "X轴加速度0.125g",
+    "source": "firmware",
+    "payload": "686b7400070b0800",
+    "fPort": 10,
+    "expectData": {
+      "x_acc": 0.125
+    },
+    "expectError": false,
+    "note": "0B|0800→int16大端原始计数2048(4g满量程16384计数/g, acc.c lis3dh原始值)。v1.1.0 已补齐 x_acc 字段（原始计数/16384=g）。"
+  },
+  {
+    "name": "Y轴加速度-0.03125g",
+    "source": "firmware",
+    "payload": "686b7400080cfe00",
+    "fPort": 10,
+    "expectData": {
+      "y_acc": -0.03125
+    },
+    "expectError": false,
+    "note": "0C|fe00→int16大端补码-512(0xfe00)。v1.1.0 已补齐 y_acc 字段。"
+  },
+  {
+    "name": "Z轴加速度0.25g",
+    "source": "firmware",
+    "payload": "686b7400090d1000",
+    "fPort": 10,
+    "expectData": {
+      "z_acc": 0.25
+    },
+    "expectError": false,
+    "note": "0D|1000→int16大端4096。v1.1.0 已补齐 z_acc 字段。"
+  },
+  {
+    "name": "运行配置上报",
+    "source": "firmware",
+    "payload": "686b74000a390100140800121e003c13001700001e",
+    "fPort": 10,
+    "expectData": {
+      "work_mode": 1,
+      "report_interval_time1": 20,
+      "start_hour_time1": 8,
+      "start_min_time1": 0,
+      "end_hour_time1": 18,
+      "end_min_time1": 30,
+      "report_interval_time2": 60,
+      "start_hour_time2": 19,
+      "start_min_time2": 0,
+      "end_hour_time2": 23,
+      "end_min_time2": 0,
+      "idle_interval": 30
+    },
+    "expectError": false,
+    "note": "39|0100140800121e003c13001700001e→15字节: mode=1,interval1=20,08:00-18:30,interval2=60,19:00-23:00,idle=30(均大端)。v1.1.0 已补齐 0x39 十一字段。"
+  },
+  {
+    "name": "主动同步数据帧(0x32)",
+    "source": "firmware",
+    "payload": "686b74000b3200",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "Device_SyncData固定发32|00(setDataPackage DATATYPE_DEVICE_SYNC_DATA: dest[1]=0)。ct02无0x32分支, 期望仅验证不报错不挂起。"
+  },
+  {
+    "name": "服务器应答ACK帧(0xFF)",
+    "source": "firmware",
+    "payload": "686b74000cffff",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "fromLoRaWANDataHandle在下行data[3]&0x01=1时回FF|FF(0xFF=COMMUNICATE_RESPONSE_ACK)。ct02无0xFF分支, 期望仅验证不报错不挂起。"
+  },
+  {
+    "name": "时间同步回执帧(0x80无数据quirk)",
+    "source": "firmware",
+    "payload": "686b74000d80",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": false,
+    "note": "固件quirk: syncLocalTime回执调用setDataPackage(DATATYPE_DEVICE_SYNC_TIME=0x80), 但switch无0x80分支→default只发类型字节本身, 帧尾仅1字节80。ct02无0x80分支, 期望仅验证不报错不挂起。"
+  },
+  {
+    "name": "守卫-坏帧头(同步字非686b74)",
+    "source": "regression",
+    "payload": "686b7500010340",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件上行帧头恒为SYNC_HEAD={0x68,0x6B,0x74}(communicate.c sendLoRaWANData)。此帧第3字节0x75≠0x74, 属非法帧, 解码器应报错而非静默返回。"
+  },
+  {
+    "name": "守卫-过短帧(仅3字节帧头)",
+    "source": "regression",
+    "payload": "686b74",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件最短上行=帧头3+标志1+序号1+TLV≥2字节。仅3字节连标志/序号位都没有, dataLen=bytes.length-5=-2, 解码器应报错。"
+  },
+  {
+    "name": "守卫-TLV截断(纬度声明4字节实到3字节)",
+    "source": "regression",
+    "payload": "686b7400031000e4e1",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "0x10纬度TLV定长4字节(gps.c 度*1e6大端)。帧尾仅剩3字节00e4e1即被截断, 剩余字节不足以构成完整TLV, 解码器应报错而非用残字节拼值。"
+  },
+  {
+    "name": "守卫-未知TLV类型(7f aa 55 cc)",
+    "source": "regression",
+    "payload": "686b7400047faa55cc",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件DataType枚举中无0x7F类型; 该TLV携带3字节定长数据aa55cc。解码器无法识别长度时应报错, 而非把数据字节误当后续类型号继续解析。"
+  }
+]
