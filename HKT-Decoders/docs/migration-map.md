@@ -38,8 +38,8 @@
 | 水表/汇中/uni-decode-cn.js | out-sourced/huizhong/uni-water/uni-water_chirpstack_cn_v1.0.0.js | 基线 1.0.0 | 语言变体 cn |
 | 水表/中配/hkt_water_meter_decoder.js | out-sourced/oem/hkt-water-meter/hkt-water-meter_chirpstack_cn_v1.0.0.js | 基线 1.0.0 | 迁移中去除 Buffer 依赖（生产运行时无 Buffer） |
 | 水表/中配/hkt_water_meter_decoder_en.js | out-sourced/oem/hkt-water-meter/hkt-water-meter_chirpstack_en_v1.0.0.js | 基线 1.0.0 | 同上 |
-| 烟感/sd-300…/sd-300_chirpstack.js | out-sourced/oem/sd-300/sd-300_chirpstack_v1.0.0.js | 基线 1.0.0 | |
-| 烟感/sd-300…/sd-300_ttn.js | out-sourced/oem/sd-300/sd-300_ttn_v1.0.0.js | 基线 1.0.0 | |
+| 烟感/sd-300…/sd-300_chirpstack.js | in-house/sd-300/sd-300_chirpstack_v1.0.0.js | 基线 1.0.0 | 2026-09-18 改判自研（固件 SmokeAlarm_KWX 与手册逐 hex 吻合） |
+| 烟感/sd-300…/sd-300_ttn.js | in-house/sd-300/sd-300_ttn_v1.0.0.js | 基线 1.0.0 | 同上 |
 | 耳标/Ear tag decode/eartag_chirpstack.js | out-sourced/oem/eartag/eartag_chirpstack_v1.0.0.js | 基线 1.0.0 | |
 | 耳标/Ear tag decode/eartag_ttn.js | out-sourced/oem/eartag/eartag_ttn_v1.0.0.js | 基线 1.0.0 | |
 | 水表/汇中/Sample_chirpstack.js | out-sourced/oem/liquid-level/liquid-level_chirpstack_v1.0.0.js | 基线 1.0.0 | **实为液位传感器**（@product Liquid level sensor），与汇中水表无关，独立立户 |

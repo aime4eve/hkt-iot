@@ -1,16 +1,17 @@
 {
   "model": "SD-300",
   "modelKey": "sd-300",
-  "aliases": [],
-  "name": "LoRaWAN 烟感探测器（外购）",
-  "origin": "out-sourced",
-  "vendor": "OEM（待补，手册为 HKT 贴牌）",
-  "category": "消防",
+  "aliases": [
+    "SD300"
+  ],
+  "name": "烟感探测器",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "消防烟感",
   "authority": {
-    "type": "protocol-doc",
-    "file": "docs/（烟感）HKT SD-300 LoRaWAN Smoke Detector User Manual_V1.pdf",
-    "section": null,
-    "note": null
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_SmokeAlarm_KWX",
+    "ref": "41ad0d9"
   },
   "fPortDefault": null,
   "codecs": [
@@ -64,5 +65,5 @@
     }
   ],
   "deviations": [],
-  "notes": "注意与自研烟感 SD300（LoRaWAN_SmokeAlarm_KWX，暂无解码器）型号相近，检索时勿混淆。"
+  "notes": "2026-09-18 改判自研：固件 LoRaWAN_SmokeAlarm_KWX 的 DataType 枚举（0x01/09/27/28/83/84/85/86/89/FF）与手册类型逐字节吻合，且 HKT-Firmwares/Readme.md 自研索引列 SD300=SmokeAlarm_KWX。原归类 out-sourced/oem（仅有手册时误判）已纠正；手册保留于 docs/ 作协议佐证。"
 }
