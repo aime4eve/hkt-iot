@@ -1,0 +1,243 @@
+[
+  {
+    "name": "周期上报帧（未倾斜，满溢状态=1）",
+    "source": "firmware",
+    "payload": "686b74002a01020a8b0e100900639c0a00ea600e04d2440028004505a04600504701480064119486001e",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 42,
+      "hard_ver": 2,
+      "soft_ver": 10,
+      "batteryVoltage": 3600,
+      "temperature": 25.5,
+      "humidity": 60,
+      "angle": 12.34,
+      "slantState": 0,
+      "htAlarm": 0,
+      "gpsPeriod": 1440,
+      "distance": 80,
+      "overflowState": 1,
+      "thresholdLow": 100,
+      "thresholdHigh": 4500,
+      "syncPeriod": 30
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 全字段帧（flags恒0，seq=0x2A=42）。0x01 02 0A：config.h HARDWARE_VER=0x02/SOFTWARE_VER=0x0A → hard_ver=2/soft_ver=10；0x8B 0E 10：dest[1]=(v>>8)&0xFF,dest[2]=v&0xFF → 0x0E10=3600mV；0x09 00 63 9C：3字节BE 0x00639C=25500，bit23=0 正温 → 25500/1000=25.5°C；0x0A 00 EA 60：0x00EA60=60000 → 60%RH；0x0E 04 D2：angle*100 截断为u16 0x04D2=1234 → 12.34°；0x44 00：未倾斜；0x28 00：无高温报警；0x45 05 A0：0x05A0=1440min；0x46 00 50：0x0050=80mm（80<低阈值100 → 状态1 满溢）；0x47 01：threshold_state=1；0x48 00 64 11 94：低阈值0x0064=100mm、高阈值0x1194=4500mm；0x86 00 1E：上报周期0x001E=30min（DEFAULT_REPORT_INTERVAL）"
+  },
+  {
+    "name": "周期上报帧（倾斜事件，省略距离/满溢，负温）",
+    "source": "firmware",
+    "payload": "686b74000701020a8b0e74098014820a00d8cc0e004b4401280045003c48006400008600f0",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 7,
+      "hard_ver": 2,
+      "soft_ver": 10,
+      "batteryVoltage": 3700,
+      "temperature": -5.25,
+      "humidity": 55.5,
+      "angle": 0.75,
+      "slantState": 1,
+      "htAlarm": 0,
+      "gpsPeriod": 60,
+      "thresholdLow": 100,
+      "thresholdHigh": 0,
+      "syncPeriod": 240
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 中 if(!device_t.is_slant) 不成立 → 帧内无 0x46/0x47（解码器不得凭空造字段）。0x09 80 14 82：固件 (-t)|0x800000，bit23=1 → 负温，低23位 0x1482=5250 → -5250/1000=-5.25°C；0x8B 0E 74=0x0E74=3700mV；0x0A 00 D8 CC=0xD8CC=55500 → 55.5%RH；0x0E 00 4B=75 → 0.75°；0x44 01 倾斜；0x45 00 3C=60min；0x48 00 64 00 00=低100mm/高0mm（出厂默认，高阈值0=未启用）；0x86 00 F0=240min（恢复出厂值）"
+  },
+  {
+    "name": "GPS 定位上报帧（北纬东经）",
+    "source": "firmware",
+    "payload": "686b740063100157fafc1106ccce5e",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 99,
+      "latitude": 22.5431,
+      "latitudeSouth": false,
+      "longitude": 114.08547,
+      "longitudeWest": false
+    },
+    "expectError": false,
+    "note": "Device_GpsReport：0x10 纬度+0x11 经度，各4字节BE。纬度 01 57 FA FC=0x0157FAFC=22543100，bit31=0 北纬 → 22543100/1e6=22.5431°；经度 06 CC CE 5E=0x06CCCE5E=114085470，bit31=0 东经 → 114085470/1e6=114.08547°（对应 gps.c 的 (u32)(fabs(lat)*1000000)，负值时 |0x80000000）"
+  },
+  {
+    "name": "GPS 定位上报帧（南纬西经，符号位置位）",
+    "source": "firmware",
+    "payload": "686b740064108016e36011800b71b0",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 100,
+      "latitude": 1.5,
+      "latitudeSouth": true,
+      "longitude": 0.75,
+      "longitudeWest": true
+    },
+    "expectError": false,
+    "note": "纬度 80 16 E3 60：bit31=1 → 南纬，绝对值 0x0016E360=1500000 → 1.5°S；经度 80 0B 71 B0：bit31=1 → 西经，绝对值 0x000B71B0=750000 → 0.75°W（固件 gps.c：latitude<0 时 |= 0x80000000，符号在最高位而非补码）"
+  },
+  {
+    "name": "通讯应答 ACK 帧",
+    "source": "firmware",
+    "payload": "686b740001ffff",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 1,
+      "ackResponse": 255
+    },
+    "expectError": false,
+    "note": "fromLoRaWANDataHandle 检测下行 flags bit0=1 后回包：setDataPackage(DATATYPE_DEVICE_COMMUNICATE_RESPONSE_ACK=0xFF) → dest[0]=0xFF, dest[1]=0xFF（常量），dataLen=2。帧=68 6B 74 | 00 | 01 | FF FF。上行自身 flags 恒 0 → ackRequested=false"
+  },
+  {
+    "name": "最短合法帧（仅版本 TLV）",
+    "source": "firmware",
+    "payload": "686b74000501020a",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 5,
+      "hard_ver": 2,
+      "soft_ver": 10
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | 05 | 01 02 0A：setDataPackage(DATATYPE_DEVICE_HARDWARE_SOFTWARE_VERSION=0x01) → dest[1]=HARDWARE_VER=0x02, dest[2]=SOFTWARE_VER=0x0A, dataLen=3；帧恰好在 TLV 边界结束"
+  },
+  {
+    "name": "满溢状态=0xFF（测量无效，距离强制为 0）",
+    "source": "firmware",
+    "payload": "686b74006646000047ff4800640000",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 102,
+      "distance": 0,
+      "overflowState": 255,
+      "thresholdLow": 100,
+      "thresholdHigh": 0
+    },
+    "expectError": false,
+    "note": "固件怪癖：setDataPackage(0x46) 在 threshold_state==0xFF 时 distance=0 强制发 0（dest[1]=0x00,dest[2]=0x00），同时 0x47 原样发出 0xFF。0x48 00 64 00 00：低100mm/高0mm 出厂默认。解码器透传原始值：distance=0, overflowState=255"
+  },
+  {
+    "name": "满溢状态=2（超过高阈值）",
+    "source": "firmware",
+    "payload": "686b7400c84610684702480bb80fa0",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 200,
+      "distance": 4200,
+      "overflowState": 2,
+      "thresholdLow": 3000,
+      "thresholdHigh": 4000
+    },
+    "expectError": false,
+    "note": "seq=0xC8=200。0x46 10 68：0x1068=4200mm（30≤4200≤4500 有效）；0x47 02：4200>高阈值4000 且 高>0 → threshold_state=2；0x48 0B B8 0F A0：低 0x0BB8=3000mm、高 0x0FA0=4000mm（均为合法配置域 30~4500）"
+  },
+  {
+    "name": "满溢状态=0（正常区间）",
+    "source": "firmware",
+    "payload": "686b7400c94605dc47004800640fa0",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 201,
+      "distance": 1500,
+      "overflowState": 0,
+      "thresholdLow": 100,
+      "thresholdHigh": 4000
+    },
+    "expectError": false,
+    "note": "seq=0xC9=201。0x46 05 DC：0x05DC=1500mm；1500 不小于低阈值100、不大于高阈值4000 → 0x47 00（threshold_state=0）"
+  },
+  {
+    "name": "边界：距离上界 4500mm + 低阈值下界 30mm",
+    "source": "firmware",
+    "payload": "686b7400ca461194470048001e1194",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 202,
+      "distance": 4500,
+      "overflowState": 0,
+      "thresholdLow": 30,
+      "thresholdHigh": 4500
+    },
+    "expectError": false,
+    "note": "seq=0xCA=202。0x46 11 94：0x1194=4500mm 为有效测距上界（>4500 即判 0xFF 无效）；0x48 00 1E 11 94：低阈值 0x001E=30mm 为配置下界（<30 拒绝）、高 4500；4500>4500 不成立（严格大于）→ 0x47 00"
+  },
+  {
+    "name": "边界：距离下界 30mm + GPS 周期 0（定位关闭）",
+    "source": "firmware",
+    "payload": "686b7400cb01020a8b0bb846001e47014500004800640000",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 203,
+      "hard_ver": 2,
+      "soft_ver": 10,
+      "batteryVoltage": 3000,
+      "distance": 30,
+      "overflowState": 1,
+      "gpsPeriod": 0,
+      "thresholdLow": 100,
+      "thresholdHigh": 0
+    },
+    "expectError": false,
+    "note": "seq=0xCB=203。0x01 02 0A 版本；0x8B 0B B8：0x0BB8=3000mV；0x46 00 1E：0x001E=30mm 为有效测距下界（<30 判无效）；0x47 01：30<低阈值100 → 满溢；0x45 00 00：GPS 周期 0=定位关闭（固件唯一允许的 0 值）；0x48 00 64 00 00：低100/高0"
+  },
+  {
+    "name": "边界：空 TLV 流（仅帧头+flags+seq）",
+    "source": "regression",
+    "payload": "686b740000",
+    "fPort": 10,
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 0
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | 00，无任何 TLV：循环体不执行，合法返回仅 ackRequested/seqNo，不得报错（固件实际每帧至少含一个 TLV，此为解码器鲁棒性边界）"
+  },
+  {
+    "name": "守卫：坏帧头（首字节 0x67）",
+    "source": "regression",
+    "payload": "676b74000001020a",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "同步头必须为 68 6B 74（communicate.c SYNC_HEAD 常量），首字节不符 → {data:{},errors:[...]}"
+  },
+  {
+    "name": "守卫：过短帧（仅 3 字节同步头）",
+    "source": "regression",
+    "payload": "686b74",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "帧头 3 字节 + flags 1 + seq 1 = 最短 5 字节，缺 flags/seq → 报错且不输出字段"
+  },
+  {
+    "name": "守卫：TLV 截断（0x46 只有 1/2 字节值）",
+    "source": "regression",
+    "payload": "686b7400014600",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "0x46 超声波距离定长 2 字节，帧内仅剩 1 字节 → 越过帧尾，报错停解（防越界静默错值）"
+  },
+  {
+    "name": "守卫：未知 TLV 类型 0x7F",
+    "source": "regression",
+    "payload": "686b7400017f00",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "类型 0x7F 不在固件 enum DataType/长度表中，无法定位下一 TLV → 记录错误并停止解析，防止失步死循环"
+  }
+]

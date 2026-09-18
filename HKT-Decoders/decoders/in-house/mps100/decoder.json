@@ -1,0 +1,33 @@
+{
+  "model": "MPS100",
+  "modelKey": "mps100",
+  "aliases": [
+    "EPS100"
+  ],
+  "name": "地磁车位传感器",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "车位感知",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_ParkingSensor",
+    "ref": "41ad0d9"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "mps100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_ParkingSensor（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "初版：依固件 communicate.c setDataPackage/sendLoRaWANData/Device_PeriodicReport 独立推导帧格式 68 6B 74|00|seq|TLV（全大端）。TLV 表覆盖 enum DataType 全部 15 类（0x01 版本2B、0x02 设备ID6B、0x03 电量1B、0x3A 车位状态1B、0x3B 模式1B、0x80 时间同步0B怪例、0x84 防拆1B、0x85 0B、0x86 周期2B、0x8D 开关机1B、0x5D/5E/5F 三轴磁场int16 2B、0x60 雷达频谱20B、0xFF ACK1B）；逐调用方核实实际上行集为 0x01/0x03/0x3A/0x3B/0x84/0x86（周期+车位变化组合帧）、0x03（电量事件单发）、0xFF（应答），0x02/0x8D/0x5D~0x60 仅 BLE 通道但语法同源一并支持。坏帧（头错/过短/截断/未知类型）一律 {data:{},errors:[..]}。黄金样例 14 条（固件 10 + 守卫 4）先手算后实现互证。"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 依 HKT-Firmwares/Readme.md 自研索引补录（此前固件未纳管）。"
+}

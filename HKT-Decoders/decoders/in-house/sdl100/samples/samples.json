@@ -1,0 +1,426 @@
+[
+  {
+    "name": "周期上报组合帧：出厂默认态全字段",
+    "source": "firmware",
+    "payload": "686b740215ff0a01111903588a0857645305520000000000000000000000560084008605a0546aab2d80ff",
+    "fPort": 10,
+    "expectData": {
+      "seq": 21,
+      "frame_type": "periodic_report",
+      "type_count": 10,
+      "hardware_version": 17,
+      "software_version": 25,
+      "battery": 88,
+      "timezone": 8,
+      "timezone_raw": 8,
+      "volume": 100,
+      "auto_lock_time": 5,
+      "open_mode": {
+        "mode": 0,
+        "lock_delay": 0,
+        "loop_duty": 0,
+        "loop_count": 0,
+        "loop_start": "00:00:00",
+        "loop_over": "00:00:00"
+      },
+      "bound": false,
+      "tamper_alarm": false,
+      "report_interval": 1440,
+      "timestamp": 1789603200,
+      "time": "2026-09-17T00:00:00.000Z"
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 组合帧:68 6B 74 同步头+02(sendLoRaWANData txbuf[3]=2)+seq 0x15+FF 0A(项数10)+01 11 19(HARDWARE_VER 0x11/SOFTWARE_VER 0x19)+03 58(电量88)+8A 08(时区东8,FLASH_Reset_Param默认8)+57 64(音量100)+53 05(回锁5秒)+52+11字节0(常开模式全关)+56 00(未绑定)+84 00(无防拆)+86 05 A0(周期1440min=0x05A0大端)+54 6A AB 2D 80(1789603200大端)+校验和FF(前42字节和mod256);fPort=LoRaWAN_DEFAULT_PORT 10"
+  },
+  {
+    "name": "版本查询应答：软硬件版本",
+    "source": "firmware",
+    "payload": "686b74020101111975",
+    "fPort": 10,
+    "expectData": {
+      "seq": 1,
+      "frame_type": "version_info",
+      "hardware_version": 17,
+      "software_version": 25
+    },
+    "expectError": false,
+    "note": "下行01(无值)触发;setDataPackage(0x01):dest[1]=HARDWARE_VER 0x11=17,dest[2]=SOFTWARE_VER 0x19=25;帧=68 6B 74+02+seq 01+01 11 19+校验和0x75"
+  },
+  {
+    "name": "设备ID应答：DevEUI[2..7]",
+    "source": "firmware",
+    "payload": "686b740202023015a40012347c",
+    "fPort": 10,
+    "expectData": {
+      "seq": 2,
+      "frame_type": "device_id",
+      "device_id": "3015A4001234"
+    },
+    "expectError": false,
+    "note": "下行02(无值)触发;memcpy(dest+1,LoRaWAN.DevEUI+2,6)取DevEUI第3~8字节 30 15 A4 00 12 34,原样大端展示;帧=68 6B 74+02+seq 02+02+6字节ID+校验和0x7C"
+  },
+  {
+    "name": "电量变化上报：76%",
+    "source": "firmware",
+    "payload": "686b740203034c9b",
+    "fPort": 10,
+    "expectData": {
+      "seq": 3,
+      "frame_type": "battery_report",
+      "battery": 76
+    },
+    "expectError": false,
+    "note": "adc.c batteryLevel=(电压-5000)*100/1200钳位0~100,变化时置updateBattery→DeviceStateProcess单独发03帧;值0x4C=76;帧=68 6B 74+02+seq 03+03 4C+校验和0x9B"
+  },
+  {
+    "name": "防拆报警事件：立即上行 84 01",
+    "source": "firmware",
+    "payload": "686b7402048401d2",
+    "fPort": 10,
+    "expectData": {
+      "seq": 4,
+      "frame_type": "tamper_state",
+      "tamper_alarm": true
+    },
+    "expectError": false,
+    "note": "thread_communicate检测READ_FUNC_KEY_STATUS松开→device_t.tamperAlarm=1并直接写gp_buffer[0]=0x84,[1]=1入lwrb;帧=68 6B 74+02+seq 04+84 01+校验和0xD2"
+  },
+  {
+    "name": "远程开锁记录：0xC5+时间戳",
+    "source": "firmware",
+    "payload": "686b74020530c5006aab2dbc41",
+    "fPort": 10,
+    "expectData": {
+      "seq": 5,
+      "frame_type": "unlock_record",
+      "record_code": 197,
+      "record_type": "remote_unlock",
+      "user_number": 0,
+      "timestamp": 1789603260,
+      "time": "2026-09-17T00:01:00.000Z"
+    },
+    "expectError": false,
+    "note": "下行2F参数0(开锁)后固件组buffer[0]=0x30,[1]=0xC5(远程开锁记录码),[2]=0x00(用户号),[3..6]=Timestamp大端6A AB 2D BC=1789603260;蓝牙路径用0xC6,空口仅0xC5;帧=68 6B 74+02+seq 05+7字节TLV+校验和0x41"
+  },
+  {
+    "name": "远程开锁执行应答：开锁",
+    "source": "firmware",
+    "payload": "686b7402062f007e",
+    "fPort": 10,
+    "expectData": {
+      "seq": 6,
+      "frame_type": "remote_unlock_result",
+      "action": "unlock"
+    },
+    "expectError": false,
+    "note": "下行2F后setDataPackage(0x2F)置dest[1]=0再被buffer[1]=srcHex[1]回显覆盖;命令参数0=开锁(1=关锁);帧=68 6B 74+02+seq 06+2F 00+校验和0x7E"
+  },
+  {
+    "name": "临时密码设置应答：0字节值TLV怪例",
+    "source": "firmware",
+    "payload": "686b7402073282",
+    "fPort": 10,
+    "expectData": {
+      "seq": 7,
+      "frame_type": "temp_password_ack",
+      "ok": true
+    },
+    "expectError": false,
+    "note": "下行32(12字节)后setDataPackage(0x32)落入switch default分支→dataLen=1仅类型字节,即0字节值TLV;全帧仅7字节=68 6B 74+02+seq 07+32+校验和0x82,为固件最短合法上行帧(边界)"
+  },
+  {
+    "name": "时间同步请求：0字节值TLV怪例",
+    "source": "firmware",
+    "payload": "686b74020880d1",
+    "fPort": 10,
+    "expectData": {
+      "seq": 8,
+      "frame_type": "time_sync_request"
+    },
+    "expectError": false,
+    "note": "DeciceEvent_Process在syncLocalTime置位时setDataPackage(0x80),0x80无case走default→仅类型字节0x80;注:本快照固件内syncLocalTime无赋值方(疑似预留/蓝牙侧置位),解码按固件布局支持;帧=68 6B 74+02+seq 08+80+校验和0xD1"
+  },
+  {
+    "name": "时间戳上报/同步应答",
+    "source": "firmware",
+    "payload": "686b740209546aab2d8068",
+    "fPort": 10,
+    "expectData": {
+      "seq": 9,
+      "frame_type": "timestamp_report",
+      "timestamp": 1789603200,
+      "time": "2026-09-17T00:00:00.000Z"
+    },
+    "expectError": false,
+    "note": "下行54(读0xFF或写时间戳)后固件回buffer[0]=0x54,[1..4]=Timestamp大端6A AB 2D 80=1789603200(2026-09-17T00:00:00Z);帧=68 6B 74+02+seq 09+5字节TLV+校验和0x68"
+  },
+  {
+    "name": "密码时效管理应答：新增成功回显",
+    "source": "firmware",
+    "payload": "686b74020a4e0103010600003132333435366aa9dc006aac7f00000a6f",
+    "fPort": 10,
+    "expectData": {
+      "seq": 10,
+      "frame_type": "password_key_ack",
+      "status": 1,
+      "status_text": "success",
+      "user_number": 3,
+      "enabled": true,
+      "key_length": 6,
+      "password": "123456",
+      "start_timestamp": 1789516800,
+      "end_timestamp": 1789689600,
+      "valid_count": 10
+    },
+    "expectError": false,
+    "note": "下行4E新增(arg=0)成功时buffer[1]=1,sendLen=23;TLV=4E+01(status)+回显21字节:用户号03/isable 01/长度06/密码域8字节右对齐00 00 31~36('123456')/起6A A9 DC 00=1789516800/止6A AC 7F 00=1789689600/有效次数00 0A=10;帧=68 6B 74+02+seq 0A+23字节TLV+校验和0x6F"
+  },
+  {
+    "name": "密码时效管理应答：删除(短格式带尾随0)",
+    "source": "firmware",
+    "payload": "686b74020b4e0200a4",
+    "fPort": 10,
+    "expectData": {
+      "seq": 11,
+      "frame_type": "password_key_ack",
+      "status": 2,
+      "status_text": "deleted"
+    },
+    "expectError": false,
+    "note": "下行4E arg=1删除成功时buffer[1]=2,sendLen=3;buffer[2]未赋值保持memset的0x00(固件尾随0填充怪例);TLV=4E 02 00;帧=68 6B 74+02+seq 0B+3字节TLV+校验和0xA4"
+  },
+  {
+    "name": "卡片时效管理应答：新增成功回显",
+    "source": "firmware",
+    "payload": "686b74020c4f0105011122334400112233445566778899aabbccddeeff6aa9dc006aac7f00003203",
+    "fPort": 10,
+    "expectData": {
+      "seq": 12,
+      "frame_type": "card_key_ack",
+      "status": 1,
+      "status_text": "success",
+      "user_number": 5,
+      "enabled": true,
+      "card_id": "11223344",
+      "card_key": "00112233445566778899AABBCCDDEEFF",
+      "start_timestamp": 1789516800,
+      "end_timestamp": 1789689600,
+      "valid_count": 50
+    },
+    "expectError": false,
+    "note": "下行4F新增(arg=0)成功时buffer[1]=1,sendLen=34;TLV=4F+01+回显32字节:用户号05/isable 01/卡号4字节11 22 33 44/卡密钥16字节00 11~EE FF/起止时间戳各4字节/有效次数00 32=50;帧=68 6B 74+02+seq 0C+34字节TLV+校验和0x03"
+  },
+  {
+    "name": "常开模式设置应答：模式2成功回显",
+    "source": "firmware",
+    "payload": "686b74020d5202001e0000081e0012000000",
+    "fPort": 10,
+    "expectData": {
+      "seq": 13,
+      "frame_type": "open_mode_ack",
+      "ok": true,
+      "open_mode": {
+        "mode": 2,
+        "lock_delay": 30,
+        "loop_duty": 0,
+        "loop_count": 0,
+        "loop_start": "08:30:00",
+        "loop_over": "18:00:00"
+      }
+    },
+    "expectError": false,
+    "note": "下行52成功时memcpy(buffer,srcHex,12)整段回显,sendLen=12;TLV=52+11字节值:模式02/延时00 1E=30s/占空比00/次数00/开始08 1E 00(08:30:00)/结束12 00 00(18:00:00);帧=68 6B 74+02+seq 0D+12字节TLV+校验和0x00"
+  },
+  {
+    "name": "常开模式设置应答：模式3参数非法 0xFE",
+    "source": "firmware",
+    "payload": "686b74020e52fea7",
+    "fPort": 10,
+    "expectData": {
+      "seq": 14,
+      "frame_type": "open_mode_ack",
+      "ok": false
+    },
+    "expectError": false,
+    "note": "下行52模式3且loop_duty超0x7F或时间非法时buffer[1]=0xFE,sendLen=2;TLV=52 FE(仅1字节值);帧=68 6B 74+02+seq 0E+2字节TLV+校验和0xA7"
+  },
+  {
+    "name": "自动回锁时间设置应答",
+    "source": "firmware",
+    "payload": "686b74020f5305b0",
+    "fPort": 10,
+    "expectData": {
+      "seq": 15,
+      "frame_type": "auto_lock_time_ack",
+      "ok": true,
+      "auto_lock_time": 5
+    },
+    "expectError": false,
+    "note": "下行53后sendLen=2,memcpy(buffer,srcHex,2)回显;固件中buffer[0]=DATATYPE_DEVICE_OPEN_MODE(0x52)的赋值被memcpy覆盖,实际仍为0x53(死代码怪例);值05合法(3~30);帧=68 6B 74+02+seq 0F+53 05+校验和0xB0"
+  },
+  {
+    "name": "音量设置应答：成功硬编码0x50怪例",
+    "source": "firmware",
+    "payload": "686b740210575000",
+    "fPort": 10,
+    "expectData": {
+      "seq": 16,
+      "frame_type": "volume_ack",
+      "ok": true,
+      "reported_value": 80
+    },
+    "expectError": false,
+    "note": "下行57合法(≤100)时固件固定buffer[1]=0x50,并不回显实际设置值(怪例,0x50=80为成功标记);TLV=57 50;帧=68 6B 74+02+seq 10+57 50+校验和0x00"
+  },
+  {
+    "name": "音量设置应答：>100 非法 0xFE",
+    "source": "firmware",
+    "payload": "686b74021157feaf",
+    "fPort": 10,
+    "expectData": {
+      "seq": 17,
+      "frame_type": "volume_ack",
+      "ok": false,
+      "reported_value": 254
+    },
+    "expectError": false,
+    "note": "下行57值>100时buffer[1]=0xFE;TLV=57 FE;帧=68 6B 74+02+seq 11+57 FE+校验和0xAF"
+  },
+  {
+    "name": "绑定/解绑命令应答：固定值0x01",
+    "source": "firmware",
+    "payload": "686b7402125601b2",
+    "fPort": 10,
+    "expectData": {
+      "seq": 18,
+      "frame_type": "bind_state",
+      "bound": null,
+      "ok": true
+    },
+    "expectError": false,
+    "note": "下行56(0x56或0)处理后固件回buffer[0]=0x56,buffer[1]=1(操作成功标记,区别于周期上报的0x56=已绑定/0x00=未绑定,故bound为null);TLV=56 01;帧=68 6B 74+02+seq 12+56 01+校验和0xB2"
+  },
+  {
+    "name": "时区设置应答：东8区",
+    "source": "firmware",
+    "payload": "686b7402138a08ee",
+    "fPort": 10,
+    "expectData": {
+      "seq": 19,
+      "frame_type": "timezone_ack",
+      "ok": true,
+      "timezone": 8,
+      "timezone_raw": 8
+    },
+    "expectError": false,
+    "note": "下行8A合法(≤26)时回显编码值:0~12直载东区,13~24表西区-(v-12),25/26=UTC+3.5/+5.5;TLV=8A 08(东8区);帧=68 6B 74+02+seq 13+8A 08+校验和0xEE"
+  },
+  {
+    "name": "恢复出厂设置应答：成功0x00怪例",
+    "source": "firmware",
+    "payload": "686b7402148500e2",
+    "fPort": 10,
+    "expectData": {
+      "seq": 20,
+      "frame_type": "factory_reset_ack",
+      "ok": true
+    },
+    "expectError": false,
+    "note": "下行85且未绑定(isBand==0)时执行FLASH_Reset_Param,buffer[1]未赋值保持0x00(固件成功值怪例),失败才显式置0xFE;TLV=85 00;帧=68 6B 74+02+seq 14+85 00+校验和0xE2"
+  },
+  {
+    "name": "上报周期设置应答：不回显间隔值怪例",
+    "source": "firmware",
+    "payload": "686b7402168600e5",
+    "fPort": 10,
+    "expectData": {
+      "seq": 22,
+      "frame_type": "report_interval_ack",
+      "ok": true
+    },
+    "expectError": false,
+    "note": "下行86合法(10~1440或0)时sendLen=2且buffer[1]未赋值保持0x00,间隔值不回显(与周期上报86两字节大端值不同),失败置0xFE;TLV=86 00;帧=68 6B 74+02+seq 16+86 00+校验和0xE5"
+  },
+  {
+    "name": "边界：周期帧负时区/电量0/seq=255/常开模式1",
+    "source": "firmware",
+    "payload": "686b7402ffff0a01111903008a145700531e52010e107f03160000061e005656840186000a546aab3b9007",
+    "fPort": 10,
+    "expectData": {
+      "seq": 255,
+      "frame_type": "periodic_report",
+      "type_count": 10,
+      "hardware_version": 17,
+      "software_version": 25,
+      "battery": 0,
+      "timezone": -8,
+      "timezone_raw": 20,
+      "volume": 0,
+      "auto_lock_time": 30,
+      "open_mode": {
+        "mode": 1,
+        "lock_delay": 3600,
+        "loop_duty": 127,
+        "loop_count": 3,
+        "loop_start": "22:00:00",
+        "loop_over": "06:30:00"
+      },
+      "bound": true,
+      "tamper_alarm": true,
+      "report_interval": 10,
+      "timestamp": 1789606800,
+      "time": "2026-09-17T01:00:00.000Z"
+    },
+    "expectError": false,
+    "note": "字节级:seq=FF(packSyncNumber回绕边界);8A 14→raw 20按-(20-12)解码为-8区;03 00电量0%;57 00音量0;53 1E回锁30;52 01 0E 10 7F 03 16 00 00 06 1E 00→模式1/延时0x0E10=3600s/占空比0x7F=127(合法上限)/次数3/22:00:00~06:30:00;56 56已绑定;84 01防拆中;86 00 0A周期10min;54 6A AB 3B 90=1789606800;校验和0x07"
+  },
+  {
+    "name": "边界：电量100%且seq=0",
+    "source": "firmware",
+    "payload": "686b7402000364b0",
+    "fPort": 10,
+    "expectData": {
+      "seq": 0,
+      "frame_type": "battery_report",
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "batteryLevel钳位上限100(0x64);seq回绕归0(packSyncNumber为u8);帧=68 6B 74+02+seq 00+03 64+校验和0xB0"
+  },
+  {
+    "name": "守卫：同步头错误 68 6C 74",
+    "source": "regression",
+    "payload": "686c740203034c9b",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "固件fromLoRaWANDataHandle先checkDataSyncHead(memcmp SYNC_HEAD 68 6B 74);第2字节被改为6C,必须整帧报错不输出数据"
+  },
+  {
+    "name": "守卫：特殊类型字节非0x02",
+    "source": "regression",
+    "payload": "686b740003034c9b",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "sendLoRaWANData固定txbuf[3]=2(同时是校验使能位);该字节为0x00的帧不可能是本固件产生,必须报错"
+  },
+  {
+    "name": "守卫：校验和错误",
+    "source": "regression",
+    "payload": "686b740203034c9c",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "合法电量帧(校验和0x9B)末字节篡改为0x9C;固件CalCheckSum按累加mod256校验(data[3]&0x02使能),必须报错"
+  },
+  {
+    "name": "守卫：TLV截断(03缺值字节)",
+    "source": "regression",
+    "payload": "686b740203034f",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "TLV 0x03定长值1字节,但TLV区仅剩类型字节03即到校验和0x4F;固件不会发送截断TLV,必须报错且不得输出部分数据"
+  }
+]

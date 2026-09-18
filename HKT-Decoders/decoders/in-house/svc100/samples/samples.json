@@ -1,0 +1,347 @@
+[
+  {
+    "name": "周期上报组合帧（9 种 TLV 全量，默认参数）",
+    "source": "firmware",
+    "payload": "686b74002d010d0e035a3c010101f400010000400041004228430086003c8a08",
+    "fPort": 10,
+    "expectData": {
+      "seq": 45,
+      "hardwareVersion": 13,
+      "softwareVersion": 14,
+      "battery": 90,
+      "valve1State": 1,
+      "insert1Connected": 1,
+      "pulse1Count": 500,
+      "valve2State": 0,
+      "insert2Connected": 1,
+      "pulse2Count": 0,
+      "volLevel": 0,
+      "portMode": 0,
+      "stableTime": 40,
+      "powerMode": 0,
+      "reportInterval": 60,
+      "timezone": 8
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 组包：68 6B 74 | 00 | seq=0x2D | 01(版本 0x0D/0x0E→13/14, config.h HARDWARE_VER/SOFTWARE_VER) 03(电量 0x5A=90) 3C(阀1开=01,接口1连=01,脉冲1=01F4=500 大端,阀2关=00,接口2连=01,脉冲2=0000) 40(0x00=12V) 41(0x00=脉冲模式) 42(0x28=40s,flash 默认) 43(0x00=手动) 86(003C=60min,flash 默认) 8A(08=东8区,flash 默认)；上行无校验和，TLV 顺序即固件 setDataPackage 调用顺序"
+  },
+  {
+    "name": "软硬件版本 TLV(0x01)",
+    "source": "firmware",
+    "payload": "686b7400a7010d0e",
+    "fPort": 10,
+    "expectData": {
+      "seq": 167,
+      "hardwareVersion": 13,
+      "softwareVersion": 14
+    },
+    "expectError": false,
+    "note": "取周期帧 TLV 0x01 单独成帧：68 6B 74 | 00 | seq=0xA7=167 | 01 0D 0E；setDataPackage case 0x01 值区 2 字节=HARDWARE_VER(0x0D=13)+SOFTWARE_VER(0x0E=14)，即 V13.14"
+  },
+  {
+    "name": "电量 TLV(0x03)",
+    "source": "firmware",
+    "payload": "686b740001035a",
+    "fPort": 10,
+    "expectData": {
+      "seq": 1,
+      "battery": 90
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x01 | 03 5A；值区 1 字节=batteryLevel 百分比(adc.c: 电压 2600~3100mV 线性 0~100)，0x5A=90"
+  },
+  {
+    "name": "设备状态 TLV(0x3C)：阀1断开/未接，阀2开启",
+    "source": "firmware",
+    "payload": "686b7400083c00000000010100c8",
+    "fPort": 10,
+    "expectData": {
+      "seq": 8,
+      "valve1State": 0,
+      "insert1Connected": 0,
+      "pulse1Count": 0,
+      "valve2State": 1,
+      "insert2Connected": 1,
+      "pulse2Count": 200
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x08 | 3C 00 00 00 00 01 01 00 C8；值区 8 字节=value1_state(00) insert1_connected(00) pulse1_count(0000 大端) value2_state(01) insert2_connected(01) pulse2_count(00C8=200 大端)，quickSplitShort 高字节在前"
+  },
+  {
+    "name": "输出电压等级 TLV(0x40, 5V)",
+    "source": "firmware",
+    "payload": "686b7400114002",
+    "fPort": 10,
+    "expectData": {
+      "seq": 17,
+      "volLevel": 2
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x11 | 40 02；值区 1 字节=vol_control_sw，下行校验 level<=2：0=12V 1=9V 2=5V"
+  },
+  {
+    "name": "接口功能 TLV(0x41)",
+    "source": "firmware",
+    "payload": "686b7400124101",
+    "fPort": 10,
+    "expectData": {
+      "seq": 18,
+      "portMode": 1
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x12 | 41 01；值区 1 字节=port_mode 位掩码（下行仅拒绝 bit3~bit6，(port_mode&0x78)>0 报错）"
+  },
+  {
+    "name": "接口稳定时长 TLV(0x42, 40s 默认)",
+    "source": "firmware",
+    "payload": "686b7400134228",
+    "fPort": 10,
+    "expectData": {
+      "seq": 19,
+      "stableTime": 40
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x13 | 42 28；值区 1 字节=stable_time 秒（仅开关状态模式有效），flash 默认 40s"
+  },
+  {
+    "name": "自动开关机 TLV(0x43)",
+    "source": "firmware",
+    "payload": "686b7400144301",
+    "fPort": 10,
+    "expectData": {
+      "seq": 20,
+      "powerMode": 1
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x14 | 43 01；值区 1 字节=power_mode，0=手动开关机 1=自动（依据接口连接状态自动开关机）"
+  },
+  {
+    "name": "数据同步周期 TLV(0x86, 600min)",
+    "source": "firmware",
+    "payload": "686b740015860258",
+    "fPort": 10,
+    "expectData": {
+      "seq": 21,
+      "reportInterval": 600
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x15 | 86 02 58；值区 2 字节 u16 大端=report_interval 分钟，合法域 10~1440，0x0258=600"
+  },
+  {
+    "name": "时区 TLV(0x8A, 东8区默认)",
+    "source": "firmware",
+    "payload": "686b7400168a08",
+    "fPort": 10,
+    "expectData": {
+      "seq": 22,
+      "timezone": 8
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x16 | 8A 08；setDataPackage case 0x8A 编码：float 时区→u8，<13 原值直传（东 0~12 区），0x08=UTC+8"
+  },
+  {
+    "name": "本地任务上报 TLV(0x3D, 单任务)",
+    "source": "firmware",
+    "payload": "686b7400303d010101010064061e07007f",
+    "fPort": 10,
+    "expectData": {
+      "seq": 48,
+      "taskCount": 1,
+      "tasks": [
+        {
+          "id": 1,
+          "valve": 1,
+          "state": 1,
+          "pulseCount": 100,
+          "startHour": 6,
+          "startMin": 30,
+          "endHour": 7,
+          "endMin": 0,
+          "repeatDuty": 127
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "Device_ReportLocalTaskData（服务器下行单字节 0x3D 查询后应答）：68 6B 74 | 00 | seq=0x30=48 | 3D 01 | id=01 valve=01 state=01 pulse=0064=100 大端 start=06:1E(6:30) end=07:00 repeat=7F(每天,bit0=周一…bit6=周日)；每任务固定 10 字节"
+  },
+  {
+    "name": "本地任务上报 TLV(0x3D, 双任务)",
+    "source": "firmware",
+    "payload": "686b7400313d0202020000000c000c1e010f000103e8173b0d0040",
+    "fPort": 10,
+    "expectData": {
+      "seq": 49,
+      "taskCount": 2,
+      "tasks": [
+        {
+          "id": 2,
+          "valve": 2,
+          "state": 0,
+          "pulseCount": 0,
+          "startHour": 12,
+          "startMin": 0,
+          "endHour": 12,
+          "endMin": 30,
+          "repeatDuty": 1
+        },
+        {
+          "id": 15,
+          "valve": 0,
+          "state": 1,
+          "pulseCount": 1000,
+          "startHour": 23,
+          "startMin": 59,
+          "endHour": 13,
+          "endMin": 0,
+          "repeatDuty": 64
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x31=49 | 3D 02 | 任务1[02 02 00 0000 0C 00 0C 1E 01]=id2/阀2/关/脉冲0/12:00-12:30/仅周一 | 任务2[0F 00 01 03E8 17 3B 0D 00 40]=id15/双阀(0)/开/脉冲1000/23:59-13:00/仅周日(0x40=bit6)"
+  },
+  {
+    "name": "通讯应答 ACK 帧(0xFF)",
+    "source": "firmware",
+    "payload": "686b740055ffff",
+    "fPort": 10,
+    "expectData": {
+      "seq": 85,
+      "ack": true
+    },
+    "expectError": false,
+    "note": "fromLoRaWANDataHandle：下行特殊类型 bit0=1 时立即应答，整帧仅一条 TLV：68 6B 74 | 00 | seq=0x55=85 | FF FF；setDataPackage 恒回填值 0xFF（不经 lwrb 缓冲，直接发送）"
+  },
+  {
+    "name": "边界组合帧（seq=255/电量100/脉冲65535/周期1440/西1区）",
+    "source": "firmware",
+    "payload": "686b7400ff010d0e03643c0101ffff0101ffff40014107420143018605a08a0d",
+    "fPort": 10,
+    "expectData": {
+      "seq": 255,
+      "hardwareVersion": 13,
+      "softwareVersion": 14,
+      "battery": 100,
+      "valve1State": 1,
+      "insert1Connected": 1,
+      "pulse1Count": 65535,
+      "valve2State": 1,
+      "insert2Connected": 1,
+      "pulse2Count": 65535,
+      "volLevel": 1,
+      "portMode": 7,
+      "stableTime": 1,
+      "powerMode": 1,
+      "reportInterval": 1440,
+      "timezone": -1
+    },
+    "expectError": false,
+    "note": "全字段上边界：seq=0xFF(u8 回绕前最大值) 03 64(100%) 3C 脉冲=FFFF=65535(u16 上限) 40 01(9V) 41 07(bit0~2 全置,0x07&0x78=0 合法) 42 01(最短稳定时长,下行仅拒绝 0) 43 01 86 05A0=1440(上行域上限) 8A 0D(13→-(13-12)=-1,西1区)"
+  },
+  {
+    "name": "半时区 TLV(0x8A, 编码 25→UTC+3.5)",
+    "source": "firmware",
+    "payload": "686b7400178a19",
+    "fPort": 10,
+    "expectData": {
+      "seq": 23,
+      "timezone": 3.5
+    },
+    "expectError": false,
+    "note": "68 6B 74 | 00 | seq=0x17=23 | 8A 19；0x19=25 为固件保留编码（ Iran UTC+3.5），对称地 26=0x1A→UTC+5.5（India）；两者浮点直出"
+  },
+  {
+    "name": "边界：0x3D 单帧 4 任务满载",
+    "source": "firmware",
+    "payload": "686b7400323d0401010000000000000001020201000a013b023a02030101ffff173b173b7f04000000010000173b40",
+    "fPort": 10,
+    "expectData": {
+      "seq": 50,
+      "taskCount": 4,
+      "tasks": [
+        {
+          "id": 1,
+          "valve": 1,
+          "state": 0,
+          "pulseCount": 0,
+          "startHour": 0,
+          "startMin": 0,
+          "endHour": 0,
+          "endMin": 0,
+          "repeatDuty": 1
+        },
+        {
+          "id": 2,
+          "valve": 2,
+          "state": 1,
+          "pulseCount": 10,
+          "startHour": 1,
+          "startMin": 59,
+          "endHour": 2,
+          "endMin": 58,
+          "repeatDuty": 2
+        },
+        {
+          "id": 3,
+          "valve": 1,
+          "state": 1,
+          "pulseCount": 65535,
+          "startHour": 23,
+          "startMin": 59,
+          "endHour": 23,
+          "endMin": 59,
+          "repeatDuty": 127
+        },
+        {
+          "id": 4,
+          "valve": 0,
+          "state": 0,
+          "pulseCount": 1,
+          "startHour": 0,
+          "startMin": 0,
+          "endHour": 23,
+          "endMin": 59,
+          "repeatDuty": 64
+        }
+      ]
+    },
+    "expectError": false,
+    "note": "Device_ReportLocalTaskData 每 4 条冲刷一次 lwrb（task_num==4 分支），4 为单帧上限：68 6B 74 | 00 | seq=0x32=50 | 3D 04 + 4×10B；含脉冲上限 0xFFFF、起始 00:00、结束 23:59、双阀号 0、仅周二(02)/周日(40)/每天(7F) 掩码"
+  },
+  {
+    "name": "守卫：坏同步头(00 6B 74)",
+    "source": "regression",
+    "payload": "006b7400a7ffff",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "首字节 0x00≠0x68，SYNC_HEAD(memcmp 3 字节) 失败，固件侧也不会送入解析；解码器须整体报错返回 {data:{},errors:[…]}"
+  },
+  {
+    "name": "守卫：上行特殊类型非 0",
+    "source": "regression",
+    "payload": "686b7401a7ffff",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "byte3=0x01：固件上行恒写 sendData[3]=0（sendLoRaWANData 与 ACK 路径均如此），bit0 应答/bit1 校验语义仅存在于下行方向，非 0 判为损坏帧"
+  },
+  {
+    "name": "守卫：未知 TLV 类型(0x8D 仅蓝牙通道)",
+    "source": "regression",
+    "payload": "686b7400a78d01",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "0x8D 开关机状态仅出现在 BLE 组包（callback_BLEQuery/callback_BLEPower），LoRaWAN 上行类型表外；解码器按未知类型拒绝并停止解析，防止错位续读"
+  },
+  {
+    "name": "守卫：0x3C 值区截断",
+    "source": "regression",
+    "payload": "686b7400a73c010101",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "TLV 0x3C 声明 8 字节值区，帧内仅剩 3 字节（无线分片丢失形态）；解码器须报截断错误而非越界/凑默认值，且不得死循环"
+  }
+]

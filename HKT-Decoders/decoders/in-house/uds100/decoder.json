@@ -1,0 +1,31 @@
+{
+  "model": "UDS100",
+  "modelKey": "uds100",
+  "aliases": [],
+  "name": "垃圾桶满溢监测传感器",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "环卫监测",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Ultrasonic_Distance_Sensor",
+    "ref": "41ad0d9"
+  },
+  "fPortDefault": 10,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "uds100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_Ultrasonic_Distance_Sensor（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "初版：按固件 setDataPackage/Device_PeriodicReport/Device_GpsReport/fromLoRaWANDataHandle 实现 68 6B 74 同步头+定长 TLV 上行解码（版本/电池/温湿度/倾角/经纬度/距离/满溢/阈值/周期/ACK），含坏帧守卫"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 依 HKT-Firmwares/Readme.md 自研索引补录（此前固件未纳管）。"
+}

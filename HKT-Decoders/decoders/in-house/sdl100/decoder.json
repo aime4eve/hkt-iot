@@ -1,0 +1,33 @@
+{
+  "model": "SDL100",
+  "modelKey": "sdl100",
+  "aliases": [
+    "SDL200"
+  ],
+  "name": "智能门锁",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "智能门锁",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_SmartDoorLock",
+    "ref": "41ad0d9"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "sdl100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_SmartDoorLock（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "首版纳管（此前固件完全未解码）。按 USER/config.h FUNC_OPERATIONAL_VERSION_ENABLE=1 分支推导帧格式 68 6B 74+02+seq+TLV+累加和校验（fPort=10），覆盖周期上报组合帧（FF 0A+固定顺序 10 项 TLV）与 19 种实际上行单 TLV 帧（01/02/03/2F/30/32/4E/4F/52/53/54/56/57/80/84/85/86/8A）；坏同步头/坏特殊类型/校验和错/截断/未知类型一律报错。忠实保留固件怪例：0x32/0x80 为 0 字节值 TLV，0x57 成功应答硬编码 0x50，0x85/0x86 成功值为未赋值 0x00，0x4E/0x4F 短格式带尾随 0x00。"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 依 HKT-Firmwares/Readme.md 自研索引补录（此前固件未纳管）。"
+}

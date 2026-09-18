@@ -1,0 +1,31 @@
+{
+  "model": "SVC100",
+  "modelKey": "svc100",
+  "aliases": [],
+  "name": "电磁阀控制器",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "阀控",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Solenoid_Valve_Controller",
+    "ref": "41ad0d9"
+  },
+  "fPortDefault": null,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "svc100_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_Solenoid_Valve_Controller（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "首版：依固件 USER/Drive/communicate.c setDataPackage/sendLoRaWANData/Device_PeriodicReport/Device_ReportLocalTaskData/fromLoRaWANDataHandle + USER/config.h 推导帧格式 68 6B 74|特殊类型(上行恒 0)|seq|TLV（fPort=10，上行无校验和），实现全部 11 种实际上行 TLV（0x01 版本/0x03 电量/0x3C 双阀状态/0x3D 本地任务上报/0x40 电压等级/0x41 接口功能/0x42 稳定时长/0x43 自动开关机/0x86 同步周期/0x8A 时区/0xFF ACK）；0x02/0x8D 仅蓝牙通道、0x80/0x85 仅下行，按未知类型拒绝；坏同步头/特殊类型非 0/未知类型/TLV 截断/0x3D 任务数越界(0 或 >4)/0xFF 应答值异常一律 {data:{},errors:[...]}；20 条黄金样例（16 正 + 4 守卫）先行手算期望后实现互证"
+    }
+  ],
+  "deviations": [],
+  "notes": "2026-09-18 依 HKT-Firmwares/Readme.md 自研索引补录（此前固件未纳管）。"
+}

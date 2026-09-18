@@ -1,0 +1,168 @@
+[
+  {
+    "name": "周期上报组合帧-有车默认周期",
+    "source": "firmware",
+    "payload": "686b74002a010b1c03643a013b0084008605a0",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 11,
+      "soft_ver": 28,
+      "battery": 100,
+      "park_state": 1,
+      "park_mode": 0,
+      "tamper_state": 0,
+      "report_interval": 1440
+    },
+    "expectError": false,
+    "note": "固件 Device_PeriodicReport 固定顺序组包 6 个 TLV（版本→电量→车位状态→模式→防拆→周期）。帧=同步头 68 6B 74 + 特殊类型 00 + 序号 2A。01|0B 1C→hard_ver=0x0B=11(config.h HARDWARE_VER)、soft_ver=0x1C=28(SOFTWARE_VER)；03|64→battery=100；3A|01→park_state=1 有车(control_center.h)；3B|00→park_mode=0 融合；84|00→tamper_state=0 已安装；86|05 A0→report_interval=0x05A0=1440 分钟(flash.c 出厂默认 1440)。"
+  },
+  {
+    "name": "车位变化上报-无车20分钟周期",
+    "source": "firmware",
+    "payload": "686b74005b010b1c03423a003b018400860014",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 11,
+      "soft_ver": 28,
+      "battery": 66,
+      "park_state": 0,
+      "park_mode": 1,
+      "tamper_state": 0,
+      "report_interval": 20
+    },
+    "expectError": false,
+    "note": "车位离开(control_center.c park_state 1→0 且置 sync_state=1 触发周期帧)。01|0B 1C→hard_ver=11,soft_ver=28；03|42→battery=66；3A|00→park_state=0 无车；3B|01→park_mode=1 仅磁力计；84|00→tamper_state=0；86|00 14→report_interval=0x0014=20 分钟(大端 u16)。"
+  },
+  {
+    "name": "车位异常水淹+防拆未安装",
+    "source": "firmware",
+    "payload": "686b74007f010b1c03323aff3b02840186012c",
+    "fPort": 10,
+    "expectData": {
+      "hard_ver": 11,
+      "soft_ver": 28,
+      "battery": 50,
+      "park_state": 255,
+      "park_mode": 2,
+      "tamper_state": 1,
+      "report_interval": 300
+    },
+    "expectError": false,
+    "note": "park_state 特殊值边界。01|0B 1C→hard_ver=11,soft_ver=28；03|32→battery=50；3A|FF→park_state=255(control_center.h 注释 ff=异常/被水覆盖，不解为 -1)；3B|02→park_mode=2 雷达优先；84|01→tamper_state=1 未安装；86|01 2C→report_interval=0x012C=300 分钟。"
+  },
+  {
+    "name": "电量事件单发帧-低电18",
+    "source": "firmware",
+    "payload": "686b74009c0312",
+    "fPort": 10,
+    "expectData": {
+      "battery": 18
+    },
+    "expectError": false,
+    "note": "adc.c batteryLevel<=20 置 sync_battery=1 → DeviceEvent_Process 单发电量 TLV（固件把同一记录重复写入环形缓冲两次，设备会连发两帧相同内容）。帧=686B74+00+序号9C；03|12→battery=0x12=18（低于 20 报警阈值）。"
+  },
+  {
+    "name": "电量单发边界-满值100",
+    "source": "firmware",
+    "payload": "686b7400a50364",
+    "fPort": 10,
+    "expectData": {
+      "battery": 100
+    },
+    "expectError": false,
+    "note": "adc.c batteryVoltage>=3100mV→batteryLevel=100 后变化触发单发。03|64→battery=100（上限边界，无符号不回绕）。"
+  },
+  {
+    "name": "电量单发边界-0",
+    "source": "firmware",
+    "payload": "686b7400b10300",
+    "fPort": 10,
+    "expectData": {
+      "battery": 0
+    },
+    "expectError": false,
+    "note": "adc.c batteryVoltage<2600mV→batteryLevel=0 下限边界。03|00→battery=0。"
+  },
+  {
+    "name": "服务器要求应答后的ACK帧",
+    "source": "firmware",
+    "payload": "686b740033ffff",
+    "fPort": 10,
+    "expectData": {
+      "ack": 255
+    },
+    "expectError": false,
+    "note": "fromLoRaWANDataHandle 检测下行帧 b3 bit0=1 时回 ACK：setDataPackage(DATATYPE_DEVICE_COMMUNICATE_RESPONSE_ACK) 固定写 dest[1]=0xFF。帧=686B74+00+序号33；FF|FF→ack=255。"
+  },
+  {
+    "name": "时间同步请求裸类型帧-0字节值TLV怪例",
+    "source": "firmware",
+    "payload": "686b74007e80",
+    "fPort": 10,
+    "expectData": {},
+    "expectError": false,
+    "note": "固件怪例：setDataPackage 无 DATATYPE_DEVICE_SYNC_TIME(0x80) 分支，走 default 只产出 1 字节类型本身，无值字段。帧=686B74+00+序号7E+80，解码无业务数据输出（当前 build 中 sync_local_time 标志无置位方，属保留路径，解析兼容）。"
+  },
+  {
+    "name": "BLE查询形态帧-设备ID+开机状态",
+    "source": "firmware",
+    "payload": "686b740044021122334455668d01",
+    "fPort": 10,
+    "expectData": {
+      "dev_eui": "112233445566",
+      "power_on": 1
+    },
+    "expectError": false,
+    "note": "callback_BLEQuery 组包顺序含 02/8D，该帧实际走 BLE 通道不上 LoRaWAN，TLV 语法相同故解码器支持。02|11 22 33 44 55 66→dev_eui=\"112233445566\"（memcpy DevEUI+2 取后 6 字节，十六进制串）；8D|01→power_on=1 开机。"
+  },
+  {
+    "name": "BLE调试形态帧-三轴磁场+雷达频谱",
+    "source": "firmware",
+    "payload": "686b7400555dff9c5e03e85f800060000003e807d00bb80fa0138817701f402710ffff",
+    "fPort": 10,
+    "expectData": {
+      "mag_x": -100,
+      "mag_y": 1000,
+      "mag_z": -32768,
+      "radar_spectrum": [0, 1000, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 65535]
+    },
+    "expectError": false,
+    "note": "callback_BLEDebugData 组包顺序 X→Y→Z→频谱（BLE 通道帧，解码器同语法支持）。5D|FF 9C→0xFF9C 补码=-100；5E|03 E8→1000；5F|80 00→int16 下限 -32768（负数边界）；60|0000 03E8 07D0 0BB8 0FA0 1388 1770 1F40 2710 FFFF→10×u16 大端=[0,1000,2000,3000,4000,5000,6000,8000,10000,65535]（末位 u16 上限边界）。"
+  },
+  {
+    "name": "守卫-同步头错误",
+    "source": "regression",
+    "payload": "696b7400010364",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "首字节 0x69≠0x68，同步头 68 6B 74 不匹配，必须整体报错并返回空数据。"
+  },
+  {
+    "name": "守卫-帧过短",
+    "source": "regression",
+    "payload": "686b7400",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "仅 4 字节，不足 5 字节帧头（同步头 3+特殊类型+序号），无法构成合法帧。"
+  },
+  {
+    "name": "守卫-TLV值截断",
+    "source": "regression",
+    "payload": "686b740001010b",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "类型 0x01 固件写入 2 字节值（HARDWARE_VER+SOFTWARE_VER），此处仅剩 1 字节 0B，截断帧必须报错而非用残字节拼值。"
+  },
+  {
+    "name": "守卫-未知TLV类型",
+    "source": "regression",
+    "payload": "686b74000299aa",
+    "fPort": 10,
+    "expectData": null,
+    "expectError": true,
+    "note": "类型 0x99 不在 enum DataType 表内，无法确定值长度，继续解析会错位，必须报错终止。"
+  }
+]
