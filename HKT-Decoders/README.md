@@ -130,7 +130,7 @@ decoders/
 | --- | --- | --- |
 | 缺协议文档 | gat-100、liquid-level | 无任何依据文件，永远无法核验，需向厂商索取 |
 | 缺黄金样例 | 绝大多数设备 | 仅 irc01、pir-100、uni-water、hkt-water-meter、gm-100 首批配置 |
-| 型号口径核对 | irc01(=PC100?)、ct02(=AT100/GAT100?)、rbc-100(=SRB100?)、hkt-water-meter(=中配?) | 解码器头注释与官方设备索引型号不一致，已进 aliases，待定名 |
+| 型号口径核对 | irc01(=PC100?)、hkt-water-meter(=中配?) | 已清：rbc-100 裁决为 RBC-100（SRB100 入 aliases）；CT02/GAT-100/AT100 裁决归一为 gat-100 条目（2026-09-18） |
 |ThingsBoard 变体缺失 | 全部 | 现有脚本仅 chirpstack/ttn 两类，TB 变体待按设备补齐 |
 
 ## 迁移对照表

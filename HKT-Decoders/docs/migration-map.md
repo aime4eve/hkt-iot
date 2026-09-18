@@ -15,7 +15,7 @@
 | LoRaWAN_People_Counter/…_Recv/Compents/Decode/people_couter.js | in-house/irc01/irc01_chirpstack_v1.0.1.js | 沿用修复后状态 1.0.1 | 含 2026-09-04 八项修复；固件权威 communicate.c（USER/Drive/）；**verified** |
 | LoRaWAN_Air_Switch/Compents/Decode/door_sensor.js | in-house/air-switch/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 头注释 DMS01 vs 官方索引 SCB100，待定名 |
 | LoRaWAN_Air_Switch_CL/Compents/Decode/door_sensor.js | in-house/air-switch-cl/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 与 air-switch 逐字节相同；CL100 硬件运行空开软件 |
-| LoRaWAN_Animals_Track/Compents/Decode/cattle_sheep_track.js | in-house/ct02/ct02_chirpstack_v1.0.0.js | 基线 1.0.0 | 头注释 CT02 vs 官方索引 AT100/GAT100 |
+| LoRaWAN_Animals_Track/Compents/Decode/cattle_sheep_track.js | in-house/gat-100/（归一） | 基线 1.0.0 | 2026-09-18 裁决 CT02/GAT-100/AT100 归一为 gat-100 条目，ct02 条目移除 |
 | LoRaWAN_IAQ1000/Compents/Decode/Air_Sensor.js | in-house/aqs1000/aqs1000_chirpstack_v1.0.0.js | 基线 1.0.0 | 官方索引：IAQ300/600/900 共用 AQS1000 协议 |
 | LoRaWAN_Smart_Rumen_Bolus/Compents/Decode/rbc-100_ttn.js | in-house/rbc-100/rbc-100_ttn_v1.0.0.js | 基线 1.0.0 | 官方索引型号 SRB100 |
 | LoRaWAN_THTB_Sensor/Compents/Decode/THTB_Sensor.js | in-house/gt30/gt30_chirpstack_v1.0.0.js | 基线 1.0.0 | 头注释 GT-30 |
@@ -29,8 +29,8 @@
 | PIR100-人存感应器/decode/pir-100_chirpstack.js | out-sourced/oem/pir-100/pir-100_chirpstack_v1.0.0.js | 基线 1.0.0（存档勿用） | 与手册不符（KB 2026-09-04 已论证） |
 | PIR100-人存感应器/decode/pir-100_ttn.js | out-sourced/oem/pir-100/pir-100_ttn_v1.0.0.js | 基线 1.0.0（存档勿用） | 同上 |
 | —（按手册 §5 重写） | pir-100_chirpstack_v2.0.0.js / pir-100_ttn_v2.0.0.js | v2.0.0 current | 手册原文核验+黄金样例；**verified**。原 feature 分支上的同主题修复因分支不可达，按手册重做 |
-| gat-100…/gat-100_chirpstack.js | out-sourced/oem/gat-100/gat-100_chirpstack_v1.0.0.js | 基线 1.0.0 | 无文档 |
-| gat-100…/gat-100_ttn.js | out-sourced/oem/gat-100/gat-100_ttn_v1.0.0.js | 基线 1.0.0 | 无文档 |
+| gat-100…/gat-100_chirpstack.js | in-house/gat-100/gat-100_chirpstack_v1.0.0.js | 基线 1.0.0 | 2026-09-18 确认自研，移入 in-house；协议与 Animals_Track 固件同源 |
+| gat-100…/gat-100_ttn.js | in-house/gat-100/gat-100_ttn_v1.0.0.js | 基线 1.0.0 | 同上 |
 | 气表/gm-100 Gas meter decode/gm-100_chirpstack.js | out-sourced/oem/gm-100/gm-100_chirpstack_v1.0.0.js | 基线 1.0.0 | |
 | 气表/gm-100 Gas meter decode/gm-100_ttn.js | out-sourced/oem/gm-100/gm-100_ttn_v1.0.0.js | 基线 1.0.0 | |
 | 气表/gm100-decode-cn.js | out-sourced/oem/gm-100/gm-100_chirpstack_cn_v1.0.0.js | 基线 1.0.0 | 语言变体 cn |
