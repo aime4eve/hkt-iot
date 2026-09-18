@@ -1,11 +1,12 @@
 # HKT IoT
 
-本仓库收录华宽通 IoT 的 Android 蓝牙配置工具和 LoRaWAN 设备固件工程。根目录只做项目索引，两个子项目各自维护构建入口、详细说明和历史记录。
+本仓库收录华宽通 IoT 的 Android 蓝牙配置工具、LoRaWAN 设备固件工程和统一设备接入微服务。根目录只做项目索引，各子项目各自维护构建入口、详细说明和历史记录。
 
 | 项目 | 内容 | 技术栈 / 构建方式 | 详细说明 |
 | --- | --- | --- | --- |
 | [HKT-BLETools](HKT-BLETools/) | Android 蓝牙配置工具，当前版本 3.16，支持设备扫描、连接、参数配置、状态查看和 OTA 升级 | Kotlin 1.8.0、AGP 7.4.2、Gradle 8.5、JDK 17 | [HKT-BLETools/Readme.md](HKT-BLETools/Readme.md) |
 | [HKT-Firmwares](HKT-Firmwares/) | 自研固件 13 个产品目录（12 个有应用工程）、外协产品资料，以及历史固件产物和硬件/协议资料 | 以 Keil MDK5 为主，人员计数发射端为 IAR EWARM | [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) |
+| [HKT-DeviceHub](HKT-DeviceHub/) | 统一设备接入微服务：对接 ThingsBoard 的设备注册与上行遥测采集，经 RocketMQ 投递给 smart-livestock / smart-parking 等业务后端；预留下行命令与设备调度扩展 | Spring Boot 3.5.3、Spring Cloud 2025.0.0、Spring Cloud Alibaba 2023.0.3.3（Nacos 注册/配置）、JDK 17、Maven | [HKT-DeviceHub/README.md](HKT-DeviceHub/README.md) |
 
 ## 设备覆盖
 
@@ -41,6 +42,7 @@ BLE 扫描、GATT 连接、协议收发和 OTA 需要真机及真实设备验证
 
 ## 项目边界
 
-- 根目录没有统一构建脚本，也不负责打包 Android APK 或固件。
+- 根目录没有统一构建脚本，也不负责打包 Android APK、固件或后端服务镜像。
 - Android 版本、设备支持、协议和测试范围以 [HKT-BLETools/Readme.md](HKT-BLETools/Readme.md) 为准。
 - 固件产品型号、MCU、工程入口和历史产物以 [HKT-Firmwares/Readme.md](HKT-Firmwares/Readme.md) 为准。
+- 设备注册、遥测事件契约与部署方式以 [HKT-DeviceHub/README.md](HKT-DeviceHub/README.md) 及 `HKT-DeviceHub/docs/` 为准；HKT-DeviceHub 独立部署（dev：172.17.10.206），不随本仓库其他子项目构建。

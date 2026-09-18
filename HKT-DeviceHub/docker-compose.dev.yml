@@ -1,0 +1,80 @@
+services:
+  app:
+    build: .
+    container_name: devicehub-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/devicehub
+      DB_USERNAME: ${DB_USERNAME:-devicehub}
+      DB_PASSWORD: ${DB_PASSWORD:-devicehub}
+      NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-172.22.3.16:8848}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      TB_ENABLED: ${TB_ENABLED:-true}
+      TB_BASE_URL: ${TB_BASE_URL:-http://172.22.3.105}
+      TB_USERNAME: ${TB_USERNAME:-tenant@hkt.com}
+      TB_PASSWORD: ${TB_PASSWORD:-}
+      TB_LOOKBACK_DAYS: ${TB_LOOKBACK_DAYS:-7}
+      ROCKETMQ_NAME_SERVER: rmqnamesrv:9876
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rmqbroker:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: devicehub-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: devicehub
+      POSTGRES_USER: ${DB_USERNAME:-devicehub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devicehub}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-devicehub} -d devicehub"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  rmqnamesrv:
+    image: apache/rocketmq:5.1.4
+    container_name: devicehub-rmqnamesrv
+    command: sh mqnamesrv
+    ports:
+      - "9876:9876"
+    volumes:
+      - ./data/rocketmq/namesrv/logs:/home/rocketmq/logs
+    restart: unless-stopped
+
+  rmqbroker:
+    image: apache/rocketmq:5.1.4
+    container_name: devicehub-rmqbroker
+    command: sh mqbroker -n rmqnamesrv:9876 -c /home/rocketmq/conf/broker.conf
+    depends_on:
+      - rmqnamesrv
+    ports:
+      - "10911:10911"
+      - "10912:10912"
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/conf/broker.conf
+      - ./data/rocketmq/broker/logs:/home/rocketmq/logs
+      - ./data/rocketmq/broker/store:/home/rocketmq/store
+    restart: unless-stopped
+
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    container_name: devicehub-rmq-dashboard
+    environment:
+      JAVA_OPTS: -Drocketmq.namesrv.addr=rmqnamesrv:9876
+    depends_on:
+      - rmqnamesrv
+    ports:
+      - "18080:8080"
+    restart: unless-stopped

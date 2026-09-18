@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: devicehub
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:172.22.3.16:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+      namespace: ${NACOS_NAMESPACE:}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:true}
+        data-id: devicehub.yaml
+        group: DEFAULT_GROUP
+        namespace: ${NACOS_NAMESPACE:}
+        # Local application.yml is the fallback; Nacos values win when present.
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        namespace: ${NACOS_NAMESPACE:}
