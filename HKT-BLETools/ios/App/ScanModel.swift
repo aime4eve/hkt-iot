@@ -43,9 +43,8 @@ final class ScanModel {
     public enum LocatePhase: Equatable { case input, finding, notFound }
     private(set) var locatePhase: LocatePhase?
     private(set) var locateSuffix: String?
-    private(set) var locateHitDevice: DiscoveredDevice?
-    /// 定位命中回调（RootView 据此弹出连接覆盖层）。
-    public var onLocateHit: ((DiscoveredDevice) -> Void)?
+    /// 定位命中（LocateFlowView 消费：弹连接覆盖层后置 nil，避免同设备二次命中不触发）
+    var locateHitDevice: DiscoveredDevice?
     private var locateTimeoutTask: Task<Void, Never>?
     private var savedPrefixes: Set<String>?
 
@@ -116,7 +115,6 @@ final class ScanModel {
                     self.locateTimeoutTask?.cancel()
                     self.stopScan()
                     if let saved = self.savedPrefixes { self.allowedPrefixes = saved; self.savedPrefixes = nil }
-                    self.onLocateHit?(hit)
                     return
                 }
                 // 驻留/列表冻结规则（R-32）：列表仅在扫描进行中刷新。

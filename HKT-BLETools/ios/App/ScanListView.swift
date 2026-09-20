@@ -79,10 +79,6 @@ struct ScanListView: View {
             .onReceive(NotificationCenter.default.publisher(for: .init("popToRoot"))) { _ in
                 showResidentDetail = false
             }
-            .onChange(of: model.locateHitDevice) { _, hit in
-                guard let hit else { return }
-                connector = model.connector(for: hit)
-            }
             .onChange(of: model.requestShowDetail) { _, request in
                 if request {
                     model.requestShowDetail = false

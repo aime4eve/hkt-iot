@@ -57,6 +57,7 @@ public final class DeviceSession {
     }
 
     public func start() {
+        print("[Session] start polling \(deviceName) family=\(family)")
         guard !isPolling else { return }
         isPolling = true
         stopped = false
@@ -249,9 +250,15 @@ public final class DeviceSession {
             finishCalibration(.done)
             return
         }
-        guard let (entries, unknownTail) = try? HKTResponseParser.parse(data, family: family) else { return }
+        guard let (entries, unknownTail) = try? HKTResponseParser.parse(data, family: family) else {
+            print("[Session] parse FAIL \(data.count)B \(data.prefix(6).map { String(format: "%02X", $0) }.joined(separator: " "))")
+            return
+        }
         DeviceSnapshotDecoder.decode(entries, family: family, into: &snapshot)
         self.unknownTail = unknownTail
+        let typeList = entries.map { String(format: "%02X", $0.type) }.joined(separator: ",")
+        let version = entries.first(where: { $0.type == 0x01 })?.value.map { String(format: "%02X", $0) }.joined(separator: ".") ?? "-"
+        print("[Session] rx \(data.count)B entries=[\(typeList)] ver=\(version) power=\(snapshot.power) tail=\(unknownTail)")
         lastResponseAt = Date()
         secondsSinceLastResponse = 0
         linkLost = false

@@ -50,15 +50,18 @@ final class ConnectModel: Identifiable {
     }
 
     func start() {
+        print("[Connect] start \(target.name) id=\(id.uuidString.suffix(4))")
         outcome = nil
         orchestrator.onFinish = { [weak self] failure in
             guard let self else { return }
             if let failure {
                 port.cancelConnect()
                 let result: Outcome = failure == .cancelled ? .cancelled : .failed(failure)
+                print("[Connect] finish failed \(failure)")
                 outcome = result
                 onFinished?(result)
             } else {
+                print("[Connect] finish connected")
                 outcome = .connected
                 onFinished?(.connected)
             }
@@ -66,6 +69,7 @@ final class ConnectModel: Identifiable {
         // 顺序关键：先启动状态机再发起连接——同步事件（如假链路）不得在 begin 前丢失
         orchestrator.begin()
         port.connect(to: target) { [weak self] event in
+            print("[Connect] event \(event)")
             MainActor.assumeIsolated {
                 guard let self else { return }
                 switch event {

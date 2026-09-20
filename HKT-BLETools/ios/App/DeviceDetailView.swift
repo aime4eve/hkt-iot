@@ -142,6 +142,7 @@ struct DeviceDetailView: View {
                                                 data: HKTFrameEncoder.powerPayload(on: on))
             }
             powerSending = false
+            print("[Power] cmd=\(on ? "ON" : "OFF") acked=\(acked)")
             if acked {
                 LogStore.shared.info("0xFE ACK")
             } else {

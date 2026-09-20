@@ -28,8 +28,12 @@ struct ConnectOverlayView: View {
             }
         }
         .background(Theme.bg)
-        .onAppear { model.start() }   // 关键：弹出即启动三阶段连接（此前从未调用，连接永远不发）
+        .onAppear {
+            print("[Overlay] appear \(model.target.name) model=\(ObjectIdentifier(model).hashValue)")
+            model.start()
+        }   // 关键：弹出即启动三阶段连接（此前从未调用，连接永远不发）
         .onChange(of: model.outcome) { _, outcome in
+            print("[Overlay] outcome changed dismissed=\(dismissed)")
             guard let outcome, !dismissed else { return }
             switch outcome {
             case .connected:

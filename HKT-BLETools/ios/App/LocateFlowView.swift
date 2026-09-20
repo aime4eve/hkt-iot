@@ -25,7 +25,12 @@ struct LocateFlowView: View {
 
     var body: some View {
         ZStack {
-            if model.locatePhase == .finding || model.locatePhase == .notFound {
+            if let connector {
+                // 连接覆盖层内嵌于定位层（同一弹层槽位内切换）。勿改回 fullScreenCover 嵌套：
+                // 定位弹层上再叠全屏弹层会触发 SwiftUI 观察失效——模型已 connected 而界面永远停在
+                // 「正在连接」第一格（2026-09-15 真机取证：事件全达、onChange 不触发）
+                ConnectOverlayView(model: connector)
+            } else if model.locatePhase == .finding || model.locatePhase == .notFound {
                 locatePhasePage          // 定位中/未找到：全屏页（原型 home 内 locateView）
             } else {
                 sheetOrInputPage         // 弹层与输入对话框
@@ -33,17 +38,23 @@ struct LocateFlowView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        // 定位命中：由本定位层自己渲染连接覆盖层（内嵌，见 body 注释）。此前由扫描页接管，
+        // 两个全屏弹层竞争宿主导致覆盖层吞掉定位层、详情页推入也被吞（2026-09-15 真机缺陷）
+        .onChange(of: model.locateHitDevice) { _, hit in
+            guard let hit else { return }
+            model.locateHitDevice = nil   // 消费掉：同一设备再次命中仍需触发
+            connector = model.connector(for: hit)
+        }
+        // 连接成功（覆盖层置位 requestShowDetail）：扫描页推详情页，本定位层随覆盖层 dismiss 退场
+        .onChange(of: model.requestShowDetail) { _, request in
+            if request { dismiss() }
+        }
         .onAppear {
             // 演示自动导航：定位中态直达
             if DemoLaunch.isPage("locate-finding") {
                 mode = .input
                 model.startLocate(devEUI: "0095690A3F2AB7C4")
             }
-        }
-        .fullScreenCover(item: $connector) { connector in
-            ConnectOverlayView(model: connector)
-                .environment(model)
-                .environment(langStore)
         }
     }
 
