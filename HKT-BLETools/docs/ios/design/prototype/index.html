@@ -314,7 +314,7 @@ const ZH={
   tsTitle:"时间同步", tsHint:"将手机当前时间同步到设备", tsGo:"同步到设备",
   tsSending:"正在同步…", tsDone:"✓ 设备时间已更新", power:"电源", offState:"已关机",
   opSync:"同步", opSyncing:"同步中", opDone:"完成", opTechDesc:"三轴曲线 · 雷达频谱", opCalDesc:"环境检查 · 长时操作", opCfgDesc:"上报 / 端口 / 时区", opTasksDesc:"实时任务 · 定时任务表",
-  pwOffT:"确认关机？", pwOffB:"关机后设备停止上报与工作，之后可再次开机。",
+  pwOffT:"确认关机？", pwOffB:"关机后设备停止上报并断开连接、返回首页，可从「最近设备」再次开机。",
   calStart:"开始校准", calDone:"✓ 校准完成", calFinish:"完成", calForUDS:"将设备水平静止放置，然后开始校准",
   calForDC:"请确认 7 项环境与操作要求后开始校准", calElapsed:s=>`已用时 ${s} 秒`,
   vol0:"12V", vol1:"9V", vol2:"5V", smartHint:"开启后：阀插入自动开机，阀拔出自动关机",
@@ -426,7 +426,7 @@ const EN={
   tsTitle:"Time Sync", tsHint:"Sync the phone's current time to the device", tsGo:"Sync to Device",
   tsSending:"Syncing…", tsDone:"✓ Device time updated", power:"Power", offState:"Powered off",
   opSync:"Sync", opSyncing:"Syncing", opDone:"Done", opTechDesc:"3-axis curves · radar spectrum", opCalDesc:"Environment checks · long-running", opCfgDesc:"Reporting / port / timezone", opTasksDesc:"Realtime task · schedule table",
-  pwOffT:"Power off?", pwOffB:"The device stops reporting and working. You can power it on again.",
+  pwOffT:"Power off?", pwOffB:"The device stops reporting and disconnects, and the app returns home. Power it on again from Recents.",
   calStart:"Start Calibration", calDone:"✓ Calibration complete", calFinish:"Done",
   calForUDS:"Place the device level and still, then start", calForDC:"Confirm the seven environment and operation checks, then start",
   calElapsed:s=>`Elapsed ${s}s`,
@@ -968,7 +968,7 @@ function P_detail(){
   const pwConfirm=S.powerConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("pwOffT")}</div>
       <div class="b">${t("pwOffB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.powerConfirm=false;render()">${t("cancel")}</button>
-      <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;stopPoll();render()">${t("confirmPower")}</button></div></div></div>`:"";
+      <button class="btn danger" style="margin:0" onclick="S.powerConfirm=false;S.powerOn=false;disconnectSession()">${t("confirmPower")}</button></div></div></div>`:"";
   const discConfirm=S.discConfirm?`<div class="dialog-mask"><div class="dialog"><div class="t">${t("discConfirmT")}</div>
       <div class="b">${t("discConfirmB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.discConfirm=false;render()">${t("cancel")}</button>
@@ -1902,7 +1902,7 @@ const SPEC=[
  {id:"SP-30",pg:"config",tp:"规格",txt:"手机偏移→固件编码映射：整时区直映（+8→8）、负区 +12（−3→15）、+03:30→25、+05:30→26；无法匹配→选 +00:00 并提示",ref:"SD §2.2"},
  {id:"R-31",pg:"detail",tp:"需求",txt:"详情页顶部“会话操作条”集中四个动作：返回 / 首页 / 固件升级 / 断开连接（用户 2026-09-08）。断开连接入口先弹出确认框；确认后=停轮询→停会话守护→清定时器→GATT 断开→日志（标记手动断开）；手动断开=预期断开，不触发自动重连；断开后回扫描页（列表保留），设备进最近设备可一键重连",ref:"用户 2026-09-08；SD §9.5.2"},
  {id:"SP-31",pg:"detail",tp:"规格",txt:"断开入口点击→确认弹窗（说明预期断开/不自动重连）→确认后清理顺序原子执行（停轮询→停守护→清定时器→断开 GATT→日志）；OTA 传输中/校准进行中断开入口置灰禁用（返回保护仍兜底）；重连=最近设备/扫描列表点击走标准三阶段连接",ref:"用户 2026-09-08"},
- {id:"SP-G6",pg:"detail",tp:"规格",txt:"详情页顶部为会话控制卡：设备名+连接状态+版本/电量+返回/首页/固件升级/断开四按钮；字段区保持两列，值可换行并保留单位；SVC100 的阀状态/插入检测/脉冲/端口功能按阀 1/阀 2 分成通道模块，电压/稳定/智能电源/时区/周期保留参数卡；设备操作为可整行点击的电源行+动作卡，地磁设备按磁力计校准→技术参数→参数配置→时间同步排列，SVC100 按阀门任务（TSK 徽标，实时任务+定时任务表入口；2026-09-14 裁决属产品 UI 入原型）→参数配置→时间同步排列，动作卡均独立通栏，卡片带类型徽标/说明/大点击区，时间同步卡实时显示手机时间，校准运行时操作卡禁用；断开在 OTA 传输/校准中禁用",ref:"R-G6；R-31；SP-31；用户方向 2026-09-08；入口裁决 2026-09-14"},
+ {id:"SP-G6",pg:"detail",tp:"规格",txt:"详情页顶部为会话控制卡：设备名+连接状态+版本/电量+返回/首页/固件升级/断开四按钮；字段区保持两列，值可换行并保留单位；SVC100 的阀状态/插入检测/脉冲/端口功能按阀 1/阀 2 分成通道模块，电压/稳定/智能电源/时区/周期保留参数卡；设备操作为可整行点击的电源行+动作卡，地磁设备按磁力计校准→技术参数→参数配置→时间同步排列，SVC100 按阀门任务（TSK 徽标，实时任务+定时任务表入口；2026-09-14 裁决属产品 UI 入原型）→参数配置→时间同步排列，动作卡均独立通栏，卡片带类型徽标/说明/大点击区，时间同步卡实时显示手机时间，校准运行时操作卡禁用；断开在 OTA 传输/校准中禁用；电源行关机成功=预期断开（R-31 语义：设备进最近设备）并回扫描页（2026-09-20 裁决）",ref:"R-G6；R-31；SP-31；用户方向 2026-09-08；入口裁决 2026-09-14；关机断开裁决 2026-09-20"},
  {id:"R-32",pg:"home",tp:"需求",txt:"“返回”=会话驻留：详情返回/首页直达不释放 BLE 会话；首页列表冻结保留，活会话设备卡片显示“已连接”徽章，点击直接回详情（不重连）；点击其他设备→确认框（当前已连接 X，切换到 Y？）确认后自动释放旧会话并连接新设备（2026-09-08 裁决：确认框自动切换）；点卡片先验活，会话已被系统断开则自动降级为标准重连；“重新扫描”对驻留会话做信号检测：无蓝牙信号（>5s 无轮询响应）则清除徽章并自动重连",ref:"用户 2026-09-08"},
  {id:"SP-32",pg:"home",tp:"规格",txt:"驻留期间 1s 轮询照常（固件保活约束）；切换会话=原子释放顺序同 SP-31 后进入标准连接；扫描列表返回后不自动重扫，手动重扫照常且活会话设备若被发现带“已连接”徽章；后台被系统断开→点卡片降级重连；重扫健康检测=最后成功轮询距今 >5s（连接态设备已停止广播，不能以扫描结果判活，只能看轮询心跳）→清徽章+按 R-6 自动重连 ≤3 次，失败转断开态入最近设备",ref:"SD §9.5.2；固件 1s 保活约束"},
 ];

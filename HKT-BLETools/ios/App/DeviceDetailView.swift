@@ -145,6 +145,12 @@ struct DeviceDetailView: View {
             print("[Power] cmd=\(on ? "ON" : "OFF") acked=\(acked)")
             if acked {
                 LogStore.shared.info("0xFE ACK")
+                if !on {
+                    // 关机成功=预期断开（用户裁决 2026-09-20）：设备停止上报，按 R-31 释放会话
+                    // （设备进最近设备、不自动重连）并回扫描首页
+                    LogStore.shared.info(zh ? "关机成功：断开连接并返回首页" : "Powered off: disconnecting and returning home")
+                    onDisconnect()
+                }
             } else {
                 powerError = zh ? "设备未确认开关机命令（重试后仍无 ACK）" : "Device did not acknowledge the power command"
                 LogStore.shared.warn("0xFE " + (zh ? "重发后仍无 ACK" : "still no ACK after retry"))
@@ -354,8 +360,8 @@ struct DeviceDetailView: View {
     private var confirmDialogs: some View {
         if confirmPowerOff {
             HKTDialog(title: zh ? "确认关机？" : "Power off?",
-                      message: zh ? "关机后设备停止上报与工作，之后可再次开机。"
-                                  : "The device stops reporting and working. You can power it on again.") {
+                      message: zh ? "关机后设备停止上报并断开连接、返回首页，可从「最近设备」再次开机。"
+                                  : "The device stops reporting and disconnects, and the app returns home. Power it on again from Recents.") {
                 DialogButton(title: zh ? "取消" : "Cancel") { confirmPowerOff = false }
                 DialogButton(title: zh ? "确认关机" : "Power Off", kind: .danger) {
                     confirmPowerOff = false
