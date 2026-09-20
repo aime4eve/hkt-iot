@@ -159,7 +159,7 @@ struct LocateFlowView: View {
             VStack(spacing: 0) {
                 NavbarHeader(title: zh ? "扫描设备二维码" : "Scan Device QR Code",
                              backText: zh ? "取消" : "Cancel",
-                             onBack: { mode = .sheet }) {
+                             onBack: { dismiss() }) {
                     EmptyView()
                 }
                 .tint(Color(hex: "#23ADE5"))
