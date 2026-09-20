@@ -3,7 +3,7 @@
   "id": "OTA-ENTER-B",
   "device": "ALL",
   "purpose": "enter-update frame B (app-frame len=5, payload[0]=1) - hits app firmware data[7]==1 fallback (SVC communicate.c:1576)",
-  "request": "686B740005010100000017FF",
+  "request": "686B74000005010100000017FF",
   "expected": {
    "action": "FLASH_Write_Update_Flag + reset into bootloader"
   },
@@ -14,7 +14,7 @@
   "id": "OTA-ENTER-A",
   "device": "ALL",
   "purpose": "enter-update frame A (app-frame len=1, bare cmd) - hits app firmware data[5]==1 branch; sent 400ms after B as a second entry",
-  "request": "686B740001011189",
+  "request": "686B74000001011189",
   "expected": {
    "action": "FLASH_Write_Update_Flag + reset into bootloader"
   },
