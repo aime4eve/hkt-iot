@@ -16,8 +16,8 @@ final class ScanModel {
     private(set) var availability: BLEAvailability = .initializing
     private(set) var devices: [DiscoveredDevice] = []
     private(set) var isScanning = false
-    /// 扫描生命周期（用户裁决 2026-09-20，安卓 onScanCycleComplete 同源）：
-    /// 3 轮 × 10s 一个周期，轮内/轮间增量累积；进入第 4 轮=清空列表重开会话回到第 1 轮，循环至手动停止
+    /// 扫描生命周期（用户裁决 2026-09-20）：3 轮 × 10s 增量累积（新发现追加不清除），
+    /// 第 3 轮完成=自动停止保留结果；再点「附近设备」=清空并重开新一轮
     public private(set) var scanRound = 1          // 1–3
     public private(set) var scanElapsed = 0        // 本轮已进行秒数（1–10）
     private var scanTotalSeconds = 0               // 演示模式限时用
@@ -106,7 +106,7 @@ final class ScanModel {
         isScanning = true
         loggedDiscoveries = []
         devices = []
-        // 扫描生命周期：秒级 tick；每轮 10s，3 轮增量累积，第 4 轮清列表重开会话（原型 "3 cycles × 10 s" 同源）
+        // 扫描生命周期：秒级 tick；每轮 10s，3 轮增量累积，第 3 轮完成自动停止等待手动再扫（原型 "3 cycles × 10 s" 同源）
         scanRound = 1
         scanElapsed = 0
         scanTotalSeconds = 0
@@ -126,7 +126,7 @@ final class ScanModel {
                         self.scanRound += 1
                         self.scanElapsed = 0   // 轮次推进：列表继续累积
                     } else {
-                        self.startScan()       // 第 4 轮：清列表、重开会话、回到第 1 轮
+                        self.stopScan()        // 第 3 轮完成：自动停止，保留结果等待手动再扫
                         return
                     }
                 }
