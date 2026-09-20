@@ -6,7 +6,9 @@
 
 ---
 
-## 1. 构建环境（本机已部署，2026-08-08 验证通过）
+## 1. 构建环境（旧 Windows 机器，已退役；现役 macOS 见 §1b）
+
+> 以下为旧 Windows 机器的环境记录，保留作历史参考（其坑 1/2/5 仅适用于该机的中文路径/Git Bash）。
 
 本机（Windows，用户 `hkt`）原本无任何 JDK/Android SDK，已手动从零部署完成，**后续直接用即可**：
 
@@ -23,6 +25,20 @@
 ```properties
 sdk.dir=D\:\\Android\\sdk
 ```
+
+---
+
+## 1b. macOS 本机（现役开发机，2026-09-21 实测核实）
+
+当前开发在 macOS（Apple Silicon，Xcode 26）。工作区 `/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot`——**git 根在 monorepo 顶层**（`HKT-BLETools` 与 `HKT-Firmwares`/`HKT-Decoders`/`HKT-DeviceHub` 并列），git 命令在本目录直接跑即可。**本地安装包产物统一放 `releases/`（已 gitignore），不要放仓库根目录。**
+
+| 事项 | 实测命令 / 结论 |
+|------|----------------|
+| iOS 测试 | `cd ios && swift test`（83 个测试） |
+| iOS 模拟器构建 | `cd ios && xcodebuild -scheme HKTBLETools -destination 'generic/platform=iOS Simulator' build`；一键构建+装机用 `ios/Tools/build_install.sh` |
+| Mac 真电波运行 | Xcode 选 "My Mac (Designed for iPhone)" ⌘R；CLI 精确写法 `-destination 'platform=macOS,arch=arm64,variant=Designed for iPhone,id=<Mac-id>'`（showdestinations 打印的方括号串不能直接喂 CLI，会截断报错） |
+| Android 构建/测试 | 系统 JDK 只有 21/9/8（无 17；`gradle.properties` 的 `org.gradle.java.home` 指向不存在的 Windows 路径），用 **Android Studio JBR 17** 覆盖：`cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew <task> -Dorg.gradle.java.home="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`（`help`/`assembleDevDebug` 实测通过；无 Windows 的中文路径坑） |
+| Android SDK | `android/local.properties` 已配 `sdk.dir=/Users/hkt/Library/Android/sdk`（不在 VCS，丢失按此重建） |
 
 ---
 
@@ -45,7 +61,7 @@ sdk.dir=D\:\\Android\\sdk
 - `app-prod-debug.apk` ≈ 15 MB，**debug 签名，可直接安装**（默认发布包）
 - `app-prod-release-unsigned.apk` ≈ 7.6 MB（R8 优化瘦身），**未签名，需自行签名才能装**
 
-**签名现状**：`android/key.jks` 存在（`alias=hkt`），但**密码未知**，`android/app/build.gradle.kts` 未配 `signingConfigs` → release 产物恒为 `-unsigned.apk`。如需正式签名，获取 `storePassword`/`keyPassword` 后用 `apksigner`（见 [docs/安装包制作说明.md](docs/安装包制作说明.md)，注意该文档版本号/SDK 信息偏旧，以 `android/app/build.gradle.kts` 为准）。
+**签名现状**：`android/key.jks` 存在（`alias=hkt`），但**密码未知**，`android/app/build.gradle.kts` 未配 `signingConfigs` → release 产物恒为 `-unsigned.apk`。如需正式签名，获取 `storePassword`/`keyPassword` 后用 `apksigner`（见 [docs/android/guides/安装包制作说明.md](docs/android/guides/安装包制作说明.md)，注意该文档版本号/SDK 信息偏旧，以 `android/app/build.gradle.kts` 为准）。
 
 ---
 

@@ -1,6 +1,6 @@
 # dev_0803 合并方案评审报告
 
-> 评审对象：`docs/dev-0803-merge-plan.md`
+> 评审对象：`dev-0803-merge-plan.md`（同目录）
 > 评审日期：2026-08-05
 > 评审方法：逐条核实文档的事实声明，对照 `git diff main origin/dev_0803` 原始数据
 

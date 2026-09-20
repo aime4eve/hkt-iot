@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BLETools is a dual-platform BLE tooling product. The current implementation is an Android (Kotlin) app that scans, connects to, configures, and firmware-updates a family of BLE IoT devices over a custom binary protocol. A native SwiftUI iOS app is planned. The supported device families are:
+BLETools is a dual-platform BLE tooling product. The Android (Kotlin) app in `android/` scans, connects to, configures, and firmware-updates a family of BLE IoT devices over a custom binary protocol. A native SwiftUI iOS app is implemented in `ios/` (v1 verified on device — see `docs/ios/` and `AGENTS.md` §8/§9 for its process and docs). The supported device families are:
 
 - **UDS100** — ultrasonic trash-bin overflow sensor
 - **DC200** — geomagnetic / radar parking sensor (also matches names `EPS100`, `MPS100`)
@@ -40,7 +40,7 @@ Build flavors are on the `environment` dimension. `dev` adds `BASE_URL=https://d
 
 `android/local.properties` (not in VCS) must contain `sdk.dir`. The signing key is `android/key.jks` (release is currently unsigned unless you wire `signingConfigs` into `android/app/build.gradle.kts`).
 
-**Note on git:** the working directory is currently **not** a git repository (`git init` has not been run here), so `git-save.ps1` (a `git add -A && git commit` helper) will fail until the repo is initialized.
+**Note on git:** HKT-BLETools is a subdirectory of the monorepo rooted at the parent directory (`98-hkt-iot/`, alongside `HKT-Firmwares`, `HKT-Decoders`, `HKT-DeviceHub`). All `git` commands work from this directory; `git-save.ps1` commits the whole monorepo working tree.
 
 ## Architecture
 
@@ -78,27 +78,29 @@ This typically requires coordinated edits across several files (this is the recu
 1. `Communicate.kt` — add the `DeviceNameEnum` value (and a `parseDeviceType` branch in `MainActivity`), extend `streamDevice()` TX for the device's config layout, extend `streamRev()` RX parsing for its telemetry bytes, and add any new `DeviceEventEnum` states + their dispatch in `StreamThread` and the `0xFF` ACK handler.
 2. `DeviceActivity.kt` — add the device-type-specific UI, reading inputs into `mDeviceEvent` fields and displaying `mDeviceDataString`.
 3. `DeviceFeatureConfig.kt` — disable any unsupported features for the new type.
-4. `docs/parameter-analysis.md` documents the parameter config/display logic in depth — consult it for field byte layouts.
+4. `docs/android/guides/parameter-analysis.md` documents the parameter config/display logic in depth — consult it for field byte layouts.
 
 ## Conventions
 
-- **Code style:** 4-space indent, 120-char width, import order Android → AndroidX → `com` → other → kotlin (per `docs/ANDROID_STUDIO_CONFIG.md`). Match existing files.
+- **Code style:** 4-space indent, 120-char width, import order Android → AndroidX → `com` → other → kotlin (per `docs/android/guides/ANDROID_STUDIO_CONFIG.md`). Match existing files.
 - **Language:** Code comments are predominantly Chinese; user-facing UI strings are English with a Chinese translation in `android/app/src/main/res/values-zh/strings.xml`. `MissingTranslation` lint is disabled, so new strings are not blocked if untranslated, but add `values-zh` entries when adding user-facing text.
 - **`@SuppressLint("MissingPermission")`** is used pervasively on BLE calls rather than inline permission checks — the runtime permission flow lives in `MainActivity`. Match this when adding BLE calls.
 - **Global state first:** New device data/event fields go on the existing `DeviceTypeData` / `DeviceEventData` data classes (and their `*String` display twin), not in new per-Activity state.
 - **Concurrency hazard to know:** `StreamThread` (background thread) and `streamRev()` (invoked from BLE callbacks) mutate `mDeviceData` / `mDeviceEvent` / `mDeviceDataString` while the UI thread reads them in `DeviceActivity`. There is no locking. Preserve the existing pattern (UI refreshes off copied snapshots) and be careful adding new cross-thread fields.
 
-## openspec workflow
+## openspec workflow (Android era, frozen)
 
-This repo uses **spec-driven development** via `openspec/` (`schema: spec-driven` in `openspec/config.yaml`):
+The Android development phase used **spec-driven development** via openspec, now frozen at `docs/android/openspec/` (`schema: spec-driven` in `docs/android/openspec/config.yaml`; no longer updated since 2026-08-13):
 
-- Current, approved specs live in `openspec/specs/<capability>/spec.md` (e.g. `bluetooth-scanning`, `multi-cycle-scanning`, `scanning-configuration`, `config-view-caching`, `build-configuration`).
-- In-progress or proposed changes live in `openspec/changes/<change-name>/` as `proposal.md`, `design.md`, `tasks.md`, and a `specs/` delta; completed changes are moved to `openspec/changes/archive/`.
-- When changing scanning, config-caching, or build behavior, check the matching spec first and treat it as the source of truth for intended behavior.
+- Approved specs live in `docs/android/openspec/specs/<capability>/spec.md` (e.g. `bluetooth-scanning`, `multi-cycle-scanning`, `scanning-configuration`, `config-view-caching`, `build-configuration`).
+- Changes live in `docs/android/openspec/changes/<change-name>/` as `proposal.md`, `design.md`, `tasks.md`, and a `specs/` delta; completed changes are in `docs/android/openspec/changes/archive/`.
+- When changing Android scanning, config-caching, or build behavior, check the matching spec first and treat it as the source of truth for intended behavior.
 
-## Further reading (in `docs/`)
+## Further reading
 
-- `ANDROID_STUDIO_CONFIG.md` — full build/lint/ProGuard/flavor reference. Note: parts of it (AGP/Kotlin versions, config-cache) describe a target state that is newer than the actual `build.gradle.kts`; the build files are authoritative for versions.
-- `parameter-analysis.md` — byte-level breakdown of the parameter config and telemetry display logic.
-- `barcode-scan-deveui-analysis.md` — QR pairing logic analysis.
-- `MASTER.md` — design system for the marketing/landing page (web, not the Android UI).
+Android-era documents moved to `docs/android/` (frozen; see `docs/README.md` for the full navigation):
+
+- `docs/android/guides/ANDROID_STUDIO_CONFIG.md` — full build/lint/ProGuard/flavor reference. Note: parts of it (AGP/Kotlin versions, config-cache) describe a target state that is newer than the actual `build.gradle.kts`; the build files are authoritative for versions.
+- `docs/android/guides/parameter-analysis.md` — byte-level breakdown of the parameter config and telemetry display logic.
+- `docs/android/guides/barcode-scan-deveui-analysis.md` — QR pairing logic analysis.
+- `docs/android/guides/MASTER.md` — design system for the marketing/landing page (web, not the Android UI).

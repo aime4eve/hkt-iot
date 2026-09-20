@@ -479,7 +479,7 @@ SVC100 是双路电磁阀控制器，配置项较多，操作前必须确认阀�
 
 | 资料 | 用途 |
 | --- | --- |
-| `docs/review/20260902-device-config-firmware-comparison.md` | App 配置与固件协议对比确认报告 |
+| `docs/android/reviews/20260902-device-config-firmware-comparison.md` | App 配置与固件协议对比确认报告 |
 | `Readme.md` | 项目功能、构建方式和当前限制 |
-| `docs/parameter-analysis.md` | 参数和协议分析 |
-| `docs/安装包制作说明.md` | APK 制作说明 |
+| `docs/android/guides/parameter-analysis.md` | 参数和协议分析 |
+| `docs/android/guides/安装包制作说明.md` | APK 制作说明 |
