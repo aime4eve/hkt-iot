@@ -59,6 +59,10 @@ public class RegisteredDevice {
     @Column(name = "last_event_at")
     private Instant lastEventAt;
 
+    /** Newest frame ts known on the TB side (monotonic, never regresses). */
+    @Column(name = "last_frame_at")
+    private Instant lastFrameAt;
+
     @Column(name = "consecutive_failures", nullable = false)
     private int consecutiveFailures = 0;
 

@@ -65,6 +65,7 @@ LoRaWAN 设备 → NS → IoT Gateway (TB connector) → ThingsBoard
 | devicehub.tb.poll-interval-ms | `TB_POLL_INTERVAL_MS` | 300000 |
 | devicehub.tb.lookback-days | `TB_LOOKBACK_DAYS` | 7 |
 | devicehub.tb.batch-size | `TB_BATCH_SIZE` | 200 |
+| devicehub.tb.last-frame-flush-ms | `TB_LAST_FRAME_FLUSH_MS` | 10000（WS 侧 last_frame_at 批量刷盘周期） |
 | spring.cloud.stream.rocketmq.binder.name-server | `ROCKETMQ_NAME_SERVER` | 172.17.10.206:9876 |
 | telemetryFrame-out-0 destination | `DEVICEHUB_TELEMETRY_TOPIC` | DEVICEHUB_TELEMETRY_FRAME |
 
@@ -98,10 +99,23 @@ TB_ENABLED=false ./mvnw spring-boot:run
 | POST | `/api/v1/devices/register` | 单设备注册（devEui+project+externalRef+capabilities） |
 | POST | `/api/v1/devices/import` | 批量注册 |
 | GET | `/api/v1/devices/reconcile?project=` | 对账：TB_MISSING / TB_ONLY / TB_IDENTITY_CONFLICT / CONSISTENT |
-| GET | `/api/v1/channels/health` | WS 连接状态、各项目游标滞后、失败计数 |
+| GET | `/api/v1/channels/health` | WS 连接状态、各项目追赶滞后、无数据设备数、失败计数 |
 | ANY | `/api/v1/devices/{id}/commands/**` | 二期占位，一律 501 |
 | GET | `/actuator/health` `/actuator/prometheus` | 健康与指标 |
 | GET | `/swagger-ui.html` | OpenAPI UI |
+
+### 健康端点字段语义（2026-09 调整）
+
+`GET /api/v1/channels/health` 每项目聚合：
+
+| 字段 | 语义 |
+|------|------|
+| `activeDevices` | status=ACTIVE 设备数 |
+| `maxCursorLagMs` | **追赶滞后**（语义已变更）：项目内 `max(last_frame_at - telemetry_cursor_ms, 0)` 的最大值，即"TB 上有新帧但本地还没追平"。**不再是** `now - cursor`——沉默低频设备（游标停在最后一帧）报 0，不再虚报数天滞后。游标为 null 的设备按 0 计（首个回补周期建立游标）；项目内全部设备无数据时为 null。字段名保留以兼容已有看板。 |
+| `noDataDevices` | 从未有任何帧的设备数（cursor 与 last_frame_at 均为 null） |
+| `devicesWithFailures` / `totalConsecutiveFailures` | 失败计数（不变） |
+
+`last_frame_at` 维护：REST 回补通道每周期对每设备做一次 `limit=1&orderBy=DESC` 廉价探测（忽略 TB 对无数据 key 返回的 `{ts:now, value:null}` 伪影条目）；WS 通道由 `LastFrameTracker` 内存累积每帧 ts、每 10s（`devicehub.tb.last-frame-flush-ms`）批量刷盘。该值只增不减。Prometheus gauge `devicehub.iot.cursor.lag.seconds` 同步改为同一追赶滞后语义。
 
 ## 事件契约
 

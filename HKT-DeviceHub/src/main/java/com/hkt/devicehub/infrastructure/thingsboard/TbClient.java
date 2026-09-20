@@ -144,6 +144,11 @@ public class TbClient {
         return devices;
     }
 
+    /**
+     * Latest frame ts of a device (cheap limit=1 DESC probe). TB artifact:
+     * explicit-keys queries return {ts:now, value:null} entries for keys with
+     * no data — null values must be ignored.
+     */
     public Instant fetchLatestTelemetryTs(String tbDeviceId) {
         String path = "/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/values/timeseries"
                 + "?keys=result,dataHex&startTs=0&endTs=" + System.currentTimeMillis()
@@ -152,8 +157,10 @@ public class TbClient {
         long maxTs = Long.MIN_VALUE;
         for (String key : List.of("result", "dataHex")) {
             JsonNode values = timeseries.path(key);
-            if (values.isArray() && !values.isEmpty()) {
-                maxTs = Math.max(maxTs, values.get(0).path("ts").asLong());
+            if (!values.isArray()) continue;
+            for (JsonNode point : values) {
+                if (point.path("value").isNull()) continue;
+                maxTs = Math.max(maxTs, point.path("ts").asLong());
             }
         }
         return maxTs == Long.MIN_VALUE ? null : Instant.ofEpochMilli(maxTs);

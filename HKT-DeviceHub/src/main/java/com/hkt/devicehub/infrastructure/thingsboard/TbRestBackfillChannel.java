@@ -1,6 +1,7 @@
 package com.hkt.devicehub.infrastructure.thingsboard;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.hkt.devicehub.application.CatchupLagCalculator;
 import com.hkt.devicehub.application.TelemetryFrame;
 import com.hkt.devicehub.application.TelemetryFrameDispatcher;
 import com.hkt.devicehub.domain.model.RegisteredDevice;
@@ -123,6 +124,20 @@ public class TbRestBackfillChannel {
             pageStart = batchMaxTs;
         }
 
+        // Cheap DESC probe for the newest TB-side frame: feeds the catch-up
+        // lag metric (max(last_frame_at - cursor, 0)). Probe failure must not
+        // fail the cycle — the cursor discipline above is untouched.
+        try {
+            Instant latestOnTb = tbClient.fetchLatestTelemetryTs(tbDeviceId);
+            if (latestOnTb != null && (device.getLastFrameAt() == null
+                    || device.getLastFrameAt().isBefore(latestOnTb))) {
+                device.setLastFrameAt(latestOnTb);
+            }
+        } catch (Exception e) {
+            log.debug("[TbRest] device {} latest-frame probe failed: {}",
+                    device.getDevEui(), e.getMessage());
+        }
+
         if (failed) {
             device.setConsecutiveFailures(device.getConsecutiveFailures() + 1);
             // Keep the successful prefix cursor; never jump past a failed frame.
@@ -136,12 +151,11 @@ public class TbRestBackfillChannel {
             if (processedMaxTs != Long.MIN_VALUE) {
                 device.setTelemetryCursorMs(processedMaxTs);
                 device.setLastEventAt(Instant.ofEpochMilli(processedMaxTs));
-                metrics.updateCursorLag(device.getDevEui(),
-                        Math.max(0, clock.millis() - processedMaxTs));
                 log.info("[TbRest] device {} cursor advanced to {}",
                         device.getDevEui(), processedMaxTs);
             }
         }
+        metrics.updateCursorLag(device.getDevEui(), CatchupLagCalculator.lagMs(device));
         deviceRepository.save(device);
     }
 }

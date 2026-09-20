@@ -35,6 +35,7 @@ devicehub:
     poll-interval-ms: ${TB_POLL_INTERVAL_MS:300000}
     lookback-days: ${TB_LOOKBACK_DAYS:7}
     batch-size: ${TB_BATCH_SIZE:200}
+    last-frame-flush-ms: ${TB_LAST_FRAME_FLUSH_MS:10000}
 
 management:
   endpoints:

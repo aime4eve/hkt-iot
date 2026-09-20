@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.hkt.devicehub.application.LastFrameTracker;
 import com.hkt.devicehub.application.TelemetryFrameDispatcher;
 import com.hkt.devicehub.domain.model.RegisteredDevice;
 import com.hkt.devicehub.domain.model.RegistrationStatus;
@@ -50,6 +51,7 @@ public class TbWebSocketChannel {
     private final TbProperties props;
     private final TbFrameNormalizer normalizer;
     private final TelemetryFrameDispatcher dispatcher;
+    private final LastFrameTracker lastFrameTracker;
     private final RegisteredDeviceRepository devices;
     private final TelemetryChannelMetrics metrics;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -70,12 +72,14 @@ public class TbWebSocketChannel {
 
     public TbWebSocketChannel(TbClient client, TbProperties props, TbFrameNormalizer normalizer,
                               TelemetryFrameDispatcher dispatcher,
+                              LastFrameTracker lastFrameTracker,
                               RegisteredDeviceRepository devices,
                               TelemetryChannelMetrics metrics) {
         this.client = client;
         this.props = props;
         this.normalizer = normalizer;
         this.dispatcher = dispatcher;
+        this.lastFrameTracker = lastFrameTracker;
         this.devices = devices;
         this.metrics = metrics;
     }
@@ -187,7 +191,10 @@ public class TbWebSocketChannel {
         TbFrameNormalizer.DeviceRef ref = new TbFrameNormalizer.DeviceRef(
                 device.getTbDeviceId().toString(), device.getDevEui(), device.getProject().name());
         normalizer.normalizeWsPoint(ref, key, ts, value)
-                .ifPresent(frame -> dispatcher.dispatch(device, frame, TelemetryChannelMetrics.CHANNEL_WS));
+                .ifPresent(frame -> {
+                    lastFrameTracker.record(device.getId(), frame.ts());
+                    dispatcher.dispatch(device, frame, TelemetryChannelMetrics.CHANNEL_WS);
+                });
     }
 
     private synchronized void scheduleReconnect() {
