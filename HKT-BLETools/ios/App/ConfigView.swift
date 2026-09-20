@@ -63,7 +63,14 @@ struct ConfigView: View {
         .onAppear {
             guard !initialized else { return }
             initialized = true
+            // 真机固件 RX 单缓冲 + 50ms 空闲判帧（uart.c:315）：写入帧若在设备未消费完上一帧
+            // （每秒轮询的 callback_BLESearch 含阻塞测距，处理窗口数百 ms）时到达，会拼进同一
+            // 缓冲且只分发最前帧 → 配置帧被整段丢弃、无 ACK。配置页期间停轮询让链路静默。
+            session.setPollingSuspended(true)
             initDraft()
+        }
+        .onDisappear {
+            session.setPollingSuspended(false)
         }
     }
 

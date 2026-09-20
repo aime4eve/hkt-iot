@@ -60,6 +60,16 @@ final class DeviceSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.longitude ?? 0, 84.281096, accuracy: 0.000001)  // 0x05060708 / 1e6
     }
 
+    func testGPSSignBitMagnitudeDecode() throws {
+        // 固件负坐标 = 幅值 ×1e6 后置最高位（gps.c `|= 0x80000000`），非补码——
+        // 0x81000000 → 幅值 0x01000000/1e6 = 16.777216，取负
+        let snapshot = try decode(
+            "686B74000110810000001105060708",
+            family: .uds100)
+        XCTAssertEqual(snapshot.latitude ?? 0, -16.777216, accuracy: 0.000001)
+        XCTAssertEqual(snapshot.longitude ?? 0, 84.281096, accuracy: 0.000001)
+    }
+
     func testSVCFixtureDecodes() throws {
         let snapshot = try decode(
             "686B740003010D0D8D0103633C01000064010101F440024101420543018A1986001E",

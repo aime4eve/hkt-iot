@@ -140,6 +140,12 @@ public enum BEValue {
         let v = u24(data)
         return v >= 0x800000 ? v - 0x1000000 : v
     }
+    /// 32 位符号位幅值（GPS 经纬度固件约定：|值|×1e6 存储后负数置最高位，**非补码**——
+    /// gps.c 定位更新 `value |= 0x80000000`）。补码解码会把南纬/西经读成天文数字。
+    public static func mag31(_ data: Data) -> Int {
+        let v = u32(data)
+        return (v & 0x7FFF_FFFF) * ((v & 0x8000_0000) != 0 ? -1 : 1)
+    }
     /// 二进制补码有符号 32 位（经纬度）
     public static func i32(_ data: Data) -> Int {
         let v = u32(data)

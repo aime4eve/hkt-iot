@@ -72,8 +72,8 @@ public enum DeviceSnapshotDecoder {
             case 0x09: if v.count >= 3 { snapshot.temperatureMilli = BEValue.i24(v) }
             case 0x0A: if v.count >= 3 { snapshot.humidityMilli = BEValue.i24(v) }
             case 0x0E: if v.count >= 2 { snapshot.angleCenti = BEValue.u16(v) }
-            case 0x10: if v.count >= 4 { snapshot.latitude = Double(BEValue.i32(v)) / 1_000_000 }
-            case 0x11: if v.count >= 4 { snapshot.longitude = Double(BEValue.i32(v)) / 1_000_000 }
+            case 0x10: if v.count >= 4 { snapshot.latitude = Double(BEValue.mag31(v)) / 1_000_000 }
+            case 0x11: if v.count >= 4 { snapshot.longitude = Double(BEValue.mag31(v)) / 1_000_000 }
             case 0x28: if v.count >= 1 { snapshot.htAlarm = Int(v[v.startIndex]) }
             case 0x3A: if v.count >= 1 { snapshot.parkState = Int(v[v.startIndex]) }
             case 0x3B: if v.count >= 1 { snapshot.parkMode = Int(v[v.startIndex]) }
