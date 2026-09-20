@@ -16,6 +16,10 @@ final class ScanModel {
     private(set) var availability: BLEAvailability = .initializing
     private(set) var devices: [DiscoveredDevice] = []
     private(set) var isScanning = false
+    /// 扫描节奏（安卓同款 3 轮 × 10s = 30s 自动结束；演示模式用 demoAutoStopAfter 覆盖）
+    public private(set) var scanElapsed = 0
+    public var scanDuration: Int { Int(demoAutoStopAfter ?? 30) }
+    private var scanTicker: Task<Void, Never>?
 
     /// SP-1：名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调并持久化）。
     var allowedPrefixes: Set<String> = DiscoveredDevice.supportedPrefixes
@@ -99,6 +103,18 @@ final class ScanModel {
         isScanning = true
         loggedDiscoveries = []
         devices = []
+        // 扫描生命周期：秒级进度 + 到时自动结束（原型 log "3 cycles × 10 s" / 安卓 onScanCycleComplete 同源）
+        scanElapsed = 0
+        scanTicker?.cancel()
+        scanTicker = Task { [weak self] in
+            while let self, !Task.isCancelled, self.isScanning, self.scanElapsed < self.scanDuration {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, self.isScanning else { return }
+                self.scanElapsed += 1
+                if self.scanElapsed >= self.scanDuration { self.stopScan() }
+            }
+        }
+        devices = []
         if let autoStop = demoAutoStopAfter {
             DispatchQueue.main.asyncAfter(deadline: .now() + autoStop) { [weak self] in
                 guard let self, self.isScanning else { return }
@@ -145,6 +161,8 @@ final class ScanModel {
     func stopScan() {
         guard isScanning else { return }
         isScanning = false
+        scanTicker?.cancel()
+        scanTicker = nil
         central.stopScan()
         LogStore.shared.info(AppLocale.isZh ? "扫描停止" : "Scan stopped")
     }
