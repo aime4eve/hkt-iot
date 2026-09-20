@@ -152,16 +152,24 @@ public final class DeviceSession {
     /// 上报超时 = 失败（Android 同源：DC 180s / UDS 120s；demo/测试可经 timeout 覆盖）。
     public func startCalibration(reportTimeout timeout: TimeInterval? = nil) async -> CalibrationOutcome {
         finishCalibration(.timeout)   // 页面中断后的遗留等待先释放，避免续体泄漏
+        // 0xFD 与 1Hz 轮询在设备单 RX 缓冲（uart.c 50ms 空闲判帧）上互相挤撞，即发 ACK 常被整帧丢弃；
+        // 且校准期间设备主循环被阻塞、本就不应答轮询——全程停轮询，结束（完成/超时）统一恢复
+        setPollingSuspended(true)
+        defer { setPollingSuspended(false) }
+        print("[Cal] send 0xFD")
         let acked = await sendWrite(cmd: CommandCode.calibrate,
                                     data: HKTFrameEncoder.fillerPayload(),   // TX-CAL-001：0xFF 填充
                                     timeout: 5)
+        print("[Cal] immediate acked=\(acked)")
         guard acked else { return .timeout }
         return await withCheckedContinuation { continuation in
             calibrationWait = continuation
             let budget = timeout ?? (family == .dc200Family ? 180 : 120)
             calibrationDeadline = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(budget))
-                guard let self else { return }
+                // sleep 被取消（完成上报已接管/新一轮校准）时直接退出，不得误杀新等待
+                guard let self, !Task.isCancelled, self.calibrationWait != nil else { return }
+                print("[Cal] deadline timeout (\(budget)s)")
                 self.finishCalibration(.timeout)
             }
         }
@@ -247,6 +255,7 @@ public final class DeviceSession {
         if calibrationWait != nil,
            let text = String(data: data.prefix(64), encoding: .ascii),
            text.contains("Calibration Done") {
+            print("[Cal] done text received (\(data.count)B)")
             finishCalibration(.done)
             return
         }

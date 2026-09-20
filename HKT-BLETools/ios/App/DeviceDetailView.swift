@@ -133,6 +133,10 @@ struct DeviceDetailView: View {
         LogStore.shared.info("0xFE " + (on ? (zh ? "开机" : "power ON") : (zh ? "关机" : "power OFF"))
                              + " → \(session.deviceName)")
         Task {
+            // 开关机帧与 1Hz 轮询在设备单 RX 缓冲上会互相挤撞（首击常被丢，UDS 实测两次）：
+            // 写命令窗口内停轮询，结束后恢复
+            session.setPollingSuspended(true)
+            defer { session.setPollingSuspended(false) }
             var acked = await session.sendWrite(cmd: CommandCode.power,
                                                 data: HKTFrameEncoder.powerPayload(on: on))
             if !acked {
