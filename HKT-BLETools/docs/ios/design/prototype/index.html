@@ -721,6 +721,10 @@ function locateStart(eui){
     const id="…"+s.toLowerCase();
     toast(t("found")(s));log(t("disc"),"INFO",`UDS100 ${id} target hit`);
     S.locate.mode=null;
+    if(S.phase==="ready"){                                          // 驻留会话 → R-32 切换确认（用户裁决 2026-09-20）
+      if(S.device==="UDS100"&&S.id===id){nav("detail");return;}     // 定位到的就是当前设备：直接回详情
+      S.switchTo={n:"UDS100",id,rssi:-58};render();return;          // 其他设备 → 确认框：是=断开重连；否=维持现状
+    }
     connectTo("UDS100",id,-58);
   },2600);
 }

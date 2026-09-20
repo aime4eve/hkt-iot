@@ -16,6 +16,7 @@ struct LocateFlowView: View {
     @State private var pulse = false
     @State private var camState: CameraScanner.RunState = .running
     @State private var qrHint: String?
+    @State private var pendingTarget: DiscoveredDevice?
 
     enum LocateMode: Equatable {
         case sheet, input, camera
@@ -43,11 +44,45 @@ struct LocateFlowView: View {
         .onChange(of: model.locateHitDevice) { _, hit in
             guard let hit else { return }
             model.locateHitDevice = nil   // 消费掉：同一设备再次命中仍需触发
+            // 已有驻留会话 → R-32 切换确认（用户裁决 2026-09-20）：是=断开重连；否=维持现状退出定位。
+            // 不做此防护会在旧会话未释放时连新设备：底层链路被新设备占据，旧会话按自己的协议解析
+            // 新设备应答 → 详情页报「响应数据异常（未知类型）」且进入错误详情页
+            if let resident = model.residentDevice, model.activeSession != nil {
+                if resident.identifier == hit.identifier {
+                    model.requestShowDetail = true   // 定位到的就是当前设备：直接回详情
+                    dismiss()
+                } else {
+                    pendingTarget = hit
+                }
+                return
+            }
             connector = model.connector(for: hit)
         }
         // 连接成功（覆盖层置位 requestShowDetail）：扫描页推详情页，本定位层随覆盖层 dismiss 退场
         .onChange(of: model.requestShowDetail) { _, request in
             if request { dismiss() }
+        }
+        // R-32 切换确认框（R-31 释放语义：取消=维持现状退出定位，确认=断开旧会话连接目标）
+        .overlay {
+            if let target = pendingTarget, let current = model.residentDevice {
+                HKTDialog(title: zh ? "切换设备？" : "Switch device?",
+                          message: Text(zh ? "当前已连接 " : "Currently connected to ")
+                              + Text(current.name).bold()
+                              + Text(zh ? "。切换将断开当前会话并连接 " : ". Switching will disconnect it and connect to ")
+                              + Text(target.name).bold()
+                              + Text(zh ? "。" : "."),
+                          buttons: {
+                    DialogButton(title: zh ? "取消" : "Cancel") {
+                        pendingTarget = nil
+                        dismiss()   // 维持现状：退出定位流程，原连接保持不动
+                    }
+                    DialogButton(title: zh ? "切换并连接" : "Switch & Connect", kind: .primary) {
+                        pendingTarget = nil
+                        model.disconnectActive()
+                        connector = model.connector(for: target)
+                    }
+                })
+            }
         }
         .onAppear {
             // 演示自动导航：定位中态直达
