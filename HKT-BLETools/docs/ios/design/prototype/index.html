@@ -667,7 +667,7 @@ function P_home(){
       <div id="scanListWrap">${scanListHTML()}</div>`;
   return statusbar()+`<div class="navbar">${t("app")}<span class="navright">
       <button class="linkbtn" data-act="locate" style="margin-right:12px">${t("locate")}</button>
-      <button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
+      <button class="linkbtn" data-act="go-settings">⚙︎ ${lang==="zh"?"设置":"Settings"}</button></span></div>
     <div class="body">${body}</div>`+homeOverlays();
 }
 function reconnectFromHome(dev,attempt){

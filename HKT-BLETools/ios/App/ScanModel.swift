@@ -47,7 +47,7 @@ final class ScanModel {
     var requestShowDetail = false
 
     // R-2 目标设备定位
-    public enum LocatePhase: Equatable { case input, finding, notFound }
+    public enum LocatePhase: Equatable { case finding, notFound }
     private(set) var locatePhase: LocatePhase?
     private(set) var locateSuffix: String?
     /// 定位命中（LocateFlowView 消费：弹连接覆盖层后置 nil，避免同设备二次命中不触发）
@@ -187,7 +187,6 @@ final class ScanModel {
 
     // MARK: - R-2 目标设备定位（2026-09-07 裁决选 B）
 
-    func beginLocateInput() { locatePhase = .input }
 
     func retryLocate() {
         guard locateSuffix != nil else { return }

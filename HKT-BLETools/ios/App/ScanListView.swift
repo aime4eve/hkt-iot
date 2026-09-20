@@ -20,15 +20,10 @@ struct ScanListView: View {
             VStack(spacing: 0) {
                 NavbarLarge(title: "HKT BLETools") {
                     LinkButton(title: zh ? "⌖ 扫描" : "⌖ Locate") {
-                        model.beginLocateInput()
                         showLocate = true
                     }
                     .padding(.trailing, 12)
-                    Button("⚙︎") { showSettings = true }
-                        .font(.hkt(14, .semibold))
-                        .foregroundStyle(Theme.info)
-                        .padding(.horizontal, 9).padding(.vertical, 6)
-                        .background(Theme.info.opacity(0.09), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+                    LinkButton(title: zh ? "⚙︎ 设置" : "⚙︎ Settings") { showSettings = true }
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
