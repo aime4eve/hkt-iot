@@ -20,6 +20,7 @@ struct DeviceDetailView: View {
     @State private var showConfig = false
     @State private var showTasks = false
     @State private var showOTA = false
+    @State private var showTech = false
 
     private var snapshot: DeviceSnapshot { session.snapshot }
     private var zh: Bool { langStore.isZh }
@@ -86,6 +87,9 @@ struct DeviceDetailView: View {
         }
         .navigationDestination(isPresented: $showOTA) {
             OTAView(session: session)
+        }
+        .navigationDestination(isPresented: $showTech) {
+            TechView(session: session)
         }
         .overlay { confirmDialogs }
     }
@@ -320,7 +324,9 @@ struct DeviceDetailView: View {
             if session.family == .dc200Family {
                 OpCard(badge: "MAG",
                        title: zh ? "技术参数" : "Tech Parameters",
-                       desc: zh ? "三轴曲线 · 雷达频谱" : "3-axis curves · radar spectrum") {}
+                       desc: zh ? "三轴曲线 · 雷达频谱" : "3-axis curves · radar spectrum") {
+                    showTech = true
+                }
             }
             if session.family == .svc100 {
                 // SVC 专属：阀门任务入口（原型经演示工具栏进入，真机需要页面入口——规格卡 P-tasks §5）
