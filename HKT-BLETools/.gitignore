@@ -25,6 +25,10 @@ local.properties
 keystore.properties
 *.apk
 release_log.txt
+
+# Local release artifacts (APK/IPA 安装包产物)
+/releases/
+
 # IDE / editor / AI tool configs
 .idea/
 .vscode/
@@ -32,3 +36,8 @@ release_log.txt
 .cursor/
 .opencode/
 .trae/
+.zcode/
+
+# AI tool session state (mimosa hooks / SwiftPM workspace 残留)
+.mimosa/
+.swiftpm/
