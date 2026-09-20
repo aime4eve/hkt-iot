@@ -40,6 +40,7 @@ import android.widget.TextView
 import android.widget.TimePicker
 import android.widget.Toast
 import android.view.inputmethod.EditorInfo
+import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -1485,7 +1486,7 @@ class DeviceActivity: AppCompatActivity(){
             }
         }
 
-        if (requestCode == 0xFF && resultCode == ComponentActivity.RESULT_OK) {
+        if (requestCode == 0xFF && resultCode == Activity.RESULT_OK) {
             data?.data?.let { selectedFileUri ->
                 // Read through the transient SAF grant returned by the picker.
 //                contentResolver.takePersistableUriPermission(selectedFileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
