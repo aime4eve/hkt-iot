@@ -95,14 +95,14 @@ struct ScanListView: View {
         VStack(alignment: .leading, spacing: 6) {
             ScanStatusRow(
                 title: model.isScanning
-                    ? String(format: zh ? "扫描中… 已发现 %d 台 · 剩余 %d 秒" : "Scanning… %d found · %ds left",
-                             model.devices.count, max(model.scanDuration - model.scanElapsed, 0))
+                    ? String(format: zh ? "扫描中… 已发现 %d 台 · 第 %d/3 轮 · 剩余 %d 秒" : "Scanning… %d found · round %d/3 · %ds left",
+                             model.devices.count, model.scanRound, max(model.scanRoundSeconds - model.scanElapsed, 0))
                     : String(format: zh ? "扫描完成 · %d 台" : "Scan finished · %d found", model.devices.count),
                 actionTitle: model.isScanning ? (zh ? "停止" : "Stop") : (zh ? "附近设备" : "Nearby Devices")) {
                 model.isScanning ? model.stopScan() : model.startScan()
             }
             if model.isScanning {
-                ProgressView(value: Double(model.scanElapsed), total: Double(model.scanDuration))
+                ProgressView(value: Double(model.scanElapsed), total: Double(model.scanRoundSeconds))
                     .tint(Theme.info)
             }
         }
