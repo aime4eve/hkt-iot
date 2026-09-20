@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HKT 负载解码器调试平台</title>
-<link rel="stylesheet" href="style.css?v=20260918b">
+<link rel="stylesheet" href="style.css?v=20260920a">
 </head>
 <body>
 <div id="app" v-cloak>
@@ -17,7 +17,7 @@
       </div>
     </div>
     <div class="topbar-ops">
-      <button class="btn ghost" @click="newDev.open = true">＋ 新增设备</button>
+      <button class="btn ghost" @click="newDev.err = ''; newDev.open = true">＋ 新增设备</button>
       <button class="btn ghost" @click="importClick" :disabled="importing">{{ importing ? '导入中…' : '⬆ 导入' }}</button>
       <button class="btn ghost" @click="exportBackup">⬇ 导出备份</button>
       <input type="file" ref="importFile" accept=".zip" style="display:none" @change="doImport">
@@ -331,7 +331,9 @@
       <div class="modal-body">
         <div class="form grid2">
           <label>型号 * <input v-model.trim="newDev.form.model" placeholder="如 GM-200"></label>
-          <label>modelKey * <input v-model.trim="newDev.form.modelKey" placeholder="小写连字符，如 gm-200"></label>
+          <label>modelKey * <input v-model.trim="newDev.form.modelKey" placeholder="小写连字符，如 gm-200">
+            <div class="ferr" v-if="newDev.form.modelKey && modelKeyBad(newDev.form.modelKey)">需为小写字母/数字/连字符，字母或数字开头</div>
+          </label>
           <label>名称 * <input v-model.trim="newDev.form.name" placeholder="如 LoRaWAN 智能燃气表二代"></label>
           <label>来源 *
             <select v-model="newDev.form.origin" @change="onOriginChange">
@@ -362,6 +364,7 @@
           </div>
           <input v-if="newDev.form.authType==='protocol-doc' && !newDev.form.authMissing" class="full" v-model.trim="newDev.form.authSection" placeholder="文档章节（可空）">
         </div>
+        <div class="ferr" v-if="newDev.err">{{ newDev.err }}</div>
         <div class="row btns">
           <button class="btn primary" @click="createDevice" :disabled="newDev.saving">创建</button>
           <span class="hint inline">创建后到「管理」页上传解码器版本与文档</span>
@@ -384,6 +387,6 @@ setTimeout(function () {
   }
 }, 8000);
 </script>
-<script src="app.js?v=20260918a"></script>
+<script src="app.js?v=20260920a"></script>
 </body>
 </html>

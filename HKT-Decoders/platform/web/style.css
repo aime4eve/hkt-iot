@@ -154,3 +154,5 @@ input.full { width: 100%; padding: 7px 10px; border: 1px solid var(--line); bord
 .hint.inline { font-size: 12px; }
 .modal-box.narrow { width: min(640px, 92vw); }
 .modal-body { padding: 16px 18px; overflow-y: auto; }
+
+.ferr { color: var(--bad); font-size: 12px; margin-top: 4px; }

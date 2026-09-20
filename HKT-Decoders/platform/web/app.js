@@ -31,7 +31,7 @@ createApp({
       codeView: { open: false, file: '', content: '' },
       syncing: false,
       importing: false,
-      newDev: { open: false, saving: false, form: this.blankNewDev() },
+      newDev: { open: false, saving: false, err: '', form: this.blankNewDev() },
       mgmt: { saving: false, form: {}, nc: { platform: 'chirpstack', lang: '', version: '', firmwareVersion: '', changelog: '', code: '' }, samplesText: '[]' },
       toast: null,
     };
@@ -57,6 +57,7 @@ createApp({
     blankNewDev() {
       return { model: '', modelKey: '', name: '', origin: 'out-sourced', vendor: '', vendorKey: '', category: '', fPortDefault: '', aliases: '', authType: 'protocol-doc', authPath: '', authRef: '', authSection: '', authMissing: false };
     },
+    modelKeyBad(s) { return !/^[a-z0-9][a-z0-9-]*$/.test(s || ''); },
     onOriginChange() {
       this.newDev.form.authType = this.newDev.form.origin === 'in-house' ? 'firmware' : 'protocol-doc';
     },
@@ -190,27 +191,37 @@ createApp({
       this.importing = false;
     },
     async createDevice() {
+      const f = this.newDev.form;
+      this.newDev.err = '';
+      if (!f.model.trim() || !f.name.trim()) { this.newDev.err = '型号 / 名称必填'; return; }
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(f.modelKey || '')) {
+        this.newDev.err = 'modelKey 需为小写字母/数字/连字符，且以字母或数字开头（如 gm-200）';
+        return;
+      }
+      if (f.origin === 'out-sourced' && !f.vendorKey) { this.newDev.err = '采购设备需填厂商目录名（如 oufu）'; return; }
       this.newDev.saving = true;
       try {
-        const f = this.newDev.form;
         const body = {
           model: f.model, modelKey: f.modelKey, name: f.name, origin: f.origin,
           vendor: f.vendor, vendorKey: f.vendorKey, category: f.category, fPortDefault: f.fPortDefault,
           aliases: f.aliases ? f.aliases.split(/[,，\s]+/).filter(Boolean) : [],
+          // 创建时文档必然尚未进平台：一律 missing=true（上传后 saveDoc 自动转正），
+          // note 区分「已有文档建后上传」与「暂缺记债务」，满足服务端 accountability 校验
           authority: f.authType === 'firmware'
             ? { type: 'firmware', path: f.authPath, ref: f.authRef }
-            : { type: 'protocol-doc', file: null, section: f.authSection, missing: !!f.authMissing, note: f.authMissing ? '暂缺协议文档（债务台账）' : null },
+            : { type: 'protocol-doc', file: null, section: f.authSection,
+                missing: true, note: f.authMissing ? '暂缺协议文档（债务台账）' : '已有文档，创建后即上传' },
         };
         const r = await fetch('/api/devices', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-        if (r.error) return this.showToast(r.error, 'bad');
+        if (r.error) { this.newDev.err = r.error; return; }
         this.showToast('设备已创建: ' + r.id);
         this.newDev.open = false;
         this.newDev.form = this.blankNewDev();
         await this.loadDevices();
         await this.openDevice(r.id);
         this.tab = 'manage';
-      } catch (e) { this.showToast('创建失败: ' + e.message, 'bad'); }
-      this.newDev.saving = false;
+      } catch (e) { this.newDev.err = '创建失败: ' + e.message; }
+      finally { this.newDev.saving = false; }
     },
     fillMgmtForm() {
       const d = this.dev;
@@ -245,7 +256,7 @@ createApp({
         this.showToast('台账已保存');
         await this.openDevice(this.currentId); this.tab = 'manage';
       } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
-      this.mgmt.saving = false;
+      finally { this.mgmt.saving = false; }
     },
     mgmtFilePicked(ev) {
       const f = ev.target.files[0];
@@ -273,7 +284,7 @@ createApp({
         this.showToast('新版本已保存: ' + r.file);
         await this.openDevice(this.currentId); this.tab = 'manage';
       } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
-      this.mgmt.saving = false;
+      finally { this.mgmt.saving = false; }
     },
     async setCurrent(file) {
       const r = await fetch('/api/device/codec-current', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId, file }) }).then(r => r.json());
@@ -310,7 +321,7 @@ createApp({
         this.showToast('样例已保存（' + r.count + ' 条）');
         await this.openDevice(this.currentId); this.tab = 'manage';
       } catch (e) { this.showToast('保存失败: ' + e.message, 'bad'); }
-      this.mgmt.saving = false;
+      finally { this.mgmt.saving = false; }
     },
     async uploadDoc(ev) {
       const f = ev.target.files[0];
