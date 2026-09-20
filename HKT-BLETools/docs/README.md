@@ -5,6 +5,7 @@
 | 目录 | 状态 | 内容 |
 |------|------|------|
 | [android/](android/) | **冻结**（止于 V3.21 · 2026-09-02） | Android 研发期全部文档：使用指南、协议参数分析、openspec 规格与变更归档、代码评审 |
+| [android-v2/](android-v2/) | **活跃**（Android v2 重构） | 按 iOS 架构重构安卓端：裁决与功能对照、架构设计 |
 | [ios/](ios/) | **活跃**（iOS v1） | 需求总纲、architecture/（软件设计说明·测试基线）、design/（高保真原型·规格清单·ui-spec·对照截图）、operations/（构建装机指南）、reviews/（设计评审） |
 
 ## 快速入口
