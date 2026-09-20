@@ -341,20 +341,24 @@ struct DeviceDetailView: View {
                    desc: zh ? "上报 / 端口 / 时区" : "Reporting / port / timezone") {
                 showConfig = true
             }
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                // 对时分家族（审计 ❌-1/❌-2）：SVC=hkt 帧（有 ACK）/ UDS=ASCII（无回执）/ DC=固件缺陷暂不支持
-                let outcome = session.timeSyncOutcome
-                OpCard(badge: "TIME", badgeKind: .ok,
-                       title: zh ? "时间同步" : "Time Sync",
-                       desc: clockText(context.date),
-                       trailing: .pill(session.isTimeSyncing ? (zh ? "同步中" : "Syncing")
-                                       : outcome == .acknowledged ? (zh ? "完成" : "Done")
-                                       : outcome == .sent ? (zh ? "已发送" : "Sent")
-                                       : outcome == .unsupported ? (zh ? "不支持" : "N/A")
-                                       : outcome == .failed ? (zh ? "未确认" : "No ACK")
-                                       : (zh ? "同步" : "Sync")),
-                       disabled: session.isTimeSyncing || outcome == .unsupported) {
-                    Task { await session.sendTimeSync() }
+            if session.family != .dc200Family {
+                // DC200 家族隐藏时间同步入口（用户裁决 2026-09-20）：hkt 帧死代码（FD-002）+ ASCII 月份 +1（FD-003），
+                // 固件修复后随台账解除隐藏
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    // 对时分家族：SVC=hkt 帧（有 ACK）/ UDS=ASCII（无回执）
+                    let outcome = session.timeSyncOutcome
+                    OpCard(badge: "TIME", badgeKind: .ok,
+                           title: zh ? "时间同步" : "Time Sync",
+                           desc: clockText(context.date),
+                           trailing: .pill(session.isTimeSyncing ? (zh ? "同步中" : "Syncing")
+                                           : outcome == .acknowledged ? (zh ? "完成" : "Done")
+                                           : outcome == .sent ? (zh ? "已发送" : "Sent")
+                                           : outcome == .unsupported ? (zh ? "不支持" : "N/A")
+                                           : outcome == .failed ? (zh ? "未确认" : "No ACK")
+                                           : (zh ? "同步" : "Sync")),
+                           disabled: session.isTimeSyncing || outcome == .unsupported) {
+                        Task { await session.sendTimeSync() }
+                    }
                 }
             }
         }
