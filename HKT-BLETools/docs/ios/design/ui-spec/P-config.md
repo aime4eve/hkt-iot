@@ -32,7 +32,7 @@ body（padding 0 16 24）
 
 | 行 | 说明 | 校验 |
 |---|---|---|
-| 上报周期（数字行）| hint：0 为固件接受的合法值（开放策略见需求 §7.4） | 0–1440，单位分钟 |
+| 上报周期（数字行）| hint：取值范围 0–1440 | 0–1440，单位分钟 |
 | 工作模式（分段芯片卡）| 融合模式 / 仅地磁 / 雷达优先（单选，选中=info 底白字，未选=card2 底 text2，r9 padding 9 4）| — |
 
 ## 4. SVC100 表单（两个 cfg-section + 吸底保存）
@@ -72,7 +72,7 @@ body（padding 0 16 24）
 | cfgFirmwareMap / cfgDerivedPort | 固件映射 0=12V / 1=9V / 2=5V / 合成端口值 | firmware: 0=12V / 1=9V / 2=5V / Derived port value |
 | cfgStableRange / portStableOff | 1–255 秒 / 仅在带稳定时间的端口模式下可编辑 | 1–255 s / Only editable in stable-time port modes |
 | smartHint | 开启后：阀插入自动开机，阀拔出自动关机 | When on: the valve powers on when inserted and off when removed |
-| hintGps / hintHigh / hintPeriod0 | 0 = 关闭 GPS 定位 / 0 = 关闭高阈值告警 / 0 为固件接受的合法值（开放策略见需求 §7.4） | 0 = GPS positioning off / 0 = high-threshold alarm off / 0 is accepted by firmware (see req §7.4) |
+| hintGps / hintHigh / hintPeriod0 | 0 = 关闭 GPS 定位 / 0 = 关闭高阈值告警 / 取值范围 0–1440 | 0 = GPS positioning off / 0 = high-threshold alarm off / Range 0–1440 |
 | errRange / errGps / errHigh | 超出范围 {a}–{b} / 合法值：0 或 10–1440 / 合法值：0 或 30–4500 | Out of range {a}–{b} / valid: 0 or 10–1440 / valid: 0 or 30–4500 |
 | 时区分组 | 西半球时区（UTC−12:00 ~ UTC−01:00）/ 东半球时区（UTC+01:00 ~ UTC+12:00）/ 半小时时区 | Western… / Eastern… / Half-hour time zones |
 | 与手机时区一致 + 提示 | 与手机时区一致（不支持时置 UTC+00:00 并提示） | Match phone timezone |

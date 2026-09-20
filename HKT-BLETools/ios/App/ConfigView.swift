@@ -155,7 +155,7 @@ struct ConfigView: View {
         } else if session.family == .dc200Family {
             NumFieldCard(label: zh ? "上报周期" : "Report period",
                          text: $draft.report, unit: zh ? "分钟" : "min",
-                         hint: zh ? "0 为固件接受的合法值（开放策略见需求 §7.4）" : "0 is accepted by firmware",
+                         hint: zh ? "取值范围 0–1440" : "Range 0–1440",
                          error: errors["report"])
             ChoiceChipRow(label: zh ? "工作模式" : "Work mode",
                           options: [zh ? "融合模式" : "Fusion",
