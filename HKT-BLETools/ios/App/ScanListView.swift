@@ -10,6 +10,7 @@ struct ScanListView: View {
     @State private var connector: ConnectModel?
     @State private var showResidentDetail = false
     @State private var showLocate = false
+    @State private var query = ""   // R-33 列表模糊查询（广播名忽略大小写包含）
     @State private var showSettings = false
 
     private var zh: Bool { langStore.isZh }
@@ -32,6 +33,8 @@ struct ScanListView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         statusRow
+                        searchField
+                            .padding(.top, 10)
                         content
                     }
                     .padding(.horizontal, 16)
@@ -108,6 +111,32 @@ struct ScanListView: View {
         }
     }
 
+    // MARK: - R-33 模糊查询（广播名忽略大小写包含；与设置页类型过滤叠加）
+
+    private var shownDevices: [DiscoveredDevice] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        return q.isEmpty ? model.devices
+            : model.devices.filter { $0.name.localizedCaseInsensitiveContains(q) }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Text("⌕").font(.hkt(15, .semibold)).foregroundStyle(Theme.text2)
+            TextField(zh ? "搜索广播名（模糊匹配）" : "Filter by broadcast name", text: $query)
+                .font(.hkt(14))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !query.isEmpty {
+                Button { query = "" } label: {
+                    Text("✕").font(.hkt(13)).foregroundStyle(Theme.text2)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Theme.card2, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
+    }
+
     // MARK: - 列表内容（规格卡 §1 DOM 顺序）
 
     @ViewBuilder
@@ -132,7 +161,7 @@ struct ScanListView: View {
                 .onTapGesture { tapCard(resident.identifier, resident.name) }
                 .padding(.bottom, 11)
             }
-            ForEach(model.devices) { device in
+            ForEach(shownDevices) { device in
                 if device.identifier != model.residentDevice?.identifier {
                     ScanDeviceCard(name: device.name,
                                    subtitle: "ID …\(idSuffix(device.identifier)) · \(device.rssi) dBm") {
@@ -141,6 +170,14 @@ struct ScanListView: View {
                     .onTapGesture { tapCard(device.identifier, device.name) }
                     .padding(.bottom, 11)
                 }
+            }
+            if !query.trimmingCharacters(in: .whitespaces).isEmpty,
+               shownDevices.isEmpty, !model.devices.isEmpty {
+                Text(zh ? "无匹配设备" : "No matching devices")
+                    .font(.hkt(12))
+                    .foregroundStyle(Theme.text2)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
             }
             if !residentActive, let last = model.lastSession, model.devices.isEmpty {
                 recentCard(last)

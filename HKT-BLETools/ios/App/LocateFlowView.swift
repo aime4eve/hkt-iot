@@ -2,25 +2,18 @@ import CoreBLE
 import SwiftUI
 import UIKit
 
-/// R-2 目标设备定位 UI —— 1:1 克隆冻结原型（定位 sheet / 输入对话框 / 相机取景 / 定位中脉冲 / 未找到）。
-/// 状态机 = ScanModel.locatePhase（input/finding/notFound，30s 超时未找到，命中 onLocateHit→连接覆盖层）。
-/// 相机=AVFoundation 真会话（CameraScanner，2026-09-14 接入）：识别文本须 16 位 hex DevEUI（Android 同规）。
+/// R-2 扫码定位（2026-09-20 重构）：⌖ 直启相机（选择弹层与手输对话框废弃，DevEUI 检索改为
+/// 列表模糊查询 R-33）。状态机 = ScanModel.locatePhase（finding/notFound，30s 超时未找到）；
+/// 相机=AVFoundation 真会话（CameraScanner）：识别文本须 16 位 hex DevEUI，否则红字提示继续扫。
 struct LocateFlowView: View {
     @Environment(ScanModel.self) private var model
     @Environment(LanguageStore.self) private var langStore
     @Environment(\.dismiss) private var dismiss
     @State private var connector: ConnectModel?
-    @State private var mode: LocateMode = .sheet      // sheet / input / camera（真会话）
-    @State private var locateInput: String = "0095690" // 预填厂商前缀（Android DEFAULT_DEV_EUI_PREFIX 同源）
-    @State private var inputError: String?
     @State private var pulse = false
     @State private var camState: CameraScanner.RunState = .running
     @State private var qrHint: String?
     @State private var pendingTarget: DiscoveredDevice?
-
-    enum LocateMode: Equatable {
-        case sheet, input, camera
-    }
 
     private var zh: Bool { langStore.isZh }
 
@@ -32,9 +25,9 @@ struct LocateFlowView: View {
                 // 「正在连接」第一格（2026-09-15 真机取证：事件全达、onChange 不触发）
                 ConnectOverlayView(model: connector)
             } else if model.locatePhase == .finding || model.locatePhase == .notFound {
-                locatePhasePage          // 定位中/未找到：全屏页（原型 home 内 locateView）
+                locatePhasePage          // 定位中/未找到：全屏页
             } else {
-                sheetOrInputPage         // 弹层与输入对话框
+                cameraView               // ⌖ 直启相机（默认态）
             }
         }
         .background(Theme.bg)
@@ -87,7 +80,6 @@ struct LocateFlowView: View {
         .onAppear {
             // 演示自动导航：定位中态直达
             if DemoLaunch.isPage("locate-finding") {
-                mode = .input
                 model.startLocate(devEUI: "0095690A3F2AB7C4")
             }
         }
@@ -158,126 +150,6 @@ struct LocateFlowView: View {
         }
     }
 
-    // MARK: - sheet 弹层 / input 对话框 / camera 取景
-
-    @ViewBuilder
-    private var sheetOrInputPage: some View {
-        switch mode {
-        case .sheet: locateSheet
-        case .input: inputDialog
-        case .camera: cameraView
-        }
-    }
-
-    /// .sheet 底部弹层（mask 0.35 + 圆角 20 卡）。
-    private var locateSheet: some View {
-        ZStack(alignment: .bottom) {
-            Theme.bg.ignoresSafeArea()
-            Color.black.opacity(0.35).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 0) {
-                Text(zh ? "定位设备" : "Locate Device")
-                    .font(.hkt(16, .bold))
-                    .foregroundStyle(Theme.text)
-                Text(zh ? "扫描设备标签上的二维码，或输入 16 位 DevEUI，自动找到并连接目标"
-                        : "Scan the QR code on the device label, or enter the 16-hex DevEUI, to find and connect the target automatically")
-                    .font(.hkt(13))
-                    .foregroundStyle(Theme.text2)
-                    .lineSpacing(1.6 * 13 - 13)
-                    .padding(.top, 4)
-                sheetOption(icon: "📷", text: zh ? "扫描设备二维码" : "Scan Device QR Code") {
-                    mode = .camera
-                }
-                sheetOption(icon: "⌨︎", text: zh ? "输入 DevEUI" : "Enter DevEUI") {
-                    mode = .input
-                }
-                Button {
-                    dismiss()
-                } label: {
-                    Text(zh ? "取消" : "Cancel")
-                        .font(.hkt(16, .semibold))
-                        .foregroundStyle(Theme.text)
-                        .frame(maxWidth: .infinity)
-                        .padding(13)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius)
-                            .stroke(Theme.line, lineWidth: 1))
-                }
-                .padding(.top, 14)
-            }
-            .padding(16)
-            .padding(.bottom, 26)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
-        }
-        .toolbar(.hidden, for: .navigationBar)
-    }
-
-    private func sheetOption(icon: String, text: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Text(icon).font(.system(size: 20))
-                Text(text).font(.hkt(15, .semibold)).foregroundStyle(Theme.text)
-                Spacer()
-            }
-            .padding(EdgeInsets(top: 14, leading: 12, bottom: 14, trailing: 12))
-            .background(Theme.card2, in: RoundedRectangle(cornerRadius: 12))
-        }
-        .padding(.top, 10)
-    }
-
-    /// input 对话框（16 位十六进制校验，点击时校验并提示——与确认原型一致）。
-    private var inputDialog: some View {
-        ZStack {
-            Theme.bg.ignoresSafeArea()
-            VStack(spacing: 0) {
-                Text(zh ? "输入 DevEUI" : "Enter DevEUI")
-                    .font(.hkt(16, .bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 8)
-                Text(zh ? "DevEUI（16 位十六进制）" : "DevEUI (16 hex chars)")
-                    .font(.hkt(13))
-                    .foregroundStyle(Theme.text2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 6)
-                TextField("", text: $locateInput, prompt: Text("0095690A3F2AB7C4")
-                    .font(.system(.body, design: .monospaced)))
-                    .font(.system(.body, design: .monospaced))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-                    .onChange(of: locateInput) { _, newValue in
-                        let filtered = String(newValue.filter { $0.isHexDigit }.uppercased().prefix(16))
-                        if filtered != newValue { locateInput = filtered }
-                    }
-                    .padding(.horizontal, 12).padding(.vertical, 10)
-                    .background(Theme.card2, in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.line, lineWidth: 1))
-                if let inputError {
-                    Text("✕ " + inputError)
-                        .font(.hkt(12)).foregroundStyle(Theme.err)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 6)
-                }
-                HStack(spacing: 10) {
-                    DialogButton(title: zh ? "取消" : "Cancel") { mode = .sheet }
-                    DialogButton(title: zh ? "定位" : "Locate", kind: .primary) {
-                        let cleaned = locateInput.uppercased()
-                        if cleaned.count == 16, cleaned.allSatisfy({ $0.isHexDigit }) {
-                            inputError = nil
-                            model.startLocate(devEUI: cleaned)   // → finding；命中 onLocateHit
-                        } else {
-                            inputError = zh ? "须为 16 位十六进制（0-9、A-F）" : "Must be 16 hex characters (0-9, A-F)"
-                        }
-                    }
-                }
-                .padding(.top, 14)
-            }
-            .padding(EdgeInsets(top: 20, leading: 18, bottom: 20, trailing: 18))
-            .frame(width: 296)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.dialogRadius))
-        }
-        .toolbar(.hidden, for: .navigationBar)
-    }
-
-    /// .cam 相机取景真会话：识别命中→startLocate（body 随 locatePhase 切到定位中页）。
     private var cameraView: some View {
         ZStack {
             Color(hex: "#0B0B0F").ignoresSafeArea()

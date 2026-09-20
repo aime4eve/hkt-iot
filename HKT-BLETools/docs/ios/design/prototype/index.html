@@ -358,7 +358,7 @@ const ZH={
   dbgConfirmT:"确认发送原始命令？", dbgGo:"发送",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
-  hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriodDC:"取值范围 0–1440，0=连续上报", hintPeriod0:"取值范围 0 或 10–1440，0=关闭周期上报",
+  hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriodDC:"取值范围 0–1440，0=连续上报", hintPeriod0:"取值范围 0 或 10–1440，0=关闭周期上报", scanQueryPh:"搜索广播名（模糊匹配）",
   errRange:"超出范围", errGps:"合法值：0 或 10–1440", errHigh:"合法值：0 或 30–4500",
   cfgT:"参数配置", cal:"校准", calTUDS:"角度校准", calTDC:"磁力计校准", cal90:"预计约 90 秒，请耐心等待", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
   calRun:"校准进行中…（以设备上报为准）", calNote:"校准为长时操作，期间其他命令已禁用",
@@ -471,7 +471,7 @@ const EN={
   dbgConfirmT:"Send this raw command?", dbgGo:"Send",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
-  hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriodDC:"Range 0–1440; 0 = report continuously", hintPeriod0:"Range 0 or 10–1440; 0 = periodic reporting off",
+  hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriodDC:"Range 0–1440; 0 = report continuously", hintPeriod0:"Range 0 or 10–1440; 0 = periodic reporting off", scanQueryPh:"Filter by broadcast name",
   errRange:"Out of range", errGps:"valid: 0 or 10–1440", errHigh:"valid: 0 or 30–4500",
   cfgT:"Configuration", cal:"Calibration", calTUDS:"Tilt Calibration", calTDC:"Mag Calibration", cal90:"Expected ~90 seconds, please wait", cal1:"1. Keep away from ferrous objects and strong magnets",
   cal2:"2. Lay the device flat and rotate it slowly, twice", calRun:"Calibrating… (as reported by the device)",
@@ -544,7 +544,7 @@ const S={
   guard:false,debugOn:false,taps:0,hex:[],logs:[],toastTimer:null,powerOn:true,tsState:null,cal:null,hist:{x:[],y:[],z:[]},
   radarOpen:false,
   camPerm:"notDetermined",camAsk:false,locate:{mode:null,eui:null,suffix:null,err:null,draft:"0095690"},
-  lastSession:null,switchTo:null,
+  lastSession:null,switchTo:null,query:"",
 };
 const PKTS=1284;
 const clock=()=>{const d=new Date();return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;};
@@ -629,17 +629,24 @@ function confirmSwitch(){
   releaseSession();
   connectTo(to.n,to.id,to.rssi);
 }
-function P_home(){
+function scanQueryFiltered(arr){
+  const q=String(S.query||"").trim().toUpperCase();
+  return q?arr.filter(d=>d.n.toUpperCase().includes(q)):arr;
+}
+function refreshScanList(){const el=document.getElementById("scanListWrap");if(el)el.innerHTML=scanListHTML();}
+function scanListHTML(){
   const locating=S.locate.mode==="finding"||S.locate.mode==="miss";
   const live=S.phase==="ready"?{n:S.device,id:S.id||"…9C01"}:null;
   const isLive=d=>live&&d.n===live.n&&d.id===live.id;
-  const others=S.found.filter(d=>!isLive(d));
+  const shown=scanQueryFiltered(S.found.filter(d=>!isLive(d)));
   const liveCard=live?`<div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${live.n}','${live.id}',0)">
       <div style="flex:1"><div style="font-weight:700">${live.n} <span class="badge" style="padding:2px 8px;margin-left:6px">${t("connBadge")}</span></div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${live.id}</div></div><button class="linkbtn">›</button></div>`:"";
-  const list=others.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${d.n}','${d.id}',${d.rssi})">
+  const list=shown.map(d=>`<div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${d.n}','${d.id}',${d.rssi})">
       <div style="flex:1"><div style="font-weight:700">${d.n}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">ID ${d.id} · ${d.rssi} dBm</div></div>${rssi(d.b||3)}</div>`).join("");
+  const q=String(S.query||"").trim();
+  const noMatch=(q&&shown.length===0)?`<div class="kv" style="text-align:center;padding:16px;color:var(--text2)">${lang==="zh"?"无匹配设备":"No matching devices"}</div>`:"";
   const empty=(!S.scanning&&S.found.length===0&&!live)?`<div class="center" style="min-height:320px"><div style="font-size:44px">📡</div>
       <div class="big">${t("empty")}</div><div class="sub">${t("emptySub")}</div>
       <button class="btn secondary" style="width:auto;padding:10px 26px" onclick="toggleScan()">${t("rescan")}</button></div>`:"";
@@ -648,10 +655,16 @@ function P_home(){
       <div class="card hcard" style="cursor:pointer" onclick="deviceCardClick('${last.n}','${last.id}',-58)">
         <div style="flex:1"><div style="font-weight:700">${last.n}</div>
         <div style="font-size:12px;color:var(--text2)">ID ${last.id} · ${t("yesterday")}</div></div><button class="linkbtn">↻</button></div>`:"";
+  return `${liveCard}${list}${noMatch}${empty}${recent}`;
+}
+function P_home(){
+  const locating=S.locate.mode==="finding"||S.locate.mode==="miss";
   const body=locating?locateView():
       `<div class="row"><span class="label">${S.scanning?t("scanning")(S.found.length):t("scanDone")(S.found.length)}</span>
         <button class="linkbtn" data-act="toggle-scan">${S.scanning?t("stop"):t("rescan")}</button></div>
-      ${liveCard}${list}${empty}${recent}`;
+      <div style="padding:0 2px 10px"><input class="input" id="scanQuery" placeholder="${t("scanQueryPh")}" value="${S.query||""}"
+        oninput="S.query=this.value;refreshScanList()"></div>
+      <div id="scanListWrap">${scanListHTML()}</div>`;
   return statusbar()+`<div class="navbar">${t("app")}<span class="navright">
       <button class="linkbtn" data-act="locate" style="margin-right:12px">${t("locate")}</button>
       <button class="linkbtn" data-act="go-settings">⚙︎</button></span></div>
@@ -686,14 +699,8 @@ function toggleScanAct(){toggleScan();}
    - 命中即停扫自动连接；3 轮（3×10s）未命中提示未找到（演示场景 5s） */
 const DEV_EUI_RE=/^[0-9A-Fa-f]{16}$/;
 function euiSuffix(eui){const v=String(eui||"").trim();return DEV_EUI_RE.test(v)?v.slice(-6).toUpperCase():null;}
-function openLocateSheet(){S.locate.mode="sheet";S.locate.err=null;render();}
 function locateCancel(){clearTimeout(S.locateHitTimer);clearTimeout(S.locateMissTimer);
   S.locate.mode=null;S.locate.eui=null;S.locate.suffix=null;S.locate.err=null;render();}
-function confirmEuiInput(){
-  const v=String(S.locate.draft||"").trim();
-  if(!DEV_EUI_RE.test(v)){S.locate.err=t("errEui");render();return;}
-  locateStart(v);
-}
 function openCameraScan(){
   if(S.camPerm==="granted"){startCam();return;}
   if(S.camPerm==="denied"){S.locate.mode="camdenied";render();return;}
@@ -742,29 +749,13 @@ function locateView(){
 }
 function homeOverlays(){
   const l=S.locate;let h="";
-  if(l.mode==="sheet")h=`<div class="dialog-mask" style="align-items:flex-end;background:rgba(0,0,0,.35)" onclick="locateCancel()">
-      <div class="sheet" onclick="event.stopPropagation()">
-        <div style="font-weight:700;font-size:16px">${t("locateT")}</div>
-        <div class="kv" style="margin-top:4px">${t("locateSub")}</div>
-        <div class="opt" onclick="openCameraScan()"><span class="ic">📷</span>${t("locateQr")}</div>
-        <div class="opt" onclick="S.locate.mode='input';S.locate.err=null;render()"><span class="ic">⌨︎</span>${t("locateManual")}</div>
-        <button class="btn secondary" style="margin-top:14px" onclick="locateCancel()">${t("cancel")}</button>
-      </div></div>`;
-  else if(l.mode==="input")h=`<div class="dialog-mask"><div class="dialog" style="text-align:left">
-      <div class="t">${t("locateManual")}</div>
-      <div class="b" style="margin-bottom:8px">${t("euiLabel")}</div>
-      <input class="input" id="euiInput" maxlength="16" value="${l.draft}"
-        oninput="S.locate.draft=this.value.toUpperCase().replace(/[^0-9A-Fa-f]/g,'').slice(0,16);this.value=S.locate.draft">
-      ${l.err?`<div style="font-size:12px;color:var(--err);margin-top:6px">✕ ${l.err}</div>`:""}
-      <div class="btns" style="margin-top:14px"><button class="btn secondary" style="margin:0" onclick="locateCancel()">${t("cancel")}</button>
-      <button class="btn" style="margin:0" onclick="confirmEuiInput()">${t("locateGo")}</button></div></div></div>`;
-  else if(l.mode==="camdenied")h=`<div class="overlay"><div class="center" style="min-height:640px">
+  if(l.mode==="camdenied")h=`<div class="overlay"><div class="center" style="min-height:640px">
       <div style="font-size:52px">📷</div><div class="big">${t("camDeniedT")}</div><div class="sub">${t("camDeniedB")}</div>
       <button class="btn" style="width:auto;padding:12px 30px" onclick="S.camPerm='granted';startCam()">${t("goSet")}</button>
       <button class="btn secondary" style="width:auto;padding:10px 24px" onclick="locateCancel()">${t("back")}</button></div></div>`;
   if(S.camAsk)h+=`<div class="dialog-mask"><div class="dialog"><div class="t" style="font-size:14px">${t("camPermT")}</div>
       <div class="b center">${t("camPermB")}</div>
-      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.camAsk=false;S.camPerm='denied';S.locate.mode='sheet';render()">${t("dontAllow")}</button>
+      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.camAsk=false;S.camPerm='denied';S.locate.mode=null;render()">${t("dontAllow")}</button>
       <button class="btn" style="margin:0" onclick="startCam()">${t("allow")}</button></div></div></div>`;
   if(l.mode==="camera")h+=`<div class="cam"><div style="color:#eee">${statusbar()}</div>
       <div class="navbar small" style="color:#fff"><span class="back" data-act="camback" style="color:#23ADE5">${t("cancel")}</span><span>${t("locateQr")}</span></div>
@@ -1797,7 +1788,7 @@ function render(){
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===S.page));
   document.querySelectorAll("[data-act]").forEach(b=>{
     b.onclick={ "go-settings":()=>nav("settings"),"toggle-scan":toggleScanAct,"back":backPage,"home":goHome,
-      "locate":openLocateSheet,"camback":locateCancel }[b.dataset.act];
+      "locate":openCameraScan,"camback":locateCancel }[b.dataset.act];
   });
   notes();
 }
@@ -1865,8 +1856,10 @@ const SPEC=[
  {id:"R-G6",pg:"all",tp:"需求",txt:"采用工业遥测视觉语言：中性底色、分层卡面、8pt 控件、数据用等宽数字、状态用语义色和清晰分区；不改变业务字段、动作与协议契约",ref:"用户方向 2026-09-08"},
  {id:"R-1",pg:"home",tp:"需求",txt:"手动启停扫描；显示名称/RSSI；阈值与名称前缀过滤（MPS/SVC/UDS/EPS 可勾选，未命名设备天然排除）；去重；点击连接",ref:"需求 §5.2；A-02/A-03；用户 2026-09-08"},
  {id:"SP-1",pg:"home",tp:"规格",txt:"RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调、真实生效、随过滤设置持久化）；非所选前缀与未命名设备不入列不可连；扫描节奏保留周期窗口语义",ref:"SD §7.1；TC-ST-010；用户 2026-09-08"},
- {id:"R-2",pg:"home",tp:"需求",txt:"目标设备定位进 v1（2026-09-07 用户裁决选 B，翻案 09-06 Q4）：扫描页⌖入口，扫码/手输 16 位 DevEUI→取后 6 位匹配广播名→命中自动停扫直连；3 轮未命中给『未找到』+重试/退出；界面不保留任何占位入口",ref:"用户 2026-09-07；需求 §5.3；Android MainActivity.kt"},
- {id:"SP-2",pg:"home",tp:"规格",txt:"校验=16 位 hex（预填前缀 0095690、自动大写、非法字符不进框）；匹配=后 6 位忽略大小写 contains 广播名；定位态隐藏常规列表+脉冲动画+可退出；目标模式忽略 RSSI/名称前缀过滤；扫码=系统相机（二维码/条码），新增相机权限引导（未决定弹窗/拒绝→去设置/可用），权限页扩为五态；匹配仅依赖广播名，无新增固件依赖",ref:"Android isValidDevEui/getDevEuiMatchSuffix/isTargetDevice/addDeviceList；TC-ST-014~017"},
+ {id:"R-2",pg:"home",tp:"需求",txt:"扫码定位连接（2026-09-20 重构裁决）：首页⌖「扫描」直启相机（选择弹层废弃）；识别 16 位 DevEUI→取后 6 位匹配广播名→命中自动停扫直连（R-32 切换确认照旧：有驻留会话先弹确认，是=断开重连/否=维持现状）；未命中 30s 超时给『未找到』+重试/退出；无效二维码=取景页提示原文并继续扫",ref:"用户 2026-09-07/2026-09-20 重构；需求 §5.3；Android MainActivity.kt"},
+ {id:"SP-2",pg:"home",tp:"规格",txt:"⌖=直启相机（原选择弹层废弃，2026-09-20）；识别内容须 16 位 hex，否则取景页红字提示原文并继续扫；命中=后 6 位忽略大小写 contains 广播名→停扫直连；未命中 30s 超时『未找到』+重试；定位态隐藏常规列表+脉冲动画+可退出；目标模式忽略 RSSI/名称前缀过滤；相机权限引导（未决定弹窗/拒绝→去设置/可用）；匹配仅依赖广播名，无新增固件依赖",ref:"Android isValidDevEui/getDevEuiMatchSuffix/isTargetDevice/addDeviceList；TC-ST-014~017；2026-09-20 重构"},
+ {id:"R-33",pg:"home",tp:"需求",txt:"附近设备列表模糊查询（2026-09-20 裁决，原『输入 DevEUI 定位』改造）：列表顶部常驻搜索框，输入任意关键字实时过滤广播名（忽略大小写包含）；纯查询语义——无格式限制/无预填/无超时/不自动连接，过滤结果手动点击连接（R-32 切换确认照旧）；与设置页类型过滤叠加生效",ref:"用户 2026-09-20"},
+ {id:"SP-33",pg:"home",tp:"规格",txt:"搜索框=状态行下方常驻输入框（占位『搜索广播名（模糊匹配）』，oninput 局部刷新列表容器不丢焦点）；过滤=广播名 toUpperCase contains 关键字；类型过滤（设置页）叠加 AND；无匹配显示『无匹配设备』；原 16 位校验/预填 0095690/30s 超时/自动连接不适用于查询路径",ref:"用户 2026-09-20"},
  {id:"R-3",pg:"home",tp:"需求",txt:"冷启动显示最近设备（本机镜像）；未完成 OTA 标『中断-待验证』",ref:"S-7；SD §9.5.2"},
  {id:"R-4",pg:"connecting",tp:"需求",txt:"连接→发现服务→订阅 分阶段提示，可取消；失败/超时给出原因与重试",ref:"需求 §5.4；A-04"},
  {id:"SP-4",pg:"connecting",tp:"规格",txt:"阶段超时：连接 10s/发现 5s/订阅 5s；失败映射十类错误（connection/serviceMissing）",ref:"SD §7；TC-ST-005"},
@@ -1936,7 +1929,7 @@ function notes(){
     return;
   }
   const N={
-    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）在设置页生效；返回不释放会话——已连接设备卡片带徽章、点击直接回详情，点其他设备弹确认后原子切换，断开用详情页『断开连接』；⌖ 定位=扫码/手输 DevEUI→后 6 位匹配广播名→命中自动连接；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) work from Settings; Back keeps the session — the connected device card is badged and re-enters directly, tapping another device asks to confirm an atomic switch, use Disconnect on detail; ⌖ Locate = scan QR / enter DevEUI → auto-connect; recent device = cold-start restore (S-7).",
+    home:zh?"P-01：真实扫描节奏（设备渐次出现、RSSI 波动、弱信号 EPS100 偶发丢失）；RSSI 阈值与名称前缀过滤（MPS/SVC/UDS/EPS）在设置页生效；返回不释放会话——已连接设备卡片带徽章、点击直接回详情，点其他设备弹确认后原子切换，断开用详情页『断开连接』；⌖ 扫描=直启相机扫码定位连接（R-32 切换确认照旧）；列表搜索框=广播名模糊过滤（R-33）；最近设备=冷启动上下文恢复（S-7）。":"P-01: realistic scan cadence; RSSI threshold and name-prefix filter (MPS/SVC/UDS/EPS) work from Settings; Back keeps the session — the connected device card is badged and re-enters directly, tapping another device asks to confirm an atomic switch, use Disconnect on detail; ⌖ Scan = camera-first locate-and-connect (R-32 switch confirm applies); the list search box fuzzy-filters by broadcast name (R-33). Recent device = cold-start restore (S-7).",
     connecting:zh?"P-02：连接三阶段真实时序；「场景演示-弱信号」可看失败路径。":"P-02: realistic 3-stage connect; use Scene ▸ weak signal for the failure path.",
     detail:zh?"P-03：字段全集实时轮询（1s）；「场景演示」注入 停摆/数据异常/断开重连；升级模式=OTA 中断后重连的恢复态（S-5）。":"P-03: full field sets, 1s live polling; Scene menu injects stall/abnormal/disconnect; upgrade mode = post-interruption recovery (S-5).",
     radar:zh?"雷达频谱二级视图：10×uint16 柱状渲染。":"Radar spectrum sub-view: 10 × uint16 bars.",
