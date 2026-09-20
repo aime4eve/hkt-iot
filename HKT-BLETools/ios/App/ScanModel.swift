@@ -92,9 +92,13 @@ final class ScanModel {
             reconnectResident()
             return
         }
-        guard isReady, !isScanning else { return }
+        // 已在扫描中再点「附近设备」=重开新会话（清空旧发现）而非静默忽略：
+        // 换环境后旧设备必须从列表消失（2026-09-20 真机缺陷；安卓 isNewSession 同语义）
+        if isScanning { stopScan() }
+        guard isReady else { return }
         isScanning = true
         loggedDiscoveries = []
+        devices = []
         if let autoStop = demoAutoStopAfter {
             DispatchQueue.main.asyncAfter(deadline: .now() + autoStop) { [weak self] in
                 guard let self, self.isScanning else { return }

@@ -42,6 +42,7 @@ final class SystemCentral: NSObject, CBCentralManagerDelegate, CBPeripheralDeleg
         self.options = options
         onScanUpdate = onUpdate
         isScanning = true
+        seen = [:]   // 新扫描会话清空上次发现：离开原环境后旧设备必须从列表消失（安卓 isNewSession 同语义；2026-09-20 真机缺陷）
         scanIfReady()
     }
 

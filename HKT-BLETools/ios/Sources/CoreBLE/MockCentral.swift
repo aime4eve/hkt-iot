@@ -39,6 +39,7 @@ public final class MockCentral: BluetoothPort, @unchecked Sendable {
         self.options = options
         onScanUpdate = onUpdate
         isScanning = true
+        devices = []   // 新扫描会话清空上次发现（与 SystemCentral、安卓 isNewSession 同语义）
         deliver { [weak self] in
             guard let self else { return }
             onScanUpdate?(availability, devices)
