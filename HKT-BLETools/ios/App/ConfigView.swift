@@ -155,7 +155,7 @@ struct ConfigView: View {
         } else if session.family == .dc200Family {
             NumFieldCard(label: zh ? "上报周期" : "Report period",
                          text: $draft.report, unit: zh ? "分钟" : "min",
-                         hint: zh ? "取值范围 0–1440" : "Range 0–1440",
+                         hint: zh ? "取值范围 0–1440，0=连续上报" : "Range 0–1440; 0 = report continuously",
                          error: errors["report"])
             ChoiceChipRow(label: zh ? "工作模式" : "Work mode",
                           options: [zh ? "融合模式" : "Fusion",
@@ -257,6 +257,10 @@ struct ConfigView: View {
                 ConfigLabel(text: zh ? "上报周期" : "Report period")
                 ConfigInputRow(label: zh ? "上报周期" : "Report period",
                                text: $draft.period, unit: zh ? "分钟" : "min")
+                Text(zh ? "0=关闭周期上报，范围 10–1440" : "0 = periodic reporting off; range 10–1440")
+                    .font(.hkt(11))
+                    .foregroundStyle(Theme.text2)
+                    .padding(.top, 4)
                 if let error = errors["period"] {
                     Text("✕ " + error).font(.hkt(12)).foregroundStyle(Theme.err)
                         .padding(.top, 5)
@@ -365,8 +369,8 @@ struct ConfigView: View {
                     outOfRange("stable", 1, 255)
                 }
             }
-            if let value = number(draft.period), (0...1440).contains(value) {} else {
-                outOfRange("period", 0, 1440)
+            if let value = number(draft.period), value == 0 || (10...1440).contains(value) {} else {
+                result["period"] = zh ? "合法值：0 或 10–1440" : "valid: 0 or 10–1440"
             }
         }
         return result

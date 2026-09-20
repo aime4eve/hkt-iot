@@ -22,7 +22,7 @@ body（padding 0 16 24）
 
 | 行 | label | hint | 校验 | 单位 |
 |---|---|---|---|---|
-| 上报周期 | 上报周期 | — | 1–1440 | 分钟 |
+| 上报周期 | 上报周期 | 0=关闭周期上报 | 0 或 10–1440 | 分钟 |
 | GPS 周期 | GPS 周期 | 0 = 关闭 GPS 定位 | 0 或 10–1440 | 分钟 |
 | 低阈值 | 低阈值 | — | 30–4500 | mm |
 | 高阈值 | 高阈值 | 0 = 关闭高阈值告警 | 0 或 30–4500 | mm |
@@ -32,7 +32,7 @@ body（padding 0 16 24）
 
 | 行 | 说明 | 校验 |
 |---|---|---|
-| 上报周期（数字行）| hint：取值范围 0–1440 | 0–1440，单位分钟 |
+| 上报周期（数字行）| hint：取值范围 0–1440，0=连续上报 | 0–1440，单位分钟 |
 | 工作模式（分段芯片卡）| 融合模式 / 仅地磁 / 雷达优先（单选，选中=info 底白字，未选=card2 底 text2，r9 padding 9 4）| — |
 
 ## 4. SVC100 表单（两个 cfg-section + 吸底保存）
@@ -51,7 +51,7 @@ body（padding 0 16 24）
    - 时区 select（分组：西半球 UTC−12~−01 / UTC+00:00 / 东半球 +01~+12 / 半小时时区 +03:30 +05:30）
    - caption：设备当前: UTC±HH:MM
    - 按钮（.btn secondary 自适应）「与手机时区一致」：手机偏移按半小时取整编码（±:45 不支持）；+00..+12→编码值；−1..−12→12−h；+03:30→25、+05:30→26；不支持→置 0 并提示
-   - 上报周期（svcNumRow，hintPeriod0，单位分钟，0–1440）
+   - 上报周期（svcNumRow，hintPeriod0，单位分钟，0 或 10–1440，0=关闭周期上报）
 
 ### 保存流
 1. 点保存配置 → 前置校验：非法 → 各字段行内 error，并滚动到首个错误字段；
@@ -72,7 +72,7 @@ body（padding 0 16 24）
 | cfgFirmwareMap / cfgDerivedPort | 固件映射 0=12V / 1=9V / 2=5V / 合成端口值 | firmware: 0=12V / 1=9V / 2=5V / Derived port value |
 | cfgStableRange / portStableOff | 1–255 秒 / 仅在带稳定时间的端口模式下可编辑 | 1–255 s / Only editable in stable-time port modes |
 | smartHint | 开启后：阀插入自动开机，阀拔出自动关机 | When on: the valve powers on when inserted and off when removed |
-| hintGps / hintHigh / hintPeriod0 | 0 = 关闭 GPS 定位 / 0 = 关闭高阈值告警 / 取值范围 0–1440 | 0 = GPS positioning off / 0 = high-threshold alarm off / Range 0–1440 |
+| hintGps / hintHigh / hintPeriodDC / hintPeriod0 | 0 = 关闭 GPS 定位 / 0 = 关闭高阈值告警 / 取值范围 0–1440，0=连续上报 / 取值范围 0 或 10–1440，0=关闭周期上报 | 0 = GPS positioning off / 0 = high-threshold alarm off / Range 0–1440; 0 = report continuously / Range 0 or 10–1440; 0 = periodic reporting off |
 | errRange / errGps / errHigh | 超出范围 {a}–{b} / 合法值：0 或 10–1440 / 合法值：0 或 30–4500 | Out of range {a}–{b} / valid: 0 or 10–1440 / valid: 0 or 30–4500 |
 | 时区分组 | 西半球时区（UTC−12:00 ~ UTC−01:00）/ 东半球时区（UTC+01:00 ~ UTC+12:00）/ 半小时时区 | Western… / Eastern… / Half-hour time zones |
 | 与手机时区一致 + 提示 | 与手机时区一致（不支持时置 UTC+00:00 并提示） | Match phone timezone |

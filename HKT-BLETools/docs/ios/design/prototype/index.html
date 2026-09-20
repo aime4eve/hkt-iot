@@ -358,7 +358,7 @@ const ZH={
   dbgConfirmT:"确认发送原始命令？", dbgGo:"发送",
   cfgSave:"保存配置", cfgSent:"正在写入配置…", cfgOk:"配置已保存（设备已确认）",
   cfgFail:"设备未确认配置（可能被固件拒绝），请检查参数范围后重试", cfgConfirmT:"写入以下配置？",
-  hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriod0:"取值范围 0–1440",
+  hintGps:"0 = 关闭 GPS 定位", hintHigh:"0 = 关闭高阈值告警", hintPeriodDC:"取值范围 0–1440，0=连续上报", hintPeriod0:"取值范围 0 或 10–1440，0=关闭周期上报",
   errRange:"超出范围", errGps:"合法值：0 或 10–1440", errHigh:"合法值：0 或 30–4500",
   cfgT:"参数配置", cal:"校准", calTUDS:"角度校准", calTDC:"磁力计校准", cal90:"预计约 90 秒，请耐心等待", cal1:"1. 远离铁磁物体与强磁场", cal2:"2. 将设备水平放置，缓慢匀速旋转两周",
   calRun:"校准进行中…（以设备上报为准）", calNote:"校准为长时操作，期间其他命令已禁用",
@@ -471,7 +471,7 @@ const EN={
   dbgConfirmT:"Send this raw command?", dbgGo:"Send",
   cfgSave:"Save", cfgSent:"Writing configuration…", cfgOk:"Configuration saved (device acknowledged)",
   cfgFail:"Device did not acknowledge (possibly rejected). Check ranges and retry.", cfgConfirmT:"Write these values?",
-  hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriod0:"Range 0–1440",
+  hintGps:"0 = GPS positioning off", hintHigh:"0 = high-threshold alarm off", hintPeriodDC:"Range 0–1440; 0 = report continuously", hintPeriod0:"Range 0 or 10–1440; 0 = periodic reporting off",
   errRange:"Out of range", errGps:"valid: 0 or 10–1440", errHigh:"valid: 0 or 30–4500",
   cfgT:"Configuration", cal:"Calibration", calTUDS:"Tilt Calibration", calTDC:"Mag Calibration", cal90:"Expected ~90 seconds, please wait", cal1:"1. Keep away from ferrous objects and strong magnets",
   cal2:"2. Lay the device flat and rotate it slowly, twice", calRun:"Calibrating… (as reported by the device)",
@@ -1372,7 +1372,7 @@ function P_config(){
       <div class="kv" style="margin:4px 4px 0">${zh?"固件校验任一参数非法时整包静默拒绝（无 ACK），App 侧已前置同规则校验":"Firmware silently rejects the whole payload if any value is invalid; the app pre-validates with the same rules"}</div>`;
   } else if(f==="dc"){
     body=`${banner}
-      ${numRow("report",t("f_period"),t("hintPeriod0"),0,1,1440,null,t("minutes"))}
+      ${numRow("report",t("f_period"),t("hintPeriodDC"),0,1,1440,null,t("minutes"))}
       ${segRow("mode",t("f_modeL"),[t("fusion"),t("magOnly"),t("radarFirst")])}`;
   } else {
     const smartOn=!!S.cfg.draft.smart;
