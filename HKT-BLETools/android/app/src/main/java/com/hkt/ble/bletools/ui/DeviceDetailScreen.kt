@@ -55,6 +55,7 @@ import com.hkt.ble.bletools.designsystem.StateBadge
 import com.hkt.ble.bletools.designsystem.clickableBox
 import com.hkt.ble.bletools.designsystem.hkt
 import com.hkt.ble.bletools.model.LanguageStore
+import com.hkt.ble.bletools.model.LogStore
 import com.hkt.ble.bletools.model.ScanModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,6 +97,9 @@ fun DeviceDetailScreen(
 
     var showCalibration by remember { mutableStateOf(false) }
     var showConfig by remember { mutableStateOf(false) }
+    var showTasks by remember { mutableStateOf(false) }
+    var showOta by remember { mutableStateOf(false) }
+    var showTech by remember { mutableStateOf(false) }
     var confirmDisconnect by remember { mutableStateOf(false) }
     var confirmPowerOff by remember { mutableStateOf(false) }
     var powerSending by remember { mutableStateOf(false) }
@@ -107,6 +111,7 @@ fun DeviceDetailScreen(
             notice = null
         }
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     fun sendPower(on: Boolean) {
         if (powerSending) return
@@ -150,13 +155,20 @@ fun DeviceDetailScreen(
         ConfigScreen(session = session, onBack = { showConfig = false })
         return
     }
+    if (showTasks) {
+        TasksScreen(session = session, onBack = { showTasks = false })
+        return
+    }
+    if (showOta) {
+        OtaScreen(session = session, onBack = { showOta = false })
+        return
+    }
+    if (showTech) {
+        TechScreen(session = session, onBack = { showTech = false })
+        return
+    }
 
     val isPowerOff = snapshot.power == 0
-
-    // 详情页路由层：校准/配置/任务/OTA/技术参数占位 notice（M6.3 队列）
-    fun later(name: String) {
-        notice = if (zh) "$name 页面 M6.3 接入" else "$name lands in M6.3"
-    }
 
     // ===== 早退：关机（原型 !powerOn）=====
     if (isPowerOff) {
@@ -193,7 +205,7 @@ fun DeviceDetailScreen(
                 actions = listOf(
                     { SessionButton(if (zh) "返回" else "Back") { onBack() } },
                     { SessionButton(if (zh) "首页" else "Home") { onBack() } },
-                    { SessionButton(if (zh) "固件升级" else "Firmware Update") { later(if (zh) "OTA" else "OTA") } },
+                    { SessionButton(if (zh) "固件升级" else "Firmware Update") { showOta = true } },
                     { SessionButton(if (zh) "断开连接" else "Disconnect", danger = true) { confirmDisconnect = true } },
                 ),
             )
@@ -220,7 +232,7 @@ fun DeviceDetailScreen(
                             "⚠︎ " + (if (zh) "响应数据异常（未知类型），已显示可解析字段"
                             else "Response abnormal (unknown type); parsed fields shown"),
                             if (zh) "导出日志" else "Export Log",
-                        ) { later(if (zh) "日志" else "Log") }
+                        ) { shareText(context, if (zh) "HKT BLETools 诊断日志" else "HKT BLETools diagnostics", LogStore.exportText) }
                     }
                     SectionHeader(if (zh) "状态（实时轮询）" else "Status (live polling)")
                     StatusContent(session, snapshot, unknownTail, zh)
@@ -248,14 +260,14 @@ fun DeviceDetailScreen(
                                 badge = "MAG",
                                 title = if (zh) "技术参数" else "Tech Parameters",
                                 desc = if (zh) "三轴曲线 · 雷达频谱" else "3-axis curves · radar spectrum",
-                            ) { later(if (zh) "技术参数" else "Tech") }
+                            ) { showTech = true }
                         }
                         if (session.family == DeviceFamily.SVC100) {
                             OpCard(
                                 badge = "TSK",
                                 title = if (zh) "阀门任务" else "Valve Tasks",
                                 desc = if (zh) "实时任务 · 定时任务表" else "Realtime task · schedule table",
-                            ) { later(if (zh) "任务" else "Tasks") }
+                            ) { showTasks = true }
                         }
                         OpCard(
                             badge = "CFG",

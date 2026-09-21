@@ -100,6 +100,11 @@ class ScanModel(
         _requestShowDetail.value = false
     }
 
+    /** 定位流连接成功后请求打开详情（iOS 覆盖层置位 requestShowDetail 同构；LocateFlowScreen 调用）。 */
+    fun requestDetailOpen() {
+        _requestShowDetail.value = true
+    }
+
     val isReady: Boolean get() = _availability.value.isUsable
 
     private var scanTicker: Job? = null
@@ -108,14 +113,24 @@ class ScanModel(
     private var autoStarted = false
     private var stopped = false
 
-    /** R-2 目标设备定位。 */
+    /** R-2 目标设备定位（P-01b 定位流 UI 观察：phase/suffix/hit 全 StateFlow）。 */
     enum class LocatePhase { FINDING, NOT_FOUND }
 
-    var locatePhase: LocatePhase? = null
-        private set
-    private var locateSuffix: String? = null
+    private val _locatePhase = MutableStateFlow<LocatePhase?>(null)
+    val locatePhase: StateFlow<LocatePhase?> = _locatePhase.asStateFlow()
+    private val _locateSuffix = MutableStateFlow<String?>(null)
+    val locateSuffix: StateFlow<String?> = _locateSuffix.asStateFlow()
     private var locateTimeoutJob: Job? = null
     private var savedPrefixes: Set<String>? = null
+
+    /** 定位命中（扫码 DevEUI 后缀匹配）：定位层消费并自渲染连接覆盖层——
+     *  勿在此直连会话：iOS 2026-09-15 真机缺陷同源（两个全屏弹层竞争宿主/旧会话协议串扰）。 */
+    private val _locateHitDevice = MutableStateFlow<DiscoveredDevice?>(null)
+    val locateHitDevice: StateFlow<DiscoveredDevice?> = _locateHitDevice.asStateFlow()
+
+    fun consumeLocateHit() {
+        _locateHitDevice.value = null
+    }
 
     /** 演示脚本：扫描命中该前缀设备即停扫直连（-demo-flow 同构）。命中后置 null。 */
     var demoAutoConnectPrefix: String? = demoAutoConnectPrefix
@@ -205,19 +220,18 @@ class ScanModel(
         ) { availability, devices ->
             scope.launch {
                 _availability.value = availability
-                // R-2 定位模式：后缀命中即停扫直连（优先于常规列表）
-                if (locatePhase == LocatePhase.FINDING) {
-                    val suffix = locateSuffix
+                // R-2 定位模式：后缀命中即停扫、置 hit 交定位层接管（优先于常规列表）
+                if (locatePhase.value == LocatePhase.FINDING) {
+                    val suffix = _locateSuffix.value
                     val hit = devices.firstOrNull { suffix != null && it.name.uppercase().contains(suffix) }
                     if (hit != null) {
-                        locatePhase = null
-                        locateSuffix = null
+                        _locatePhase.value = null
+                        _locateSuffix.value = null
                         locateTimeoutJob?.cancel()
                         stopScan()
                         savedPrefixes?.let { allowedPrefixes = it }
                         savedPrefixes = null
-                        makeAndStartSession(hit)
-                        onSessionStarted?.invoke(_activeSession.value ?: return@launch)
+                        _locateHitDevice.value = hit
                         return@launch
                     }
                 }
@@ -259,8 +273,8 @@ class ScanModel(
     fun startLocate(devEUI: String) {
         val cleaned = devEUI.trim().uppercase()
         if (cleaned.length != 16 || cleaned.any { !it.isHexish() }) return
-        locateSuffix = cleaned.takeLast(6)
-        locatePhase = LocatePhase.FINDING
+        _locateSuffix.value = cleaned.takeLast(6)
+        _locatePhase.value = LocatePhase.FINDING
         savedPrefixes = allowedPrefixes
         allowedPrefixes = DiscoveredDevice.supportedPrefixes   // 目标模式忽略前缀过滤
         if (_isScanning.value) stopScan()
@@ -269,16 +283,17 @@ class ScanModel(
     }
 
     fun retryLocate() {
-        if (locateSuffix == null) return
-        locatePhase = LocatePhase.FINDING
+        if (_locateSuffix.value == null) return
+        _locatePhase.value = LocatePhase.FINDING
         startScan()
         armLocateTimeout()
     }
 
     fun cancelLocate() {
         locateTimeoutJob?.cancel()
-        if (locatePhase == LocatePhase.FINDING) stopScan()
-        locateSuffix = null
+        if (_locatePhase.value == LocatePhase.FINDING) stopScan()
+        _locateSuffix.value = null
+        _locatePhase.value = null
         savedPrefixes?.let { allowedPrefixes = it }
         savedPrefixes = null
     }
@@ -287,8 +302,8 @@ class ScanModel(
         locateTimeoutJob?.cancel()
         locateTimeoutJob = scope.launch {
             delay(30_000)   // 3 轮 × 10s（与扫描节奏一致）
-            if (locatePhase == LocatePhase.FINDING) {
-                locatePhase = LocatePhase.NOT_FOUND
+            if (_locatePhase.value == LocatePhase.FINDING) {
+                _locatePhase.value = LocatePhase.NOT_FOUND
                 stopScan()
             }
         }

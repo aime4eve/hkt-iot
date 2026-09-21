@@ -198,6 +198,7 @@ fun LogScreen(onBack: () -> Unit) {
     val c = LocalHktColors.current
     val zh = LanguageStore.isZh
     val entries = LogStore.entries
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(Modifier.fillMaxSize().background(c.bg)) {
         NavbarHeader(
@@ -205,10 +206,13 @@ fun LogScreen(onBack: () -> Unit) {
             backText = if (zh) "‹ 返回" else "‹ Back",
             onBack = onBack,
         ) {
-            // 导出（iOS ShareLink 同位；Android 走系统分享由 M6.3 收尾接入，当前为文案入口）
+            // 导出（iOS ShareLink 同位：系统分享面板，数据去向由用户选择）
             Box(
                 Modifier
                     .background(c.info.copy(alpha = 0.09f), RoundedCornerShape(HktRadius.control.dp))
+                    .clickableBox {
+                        shareText(context, if (zh) "HKT BLETools 诊断日志" else "HKT BLETools diagnostics", LogStore.exportText)
+                    }
                     .padding(horizontal = 9.dp, vertical = 5.dp),
             ) {
                 Text(if (zh) "导出" else "Export", style = hkt(14f, FontWeight.SemiBold), color = c.info)

@@ -64,7 +64,7 @@ object HktLang {
 }
 
 @Composable
-fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}) {
+fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}, demoLocateEUI: String? = null) {
     val c = LocalHktColors.current
     val zh = LanguageStore.isZh
     val devices by model.devices.collectAsState()
@@ -76,6 +76,7 @@ fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}
     var connector by remember { mutableStateOf<ConnectModel?>(null) }   // P-02 覆盖层（null=关闭）
     var showDetail by remember { mutableStateOf(false) }                // 详情（P-03 全量克隆）
     var showSettings by remember { mutableStateOf(false) }              // P-07 设置（子页日志/隐私内嵌）
+    var showLocate by remember { mutableStateOf(demoLocateEUI != null) }   // P-01b 定位流（相机扫码；演示深链直入）
     val requestDetail by model.requestShowDetail.collectAsState()
     LaunchedEffect(notice) {
         if (notice != null) {
@@ -100,6 +101,11 @@ fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}
             }
             connector = null
         })
+        return
+    }
+    // P-01b 定位流（⌖ 扫描直启相机；命中/切换确认/连接覆盖层均在定位层内闭环）
+    if (showLocate) {
+        LocateFlowScreen(model = model, onDismiss = { showLocate = false }, demoDevEUI = demoLocateEUI)
         return
     }
     // P-07 设置（子页日志/隐私内嵌）
@@ -128,8 +134,8 @@ fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}
         Column(Modifier.fillMaxSize()) {
             NavbarLarge(title = "HKT BLETools") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // ⌖ 扫描：直启相机扫码定位（相机流 P-01b 于 M6 接入）
-                    LinkButton(title = if (zh) "⌖ 扫描" else "⌖ Locate") { }
+                    // ⌖ 扫描：直启相机扫码定位（P-01b 定位流）
+                    LinkButton(title = if (zh) "⌖ 扫描" else "⌖ Locate") { showLocate = true }
                     LinkButton(title = if (zh) "⚙︎ 设置" else "⚙︎ Settings") { showSettings = true }
                 }
             }
