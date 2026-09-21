@@ -1,6 +1,7 @@
 # HKT-DeviceHub 管理控制台设计文档
 
-> 版本 v1.0 · 2026-09-21 · 状态：已确认（作为原型与实现依据）
+> 版本 v1.1 · 2026-09-21 · 状态：已确认（作为原型与实现依据）
+> v1.1 变更：工作台增加端到端数据链路拓扑图；设备台账增加模糊查询；API 映射增加 topology 聚合接口
 > 关联需求：`platform-management-requirements.md` R-01/R-04/R-05/R-06/R-10/R-11
 > 原型：`docs/prototypes/console-v1.html`
 
@@ -35,9 +36,20 @@ DeviceHub 的设备注册、通道健康、对账能力已在 API 层具备，�
 
 ### 3.1 工作台（Dashboard）
 
-- 左上：通道健康卡（WS/REST 状态、各项目追赶滞后 `maxCursorLagMs`、连续失败数）
-- 右上：项目卡片 × 2（LIVESTOCK/PARKING：活跃设备、noDataDevices、24h 帧数）
-- 下方：**异常关注列表**（聚合三视图的红点：静默超期设备、滞后>0 设备、待处理冲突）——这是巡检的主入口，正常时显示"一切正常"空态
+**主视觉：数据链路拓扑图**（页面顶部 50% 区域）——呈现"从设备到路由项目"的端到端通畅能力：
+
+```
+[设备 LIVESTOCK×6]  ┐
+                     ├─→ [NS] ─→ [TB网关 OC] ─→ [ThingsBoard] ─→ [DeviceHub] ─→ [RocketMQ] ─┬─→ [smart-livestock] ─→ [业务库]
+[设备 PARKING×14]   ┘                                  ▲ 双通道：tb-ws ● / tb-rest ●         └─→ [smart-parking] ─→ [业务库]
+```
+
+- 节点：设备组（按项目聚合，显示活跃/注册数）、NS、TB 网关、ThingsBoard、DeviceHub（节点内嵌 tb-ws/tb-rest 双通道灯）、RocketMQ、两个业务后端、业务库
+- 每条边带健康状态色（绿/黄/红），边上标注关键指标：NS 收帧、OC 映射项目数、TB 认证、WS 订阅数、MQ 24h 消息数、消费组 Diff（积压）、末次入库时间
+- 数据流动效：链路正常时边上的光点动画流动；某段异常时该段变红、光点停滞，点击边/节点展开该段的排障提示（如"消费组积压→查单体 consumer 日志"）
+- 数据来自 `/api/v1/channels/health` + 各段探测（MVP 阶段可用 health 聚合 + 定时探测，详见 API 映射）
+
+下方左侧：通道健康卡（WS/REST 状态、各项目追赶滞后、连续失败数）；右侧：项目卡片 × 2（活跃设备、noDataDevices、24h 帧数）；再下方：**异常关注列表**（静默超期设备、滞后>0 设备、待处理冲突）——巡检主入口，正常时显示"一切正常"空态
 
 ### 3.2 设备台账（Devices）
 
@@ -46,6 +58,7 @@ DeviceHub 的设备注册、通道健康、对账能力已在 API 层具备，�
 列：EUI（等宽字体）、项目（LIVESTOCK/PARKING 徽章）、设备类型、TB 绑定状态、上报周期、最近一帧（相对时间）、四级健康灯（NS激活/有上行/TB解码/已入库）、状态（ACTIVE/PENDING/FAILED）。
 
 - 筛选：项目、状态、健康灯、"只看异常"开关
+- **模糊查询**：顶部搜索框，对 EUI / deviceCode / 设备类型做不区分大小写的子串模糊匹配，输入即过滤（防抖 200ms），命中子串高亮；与筛选条件叠加生效；清空一键复原
 - 行内操作：详情、重新注册、对账定位
 - 详情抽屉：注册信息（tbDeviceId、externalRef、capabilities）、游标与 last_frame_at、最近 10 帧摘要（从 MQ/库取）、四级健康时间线
 - 四级健康灯（R-05）：●绿=已达 / ○灰=未达到；tooltip 给该级最后达到时间
@@ -83,6 +96,7 @@ DeviceHub 的设备注册、通道健康、对账能力已在 API 层具备，�
 | 控制台需求 | 端点 | 状态 |
 |---|---|---|
 | 通道健康/项目卡片 | `GET /api/v1/channels/health` | ✅ 已有（2026-09 新语义） |
+| 拓扑图各段探测（NS 可达/OC 映射数/TB 认证/MQ 积压/末次入库） | `GET /api/v1/channels/topology`（聚合接口） | ❌ 待建（R-10 扩展；MVP 可由 health + 前端分时探测拼装） |
 | 设备注册/批量/对账 | `POST /api/v1/devices/register` `/import` `GET /reconcile` | ✅ 已有 |
 | 台账列表（分页/筛选） | `GET /api/v1/devices?project=&status=&health=` | ❌ 待建（R-11） |
 | 设备详情 + 最近帧 | `GET /api/v1/devices/{id}` | ❌ 待建 |
