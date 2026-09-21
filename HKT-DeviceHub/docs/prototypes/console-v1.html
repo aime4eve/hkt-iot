@@ -305,7 +305,10 @@ td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 .topo-edge.is-warn .edge-flow { stroke: var(--warn); animation-duration: 2.4s; }
 .topo-edge.is-down .edge-line { stroke: var(--danger); opacity: .95; }
 .topo-edge.is-down .edge-flow { animation: none; opacity: 0; }
-.edge-label { fill: var(--text-dim); font-size: 10.5px; font-family: var(--mono); text-anchor: middle; }
+.edge-label {
+  fill: var(--text-dim); font-size: 10.5px; font-family: var(--mono); text-anchor: middle;
+  paint-order: stroke; stroke: var(--bg-panel); stroke-width: 4.5px; stroke-linejoin: round;
+}
 .topo-edge.is-warn .edge-label { fill: var(--warn); }
 .topo-edge.is-down .edge-label { fill: var(--danger); }
 .topo-tip { margin-top: var(--space-3); background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: 13px; }
@@ -629,7 +632,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.2 · 2026-09-21</div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.2.1 · 2026-09-21</div>
 <script>
 'use strict';
 /* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
@@ -798,14 +801,14 @@ const TOPO_NODES = [
   { id:'db-pk',  x:1510, y:200, w:80,  title:'业务库',           sub:'PG' }
 ];
 const TOPO_EDGES = [
-  { id:'ls-ns',  d:'M140 72 C 170 72, 190 147, 220 147',     label:'收帧 486/24h',    lx:178, ly:96 },
-  { id:'pk-ns',  d:'M140 232 C 170 232, 190 147, 220 147',   label:'收帧 1,733/24h',  lx:172, ly:200 },
-  { id:'ns-oc',  d:'M350 147 L430 147',                      label:'OC 映射 35 项目', lx:390, ly:134 },
+  { id:'ls-ns',  d:'M140 72 C 170 72, 190 147, 220 147',     label:'收帧 486/24h',    lx:180, ly:96 },
+  { id:'pk-ns',  d:'M140 232 C 170 232, 190 147, 220 147',   label:'收帧 1,733/24h',  lx:180, ly:200 },
+  { id:'ns-oc',  d:'M350 147 L430 147',                      label:'OC 映射 35',      lx:390, ly:134 },
   { id:'oc-tb',  d:'M560 147 L640 147',                      label:'TB 认证有效',     lx:600, ly:170 },
   { id:'tb-hub', d:'M770 147 L850 147',                      label:'WS 订阅 20',      lx:810, ly:134 },
   { id:'hub-mq', d:'M1010 147 L1090 147',                    label:'MQ 24h 2,219',    lx:1050, ly:170 },
-  { id:'mq-ls',  d:'M1220 147 C 1250 147, 1270 72, 1300 72', label:'Diff=0',          lx:1254, ly:100 },
-  { id:'mq-pk',  d:'M1220 147 C 1250 147, 1270 232, 1300 232', label:'Diff=0',        lx:1254, ly:206 },
+  { id:'mq-ls',  d:'M1220 147 C 1250 147, 1270 72, 1300 72', label:'Diff=0',          lx:1260, ly:100 },
+  { id:'mq-pk',  d:'M1220 147 C 1250 147, 1270 232, 1300 232', label:'Diff=0',        lx:1260, ly:206 },
   { id:'ls-db',  d:'M1430 72 L1510 72',                      label:'入库 3 分钟前',   lx:1470, ly:60 },
   { id:'pk-db',  d:'M1430 232 L1510 232',                    label:'入库 6 分钟前',   lx:1470, ly:246 }
 ];
@@ -856,7 +859,7 @@ const FAULT_SCENARIOS = {
   'tb-auth': {
     name:'TB 认证失效', probe:'tb-auth',
     brief:'401 持续 >1min，rest 兜底接管',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'TB 401 · rest 兜底中' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'401 · rest 兜底' } },
     nodes:{ 'tb':'is-down' },
     primary:'tb',
     impact:['受影响设备：20 台（全项目，经 rest 兜底降级）', '估计延迟帧：无丢失，入库延迟 +5s/帧'],
@@ -866,7 +869,7 @@ const FAULT_SCENARIOS = {
   'oc-mapping': {
     name:'OC 映射缺失', probe:'oc-mapping',
     brief:'项目 217 无 topic 映射，64af/64ef 受影响',
-    edges:{ 'ns-oc':{ state:'is-down', label:'项目 217 无映射' } },
+    edges:{ 'ns-oc':{ state:'is-down', label:'项目217无映射' } },
     nodes:{},
     primary:'ns-oc',
     impact:['受影响设备：2 台（00956906001264af / 00956906001264ef · LIVESTOCK）', '估计延迟帧：≈12 帧/h（10min 周期 × 2 台）'],
@@ -876,7 +879,7 @@ const FAULT_SCENARIOS = {
   'ws-replay': {
     name:'WS 断连 + 回补追平中', probe:'ws-down',
     brief:'回补兜底中，无数据丢失',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'ws 断开 · rest 回补中' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'ws 断开·回补中' } },
     nodes:{},
     hubLights:{ ws:false },
     primary:'tb-hub',
@@ -887,7 +890,7 @@ const FAULT_SCENARIOS = {
   'mq-backlog': {
     name:'MQ 消费积压', probe:'mq-backlog',
     brief:'smart-parking 消费组 Diff=128 持续增长',
-    edges:{ 'mq-pk':{ state:'is-down', label:'Diff=128 ↑持续增长' } },
+    edges:{ 'mq-pk':{ state:'is-down', label:'Diff=128 ↑' } },
     nodes:{},
     primary:'mq-pk',
     impact:['受影响设备：14 台（PARKING）', '估计延迟帧：积压 128 条，≈ +30 条/min 持续增长'],
@@ -897,7 +900,7 @@ const FAULT_SCENARIOS = {
   'decode-rate': {
     name:'解码失败率上升', probe:'decode-rate',
     brief:'5min 解码失败率 12%（阈值 10%）',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'解码失败率 12%/5min' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'解码失败 12%/5min' } },
     nodes:{},
     primary:'tb-hub',
     impact:['受影响设备：全项目（按比例）', '估计丢失帧：≈22 帧/5min 解析失败入死信队列'],
@@ -993,12 +996,15 @@ function topoEdgeState(id) {
 function renderTopology() {
   const svg = $('#topoSvg');
   if (!svg) return;
-  const parts = [];
+  /* paint in three layers: edges -> nodes -> edge labels (labels always on top) */
+  const edgeParts = [], nodeParts = [], labelParts = [];
   TOPO_EDGES.forEach(e => {
     const st = topoEdgeState(e.id);
-    parts.push('<g class="topo-edge' + (st ? ' ' + st.state : '') + '" data-tid="' + e.id + '">' +
+    const cls = 'topo-edge' + (st ? ' ' + st.state : '');
+    edgeParts.push('<g class="' + cls + '" data-tid="' + e.id + '">' +
       '<path class="edge-line" d="' + e.d + '"/>' +
-      '<path class="edge-flow" d="' + e.d + '"/>' +
+      '<path class="edge-flow" d="' + e.d + '"/></g>');
+    labelParts.push('<g class="' + cls + '" data-tid="' + e.id + '">' +
       '<text class="edge-label" x="' + e.lx + '" y="' + e.ly + '">' + esc(st ? st.label : e.label) + '</text></g>');
   });
   TOPO_NODES.forEach(n => {
@@ -1016,9 +1022,11 @@ function renderTopology() {
         '<text class="tn-chan" x="' + (cx + 22) + '" y="' + (n.y + 58) + '">rest</text>';
     }
     const nState = activeFault && FAULT_SCENARIOS[activeFault.id].nodes[n.id];
-    parts.push('<g class="topo-node' + (nState ? ' ' + nState : '') + '" data-tid="' + n.id + '">' + inner + '</g>');
+    nodeParts.push('<g class="topo-node' + (nState ? ' ' + nState : '') + '" data-tid="' + n.id + '">' + inner + '</g>');
   });
-  svg.innerHTML = parts.join('');
+  svg.innerHTML = '<g class="layer-edges">' + edgeParts.join('') + '</g>' +
+    '<g class="layer-nodes">' + nodeParts.join('') + '</g>' +
+    '<g class="layer-labels">' + labelParts.join('') + '</g>';
 }
 function fmtClock(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
 function fmtDuration(sec) {
