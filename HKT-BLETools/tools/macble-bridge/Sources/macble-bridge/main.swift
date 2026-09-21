@@ -43,7 +43,12 @@ final class Bridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             self.connection = conn
             conn.stateUpdateHandler = { (state: NWConnection.State) in
                 switch state {
-                case .failed, .cancelled: self.connection = nil
+                case .failed, .cancelled:
+                    self.connection = nil
+                    // TCP 断开联动断 BLE：设备干净回广播态，下一轮是全新连接
+                    if let p = self.peripheral {
+                        self.central.cancelPeripheralConnection(p)
+                    }
                 default: break
                 }
             }
@@ -109,7 +114,8 @@ final class Bridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
                 send(["ev": "writeFailed"])
                 return
             }
-            peripheral?.writeValue(Data(bytes), for: c, type: .withResponse)
+            let supportsWithResponse = c.properties.contains(.write)
+            peripheral?.writeValue(Data(bytes), for: c, type: supportsWithResponse ? .withResponse : .withoutResponse)
         default:
             break
         }
@@ -165,7 +171,12 @@ final class Bridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             return
         }
         writeChar = write
-        peripheral.setNotifyValue(true, for: indicate)
+        FileHandle.standardError.write(Data("[diag] write char properties=\(write.properties.rawValue) indicate=\(indicate.properties.rawValue)\n".utf8))
+        if indicate.isNotifying {
+            send(["ev": "ready"])   // 幂等重连：重复 setNotify 不再触发状态回调
+        } else {
+            peripheral.setNotifyValue(true, for: indicate)
+        }
     }
 
     func peripheral(_ peripheral: CBPeripheral,
@@ -181,8 +192,20 @@ final class Bridge: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral,
                     didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let e = error {
+            FileHandle.standardError.write(Data("[diag] value error: \(e)\n".utf8))
+        }
         guard characteristic.uuid == indicateUUID, let v = characteristic.value else { return }
         send(["ev": "rx", "hex": v.map { String(format: "%02X", $0) }.joined()])
+    }
+
+    func peripheral(_ peripheral: CBPeripheral,
+                    didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let e = error {
+            FileHandle.standardError.write(Data("[diag] write error: \(e)\n".utf8))
+        } else {
+            FileHandle.standardError.write(Data("[diag] write acked by device\n".utf8))
+        }
     }
 }
 

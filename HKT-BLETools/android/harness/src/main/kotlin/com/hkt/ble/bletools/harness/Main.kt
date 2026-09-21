@@ -79,6 +79,15 @@ private fun main2(args: Array<String>) = runBlocking {
 
 // MARK: - 逐家族验证
 
+/** 写后读回闭环：UDS 比对上报周期（越界现值合法化后应生效）。 */
+private fun verifyRoundTrip(session: DeviceSession) {
+    val s = session.snapshot.value
+    if (session.family == DeviceFamily.UDS100) {
+        val expect = legalUdsReport(s.reportPeriodMin)
+        println(if (s.reportPeriodMin == expect) "✓ 读回闭环：上报周期=$expect min 与写入一致" else "✕ 读回不一致：上报周期=${s.reportPeriodMin}（期望 $expect）")
+    }
+}
+
 private suspend fun verify(port: MacBridgePort, scope: CoroutineScope, mainCtx: CoroutineContext, prefix: String) {
     val device = port.scanAndPick(prefix) ?: return
     println("== 连接 ${device.name} ==")
@@ -94,8 +103,15 @@ private suspend fun verify(port: MacBridgePort, scope: CoroutineScope, mainCtx: 
     withContext(mainCtx) {
         printSnapshot(session)
         // 配置同值回写（0x02）：从当前快照取值，非破坏性往返
+        // FD-004：写窗口暂停 1s 轮询（设备单 RX 缓冲，与 App 端 ConfigScreen 同款防护）
+        session.setPollingSuspended(true)
         val acked = roundTripConfig(session)
-        println(if (acked) "✓ 0x02 配置同值回写 ACK" else "✕ 0x02 无 ACK")
+        session.setPollingSuspended(false)
+        println(if (acked) "✓ 0x02 配置写入 ACK" else "✕ 0x02 无 ACK")
+        if (acked) {
+            delay(2_500)   // 等 2 轮询让设备回读值上屏
+            withContext(mainCtx) { verifyRoundTrip(session) }
+        }
         if (family == DeviceFamily.UDS100) {
             println("UDS 对时: " + session.sendTimeSync())
         }
@@ -105,12 +121,15 @@ private suspend fun verify(port: MacBridgePort, scope: CoroutineScope, mainCtx: 
     println("== ${device.name} 验证完成 ==\n")
 }
 
+/** 固件规则：UDS 周期 0 或 10–1440。设备现值若越界（如 3min）取最近合法值（写回原值会被静默拒绝）。 */
+private fun legalUdsReport(v: Int?) = if (v == null || (v != 0 && v < 10)) 10 else v
+
 private suspend fun roundTripConfig(session: DeviceSession): Boolean {
     val s = session.snapshot.value
     return when (session.family) {
         DeviceFamily.UDS100 -> session.sendWrite(
             CommandCode.CONFIG,
-            HKTFrameEncoder.udsConfigPayload(s.reportPeriodMin ?: 0, s.gpsPeriodMin ?: 0, s.lowThresholdMM ?: 0, s.highThresholdMM ?: 0),
+            HKTFrameEncoder.udsConfigPayload(legalUdsReport(s.reportPeriodMin), s.gpsPeriodMin ?: 0, s.lowThresholdMM ?: 0, s.highThresholdMM ?: 0),
         )
         DeviceFamily.DC200_FAMILY -> session.sendWrite(
             CommandCode.CONFIG,
