@@ -600,6 +600,11 @@ private fun adoptFirmware(context: android.content.Context, uri: android.net.Uri
         return null
     }
     val data = out.toByteArray()
+    // 用户裁决 2026-09-21：0 字节固件包显式拒绝（三家族 OTA 同一入口，先行判断给出准确文案）
+    if (data.isEmpty()) {
+        LogStore.warn("固件包校验拒绝：文件为空（0 B）（文件 $displayName）")
+        return null
+    }
     if (data.size !in 8192..245_760) {
         LogStore.warn("固件包校验拒绝：固件包大小 ${data.size} B 超出 App 分区合法范围（8KB–240KB）（文件 $displayName）")
         return null

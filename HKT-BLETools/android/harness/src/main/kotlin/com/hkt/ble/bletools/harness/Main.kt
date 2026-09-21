@@ -171,7 +171,8 @@ private fun printSnapshot(session: DeviceSession) {
 // MARK: - OTA 真包传输
 
 private suspend fun ota(port: MacBridgePort, scope: CoroutineScope, mainCtx: CoroutineContext, prefix: String, image: ByteArray, imageName: String) {
-    // 三重防线（与 app adoptFirmware 同规）：大小 / 栈顶指针 / 复位向量
+    // 三重防线（与 app adoptFirmware 同规）：零字节 / 大小 / 栈顶指针 / 复位向量
+    check(image.isNotEmpty()) { "固件文件为空（0 字节），不允许升级" }
     check(image.size in 8192..245_760) { "固件大小 ${image.size} B 超出 8KB–240KB" }
     fun u32le(o: Int): Long = (image[o].toLong() and 0xFF) or ((image[o + 1].toLong() and 0xFF) shl 8) or
         ((image[o + 2].toLong() and 0xFF) shl 16) or ((image[o + 3].toLong() and 0xFF) shl 24)
