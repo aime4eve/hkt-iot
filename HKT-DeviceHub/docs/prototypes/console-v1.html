@@ -347,6 +347,22 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 }
 .fault-history { margin-top: var(--space-2); font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
 
+/* ============ 拓扑泳道（平台分组容器，v1.3） ============ */
+.topo-lane { cursor: pointer; }
+.lane-rect {
+  fill: color-mix(in srgb, var(--text) 4%, transparent);
+  stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 5 4;
+}
+.topo-lane.is-warn .lane-rect { stroke: var(--warn); }
+.topo-lane.is-down .lane-rect { stroke: var(--danger); fill: color-mix(in srgb, var(--danger) 5%, transparent); }
+.lane-label { fill: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+.lane-metric {
+  fill: var(--text-dim); font-size: 10.5px; font-family: var(--mono); text-anchor: middle;
+  paint-order: stroke; stroke: var(--bg-panel); stroke-width: 4.5px; stroke-linejoin: round;
+}
+.topo-lane.is-down .lane-metric { fill: var(--danger); }
+.topo-lane.is-warn .lane-metric { fill: var(--warn); }
+
 /* ============ 弹窗 / Toast ============ */
 .modal-mask {
   position: fixed; inset: 0; z-index: 200;
@@ -451,7 +467,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
           </select>
           <span class="right dim">GET /api/v1/channels/topology（待建）· 点击节点/边查看排障提示</span>
         </h3>
-        <svg id="topoSvg" class="topo-svg" viewBox="0 0 1600 300" role="img" aria-label="端到端数据链路拓扑图"></svg>
+        <svg id="topoSvg" class="topo-svg" viewBox="0 0 1640 300" role="img" aria-label="端到端数据链路拓扑图"></svg>
         <div class="topo-tip" id="topoTip" hidden></div>
         <div class="fault-history" id="faultHistory" hidden></div>
       </div>
@@ -632,7 +648,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.2.2 · 2026-09-21</div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.3 · 2026-09-21</div>
 <script>
 'use strict';
 /* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
@@ -791,26 +807,29 @@ const TOPO_NODES = [
   { id:'dev-ls', x:10,   y:40,  w:130, title:'设备 · LIVESTOCK', sub:'注册 6 · 活跃 3' },
   { id:'dev-pk', x:10,   y:200, w:130, title:'设备 · PARKING',   sub:'注册 14 · 活跃 12' },
   { id:'ns',     x:220,  y:115, w:130, title:'NS',               sub:'ChirpStack · 收帧正常' },
-  { id:'oc',     x:430,  y:115, w:130, title:'TB 网关 OC',       sub:'项目→topic 映射' },
-  { id:'tb',     x:640,  y:115, w:130, title:'ThingsBoard',      sub:'网关认证有效' },
-  { id:'hub',    x:850,  y:115, w:160, title:'DeviceHub',        sub:'消费遥测 · 双通道', channels:true },
-  { id:'mq',     x:1090, y:115, w:130, title:'RocketMQ',         sub:'24h 2,219 条' },
-  { id:'be-ls',  x:1300, y:40,  w:130, title:'smart-livestock',  sub:'消费组 Diff=0' },
-  { id:'be-pk',  x:1300, y:200, w:130, title:'smart-parking',    sub:'消费组 Diff=0' },
-  { id:'db-ls',  x:1510, y:40,  w:80,  title:'业务库',           sub:'PG' },
-  { id:'db-pk',  x:1510, y:200, w:80,  title:'业务库',           sub:'PG' }
+  { id:'oc',     x:460,  y:115, w:130, title:'TB 网关 OC',       sub:'项目→topic 映射' },
+  { id:'tb',     x:670,  y:115, w:130, title:'ThingsBoard',      sub:'网关认证有效' },
+  { id:'hub',    x:890,  y:115, w:160, title:'DeviceHub',        sub:'消费遥测 · 双通道', channels:true },
+  { id:'mq',     x:1130, y:115, w:130, title:'RocketMQ',         sub:'24h 2,219 条' },
+  { id:'be-ls',  x:1340, y:40,  w:130, title:'smart-livestock',  sub:'消费组 Diff=0' },
+  { id:'be-pk',  x:1340, y:200, w:130, title:'smart-parking',    sub:'消费组 Diff=0' },
+  { id:'db-ls',  x:1550, y:40,  w:80,  title:'业务库',           sub:'PG' },
+  { id:'db-pk',  x:1550, y:200, w:80,  title:'业务库',           sub:'PG' }
 ];
+/* swimlane: TB gateway OC + ThingsBoard service belong to the TB platform */
+const TOPO_LANE = { id:'lane-tb', x:444, y:75, w:372, h:124, label:'ThingsBoard 平台',
+  nodes:['oc','tb'], edges:['oc-tb'], metric:'TB 认证有效', metricFault:'TB 认证 401 失效' };
 const TOPO_EDGES = [
   { id:'ls-ns',  d:'M140 72 C 170 72, 190 147, 220 147',     label:'收帧 486/24h',    lx:180, ly:96 },
   { id:'pk-ns',  d:'M140 232 C 170 232, 190 147, 220 147',   label:'收帧 1,733/24h',  lx:180, ly:200 },
-  { id:'ns-oc',  d:'M350 147 L430 147',                      label:'OC 映射 35',      lx:390, ly:134 },
-  { id:'oc-tb',  d:'M560 147 L640 147',                      label:'TB 认证有效',     lx:600, ly:170 },
-  { id:'tb-hub', d:'M770 147 L850 147',                      label:'WS 订阅 20',      lx:810, ly:134 },
-  { id:'hub-mq', d:'M1010 147 L1090 147',                    label:'MQ 24h 2,219',    lx:1050, ly:170 },
-  { id:'mq-ls',  d:'M1220 147 C 1250 147, 1270 72, 1300 72', label:'Diff=0',          lx:1260, ly:100 },
-  { id:'mq-pk',  d:'M1220 147 C 1250 147, 1270 232, 1300 232', label:'Diff=0',        lx:1260, ly:206 },
-  { id:'ls-db',  d:'M1430 72 L1510 72',                      label:'入库 3 分钟前',   lx:1470, ly:60 },
-  { id:'pk-db',  d:'M1430 232 L1510 232',                    label:'入库 6 分钟前',   lx:1470, ly:246 }
+  { id:'ns-oc',  d:'M350 147 L460 147',                      label:'OC 映射 35',      lx:405, ly:134 },
+  { id:'oc-tb',  d:'M590 147 L670 147',                      label:'',                lx:630, ly:170 },
+  { id:'tb-hub', d:'M800 147 L890 147',                      label:'WS 订阅 20',      lx:852, ly:134 },
+  { id:'hub-mq', d:'M1050 147 L1130 147',                    label:'MQ 24h 2,219',    lx:1090, ly:170 },
+  { id:'mq-ls',  d:'M1260 147 C 1290 147, 1310 72, 1340 72', label:'Diff=0',          lx:1300, ly:100 },
+  { id:'mq-pk',  d:'M1260 147 C 1290 147, 1310 232, 1340 232', label:'Diff=0',        lx:1300, ly:206 },
+  { id:'ls-db',  d:'M1470 72 L1550 72',                      label:'入库 3 分钟前',   lx:1510, ly:60 },
+  { id:'pk-db',  d:'M1470 232 L1550 232',                    label:'入库 6 分钟前',   lx:1510, ly:246 }
 ];
 const TOPO_TIPS = {
   'dev-ls': { t:'节点 · 设备分组 LIVESTOCK', tips:['6 台注册 / 3 台活跃；3 台沉默超期 → 台账开「只看异常」', '新设备接入走「接入预检」五项体检'] },
@@ -818,6 +837,7 @@ const TOPO_TIPS = {
   'ns':  { t:'节点 · NS（ChirpStack）', tips:['设备 NS 不在线 → 检查 AppKey/入网与网关覆盖', '收帧计数停滞 → 查 NS 与 TB 网关的集成转发'] },
   'oc':  { t:'节点 · TB 网关 OC', tips:['OC 共享属性维护 项目→topic 映射（当前 35 个项目）', '映射缺失 → 预检② FAIL，需网关侧补映射'] },
   'tb':  { t:'节点 · ThingsBoard', tips:['网关认证 401 → 检查 gateway access token', '同一 EUI 多台设备 → 同名设备冲突，治理中心处理'] },
+  'lane-tb': { t:'分组 · ThingsBoard 平台', tips:['TB 网关 OC 与 ThingsBoard 服务同属一个平台，故障域独立：网关侧（映射/共享属性）与平台侧（认证/租户）分开定位', '容器边框取内部最严重级别：红 > 黄 > 绿'] },
   'hub': { t:'节点 · DeviceHub', tips:['tb-ws 断开 → 自动重连，rest 轮询兜底接管', '连续失败数 >5 → 触发告警；游标 cursorLagMs 应恒为 0'] },
   'mq':  { t:'节点 · RocketMQ', tips:['mqadmin 查 topic 堆积与消费位点', '24h 消息数突降 → 上游（DeviceHub 写入）断链'] },
   'be-ls': { t:'节点 · smart-livestock 后端', tips:['消费组 Diff>0 → 看单体 consumer 日志', '确认业务库连接池与慢查询'] },
@@ -859,7 +879,7 @@ const FAULT_SCENARIOS = {
   'tb-auth': {
     name:'TB 认证失效', probe:'tb-auth',
     brief:'401 持续 >1min，rest 兜底接管',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'401 · rest 兜底' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'401·兜底中' } },
     nodes:{ 'tb':'is-down' },
     primary:'tb',
     impact:['受影响设备：20 台（全项目，经 rest 兜底降级）', '估计延迟帧：无丢失，入库延迟 +5s/帧'],
@@ -870,7 +890,7 @@ const FAULT_SCENARIOS = {
     name:'OC 映射缺失', probe:'oc-mapping',
     brief:'项目 217 无 topic 映射，64af/64ef 受影响',
     edges:{ 'ns-oc':{ state:'is-down', label:'项目217无映射' } },
-    nodes:{},
+    nodes:{ 'oc':'is-down' },
     primary:'ns-oc',
     impact:['受影响设备：2 台（00956906001264af / 00956906001264ef · LIVESTOCK）', '估计延迟帧：≈12 帧/h（10min 周期 × 2 台）'],
     steps:['在 TB 网关 OC 共享属性补 项目217 → topic 映射', '用接入预检复验 ② 网关项目映射', '确认 64af/64ef 上行恢复'],
@@ -879,7 +899,7 @@ const FAULT_SCENARIOS = {
   'ws-replay': {
     name:'WS 断连 + 回补追平中', probe:'ws-down',
     brief:'回补兜底中，无数据丢失',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'ws 断开·回补中' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'ws 断开' } },
     nodes:{},
     hubLights:{ ws:false },
     primary:'tb-hub',
@@ -900,7 +920,7 @@ const FAULT_SCENARIOS = {
   'decode-rate': {
     name:'解码失败率上升', probe:'decode-rate',
     brief:'5min 解码失败率 12%（阈值 10%）',
-    edges:{ 'tb-hub':{ state:'is-warn', label:'解码失败 12%/5min' } },
+    edges:{ 'tb-hub':{ state:'is-warn', label:'解码失败12%' } },
     nodes:{},
     primary:'tb-hub',
     impact:['受影响设备：全项目（按比例）', '估计丢失帧：≈22 帧/5min 解析失败入死信队列'],
@@ -993,19 +1013,36 @@ function topoEdgeState(id) {
   }
   return null;
 }
+/* lane border severity = worst state among contained nodes/edges (red > yellow > green) */
+function topoLaneState() {
+  if (!activeFault) return '';
+  const sc = FAULT_SCENARIOS[activeFault.id];
+  const states = TOPO_LANE.nodes.map(n => sc.nodes[n])
+    .concat(TOPO_LANE.edges.map(e => sc.edges[e] && sc.edges[e].state));
+  if (states.includes('is-down')) return 'is-down';
+  if (states.includes('is-warn')) return 'is-warn';
+  return '';
+}
 function renderTopology() {
   const svg = $('#topoSvg');
   if (!svg) return;
-  /* paint in three layers: edges -> nodes -> edge labels (labels always on top) */
-  const edgeParts = [], nodeParts = [], labelParts = [];
+  /* paint in four layers: lane -> edges -> nodes -> edge labels (labels always on top) */
+  const laneParts = [], edgeParts = [], nodeParts = [], labelParts = [];
+  const laneState = topoLaneState();
+  laneParts.push('<g class="topo-lane' + (laneState ? ' ' + laneState : '') + '" data-tid="' + TOPO_LANE.id + '">' +
+    '<rect class="lane-rect" x="' + TOPO_LANE.x + '" y="' + TOPO_LANE.y + '" width="' + TOPO_LANE.w + '" height="' + TOPO_LANE.h + '" rx="10"/>' +
+    '<text class="lane-label" x="' + (TOPO_LANE.x + 14) + '" y="' + (TOPO_LANE.y + 19) + '">' + esc(TOPO_LANE.label) + '</text>' +
+    '<text class="lane-metric" x="' + (TOPO_LANE.x + TOPO_LANE.w / 2) + '" y="' + (TOPO_LANE.y + TOPO_LANE.h + 8) + '">' +
+      esc(activeFault && activeFault.id === 'tb-auth' ? TOPO_LANE.metricFault : TOPO_LANE.metric) + '</text></g>');
   TOPO_EDGES.forEach(e => {
     const st = topoEdgeState(e.id);
     const cls = 'topo-edge' + (st ? ' ' + st.state : '');
     edgeParts.push('<g class="' + cls + '" data-tid="' + e.id + '">' +
       '<path class="edge-line" d="' + e.d + '"/>' +
       '<path class="edge-flow" d="' + e.d + '"/></g>');
-    labelParts.push('<g class="' + cls + '" data-tid="' + e.id + '">' +
-      '<text class="edge-label" x="' + e.lx + '" y="' + e.ly + '">' + esc(st ? st.label : e.label) + '</text></g>');
+    const lbl = st ? st.label : e.label;
+    if (lbl) labelParts.push('<g class="' + cls + '" data-tid="' + e.id + '">' +
+      '<text class="edge-label" x="' + e.lx + '" y="' + e.ly + '">' + esc(lbl) + '</text></g>');
   });
   TOPO_NODES.forEach(n => {
     const cx = n.x + n.w / 2;
@@ -1024,7 +1061,8 @@ function renderTopology() {
     const nState = activeFault && FAULT_SCENARIOS[activeFault.id].nodes[n.id];
     nodeParts.push('<g class="topo-node' + (nState ? ' ' + nState : '') + '" data-tid="' + n.id + '">' + inner + '</g>');
   });
-  svg.innerHTML = '<g class="layer-edges">' + edgeParts.join('') + '</g>' +
+  svg.innerHTML = '<g class="layer-lane">' + laneParts.join('') + '</g>' +
+    '<g class="layer-edges">' + edgeParts.join('') + '</g>' +
     '<g class="layer-nodes">' + nodeParts.join('') + '</g>' +
     '<g class="layer-labels">' + labelParts.join('') + '</g>';
 }
