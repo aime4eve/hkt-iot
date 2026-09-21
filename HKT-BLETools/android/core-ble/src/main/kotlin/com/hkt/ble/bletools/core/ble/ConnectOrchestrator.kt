@@ -46,7 +46,8 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
     /** 终态回调（failure == null 表示已连接）；App 层据此取消底层连接尝试并落驻留会话。 */
     var onFinish: ((ConnectFailure?) -> Unit)? = null
 
-    /** 会话仍在（未到终态）。 */
+    /** 会话仍在（未到终态）。注：`finished` 为普通 var，但所有写入点（succeed/fail）均伴随
+     *  `_phase` StateFlow 写入——Compose 观察经 phase/isConnected 流即正确（M6.1 评审 P3）。 */
     val isActive: Boolean get() = _phase.value != null && !finished
 
     /** 开始三阶段（可重复调用，内部先复位）。 */
@@ -88,6 +89,8 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
     }
 
     private fun succeed() {
+        timeoutTask?.cancel()
+        timeoutTask = null
         finished = true
         _phase.value = null
         _isConnected.value = true
@@ -95,6 +98,8 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
     }
 
     private fun fail(failure: ConnectFailure) {
+        timeoutTask?.cancel()
+        timeoutTask = null
         finished = true
         _phase.value = null
         _failure.value = failure

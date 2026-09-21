@@ -1,5 +1,6 @@
 package com.hkt.ble.bletools.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,11 +72,19 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
     var query by remember { mutableStateOf("") }   // R-33 列表模糊查询
     var notice by remember { mutableStateOf<String?>(null) }
     var connector by remember { mutableStateOf<ConnectModel?>(null) }   // P-02 覆盖层（null=关闭）
-    var showDetail by remember { mutableStateOf(false) }                // 详情（P-03 全量克隆前的占位）
+    var showDetail by remember { mutableStateOf(false) }                // 详情（P-03 全量克隆）
+    val requestDetail by model.requestShowDetail.collectAsState()
     LaunchedEffect(notice) {
         if (notice != null) {
             delay(3_000)
             notice = null
+        }
+    }
+    // 演示/定位命中路径的"连接成功进详情"消费方（评审 P1-2：公开 API 不挂空线）
+    LaunchedEffect(requestDetail) {
+        if (requestDetail) {
+            model.consumeRequestShowDetail()
+            showDetail = true
         }
     }
 
@@ -91,10 +100,11 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
         return
     }
     // 详情（P-03 全量克隆）
-    val activeNow by model.activeSession.collectAsState()
-    if (showDetail && activeNow != null) {
+    val activeSessionNow = model.activeSession.value
+    if (showDetail && activeSessionNow != null) {
+        BackHandler { showDetail = false }   // 返回手势=回扫描页（会话驻留），评审 P1-1
         DeviceDetailScreen(
-            session = activeNow!!,
+            session = activeSessionNow,
             scanModel = model,
             onDisconnect = {
                 // 关机成功/断开确认=预期断开（R-31）：释放会话、设备进最近设备、回扫描首页
@@ -346,9 +356,6 @@ private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean, onConnect: (Disco
         )
     }
 }
-
-private fun idSuffix(identifier: String): String =
-    identifier.replace(":", "").takeLast(4).uppercase()
 
 /// 原型映射：rssi > -70 → 4 亮；> -85 → 3 亮；否则 2 亮。
 private fun rssiLit(rssi: Int): Int = if (rssi > -70) 4 else (if (rssi > -85) 3 else 2)

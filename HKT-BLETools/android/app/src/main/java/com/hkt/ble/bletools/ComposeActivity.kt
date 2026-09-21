@@ -49,8 +49,8 @@ class ComposeActivity : ComponentActivity() {
                 scope = scope,
                 autoStartOnReady = true,
                 demoAutoConnectPrefix = if (demoConnect) "SVC100" else null,
+                onSessionStarted = { session -> connectedFamily[0] = session.family },
             )
-            m.onSessionStarted = { session -> connectedFamily[0] = session.family }
             mock.responder = { frame ->
                 val response = responder.respond(frame, connectedFamily[0])
                 // 校准完成文本延迟注入（iOS App 层钩子同构：0xFD ACK 后 3s 纯 ASCII 上报）

@@ -8,8 +8,11 @@ import com.hkt.ble.bletools.core.ble.ConnectPhase
 import com.hkt.ble.bletools.core.ble.DiscoveredDevice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -30,29 +33,22 @@ class ConnectModel(
     private val _failure = MutableStateFlow<ConnectFailure?>(null)
     val failure: StateFlow<ConnectFailure?> = _failure.asStateFlow()
 
-    /** P-02 三步进度序号（0 连接中 / 1 发现服务 / 2 订阅通知；3 = 完成）。 */
-    val phaseIndex: Int
-        get() = if (orchestrator.isConnected.value) 3 else (orchestrator.phase.value?.ordinal ?: 0)
+    /**
+     * P-02 三步进度流（0 连接中 / 1 发现服务 / 2 订阅通知；3 = 完成）。
+     * 派生 StateFlow——UI 直接 collect，不依赖「碰巧连带刷新」的读法（M6.1 评审 P2-8）。
+     * Eagerly：测试无收集器也推进（后台作用域运行）。
+     */
+    val phaseIndex: StateFlow<Int> = combine(
+        orchestrator.isConnected,
+        orchestrator.phase,
+    ) { connected, phase -> if (connected) 3 else (phase?.ordinal ?: 0) }
+        .stateIn(scope, SharingStarted.Eagerly, 0)
 
-    val phase: ConnectPhase? get() = orchestrator.phase.value
-
-    /** 阶段流（Compose 观察用）。 */
+    /** 阶段流（失败文案/调试用）。 */
     val phaseFlow: StateFlow<ConnectPhase?> get() = orchestrator.phase
 
     /** 终态回调（RootView 据此置驻留会话/关闭覆盖层）；与 [outcome] 同步触发。 */
     var onFinished: ((Outcome) -> Unit)? = null
-
-    /** 失败文案（R-G4：带阶段/原因定位；ZH——文案随语言切换在 P-07 语言 store 落地后统一）。 */
-    val failureText: String?
-        get() = when (orchestrator.failure.value) {
-            ConnectFailure.TIMEOUT_LINK -> "连接超时"
-            ConnectFailure.TIMEOUT_SERVICES -> "发现服务超时"
-            ConnectFailure.TIMEOUT_SUBSCRIBING -> "订阅通知超时"
-            ConnectFailure.SERVICE_MISSING -> "设备缺少 HKT 服务"
-            ConnectFailure.CONNECTION_LOST -> "连接已中断"
-            ConnectFailure.CANCELLED -> "已取消"
-            null -> null
-        }
 
     fun start() {
         _outcome.value = null

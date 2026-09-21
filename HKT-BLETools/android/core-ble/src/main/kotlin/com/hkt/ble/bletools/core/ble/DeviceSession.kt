@@ -241,6 +241,7 @@ class DeviceSession(
 
     private fun pollOnce() {
         if (stopped || pollingSuspended) return
+        println("PROBE poll fam=$family")
         _pollsSent.value += 1
         packNum = (packNum + 1) and 0xFF
         link.send(HKTFrameEncoder.appFrame(packNum, CommandCode.QUERY, HKTFrameEncoder.fillerPayload()))
@@ -273,7 +274,11 @@ class DeviceSession(
         } catch (_: Exception) {
             return
         }
-        DeviceSnapshotDecoder.decode(parsed.entries, family, _snapshot.value)
+        // ⚠️ 必须解码进【副本】再发射：StateFlow 以 equals 判重，原地改同一实例 = UI 永不刷新
+        //（@Observable→StateFlow 移植头号陷阱；iOS 逐属性通知无此问题）
+        val updated = _snapshot.value.copy()
+        DeviceSnapshotDecoder.decode(parsed.entries, family, updated)
+        _snapshot.value = updated
         _unknownTail.value = parsed.unknownTail
         _lastResponseAtMs.value = nowMs()
         _secondsSinceLastResponse.value = 0

@@ -34,6 +34,9 @@ class ScanModel(
     demoAutoConnectPrefix: String? = null,
     /** 演示脚本：扫描总时长上限（毫秒），到点自动停（原型 7 秒限时同构；null=不限）。 */
     demoAutoStopAfterMs: Long? = null,
+    /** 连接成功回调——⚠️ 必须构造期注入：demoConnect 直连流在构造内同步触发
+     *  （lifecycleScope=Main.immediate），构造后赋值会错过（同 demoAutoConnectPrefix 教训，M6.1 评审）。 */
+    onSessionStarted: ((DeviceSession) -> Unit)? = null,
 ) {
     private val _availability = MutableStateFlow(BLEAvailability.INITIALIZING)
     val availability: StateFlow<BLEAvailability> = _availability.asStateFlow()
@@ -68,8 +71,13 @@ class ScanModel(
     private val _activeSession = MutableStateFlow<DeviceSession?>(null)
     val activeSession: StateFlow<DeviceSession?> = _activeSession.asStateFlow()
 
-    /** 连接成功后请求打开详情页（覆盖层内触发，扫描页响应后复位）。 */
-    var requestShowDetail: Boolean = false
+    /** 连接成功后请求打开详情页（覆盖层内触发）；扫描页消费后调 [consumeRequestShowDetail] 复位（评审 P1-2：不挂空线）。 */
+    private val _requestShowDetail = MutableStateFlow(false)
+    val requestShowDetail: StateFlow<Boolean> = _requestShowDetail.asStateFlow()
+
+    fun consumeRequestShowDetail() {
+        _requestShowDetail.value = false
+    }
 
     val isReady: Boolean get() = _availability.value.isUsable
 
@@ -95,7 +103,9 @@ class ScanModel(
     var demoAutoStopAfterMs: Long? = demoAutoStopAfterMs
 
     /** 详情页/覆盖层需要展示新会话时由页面注册消费。 */
-    var onSessionStarted: ((DeviceSession) -> Unit)? = null
+    /** 连接成功回调（构造期注入，见构造参数说明）。 */
+    var onSessionStarted: ((DeviceSession) -> Unit)? = onSessionStarted
+        private set
 
     init {
         // 启动即激活（真机：触发系统蓝牙权限弹窗，R-24）；就绪后按需自动扫描（演示模式）
@@ -198,7 +208,7 @@ class ScanModel(
                             demoAutoConnectPrefix = null
                             stopScan()
                             makeAndStartSession(auto)
-                            requestShowDetail = true
+                            _requestShowDetail.value = true
                             onSessionStarted?.invoke(_activeSession.value ?: return@launch)
                         }
                     }
@@ -276,7 +286,8 @@ class ScanModel(
         if (_activeSession.value != null) return _activeSession.value
         val session = makeSession(forDevice) ?: return null
         _activeSession.value = session
-        // 先通知（演示应答器需要 family 才回夹具帧）再启动轮询——首帧 0xFF 就要有应答
+        // 先通知（演示应答器需要 family 才回夹具帧）再启动轮询——首帧 0xFF 就要有应答。
+        // ⚠️ 触发时 _residentDevice 尚未置位（其后一行才置）——回调只应取 family，不得读驻留（M6.1 评审 P3）
         onSessionStarted?.invoke(session)
         session.start()
         _residentDevice.value = ResidentDevice(forDevice.name, forDevice.identifier)
