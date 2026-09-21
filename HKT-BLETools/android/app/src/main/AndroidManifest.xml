@@ -68,15 +68,10 @@
                 android:value="true" />
         </service>
 
+        <!-- v3.21 旧 UI（V6.0.0b1 起退居二线：类保留可回退，入口经 adb 全限定名可达） -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false"/>
 
         <activity
             android:name=".QrCodeActivity"
@@ -87,12 +82,18 @@
         <activity android:name=".DeviceActivity" android:windowSoftInputMode="adjustPan"/>
         <activity android:name=".DebugActivity"/>
 
-        <!-- v2 Compose 宿主（M5 样板开发/截图入口；M6 完成后接替 MainActivity 成为 launcher） -->
+        <!-- v2 Compose 宿主：V6.0.0b1+1 起为唯一 launcher（M8 裁决） -->
         <activity
             android:name=".ComposeActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.BLETools"/>
+            android:theme="@style/Theme.BLETools">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

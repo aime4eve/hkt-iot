@@ -29,11 +29,14 @@ android {
         applicationId = "com.hkt.ble.bletools"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20260906
-        versionName = "3.21"
+        // M8 版本方案（用户裁决 2026-09-21）：versionName = "<主>.<次>.<修订>b<beta 序>+<构建号>"，
+        // 如 6.0.0b1+1；versionCode 保持旧式单调递增 = YYYYMMDDNN（日期 + 当日构建序号），
+        // 保证对现网 3.21（versionCode 20260906）可直接覆盖升级。
+        versionCode = 2026092101
+        versionName = "V6.0.0b1+1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         // 启用多DEX
         multiDexEnabled = true
     }
