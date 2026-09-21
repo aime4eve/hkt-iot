@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HKT-DeviceHub 运维控制台</title>
+<style>
+/* ============ 设计令牌（management-console-design.md §5） ============ */
+:root {
+  --bg: #0d1117;            /* 页面底 */
+  --bg-panel: #161b22;      /* 卡片 */
+  --bg-inset: #0a0e14;      /* 表格内嵌/输入框 */
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --accent: #2f81f7;        /* 主操作/链接 */
+  --ok: #3fb950;            /* PASS/在线/正常 */
+  --warn: #d29922;          /* WARN/滞后 */
+  --danger: #f85149;        /* FAIL/冲突/断连 */
+  --mono: "SFMono-Regular", Consolas, monospace;
+  --radius: 8px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-width: 320px;
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, select { font: inherit; color: var(--text); }
+.mono { font-family: var(--mono); }
+.dim { color: var(--text-dim); }
+a { color: var(--accent); text-decoration: none; }
+
+/* ============ 顶部：品牌 + 全局状态栏 + Tabs ============ */
+header {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+.header-top {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  flex-wrap: wrap;
+}
+.brand { font-weight: 700; font-size: 15px; letter-spacing: .3px; }
+.brand span { color: var(--text-dim); font-weight: 400; margin-left: var(--space-2); font-size: 13px; }
+.channels { display: flex; gap: var(--space-2); margin-left: var(--space-2); }
+.chan {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: 999px;
+  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+}
+.chan:hover { border-color: var(--accent); }
+.counters { margin-left: auto; display: flex; gap: var(--space-3); font-family: var(--mono); font-size: 12.5px; }
+.counter {
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-dim);
+}
+.counter b { color: var(--text); font-weight: 600; }
+
+/* 状态灯：●绿正常 / ●黄警告 / ●红异常 / ○灰未达 */
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.ok     { background: var(--ok);    box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 60%, transparent); }
+.dot.warn   { background: var(--warn);  box-shadow: 0 0 6px color-mix(in srgb, var(--warn) 60%, transparent); }
+.dot.danger { background: var(--danger);box-shadow: 0 0 6px color-mix(in srgb, var(--danger) 60%, transparent); }
+.dot.off    { background: transparent;  border: 1.5px solid var(--text-dim); }
+.dot.lg { width: 11px; height: 11px; }
+
+nav.tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-6); }
+nav.tabs button {
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-dim); font-size: 14px;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+nav.tabs button:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+nav.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+nav.tabs button .tab-dot { margin-left: var(--space-1); }
+
+/* ============ 全局断连横幅 ============ */
+.banner {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-6);
+  background: color-mix(in srgb, var(--danger) 14%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger); font-size: 13px;
+}
+.banner[hidden] { display: none; }
+
+/* ============ 布局与卡片 ============ */
+main { padding: var(--space-6); max-width: 1560px; margin: 0 auto; }
+section.view[hidden] { display: none; }
+.grid { display: grid; gap: var(--space-4); }
+.grid.dash { grid-template-columns: 1.2fr 1fr 1fr; }
+.card {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-4);
+}
+.card h3 { font-size: 13px; color: var(--text-dim); font-weight: 600; margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.card h3 .right { margin-left: auto; font-weight: 400; }
+.kv { display: flex; justify-content: space-between; padding: var(--space-1) 0; font-size: 13px; }
+.kv .k { color: var(--text-dim); }
+.kv .v { font-family: var(--mono); }
+.big { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1.2; }
+.stat-row { display: flex; gap: var(--space-4); }
+.stat { flex: 1; background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); }
+.stat .lbl { font-size: 12px; color: var(--text-dim); }
+
+/* ============ 徽章 ============ */
+.badge {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 1px var(--space-2); border-radius: 999px; font-size: 12px; white-space: nowrap;
+  border: 1px solid var(--border); color: var(--text-dim); background: var(--bg-inset);
+}
+.badge.proj { font-family: var(--mono); font-size: 11px; letter-spacing: .4px; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.badge.ok     { color: var(--ok);     border-color: color-mix(in srgb, var(--ok) 45%, transparent);     background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.badge.warn   { color: var(--warn);   border-color: color-mix(in srgb, var(--warn) 45%, transparent);   background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.badge.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+/* ============ 按钮 ============ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius);
+  background: var(--accent); color: var(--bg); font-weight: 600; font-size: 13px;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); filter: none; }
+.btn.danger { background: var(--danger); }
+.btn.sm { padding: 2px var(--space-2); font-size: 12px; border-radius: 6px; }
+
+/* ============ 表格 ============ */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
+table { width: 100%; border-collapse: collapse; min-width: 1080px; font-size: 13px; }
+thead th {
+  text-align: left; padding: var(--space-2) var(--space-3);
+  color: var(--text-dim); font-weight: 600; font-size: 12px; white-space: nowrap;
+  border-bottom: 1px solid var(--border); background: var(--bg-inset);
+  position: sticky; top: 0;
+}
+tbody td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); white-space: nowrap; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+tbody tr.abnormal { background: color-mix(in srgb, var(--danger) 4%, transparent); }
+tbody tr.abnormal:hover { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+.lights { display: inline-flex; gap: 6px; align-items: center; }
+.lights .dot { cursor: help; }
+.row-actions { display: flex; gap: var(--space-1); }
+
+/* ============ 工具条 / 筛选 ============ */
+.toolbar { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); flex-wrap: wrap; }
+.toolbar select, .toolbar input[type="text"] {
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3); font-size: 13px;
+}
+.toolbar label { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--text-dim); cursor: pointer; }
+.toolbar .count { margin-left: auto; font-size: 12.5px; color: var(--text-dim); font-family: var(--mono); }
+.demo-switch { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 12px; color: var(--text-dim); }
+.demo-switch select { padding: 1px var(--space-2); font-size: 12px; }
+
+/* ============ 详情抽屉 ============ */
+.drawer-mask {
+  position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 60%, transparent);
+  opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 90;
+}
+.drawer-mask.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 520px; max-width: 100vw; z-index: 100;
+  background: var(--bg-panel); border-left: 1px solid var(--border);
+  transform: translateX(100%); transition: transform .22s ease;
+  display: flex; flex-direction: column;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-bottom: 1px solid var(--border); }
+.drawer-head .eui { font-family: var(--mono); font-size: 15px; }
+.drawer-head .close { margin-left: auto; color: var(--text-dim); font-size: 20px; padding: 0 var(--space-2); border-radius: var(--radius); }
+.drawer-head .close:hover { color: var(--text); background: var(--bg-inset); }
+.drawer-body { overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.drawer h4 { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .6px; margin-bottom: var(--space-2); }
+.tags { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.timeline .t-item { display: flex; gap: var(--space-3); align-items: flex-start; position: relative; padding-bottom: var(--space-3); }
+.timeline .t-item::before {
+  content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 1px;
+  background: var(--border);
+}
+.timeline .t-item:last-child::before { display: none; }
+.timeline .t-item .t-text { font-size: 13px; }
+.timeline .t-item .t-time { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+.frames-table { width: 100%; min-width: 0; font-size: 12px; }
+.frames-table td, .frames-table th { padding: var(--space-1) var(--space-2); white-space: nowrap; }
+
+/* ============ 预检 ============ */
+.preflight-hero { max-width: 760px; margin: var(--space-6) auto var(--space-4); text-align: center; }
+.preflight-hero h2 { font-size: 20px; margin-bottom: var(--space-2); }
+.preflight-hero p { color: var(--text-dim); font-size: 13px; }
+.eui-form { display: flex; gap: var(--space-2); max-width: 640px; margin: var(--space-4) auto; }
+.eui-form input {
+  flex: 1; background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4); font-family: var(--mono); font-size: 15px; letter-spacing: 1px;
+  outline: none;
+}
+.eui-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.eui-form input.invalid { border-color: var(--danger); animation: shake .35s; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+.form-hint { text-align: center; font-size: 12.5px; color: var(--text-dim); min-height: 20px; }
+.form-hint.err { color: var(--danger); }
+.report { max-width: 860px; margin: var(--space-4) auto 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.check-item {
+  display: flex; gap: var(--space-3); align-items: flex-start;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+.check-item.PASS  { border-left: 3px solid var(--ok); }
+.check-item.WARN  { border-left: 3px solid var(--warn); }
+.check-item.FAIL  { border-left: 3px solid var(--danger); }
+.check-item .c-main { flex: 1; min-width: 0; }
+.check-item .c-title { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.check-item .c-src { font-size: 11.5px; color: var(--text-dim); font-weight: 400; }
+.check-item .c-detail { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.check-item .c-fix { font-size: 12.5px; margin-top: var(--space-1); }
+.check-item .c-fix.PASS  { color: var(--ok); }
+.check-item .c-fix.WARN  { color: var(--warn); }
+.check-item .c-fix.FAIL  { color: var(--danger); }
+.candidates { margin-top: var(--space-2); width: 100%; border-collapse: collapse; min-width: 0; font-size: 12.5px; }
+.candidates td, .candidates th { padding: var(--space-1) var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); white-space: nowrap; }
+.report-actions { display: flex; gap: var(--space-3); justify-content: center; padding: var(--space-3) 0 var(--space-6); flex-wrap: wrap; }
+
+/* ============ 治理中心 ============ */
+.gov-section { margin-bottom: var(--space-6); }
+.gov-section > h3 { font-size: 15px; margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+.conflict-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: var(--space-3); overflow: hidden; }
+.conflict-card.pending { border-left: 3px solid var(--danger); }
+.conflict-card.resolved { border-left: 3px solid var(--ok); opacity: .8; }
+.conflict-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); cursor: pointer; flex-wrap: wrap; }
+.conflict-head:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.conflict-head .arrow { color: var(--text-dim); transition: transform .15s; }
+.conflict-card.expanded .conflict-head .arrow { transform: rotate(90deg); }
+.conflict-body { display: none; padding: 0 var(--space-4) var(--space-4); }
+.conflict-card.expanded .conflict-body { display: block; }
+.cmp-table { width: 100%; min-width: 640px; font-size: 12.5px; }
+.cmp-table th, .cmp-table td { padding: var(--space-2) var(--space-3); text-align: left; }
+.cmp-table tr.keep { background: color-mix(in srgb, var(--ok) 7%, transparent); }
+.cmp-table tr.keep td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+
+/* ============ 空态 / 错误态 / 骨架 ============ */
+.empty-state, .error-state {
+  text-align: center; padding: var(--space-6) var(--space-4);
+  background: var(--bg-panel); border: 1px dashed var(--border); border-radius: var(--radius);
+  color: var(--text-dim); font-size: 13.5px;
+}
+.empty-state .icon { font-size: 26px; display: block; margin-bottom: var(--space-2); color: var(--ok); }
+.error-state { border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger); }
+.error-state p { margin-bottom: var(--space-3); }
+.empty-state.small, .error-state.small { padding: var(--space-4); }
+.sk {
+  border-radius: var(--radius);
+  background: linear-gradient(90deg,
+    var(--bg-panel) 25%,
+    color-mix(in srgb, var(--bg-panel) 60%, var(--border)) 50%,
+    var(--bg-panel) 75%);
+  background-size: 200% 100%;
+  animation: pulse 1.3s infinite linear;
+}
+@keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ============ 异常关注列表 ============ */
+.attn-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.attn-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3); font-size: 13px;
+}
+.attn-item .grow { flex: 1; min-width: 0; }
+.attn-item .eui { font-family: var(--mono); color: var(--accent); }
+
+/* ============ 弹窗 / Toast ============ */
+.modal-mask {
+  position: fixed; inset: 0; z-index: 200;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-mask[hidden] { display: none; }
+.modal {
+  width: 440px; max-width: calc(100vw - 32px);
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: var(--space-6);
+}
+.modal h3 { font-size: 15px; margin-bottom: var(--space-3); color: var(--danger); }
+.modal p { font-size: 13px; color: var(--text-dim); margin-bottom: var(--space-2); }
+.modal .mono-box { background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-family: var(--mono); font-size: 12px; margin: var(--space-2) 0 var(--space-4); }
+.modal .m-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.toasts { position: fixed; bottom: 48px; right: var(--space-6); z-index: 300; display: flex; flex-direction: column; gap: var(--space-2); }
+.toast {
+  background: var(--bg-panel); border: 1px solid var(--ok); border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4); font-size: 13px; color: var(--text);
+  display: flex; align-items: center; gap: var(--space-2);
+  animation: slideIn .25s ease; max-width: 360px;
+}
+.toast.err { border-color: var(--danger); }
+@keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.footer-mark {
+  position: fixed; bottom: var(--space-2); right: var(--space-3); z-index: 40;
+  font-size: 11px; color: var(--text-dim); opacity: .65; pointer-events: none;
+  font-family: var(--mono);
+}
+
+/* ============ 响应式：窄屏基本可用 ============ */
+@media (max-width: 1100px) {
+  .grid.dash { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 900px) {
+  main { padding: var(--space-3); }
+  .header-top { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  .counters { margin-left: 0; width: 100%; }
+  nav.tabs { padding: 0 var(--space-2); overflow-x: auto; }
+  .grid.dash { grid-template-columns: 1fr; }
+  .drawer { width: 100vw; border-left: none; }
+  .eui-form { flex-direction: column; }
+  .footer-mark { position: static; text-align: right; padding: var(--space-2) var(--space-3); }
+}
+</style>
+</head>
+<body>
+<!-- ============ 顶部：品牌 + 全局状态栏 + Tabs ============ -->
+<header>
+  <div class="header-top">
+    <div class="brand">HKT-DeviceHub<span>运维控制台</span></div>
+    <div class="channels">
+      <button class="chan" id="chanWs" title="点击模拟 tb-ws 断连/恢复">tb-ws <i class="dot ok" id="chanWsDot"></i></button>
+      <button class="chan" id="chanRest" title="点击模拟 tb-rest 断连/恢复">tb-rest <i class="dot ok" id="chanRestDot"></i></button>
+    </div>
+    <div class="counters">
+      <span class="counter">LIVESTOCK <b>6│6</b></span>
+      <span class="counter">PARKING <b>14│14</b></span>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-view="dashboard" class="active">工作台</button>
+    <button data-view="devices">设备台账</button>
+    <button data-view="preflight">接入预检</button>
+    <button data-view="governance">治理中心 <i class="dot danger tab-dot" id="govDot" title="1 条待处理冲突"></i></button>
+  </nav>
+</header>
+
+<div class="banner" id="banner" hidden>
+  <i class="dot danger"></i><span id="bannerText">tb-rest 通道断开，数据可能滞后，正在自动重连…</span>
+</div>
+
+<main>
+  <!-- ============ 视图一：工作台 ============ -->
+  <section class="view" id="view-dashboard">
+    <div class="toolbar">
+      <span class="dim" style="font-size:13px">每日巡检总览 · 数据快照 2026-09-21 15:30</span>
+      <span class="count"></span>
+      <span class="demo-switch">状态演示
+        <select data-demo="dashboard">
+          <option value="normal">正常</option>
+          <option value="loading">加载中（骨架）</option>
+          <option value="empty">空态（一切正常）</option>
+          <option value="error">接口错误</option>
+        </select>
+      </span>
+    </div>
+    <div data-state-body="dashboard">
+      <div class="grid dash">
+        <div class="card">
+          <h3>通道健康 <span class="right dim">GET /api/v1/channels/health</span></h3>
+          <div class="kv"><span class="k"><i class="dot ok"></i> tb-ws（遥测 WebSocket）</span><span class="v" style="color:var(--ok)">CONNECTED</span></div>
+          <div class="kv"><span class="k"><i class="dot ok"></i> tb-rest（REST 轮询兜底）</span><span class="v" style="color:var(--ok)">CONNECTED · 38ms</span></div>
+          <div class="kv"><span class="k">LIVESTOCK maxCursorLagMs</span><span class="v">0</span></div>
+          <div class="kv"><span class="k">PARKING maxCursorLagMs</span><span class="v">0</span></div>
+          <div class="kv"><span class="k">连续失败数（ws / rest）</span><span class="v">0 / 0</span></div>
+        </div>
+        <div class="card">
+          <h3><span class="badge proj">LIVESTOCK</span> 智慧畜牧</h3>
+          <div class="stat-row">
+            <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">3<span class="dim" style="font-size:14px">/6</span></div></div>
+            <div class="stat"><div class="lbl">noDataDevices</div><div class="big">0</div></div>
+            <div class="stat"><div class="lbl">24h 帧数</div><div class="big">486</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3><span class="badge proj">PARKING</span> 智慧停车</h3>
+          <div class="stat-row">
+            <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">12<span class="dim" style="font-size:14px">/14</span></div></div>
+            <div class="stat"><div class="lbl">noDataDevices</div><div class="big" style="color:var(--warn)">2</div></div>
+            <div class="stat"><div class="lbl">24h 帧数</div><div class="big">1,733</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <h3>异常关注列表 <span class="right dim">聚合：静默超期 / 滞后&gt;0 / 待处理冲突</span></h3>
+        <div class="attn-list" id="attnList"></div>
+      </div>
+    </div>
+    <div data-state-panel="dashboard" hidden></div>
+  </section>
+
+  <!-- ============ 视图二：设备台账 ============ -->
+  <section class="view" id="view-devices" hidden>
+    <div class="toolbar">
+      <select id="fltProject">
+        <option value="">全部项目</option>
+        <option value="LIVESTOCK">LIVESTOCK</option>
+        <option value="PARKING">PARKING</option>
+      </select>
+      <select id="fltStatus">
+        <option value="">全部状态</option>
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="PENDING">PENDING</option>
+        <option value="FAILED">FAILED</option>
+      </select>
+      <select id="fltHealth">
+        <option value="">全部健康灯</option>
+        <option value="ok">四级全绿</option>
+        <option value="bad">有未达级</option>
+      </select>
+      <label><input type="checkbox" id="fltAbnormal"> 只看异常</label>
+      <span class="count" id="devCount"></span>
+      <span class="demo-switch">状态演示
+        <select data-demo="devices">
+          <option value="normal">正常</option>
+          <option value="loading">加载中（骨架）</option>
+          <option value="error">接口错误</option>
+        </select>
+      </span>
+    </div>
+    <div data-state-body="devices">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>EUI</th><th>项目</th><th>设备类型</th><th>TB 绑定</th><th>上报周期</th>
+              <th>最近一帧</th><th title="NS激活 → 有上行 → TB解码 → 已入库">四级健康 NS→上行→TB→入库</th>
+              <th>状态</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="devTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="devEmpty" hidden>
+        <span class="icon" style="color:var(--text-dim)">◇</span>
+        没有符合条件的设备
+        <div style="margin-top:var(--space-3)"><button class="btn ghost sm" id="devClearFlt">清除筛选</button></div>
+      </div>
+    </div>
+    <div data-state-panel="devices" hidden></div>
+  </section>
+
+  <!-- ============ 视图三：接入预检 ============ -->
+  <section class="view" id="view-preflight" hidden>
+    <div class="toolbar">
+      <span class="dim" style="font-size:13px">R-01 · 新设备接入五项体检</span>
+      <span class="count"></span>
+      <span class="demo-switch">状态演示
+        <select data-demo="preflight">
+          <option value="normal">正常</option>
+          <option value="error">接口错误</option>
+        </select>
+      </span>
+    </div>
+    <div data-state-body="preflight">
+      <div class="preflight-hero">
+        <h2>接入预检</h2>
+        <p>输入 DevEUI，按实战排查路径依次体检：NS 归属 → 网关映射 → TB 唯一性 → profile 匹配 → 本地绑定</p>
+      </div>
+      <form class="eui-form" id="euiForm" novalidate>
+        <input type="text" id="euiInput" class="mono" placeholder="输入 16 位 DevEUI（hex），如 001a0102ff000644"
+               maxlength="16" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn" id="euiSubmit">开始体检</button>
+      </form>
+      <div class="form-hint" id="euiHint">演示：001a0102ff000644（全 PASS）· 0095690000030999（冲突 FAIL）· 其他合法 EUI（可创建 WARN）</div>
+      <div class="report" id="report"></div>
+      <div class="report-actions" id="reportActions" hidden></div>
+    </div>
+    <div data-state-panel="preflight" hidden></div>
+  </section>
+
+  <!-- ============ 视图四：治理中心 ============ -->
+  <section class="view" id="view-governance" hidden>
+    <div class="toolbar">
+      <span class="dim" style="font-size:13px">R-04 · 重名/脏数据治理（删除操作强制二次确认 + 审计日志）</span>
+      <span class="count"></span>
+      <span class="demo-switch">状态演示
+        <select data-demo="governance">
+          <option value="normal">正常</option>
+          <option value="loading">加载中（骨架）</option>
+          <option value="error">接口错误</option>
+        </select>
+      </span>
+    </div>
+    <div data-state-body="governance">
+      <div class="gov-section">
+        <h3><i class="dot danger"></i> 重名冲突 <span class="badge danger" id="conflictCount">1 待处理</span></h3>
+        <div id="conflictList"></div>
+      </div>
+      <div class="gov-section">
+        <h3><i class="dot warn"></i> 无数据设备 <span class="dim" style="font-size:12px;font-weight:400">注册但从无帧</span></h3>
+        <div id="nodataList"></div>
+      </div>
+      <div class="gov-section">
+        <h3><i class="dot ok"></i> 滞后异常 <span class="dim" style="font-size:12px;font-weight:400">有新数据未追平才出现</span></h3>
+        <div class="empty-state">
+          <span class="icon">✓</span>
+          一切正常 · 所有设备追赶滞后 cursorLag = 0
+        </div>
+      </div>
+    </div>
+    <div data-state-panel="governance" hidden></div>
+  </section>
+</main>
+
+<!-- ============ 设备详情抽屉 ============ -->
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <span class="eui" id="drawerEui"></span>
+    <span id="drawerBadges"></span>
+    <button class="close" id="drawerClose" title="关闭">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<!-- ============ 二次确认弹窗 ============ -->
+<div class="modal-mask" id="modalMask" hidden>
+  <div class="modal">
+    <h3>⚠ 删除 TB 空副本（不可恢复）</h3>
+    <p>即将从 ThingsBoard 删除以下空副本设备。服务端将二次校验<b>遥测条数 = 0</b>，操作写入审计日志：</p>
+    <div class="mono-box" id="modalTarget"></div>
+    <div class="m-actions">
+      <button class="btn ghost" id="modalCancel">取消</button>
+      <button class="btn danger" id="modalConfirm">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1 · 2026-09-21</div>
+<script>
+'use strict';
+/* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
+const NOW = new Date('2026-09-21T15:30:00+08:00');
+
+function h(ok, at) { return { ok, at }; }
+function mkFrames(lastIso, n, stepMs, base) {
+  const frames = [];
+  let t = new Date(lastIso).getTime();
+  for (let i = 0; i < n; i++) {
+    frames.push({
+      t: new Date(t).toISOString(),
+      fPort: base.fPort,
+      bytes: base.bytes + (i % 3),
+      rssi: base.rssi - (i % 4),
+      snr: base.snr + (i % 3) - 1,
+      battery: base.battery
+    });
+    t -= stepMs;
+  }
+  return frames;
+}
+
+const DEVICES = [
+  /* ---- LIVESTOCK 6 台 ---- */
+  { eui:'001a0103ff000262', project:'LIVESTOCK', type:'胶囊 B00', profile:'ls-capsule-v2',
+    period:'12h', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-9f02aa11-0262',
+    externalRef:'ns://livestock/001a0103ff000262', capabilities:['telemetry'],
+    createdAt:'2026-08-30T10:02:00+08:00', lastFrame:'2026-09-09T08:14:00+08:00',
+    battery:86, rssi:-98, snr:7, silent:true, noData:false,
+    health:{ ns:h(true,'2026-08-30T10:02:00+08:00'), up:h(false,'2026-09-09T08:14:00+08:00'),
+             tb:h(false,'2026-09-09T08:14:12+08:00'), db:h(false,'2026-09-09T08:14:13+08:00') },
+    frames: mkFrames('2026-09-09T08:14:00+08:00', 4, 12*3600e3, {fPort:2, bytes:14, rssi:-98, snr:7, battery:86}) },
+  { eui:'001a0102ff000644', project:'LIVESTOCK', type:'胶囊 B00', profile:'ls-capsule-v2',
+    period:'4h', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-9f02aa11-0644',
+    externalRef:'ns://livestock/001a0102ff000644', capabilities:['telemetry'],
+    createdAt:'2026-09-05T09:20:00+08:00', lastFrame:'2026-09-21T12:27:00+08:00',
+    battery:89, rssi:-105, snr:4, silent:false, noData:false,
+    health:{ ns:h(true,'2026-09-05T09:20:00+08:00'), up:h(true,'2026-09-21T12:27:00+08:00'),
+             tb:h(true,'2026-09-21T12:27:09+08:00'), db:h(true,'2026-09-21T12:27:10+08:00') },
+    frames: mkFrames('2026-09-21T12:27:00+08:00', 6, 4*3600e3, {fPort:2, bytes:14, rssi:-105, snr:4, battery:89}) },
+  { eui:'001a0102ff000853', project:'LIVESTOCK', type:'胶囊 B00', profile:'ls-capsule-v2',
+    period:'4h', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-9f02aa11-0853',
+    externalRef:'ns://livestock/001a0102ff000853', capabilities:['telemetry'],
+    createdAt:'2026-09-05T09:24:00+08:00', lastFrame:'2026-09-21T14:52:00+08:00',
+    battery:92, rssi:-91, snr:9, silent:false, noData:false,
+    health:{ ns:h(true,'2026-09-05T09:24:00+08:00'), up:h(true,'2026-09-21T14:52:00+08:00'),
+             tb:h(true,'2026-09-21T14:52:06+08:00'), db:h(true,'2026-09-21T14:52:07+08:00') },
+    frames: mkFrames('2026-09-21T14:52:00+08:00', 6, 4*3600e3, {fPort:2, bytes:14, rssi:-91, snr:9, battery:92}) },
+  { eui:'00956906001264af', project:'LIVESTOCK', type:'牛羊追踪器 T100', profile:'ls-tracker-v3',
+    period:'10min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-71c0be22-64af',
+    externalRef:'ns://livestock/00956906001264af', capabilities:['telemetry','gps'],
+    createdAt:'2026-09-12T16:40:00+08:00', lastFrame:'2026-09-19T12:03:00+08:00',
+    battery:64, rssi:-102, snr:5, silent:true, noData:false,
+    health:{ ns:h(true,'2026-09-12T16:40:00+08:00'), up:h(false,'2026-09-19T12:03:00+08:00'),
+             tb:h(false,'2026-09-19T12:03:08+08:00'), db:h(false,'2026-09-19T12:03:09+08:00') },
+    frames: mkFrames('2026-09-19T12:03:00+08:00', 3, 600e3, {fPort:3, bytes:22, rssi:-102, snr:5, battery:64}) },
+  { eui:'00956906001264ef', project:'LIVESTOCK', type:'牛羊追踪器 T100', profile:'ls-tracker-v3',
+    period:'10min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-71c0be22-64ef',
+    externalRef:'ns://livestock/00956906001264ef', capabilities:['telemetry','gps'],
+    createdAt:'2026-09-12T16:44:00+08:00', lastFrame:'2026-09-19T12:03:00+08:00',
+    battery:71, rssi:-100, snr:6, silent:true, noData:false,
+    health:{ ns:h(true,'2026-09-12T16:44:00+08:00'), up:h(false,'2026-09-19T12:03:00+08:00'),
+             tb:h(false,'2026-09-19T12:03:05+08:00'), db:h(false,'2026-09-19T12:03:06+08:00') },
+    frames: mkFrames('2026-09-19T12:03:00+08:00', 3, 600e3, {fPort:3, bytes:22, rssi:-100, snr:6, battery:71}) },
+  { eui:'00956906001267d6', project:'LIVESTOCK', type:'牛羊追踪器 T100', profile:'ls-tracker-v3',
+    period:'10min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-71c0be22-67d6',
+    externalRef:'ns://livestock/00956906001267d6', capabilities:['telemetry','gps'],
+    createdAt:'2026-09-12T16:51:00+08:00', lastFrame:'2026-09-21T15:27:00+08:00',
+    battery:100, rssi:-87, snr:11, silent:false, noData:false, gps:'28.2465, 112.8510',
+    health:{ ns:h(true,'2026-09-12T16:51:00+08:00'), up:h(true,'2026-09-21T15:27:00+08:00'),
+             tb:h(true,'2026-09-21T15:27:03+08:00'), db:h(true,'2026-09-21T15:27:04+08:00') },
+    frames: mkFrames('2026-09-21T15:27:00+08:00', 10, 600e3, {fPort:3, bytes:22, rssi:-87, snr:11, battery:100}) },
+
+  /* ---- PARKING 14 台 ---- */
+  { eui:'009569000003059c', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-55d1cc33-059c',
+    externalRef:'ns://parking/009569000003059c', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-08-18T11:00:00+08:00', lastFrame:'2026-09-21T15:21:00+08:00',
+    battery:95, rssi:-88, snr:10, silent:false, noData:false, note:'双通道（ws+rest）正常',
+    health:{ ns:h(true,'2026-08-18T11:00:00+08:00'), up:h(true,'2026-09-21T15:21:00+08:00'),
+             tb:h(true,'2026-09-21T15:21:02+08:00'), db:h(true,'2026-09-21T15:21:03+08:00') },
+    frames: mkFrames('2026-09-21T15:21:00+08:00', 8, 1800e3, {fPort:5, bytes:11, rssi:-88, snr:10, battery:95}) },
+  { eui:'009569000003056c', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-55d1cc33-056c',
+    externalRef:'ns://parking/009569000003056c', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-08-18T11:04:00+08:00', lastFrame:'2026-09-21T15:18:00+08:00',
+    battery:93, rssi:-90, snr:9, silent:false, noData:false, note:'历史重名冲突已于 09-20 解决',
+    health:{ ns:h(true,'2026-08-18T11:04:00+08:00'), up:h(true,'2026-09-21T15:18:00+08:00'),
+             tb:h(true,'2026-09-21T15:18:04+08:00'), db:h(true,'2026-09-21T15:18:05+08:00') },
+    frames: mkFrames('2026-09-21T15:18:00+08:00', 8, 1800e3, {fPort:5, bytes:11, rssi:-90, snr:9, battery:93}) },
+  { eui:'00956906000288cf', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-55d1cc33-88cf',
+    externalRef:'ns://parking/00956906000288cf', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-08-18T11:09:00+08:00', lastFrame:'2026-09-21T15:24:00+08:00',
+    battery:97, rssi:-85, snr:12, silent:false, noData:false, note:'双通道（ws+rest）正常',
+    health:{ ns:h(true,'2026-08-18T11:09:00+08:00'), up:h(true,'2026-09-21T15:24:00+08:00'),
+             tb:h(true,'2026-09-21T15:24:03+08:00'), db:h(true,'2026-09-21T15:24:04+08:00') },
+    frames: mkFrames('2026-09-21T15:24:00+08:00', 8, 1800e3, {fPort:5, bytes:11, rssi:-85, snr:12, battery:97}) },
+  { eui:'0095690000030906', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'ACTIVE', tbBind:'bound', tbDeviceId:'tb-55d1cc33-0906',
+    externalRef:'ns://parking/0095690000030906', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-09-17T14:30:00+08:00', lastFrame:null,
+    battery:null, rssi:null, snr:null, silent:false, noData:true, note:'注册 4 天，从未上报',
+    health:{ ns:h(true,'2026-09-17T14:30:00+08:00'), up:h(false,null), tb:h(false,null), db:h(false,null) },
+    frames: [] },
+  { eui:'00956900000305aa', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'PENDING', tbBind:'unbound', tbDeviceId:null,
+    externalRef:'ns://parking/00956900000305aa', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-09-20T19:12:00+08:00', lastFrame:null,
+    battery:null, rssi:null, snr:null, silent:false, noData:true, note:'注册流程未完成，TB 绑定待创建',
+    health:{ ns:h(false,null), up:h(false,null), tb:h(false,null), db:h(false,null) },
+    frames: [] },
+  // 9 台试点地磁（正常）
+  ...['0095690600028466','0095690600028478','0095690600028594','009569060002847b',
+      '00956906000285c3','009569060002848d','00956906000285b8','00956906000285b4',
+      '00956900000305a1'].map((eui, i) => {
+    const lf = new Date(NOW.getTime() - (6 + i * 7) * 60e3).toISOString();
+    return { eui, project:'PARKING', type:'DC200 地磁（试点）', profile:'pk-geomag-dc200',
+      period:'心跳 30min', status:'ACTIVE', tbBind:'bound',
+      tbDeviceId:'tb-55d1cc33-' + eui.slice(-4),
+      externalRef:'ns://parking/' + eui, capabilities:['telemetry','geomagnetic'],
+      createdAt:'2026-09-10T09:0' + i + ':00+08:00', lastFrame:lf,
+      battery:88 + (i % 10), rssi:-84 - (i % 8), snr:8 + (i % 4), silent:false, noData:false,
+      health:{ ns:h(true,'2026-09-10T09:00:00+08:00'), up:h(true,lf), tb:h(true,lf), db:h(true,lf) },
+      frames: mkFrames(lf, 5, 1800e3, {fPort:5, bytes:11, rssi:-84 - (i % 8), snr:8 + (i % 4), battery:88 + (i % 10)}) };
+  })
+];
+
+/* ---- 治理中心：重名冲突 ---- */
+const CONFLICTS = [
+  { eui:'0095690000030999', status:'pending', detected:'2026-09-21 09:41',
+    candidates:[
+      { tbId:'tb-a41f0099-9a2e', created:'2026-09-18 14:02', lastTelemetry:'2026-09-21 09:40', telemetryCount:1284, boundBy:'DeviceHub · PARKING', keep:true },
+      { tbId:'tb-b77e0099-04c1', created:'2026-09-20 22:17', lastTelemetry:'—', telemetryCount:0, boundBy:'未绑定（空壳）', keep:false }
+    ] },
+  { eui:'009569000003056c', status:'resolved', detected:'2026-09-20 17:55', resolvedAt:'2026-09-20 18:22',
+    resolution:'删除空副本 tb-7e21056c-3d09（遥测 0 条，服务端校验通过），保留有遥测副本 tb-55d1cc33-056c；操作人 ops-admin，审计日志 #A-20260920-041',
+    candidates:[
+      { tbId:'tb-55d1cc33-056c', created:'2026-08-18 11:04', lastTelemetry:'2026-09-20 17:50', telemetryCount:962, boundBy:'DeviceHub · PARKING', keep:true },
+      { tbId:'tb-7e21056c-3d09', created:'2026-09-20 17:31', lastTelemetry:'—', telemetryCount:0, boundBy:'未绑定（空壳）', keep:false }
+    ] }
+];
+
+/* ================= 工具函数 ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmtAbs(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function relTime(iso) {
+  if (!iso) return '从未';
+  const d = new Date(iso), diff = NOW - d;
+  if (diff < 60e3) return '刚刚';
+  if (diff < 3600e3) return Math.floor(diff / 60e3) + ' 分钟前';
+  const sameDay = d.getFullYear() === NOW.getFullYear() && d.getMonth() === NOW.getMonth() && d.getDate() === NOW.getDate();
+  if (sameDay) return '今天 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  return pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function toast(msg, isErr) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.innerHTML = '<i class="dot ' + (isErr ? 'danger' : 'ok') + '"></i>' + esc(msg);
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3600);
+}
+function healthBad(dev) { return !dev.health.ns.ok || !dev.health.up.ok || !dev.health.tb.ok || !dev.health.db.ok; }
+function isAbnormal(dev) { return dev.status !== 'ACTIVE' || dev.silent || dev.noData || healthBad(dev); }
+
+/* ================= 视图切换（含 hash 路由） ================= */
+const VIEWS = ['dashboard', 'devices', 'preflight', 'governance'];
+function switchView(name, skipHash) {
+  if (!VIEWS.includes(name)) name = 'dashboard';
+  VIEWS.forEach(v => {
+    $('#view-' + v).hidden = v !== name;
+    $('#tabs button[data-view="' + v + '"]').classList.toggle('active', v === name);
+  });
+  if (!skipHash) history.replaceState(null, '', '#/' + name);
+}
+$('#tabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-view]');
+  if (btn) switchView(btn.dataset.view);
+});
+
+/* ================= 通道灯 / 全局横幅 ================= */
+const chanState = { ws: true, rest: true };
+function renderBanner() {
+  const down = [];
+  if (!chanState.ws) down.push('tb-ws');
+  if (!chanState.rest) down.push('tb-rest');
+  const b = $('#banner');
+  if (down.length) {
+    b.hidden = false;
+    $('#bannerText').textContent = down.join(' / ') + ' 通道断开，数据可能滞后，正在自动重连…（点击状态灯恢复）';
+  } else b.hidden = true;
+}
+function bindChan(btnId, dotId, key) {
+  $(btnId).addEventListener('click', () => {
+    chanState[key] = !chanState[key];
+    $(dotId).className = 'dot ' + (chanState[key] ? 'ok' : 'danger');
+    renderBanner();
+    toast(chanState[key] ? key + ' 通道已恢复连接' : key + ' 通道已断开（模拟）', !chanState[key]);
+  });
+}
+bindChan('#chanWs', '#chanWsDot', 'ws');
+bindChan('#chanRest', '#chanRestDot', 'rest');
+
+/* ================= 状态演示开关（loading / 空态 / 错误态） ================= */
+const SKELETON = {
+  dashboard: '<div class="grid dash"><div class="sk" style="height:180px"></div><div class="sk" style="height:180px"></div><div class="sk" style="height:180px"></div></div><div class="sk" style="height:220px;margin-top:var(--space-4)"></div>',
+  devices: '<div class="sk" style="height:420px"></div>',
+  governance: '<div class="sk" style="height:140px;margin-bottom:var(--space-3)"></div><div class="sk" style="height:120px;margin-bottom:var(--space-3)"></div><div class="sk" style="height:100px"></div>',
+  preflight: ''
+};
+function statePanel(view, kind) {
+  if (kind === 'loading') return SKELETON[view];
+  if (kind === 'error') {
+    return '<div class="error-state"><p>✕ 接口请求失败：GET /api/v1/' +
+      (view === 'devices' ? 'devices' : view === 'governance' ? 'devices/conflicts' : view === 'preflight' ? 'devices/preflight' : 'channels/health') +
+      ' · 502 Bad Gateway（mock）</p><button class="btn ghost" data-retry="' + view + '">重试</button></div>';
+  }
+  if (kind === 'empty') {
+    return '<div class="empty-state"><span class="icon">✓</span>一切正常 · 通道连通，无静默超期、无滞后、无待处理冲突</div>';
+  }
+  return '';
+}
+$$('select[data-demo]').forEach(sel => {
+  sel.addEventListener('change', () => {
+    const view = sel.dataset.demo;
+    const body = document.querySelector('[data-state-body="' + view + '"]');
+    const panel = document.querySelector('[data-state-panel="' + view + '"]');
+    if (sel.value === 'normal') { body.hidden = false; panel.hidden = true; panel.innerHTML = ''; }
+    else { body.hidden = true; panel.hidden = false; panel.innerHTML = statePanel(view, sel.value); }
+  });
+});
+document.addEventListener('click', e => {
+  const retry = e.target.closest('[data-retry]');
+  if (retry) {
+    const view = retry.dataset.retry;
+    const sel = document.querySelector('select[data-demo="' + view + '"]');
+    sel.value = 'normal';
+    sel.dispatchEvent(new Event('change'));
+    toast('已恢复（mock 重试成功）');
+  }
+});
+
+/* ================= 工作台：异常关注列表 ================= */
+function renderAttention() {
+  const items = [];
+  DEVICES.filter(d => d.silent).forEach(d => {
+    const days = Math.floor((NOW - new Date(d.lastFrame)) / 86400e3);
+    items.push({ level:'danger', eui:d.eui, text:'沉默超期 ' + days + ' 天（周期 ' + d.period + '，最后帧 ' + relTime(d.lastFrame) + '）',
+      action:() => { switchView('devices'); openDrawer(d.eui); }, actionText:'定位' });
+  });
+  DEVICES.filter(d => d.noData).forEach(d => {
+    items.push({ level:'warn', eui:d.eui, text:(d.status === 'PENDING' ? '待注册（PENDING），注册流程未完成' : '注册但从无数据（noDataDevices）'),
+      action:() => { switchView('governance'); }, actionText:'治理' });
+  });
+  CONFLICTS.filter(c => c.status === 'pending').forEach(c => {
+    items.push({ level:'danger', eui:c.eui, text:'TB 重名冲突待处理（2 台候选副本）',
+      action:() => { switchView('governance'); }, actionText:'处理' });
+  });
+  const box = $('#attnList');
+  if (!items.length) {
+    box.innerHTML = '<div class="empty-state small"><span class="icon">✓</span>一切正常</div>';
+    return;
+  }
+  box.innerHTML = items.map((it, i) =>
+    '<div class="attn-item"><i class="dot ' + it.level + '"></i>' +
+    '<span class="grow"><span class="eui">' + it.eui + '</span> · ' + esc(it.text) + '</span>' +
+    '<button class="btn ghost sm" data-attn="' + i + '">' + it.actionText + '</button></div>'
+  ).join('');
+  box.querySelectorAll('[data-attn]').forEach(btn =>
+    btn.addEventListener('click', () => items[+btn.dataset.attn].action()));
+}
+
+/* ================= 设备台账 ================= */
+const LIGHT_LABELS = ['NS激活', '有上行', 'TB解码', '已入库'];
+const LIGHT_KEYS = ['ns', 'up', 'tb', 'db'];
+function lightHtml(dev) {
+  return '<span class="lights">' + LIGHT_KEYS.map((k, i) => {
+    const lv = dev.health[k];
+    const tip = LIGHT_LABELS[i] + (lv.ok ? ' · 已达：' + fmtAbs(lv.at) : lv.at ? ' · 未达（最后达到 ' + fmtAbs(lv.at) + '）' : ' · 从未达到');
+    return '<i class="dot ' + (lv.ok ? 'ok' : 'off') + '" title="' + esc(tip) + '"></i>';
+  }).join('') + '</span>';
+}
+function statusBadge(dev) {
+  if (dev.status === 'PENDING') return '<span class="badge warn">PENDING</span>';
+  if (dev.status === 'FAILED') return '<span class="badge danger">FAILED</span>';
+  let extra = '';
+  if (dev.silent) extra = ' <span class="badge warn">沉默</span>';
+  if (dev.noData) extra = ' <span class="badge warn">无数据</span>';
+  return '<span class="badge ok">ACTIVE</span>' + extra;
+}
+function tbBindHtml(dev) {
+  if (dev.tbBind === 'bound') return '<span class="badge ok">已绑定</span>';
+  if (dev.tbBind === 'conflict') return '<span class="badge danger">冲突</span>';
+  return '<span class="badge">未绑定</span>';
+}
+function renderDevices() {
+  const fp = $('#fltProject').value, fs = $('#fltStatus').value, fh = $('#fltHealth').value;
+  const onlyAbn = $('#fltAbnormal').checked;
+  const rows = DEVICES.filter(d => {
+    if (fp && d.project !== fp) return false;
+    if (fs && d.status !== fs) return false;
+    if (fh === 'ok' && healthBad(d)) return false;
+    if (fh === 'bad' && !healthBad(d)) return false;
+    if (onlyAbn && !isAbnormal(d)) return false;
+    return true;
+  });
+  const tbody = $('#devTbody');
+  tbody.innerHTML = rows.map(d =>
+    '<tr data-eui="' + d.eui + '"' + (isAbnormal(d) ? ' class="abnormal"' : '') + '>' +
+    '<td><span class="eui">' + d.eui + '</span></td>' +
+    '<td><span class="badge proj">' + d.project + '</span></td>' +
+    '<td>' + esc(d.type) + '</td>' +
+    '<td>' + tbBindHtml(d) + '</td>' +
+    '<td class="dim">' + d.period + '</td>' +
+    '<td title="' + fmtAbs(d.lastFrame) + '">' + relTime(d.lastFrame) + '</td>' +
+    '<td>' + lightHtml(d) + '</td>' +
+    '<td>' + statusBadge(d) + '</td>' +
+    '<td><span class="row-actions">' +
+      '<button class="btn ghost sm" data-act="detail" data-eui="' + d.eui + '">详情</button>' +
+      '<button class="btn ghost sm" data-act="rereg" data-eui="' + d.eui + '">重新注册</button>' +
+      '<button class="btn ghost sm" data-act="reconcile" data-eui="' + d.eui + '">对账定位</button>' +
+    '</span></td></tr>'
+  ).join('');
+  const abnCount = DEVICES.filter(isAbnormal).length;
+  $('#devCount').textContent = '共 ' + rows.length + ' 台 / 全部 ' + DEVICES.length + ' 台 · 异常 ' + abnCount + ' 台';
+  $('#devEmpty').hidden = rows.length > 0;
+}
+$('#devTbody').addEventListener('click', e => {
+  const actBtn = e.target.closest('button[data-act]');
+  if (actBtn) {
+    e.stopPropagation();
+    const eui = actBtn.dataset.eui;
+    if (actBtn.dataset.act === 'detail') openDrawer(eui);
+    else if (actBtn.dataset.act === 'rereg') toast('已提交重新注册请求：' + eui + '（POST /api/v1/devices/register，幂等）');
+    else if (actBtn.dataset.act === 'reconcile') toast('对账完成：' + eui + ' · NS 帧计数与本地游标一致（mock）');
+    return;
+  }
+  const tr = e.target.closest('tr[data-eui]');
+  if (tr) openDrawer(tr.dataset.eui);
+});
+['#fltProject', '#fltStatus', '#fltHealth'].forEach(s => $(s).addEventListener('change', renderDevices));
+$('#fltAbnormal').addEventListener('change', renderDevices);
+$('#devClearFlt').addEventListener('click', () => {
+  $('#fltProject').value = ''; $('#fltStatus').value = ''; $('#fltHealth').value = '';
+  $('#fltAbnormal').checked = false; renderDevices();
+});
+
+/* ================= 详情抽屉 ================= */
+function openDrawer(eui) {
+  const d = DEVICES.find(x => x.eui === eui);
+  if (!d) return;
+  $('#drawerEui').textContent = d.eui;
+  $('#drawerBadges').innerHTML = '<span class="badge proj">' + d.project + '</span> ' + statusBadge(d);
+  const frameRows = d.frames.length
+    ? '<div class="table-wrap"><table class="frames-table"><thead><tr><th>时间</th><th>fPort</th><th>字节</th><th>RSSI</th><th>SNR</th><th>电量</th></tr></thead><tbody>' +
+      d.frames.map(f => '<tr><td class="mono">' + fmtAbs(f.t) + '</td><td class="mono">' + f.fPort + '</td><td class="mono">' + f.bytes + '</td>' +
+        '<td class="mono"' + (f.rssi <= -100 ? ' style="color:var(--warn)"' : '') + '>' + f.rssi + '</td>' +
+        '<td class="mono">' + f.snr + '</td><td class="mono">' + (f.battery == null ? '—' : f.battery + '%') + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<div class="empty-state small"><span class="icon" style="color:var(--text-dim)">◇</span>暂无帧数据（该设备注册后从未上报）</div>';
+  const timeline = LIGHT_KEYS.map((k, i) => {
+    const lv = d.health[k];
+    return '<div class="t-item"><i class="dot lg ' + (lv.ok ? 'ok' : 'off') + '" style="margin-top:5px"></i>' +
+      '<div><div class="t-text">' + LIGHT_LABELS[i] + (lv.ok ? ' <span style="color:var(--ok)">已达</span>' : ' <span class="dim">未达到</span>') + '</div>' +
+      '<div class="t-time">' + (lv.at ? (lv.ok ? '达到于 ' : '最后达到 ') + fmtAbs(lv.at) : '从未达到') + '</div></div></div>';
+  }).join('');
+  $('#drawerBody').innerHTML =
+    '<div><h4>注册信息</h4><div class="card" style="padding:var(--space-3)">' +
+      '<div class="kv"><span class="k">tbDeviceId</span><span class="v">' + (d.tbDeviceId || '—（未绑定）') + '</span></div>' +
+      '<div class="kv"><span class="k">externalRef</span><span class="v">' + d.externalRef + '</span></div>' +
+      '<div class="kv"><span class="k">device profile</span><span class="v">' + d.profile + '</span></div>' +
+      '<div class="kv"><span class="k">注册时间</span><span class="v">' + fmtAbs(d.createdAt) + '</span></div>' +
+      '<div class="kv"><span class="k">capabilities</span><span class="tags">' + d.capabilities.map(c => '<span class="badge">' + c + '</span>').join('') + '</span></div>' +
+      (d.gps ? '<div class="kv"><span class="k">最近 GPS</span><span class="v">' + d.gps + '</span></div>' : '') +
+      (d.note ? '<div class="kv"><span class="k">备注</span><span class="dim" style="font-size:12.5px">' + esc(d.note) + '</span></div>' : '') +
+    '</div></div>' +
+    '<div><h4>游标与消费位置</h4><div class="card" style="padding:var(--space-3)">' +
+      '<div class="kv"><span class="k">last_frame_at</span><span class="v">' + fmtAbs(d.lastFrame) + '</span></div>' +
+      '<div class="kv"><span class="k">cursorLagMs</span><span class="v" style="color:var(--ok)">0</span></div>' +
+      '<div class="kv"><span class="k">消费通道</span><span class="v">tb-ws（rest 兜底空闲）</span></div>' +
+    '</div></div>' +
+    '<div><h4>四级健康时间线（NS → 上行 → TB → 入库）</h4><div class="card" style="padding:var(--space-3)"><div class="timeline">' + timeline + '</div></div></div>' +
+    '<div><h4>最近帧摘要（' + d.frames.length + ' / 最多 10）</h4>' + frameRows + '</div>';
+  $('#drawer').classList.add('open');
+  $('#drawerMask').classList.add('open');
+}
+function closeDrawer() { $('#drawer').classList.remove('open'); $('#drawerMask').classList.remove('open'); }
+$('#drawerClose').addEventListener('click', closeDrawer);
+$('#drawerMask').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDrawer(); closeModal(); } });
+
+/* ================= 接入预检 ================= */
+const euiInput = $('#euiInput'), euiHint = $('#euiHint');
+euiInput.addEventListener('input', () => { euiInput.value = euiInput.value.toLowerCase().replace(/[^0-9a-f]/g, ''); });
+function preflightChecks(eui) {
+  if (eui === '001a0102ff000644') return [
+    { t:'① NS 设备与项目归属', src:'NS API', r:'PASS', d:'设备存在 · 归属 LIVESTOCK / app-hkt-ls · is_online=true · 累计帧 1,208', fix:'无需处理' },
+    { t:'② 网关项目映射', src:'TB 网关 OC 共享属性（只读）', r:'PASS', d:'LIVESTOCK → topic hkt/livestock/+ 映射存在', fix:'无需处理' },
+    { t:'③ TB 设备唯一性', src:'TB tenant devices（含大小写变体搜索）', r:'PASS', d:'恰好 1 台：tb-9f02aa11-0644', fix:'无需处理' },
+    { t:'④ 设备 profile 匹配', src:'TB device profile', r:'PASS', d:'类型 胶囊 B00 ↔ profile ls-capsule-v2 匹配', fix:'无需处理' },
+    { t:'⑤ 本地/DeviceHub 绑定', src:'registered_devices', r:'PASS', d:'已绑定 · 游标正常（cursorLagMs=0）', fix:'无需处理' }
+  ];
+  if (eui === '0095690000030999') return [
+    { t:'① NS 设备与项目归属', src:'NS API', r:'PASS', d:'设备存在 · 归属 PARKING / app-hkt-park · is_online=true · 累计帧 1,284', fix:'无需处理' },
+    { t:'② 网关项目映射', src:'TB 网关 OC 共享属性（只读）', r:'PASS', d:'PARKING → topic hkt/parking/+ 映射存在', fix:'无需处理' },
+    { t:'③ TB 设备唯一性', src:'TB tenant devices（含大小写变体搜索）', r:'FAIL', d:'发现 2 台候选 TB 设备，违反唯一性约束',
+      fix:'存在重名冲突，请前往治理中心删除空副本后再注册', candidates: CONFLICTS[0].candidates },
+    { t:'④ 设备 profile 匹配', src:'TB device profile', r:'PASS', d:'类型 DC200 地磁 ↔ profile pk-geomag-dc200 匹配', fix:'无需处理' },
+    { t:'⑤ 本地/DeviceHub 绑定', src:'registered_devices', r:'PASS', d:'已绑定 tb-a41f0099-9a2e · 游标正常', fix:'无需处理' }
+  ];
+  return [
+    { t:'① NS 设备与项目归属', src:'NS API', r:'PASS', d:'设备存在 · 归属 LIVESTOCK / app-hkt-ls · is_online=false · 累计帧 0（未激活）', fix:'无需处理' },
+    { t:'② 网关项目映射', src:'TB 网关 OC 共享属性（只读）', r:'PASS', d:'LIVESTOCK → topic hkt/livestock/+ 映射存在', fix:'无需处理' },
+    { t:'③ TB 设备唯一性', src:'TB tenant devices（含大小写变体搜索）', r:'WARN', d:'TB 无此设备，可创建', fix:'注册时将自动创建 TB 设备' },
+    { t:'④ 设备 profile 匹配', src:'TB device profile', r:'WARN', d:'NS 侧设备类型未识别，无法自动匹配 profile', fix:'注册前请确认设备型号，必要时补充 类型↔profile 映射表' },
+    { t:'⑤ 本地/DeviceHub 绑定', src:'registered_devices', r:'WARN', d:'本地无绑定记录', fix:'注册时将写入 registered_devices 并初始化游标' }
+  ];
+}
+function renderReport(eui, checks) {
+  const box = $('#report');
+  box.innerHTML = '<div class="dim" style="font-size:12.5px;font-family:var(--mono)">体检报告 · devEui=' + eui + ' · ' + fmtAbs(NOW.toISOString()) + '</div>' +
+    checks.map(c =>
+      '<div class="check-item ' + c.r + '">' +
+      '<i class="dot lg ' + (c.r === 'PASS' ? 'ok' : c.r === 'WARN' ? 'warn' : 'danger') + '" style="margin-top:6px"></i>' +
+      '<div class="c-main">' +
+        '<div class="c-title">' + c.t + ' <span class="badge ' + (c.r === 'PASS' ? 'ok' : c.r === 'WARN' ? 'warn' : 'danger') + '">' + c.r + '</span>' +
+        '<span class="c-src">数据源：' + c.src + '</span></div>' +
+        '<div class="c-detail">' + esc(c.d) + '</div>' +
+        (c.candidates ? '<div class="table-wrap" style="margin-top:var(--space-2)"><table class="candidates"><thead><tr><th>TB 设备 ID</th><th>创建时间</th><th>最近遥测</th><th>遥测条数</th><th>绑定方</th></tr></thead><tbody>' +
+          c.candidates.map(cd => '<tr><td class="mono">' + cd.tbId + '</td><td class="mono">' + cd.created + '</td><td class="mono">' + cd.lastTelemetry + '</td><td class="mono">' + cd.telemetryCount + '</td><td>' + esc(cd.boundBy) + '</td></tr>').join('') +
+          '</tbody></table></div>' : '') +
+        '<div class="c-fix ' + c.r + '">→ ' + esc(c.fix) + (c.r === 'FAIL' ? ' <a href="#/governance" data-goto-gov>前往治理中心</a>' : '') + '</div>' +
+      '</div></div>'
+    ).join('');
+  box.querySelectorAll('[data-goto-gov]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchView('governance'); }));
+  const hasFail = checks.some(c => c.r === 'FAIL');
+  const actions = $('#reportActions');
+  actions.hidden = false;
+  actions.innerHTML =
+    (hasFail ? '' : '<button class="btn" id="btnRegister">一键注册（POST /api/v1/devices/register）</button>') +
+    '<button class="btn ghost" id="btnShare">复制报告链接</button>';
+  const reg = $('#btnRegister');
+  if (reg) reg.addEventListener('click', () => {
+    reg.disabled = true; reg.textContent = '注册中…';
+    setTimeout(() => {
+      reg.textContent = '✓ 已注册';
+      toast('注册成功：' + eui + ' · TB 设备已创建/绑定，游标已初始化');
+    }, 800);
+  });
+  $('#btnShare').addEventListener('click', () => {
+    const url = location.origin + location.pathname + '#/preflight/' + eui;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(
+      () => toast('报告链接已复制：' + url),
+      () => toast('链接：' + url, true));
+  });
+}
+$('#euiForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const eui = euiInput.value.trim().toLowerCase();
+  if (!/^[0-9a-f]{16}$/.test(eui)) {
+    euiInput.classList.remove('invalid');
+    void euiInput.offsetWidth;
+    euiInput.classList.add('invalid');
+    euiHint.textContent = 'EUI 须为 16 位十六进制字符（当前 ' + eui.length + ' 位）';
+    euiHint.classList.add('err');
+    return;
+  }
+  euiHint.classList.remove('err');
+  euiHint.textContent = '正在聚合 NS / TB / 本地数据源…';
+  $('#reportActions').hidden = true;
+  $('#report').innerHTML = '<div class="sk" style="height:76px"></div><div class="sk" style="height:76px"></div><div class="sk" style="height:76px"></div><div class="sk" style="height:76px"></div><div class="sk" style="height:76px"></div>';
+  history.replaceState(null, '', '#/preflight/' + eui);
+  setTimeout(() => {
+    euiHint.textContent = '体检完成';
+    renderReport(eui, preflightChecks(eui));
+  }, 900);
+});
+
+/* ================= 治理中心 ================= */
+let modalContext = null;
+function openModal(html, onConfirm) {
+  $('#modalTarget').innerHTML = html;
+  $('#modalMask').hidden = false;
+  modalContext = onConfirm;
+}
+function closeModal() { $('#modalMask').hidden = true; modalContext = null; }
+$('#modalCancel').addEventListener('click', closeModal);
+$('#modalMask').addEventListener('click', e => { if (e.target === $('#modalMask')) closeModal(); });
+$('#modalConfirm').addEventListener('click', () => {
+  const fn = modalContext; closeModal();
+  if (fn) fn();
+});
+
+function renderGovernance() {
+  const pending = CONFLICTS.filter(c => c.status === 'pending').length;
+  $('#conflictCount').textContent = pending ? pending + ' 待处理' : '暂无待处理';
+  $('#conflictCount').className = 'badge ' + (pending ? 'danger' : 'ok');
+  $('#govDot').style.display = pending ? '' : 'none';
+  const box = $('#conflictList');
+  if (!CONFLICTS.length) {
+    box.innerHTML = '<div class="empty-state small"><span class="icon">✓</span>暂无冲突</div>';
+  } else {
+    box.innerHTML = CONFLICTS.map((c, ci) => {
+      const resolved = c.status === 'resolved';
+      return '<div class="conflict-card ' + (resolved ? 'resolved' : 'pending') + '" data-ci="' + ci + '">' +
+        '<div class="conflict-head">' +
+          '<span class="arrow">▶</span>' +
+          '<span class="eui mono" style="color:var(--accent)">' + c.eui + '</span>' +
+          '<span class="badge danger">TB_IDENTITY_CONFLICT</span>' +
+          '<span class="dim" style="font-size:12.5px">检出 ' + c.detected + ' · ' + c.candidates.length + ' 台候选副本</span>' +
+          (resolved
+            ? '<span class="badge ok" style="margin-left:auto">✓ 已解决 · ' + c.resolvedAt + '</span>'
+            : '<span class="badge warn" style="margin-left:auto">待处理</span>') +
+        '</div>' +
+        '<div class="conflict-body">' +
+          (resolved ? '<p class="dim" style="font-size:12.5px;margin:var(--space-2) 0">处理记录：' + esc(c.resolution) + '</p>' : '') +
+          '<div class="table-wrap"><table class="cmp-table"><thead><tr><th>TB 设备 ID</th><th>创建时间</th><th>最近遥测</th><th>遥测条数</th><th>当前被谁绑定</th><th>判定 / 操作</th></tr></thead><tbody>' +
+          c.candidates.map((cd, ki) =>
+            '<tr' + (cd.keep ? ' class="keep"' : '') + '>' +
+            '<td class="mono">' + cd.tbId + (cd.deleted ? ' <span class="badge danger">已删除</span>' : '') + '</td>' +
+            '<td class="mono">' + cd.created + '</td>' +
+            '<td class="mono">' + cd.lastTelemetry + '</td>' +
+            '<td class="mono">' + cd.telemetryCount + '</td>' +
+            '<td>' + esc(cd.boundBy) + '</td>' +
+            '<td>' + (cd.keep
+                ? '<span class="badge ok">★ 建议保留（有遥测）</span>'
+                : (cd.deleted || resolved
+                    ? '<span class="dim" style="font-size:12.5px">空副本已清理</span>'
+                    : '<button class="btn danger sm" data-del="' + ci + ':' + ki + '">删除空副本</button>')) + '</td>' +
+            '</tr>').join('') +
+          '</tbody></table></div>' +
+          (!resolved && c.candidates.some(cd => cd.deleted)
+            ? '<div style="margin-top:var(--space-3)"><button class="btn sm" data-rereg="' + c.eui + '">一键重新注册 ' + c.eui + '</button></div>'
+            : '') +
+        '</div></div>';
+    }).join('');
+  }
+  box.querySelectorAll('.conflict-head').forEach(h =>
+    h.addEventListener('click', () => h.parentElement.classList.toggle('expanded')));
+  box.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [ci, ki] = btn.dataset.del.split(':').map(Number);
+    const c = CONFLICTS[ci], cd = c.candidates[ki];
+    openModal(
+      'EUI：<b style="color:var(--text)">' + c.eui + '</b><br>删除目标：<b style="color:var(--danger)">' + cd.tbId + '</b><br>遥测条数：0（服务端将再次校验）',
+      () => {
+        cd.deleted = true;
+        c.status = 'resolved';
+        c.resolvedAt = '2026-09-21 15:30';
+        c.resolution = '删除空副本 ' + cd.tbId + '（遥测 0 条，服务端校验通过），保留有遥测副本；操作人 当前用户，审计日志 #A-20260921-002';
+        renderGovernance();
+        renderAttention();
+        document.querySelector('.conflict-card[data-ci="' + ci + '"]').classList.add('expanded');
+        toast('空副本 ' + cd.tbId + ' 已删除，操作已写入审计日志');
+      });
+  }));
+  box.querySelectorAll('[data-rereg]').forEach(btn => btn.addEventListener('click', () =>
+    toast('已提交重新注册请求：' + btn.dataset.rereg + '（幂等，绑定至保留副本）')));
+
+  // 无数据设备分区
+  const nodata = DEVICES.filter(d => d.noData);
+  $('#nodataList').innerHTML = nodata.length
+    ? nodata.map(d =>
+        '<div class="attn-item"><i class="dot warn"></i>' +
+        '<span class="grow"><span class="eui">' + d.eui + '</span> · ' + esc(d.type) + ' · 注册于 ' + fmtAbs(d.createdAt) + ' · ' + esc(d.note) + '</span>' +
+        (d.status === 'PENDING' ? '<span class="badge warn">PENDING</span>' : '') +
+        '<button class="btn ghost sm" data-nd="onsite" data-eui="' + d.eui + '">现场确认</button>' +
+        '<button class="btn ghost sm" data-nd="disable" data-eui="' + d.eui + '">停用</button>' +
+        '</div>').join('')
+    : '<div class="empty-state small"><span class="icon">✓</span>暂无无数据设备</div>';
+  $('#nodataList').querySelectorAll('[data-nd]').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.nd === 'onsite') toast('已为 ' + btn.dataset.eui + ' 创建现场确认工单（mock）');
+    else toast('已提交停用申请：' + btn.dataset.eui + '（mock，需审批）');
+  }));
+}
+
+/* ================= 初始化 ================= */
+function initFromHash() {
+  const m = location.hash.match(/^#\/(dashboard|devices|preflight|governance)(?:\/([0-9a-fA-F]{16}))?/);
+  const view = m ? m[1] : 'dashboard';
+  switchView(view, true);
+  if (view === 'preflight' && m && m[2]) {
+    euiInput.value = m[2].toLowerCase();
+    $('#euiForm').dispatchEvent(new Event('submit'));
+  }
+}
+renderAttention();
+renderDevices();
+renderGovernance();
+initFromHash();
+window.addEventListener('hashchange', initFromHash);
+</script>
+</body>
+</html>
