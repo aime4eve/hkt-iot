@@ -4,156 +4,123 @@ import com.hkt.ble.bletools.core.protocol.CommandCode
 import com.hkt.ble.bletools.core.protocol.DeviceFamily
 
 /**
- * 演示应答器（-mockble 模式）：按 HKT 协议对 MockCentral 的请求帧回响应。
- * 三家族查询夹具与 shared/fixtures/response-parse.json 同源（RX-*-QUERY-001）。
- * iOS 对照：App/DemoResponder.swift。
+ * 演示模式（-mockble 对应物）仿真应答器。iOS DemoResponder.swift 的 Kotlin 移植（单实例持有三家族夹具，
+ * family 由调用方按当前连接设备传入）：
+ * - 0xFF 轮询 → 回该家族的标准快照夹具帧（与 shared/fixtures/response-parse.json 同源字节），
+ *   帧内 0x8D 电源位按当前电源态回写；
+ * - 0x02 写配置 → 回专用 ACK 帧（hkt 00 seq FF 值，固件 callback_BLEAck 同构），
+ *   并把载荷按**固定字节偏移**写进夹具（偏移对冻结夹具逐位核对过，同 iOS applyConfig）——
+ *   保存后下轮轮询即回新值，与真机一致；
+ * - 0x03 实时任务 → 阀状态写回 SVC 夹具 0x3C（v1s@13 / v2s@17）；busy 旋钮=静默忽略；
+ * - 0xFD 校准 → 立即 ACK（完成文本 "Calibration Done" 由 App 层接线延迟注入，见 ComposeActivity）；
+ * - 0xFE 开关机 → 按真载荷语义（F-1 修正：电源字节在帧偏移 10，payload[3]）改写夹具电源位。
+ *   ⚠️ 有意偏离 iOS demo（iOS 读 frame[7] 是潜伏错位、从未被真实 0xFE 路径触发）；
+ *   且真机固件对有效 0xFE 载荷必回 ACK（2026-09-20 实证），故此处回 ACK 供详情页 sendWrite 判定；
+ * - 0x04/0x05 → ACK；其余命令 → 静默（与真机行为一致）。
  */
-object DemoResponder {
-    /** 三家族 0xFF 查询响应夹具（与 response-parse.json RX-*-QUERY-001 逐字节同源）。 */
-    private val familyQueryResponse = mapOf(
-        DeviceFamily.UDS100 to
-            "686B74000201020A8D018B0FA0090061A80A002EE00E00144400280045003C46043847004801900BB886001E10010203041105060708",
-        DeviceFamily.DC200_FAMILY to
+class DemoResponder {
+    /** 演示旋钮：false 时 0x02 静默拒绝（验收配置失败横幅）。 */
+    var configAcks = true
+
+    /** 演示旋钮：true 时 0x03 静默忽略（验收任务页 busy 横幅）。 */
+    var realtimeBusy = false
+
+    private var powerOn = true
+
+    private val frames = hashMapOf(
+        DeviceFamily.DC200_FAMILY to hex(
             "686B740001010B1C8D0103573A013B0084008600145D00785EFF885F019060000A0014001E00280032003C00460050005A0064",
-        DeviceFamily.SVC100 to
+        ),
+        DeviceFamily.UDS100 to hex(
+            "686B74000201020A8D018B0FA0090061A80A002EE00E00144400280045003C46043847004801900BB886001E10010203041105060708",
+        ),
+        DeviceFamily.SVC100 to hex(
             "686B740003010D0D8D0103633C01000064010101F440024101420543018A1986001E",
+        ),
     )
 
-    /** 演示旋钮（对应 iOS MOCK_* 环境变量）。 */
-    var calDoneDelayMs: Long = 0          // MOCK_CAL_DONE_DELAY：校准完成文本延迟
-    var calFail: Boolean = false          // MOCK_CAL_FAIL：不回校准完成
-    var cfgAck: Boolean = true            // MOCK_CFG_ACK=0 → 0x02 静默拒绝演示
-
-    /** 每台 MockCentral 独立一份会话内存（夹具可写：0x02 配置改夹具、0xFE 翻电源位）。 */
-    class Session(private val family: DeviceFamily) {
-        private var queryResponse = hexToBytes(familyQueryResponse.getValue(family))
-        private var calAnnouncedAt = 0L
-
-        /** 返回对请求帧的响应帧；null = 静默（不回）。 */
-        fun respond(frame: ByteArray, nowMs: Long): ByteArray? {
-            if (frame.size < 7 || frame[0] != 0x68.toByte() || frame[1] != 0x6B.toByte() || frame[2] != 0x74.toByte()) {
-                return null
+    fun respond(frame: ByteArray, family: DeviceFamily?): ByteArray? {
+        if (frame.size <= 6) return null
+        return when (frame[6].toInt() and 0xFF) {
+            CommandCode.QUERY -> {
+                family ?: return null
+                val response = frames[family] ?: return null
+                val out = response.copyOf()
+                val idx = out.indexOfFirst { it == 0x8D.toByte() }
+                if (idx in 0 until out.size - 1) out[idx + 1] = (if (powerOn) 0x01 else 0x00).toByte()
+                out
             }
-            val cmd = frame[6].toInt() and 0xFF
-            return when (cmd) {
-                CommandCode.QUERY -> queryResponse   // 0xFF 轮询 → 家族夹具
-                CommandCode.CONFIG -> {              // 0x02 写配置 → ACK 并把载荷写进夹具对应 TLV 偏移
-                    if (cfgAck) {
-                        patchConfig(frame)
-                        ack()
-                    } else {
-                        null
-                    }
+            CommandCode.CONFIG -> {
+                family ?: return null
+                applyConfig(frame, family)
+                if (configAcks) ACK_FRAME else null
+            }
+            CommandCode.SVC_REALTIME_TASK -> {
+                // 载荷：valve(1) state(1) 时长(2) 脉冲(2)——立即驱动阀状态写回夹具 0x3C
+                if (!realtimeBusy && frame.size > 9) {
+                    applyValveState(valve = frame[7].toInt() and 0xFF, state = frame[8].toInt() and 0xFF)
                 }
-                CommandCode.CALIBRATE -> {           // 0xFD 校准 → 立即 ACK，随后纯文本 "Calibration Done"
-                    calAnnouncedAt = if (calFail) -1 else nowMs + calDoneDelayMs
-                    ack()
-                }
-                CommandCode.SVC_REALTIME_TASK,
-                CommandCode.SVC_TIMED_TASK,
-                CommandCode.SVC_DELETE_TASK -> ack()
-                CommandCode.POWER -> {               // 0xFE 开关机 → ACK + 翻夹具 0x8D 电源位
-                    if (frame.size >= 11) {
-                        val on = frame[10].toInt() and 0xFF == 0x01
-                        setPowerByte(if (on) 1 else 0)
-                    }
-                    ack()
-                }
-                CommandCode.TIME_SYNC -> ack()       // 0x06 对时（SVC 演示路径）
-                else -> null
+                if (realtimeBusy) null else ACK_FRAME   // 设备忙=静默忽略，与固件一致
             }
-        }
-
-        /** 需要异步上报的事件（校准完成纯文本）；App 演示层轮询消费。 */
-        fun pendingText(nowMs: Long): ByteArray? {
-            if (calAnnouncedAt in 1..nowMs) {
-                calAnnouncedAt = 0
-                return "Calibration Done".toByteArray(Charsets.US_ASCII)
+            CommandCode.SVC_TIMED_TASK, CommandCode.SVC_DELETE_TASK -> ACK_FRAME
+            CommandCode.POWER -> {
+                if (frame.size >= 11) powerOn = (frame[10].toInt() and 0xFF) == 0x01
+                ACK_FRAME
             }
-            return null
-        }
-
-        private fun ack() = hexToBytes("686B740000FFFF")
-
-        /** 0x02 载荷写进夹具对应 TLV 偏移（演示闭环：配置页保存后详情页字段联动）。 */
-        private fun patchConfig(frame: ByteArray) {
-            val len = ((frame[4].toInt() and 0xFF) shl 8) or (frame[5].toInt() and 0xFF)
-            val payload = frame.copyOfRange(7, 7 + (len - 1).coerceAtLeast(0))
-            fun patch(type: Int, value: Int) {
-                val idx = tlvOffset(type) ?: return
-                if (idx + 1 < queryResponse.size) queryResponse[idx + 1] = value.toByte()
-            }
-            when (family) {
-                DeviceFamily.UDS100 -> if (payload.size >= 8) {
-                    patchInto(0x86, (payload[0].toInt() and 0xFF) shl 8 or (payload[1].toInt() and 0xFF), 2)
-                    patchInto(0x45, (payload[2].toInt() and 0xFF) shl 8 or (payload[3].toInt() and 0xFF), 2)
-                    patchInto(0x48, (payload[4].toInt() and 0xFF) shl 8 or (payload[5].toInt() and 0xFF), 2, 0)
-                    patchInto(0x48, (payload[6].toInt() and 0xFF) shl 8 or (payload[7].toInt() and 0xFF), 2, 2)
-                }
-                DeviceFamily.DC200_FAMILY -> if (payload.size >= 3) {
-                    patchInto(0x86, (payload[0].toInt() and 0xFF) shl 8 or (payload[1].toInt() and 0xFF), 2)
-                    patch(0x3B, payload[2].toInt() and 0xFF)
-                }
-                DeviceFamily.SVC100 -> if (payload.size >= 7) {
-                    patch(0x40, payload[0].toInt() and 0xFF)
-                    patch(0x41, payload[1].toInt() and 0xFF)
-                    patch(0x42, payload[2].toInt() and 0xFF)
-                    patch(0x43, payload[3].toInt() and 0xFF)
-                    patch(0x8A, payload[4].toInt() and 0xFF)
-                    patchInto(0x86, (payload[5].toInt() and 0xFF) shl 8 or (payload[6].toInt() and 0xFF), 2)
-                }
-            }
-        }
-
-        private fun patchInto(type: Int, value: Int, width: Int, offsetInValue: Int = 0) {
-            val idx = tlvOffset(type) ?: return
-            if (offsetInValue + width > width && idx + 1 + offsetInValue + width - 1 < queryResponse.size) {
-                if (width == 2) {
-                    queryResponse[idx + 1 + offsetInValue] = ((value shr 8) and 0xFF).toByte()
-                    queryResponse[idx + 2 + offsetInValue] = (value and 0xFF).toByte()
-                } else {
-                    queryResponse[idx + 1 + offsetInValue] = value.toByte()
-                }
-            }
-        }
-
-        /** 夹具内 type 记录的 value 起始下标（type(1) 后一位）；未知类型返回 null。 */
-        private fun tlvOffset(type: Int): Int? {
-            var offset = 5
-            while (offset < queryResponse.size) {
-                val t = queryResponse[offset].toInt() and 0xFF
-                if (t == type) return offset + 1
-                val width = valueWidth(t) ?: return null
-                offset += 1 + width
-            }
-            return null
-        }
-
-        private fun valueWidth(type: Int): Int? = when (family) {
-            DeviceFamily.DC200_FAMILY -> when (type) {
-                0x01 -> 2; 0x03 -> 1; 0x3A -> 1; 0x3B -> 1; 0x5D, 0x5E, 0x5F -> 2; 0x60 -> 20
-                0x80 -> 4; 0x84 -> 1; 0x86 -> 2; 0x8D -> 1; 0xFF -> 1; else -> null
-            }
-            DeviceFamily.UDS100 -> when (type) {
-                0x01 -> 2; 0x09, 0x0A -> 3; 0x0E -> 2; 0x10, 0x11 -> 4; 0x28 -> 1; 0x44 -> 1
-                0x45 -> 2; 0x46 -> 2; 0x47 -> 1; 0x48 -> 4; 0x80 -> 4; 0x86 -> 2; 0x8B -> 2
-                0x8D -> 1; 0xFF -> 1; else -> null
-            }
-            DeviceFamily.SVC100 -> when (type) {
-                0x01 -> 2; 0x03 -> 1; 0x3C -> 8; 0x40, 0x41, 0x42, 0x43 -> 1
-                0x80 -> 4; 0x86 -> 2; 0x8A -> 1; 0x8D -> 1; 0xFF -> 1; else -> null
-            }
-        }
-
-        private fun setPowerByte(value: Int) {
-            val idx = tlvOffset(0x8D) ?: return
-            if (idx < queryResponse.size) queryResponse[idx] = value.toByte()
+            CommandCode.CALIBRATE -> ACK_FRAME
+            else -> null
         }
     }
 
-    private fun hexToBytes(hex: String): ByteArray {
-        val bytes = ByteArray(hex.length / 2)
-        for (i in bytes.indices) bytes[i] = hex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
-        return bytes
+    /** 把 0x02 载荷按固定 TLV 偏移写进演示夹具（偏移对冻结夹具逐位核对过，同 iOS applyConfig）。 */
+    private fun applyConfig(request: ByteArray, family: DeviceFamily) {
+        val response = frames[family] ?: return
+        if (request.size < 15) return
+        fun put(offset: Int, bytes: ByteArray) {
+            bytes.forEachIndexed { i, b -> if (offset + i < response.size) response[offset + i] = b }
+        }
+        when (family) {
+            DeviceFamily.UDS100 -> {   // 载荷：report(2) gps(2) low(2) high(2)
+                put(42, byteArrayOf(request[7], request[8]))                                // 0x86 上报周期
+                put(29, byteArrayOf(request[9], request[10]))                               // 0x45 GPS 周期
+                put(37, byteArrayOf(request[11], request[12], request[13], request[14]))    // 0x48 低/高阈值
+            }
+            DeviceFamily.DC200_FAMILY -> {   // 载荷：report(2) mode(1)
+                put(19, byteArrayOf(request[7], request[8]))                                // 0x86 上报周期
+                put(15, byteArrayOf(request[9]))                                            // 0x3B 工作模式
+            }
+            DeviceFamily.SVC100 -> {   // 载荷：vol port stable autoPower tz(各1) report(2)
+                put(22, byteArrayOf(request[7]))                                            // 0x40 电压档
+                put(24, byteArrayOf(request[8]))                                            // 0x41 端口功能
+                put(26, byteArrayOf(request[9]))                                            // 0x42 稳定时长
+                put(28, byteArrayOf(request[10]))                                           // 0x43 自动开关机
+                put(30, byteArrayOf(request[11]))                                           // 0x8A 时区
+                put(32, byteArrayOf(request[12], request[13]))                              // 0x86 上报周期
+            }
+        }
+    }
+
+    /** 实时任务：阀状态写进 SVC 夹具 0x3C（value@13=v1s, @17=v2s），详情页下轮轮询即见。 */
+    private fun applyValveState(valve: Int, state: Int) {
+        val response = frames[DeviceFamily.SVC100] ?: return
+        fun setBit(offset: Int, on: Boolean) {
+            if (offset < response.size) response[offset] = (if (on) 0x01 else 0x00).toByte()
+        }
+        when (valve) {
+            1 -> setBit(13, state == 1)
+            2 -> setBit(17, state == 1)
+            0 -> { setBit(13, state == 1); setBit(17, state == 1) }
+        }
+    }
+
+    companion object {
+        /** 专用 ACK 帧（三家族同构）：hkt(3) + 0x00 + seq(1) + 0xFF 段（类型 + 1 字节值）。 */
+        val ACK_FRAME = hex("686B740000FF00")
+
+        private fun hex(hex: String): ByteArray {
+            val bytes = ByteArray(hex.length / 2)
+            for (i in bytes.indices) bytes[i] = hex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+            return bytes
+        }
     }
 }

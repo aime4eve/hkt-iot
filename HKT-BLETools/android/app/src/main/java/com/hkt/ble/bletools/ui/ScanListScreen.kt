@@ -24,8 +24,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import com.hkt.ble.bletools.core.ble.DiscoveredDevice
+import kotlinx.coroutines.delay
 import com.hkt.ble.bletools.designsystem.BadgeKind
 import com.hkt.ble.bletools.designsystem.CenterStateView
 import com.hkt.ble.bletools.designsystem.HktDialogCard
@@ -62,6 +68,13 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
     val round by model.scanRound.collectAsState()
     val elapsed by model.scanElapsed.collectAsState()
     var query by remember { mutableStateOf("") }   // R-33 列表模糊查询
+    var notice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(3_000)
+            notice = null
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(c.bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -107,8 +120,31 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
                         }
                     }
                 }
+                notice?.let {
+                    Text(it, style = hkt(12f), color = c.warn, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp))
+                }
                 SearchField(query = query, onQuery = { query = it }, zh = zh, modifier = Modifier.padding(top = 10.dp))
-                Content(model = model, query = query, zh = zh)
+                Content(
+                    model = model,
+                    query = query,
+                    zh = zh,
+                    onDeviceTap = { device ->
+                        // deviceCardClick 三分支（规格卡 §1；R-31/R-32）
+                        val outcome = model.cardTapOutcome(device)
+                        when (outcome.first) {
+                            ScanModel.CardTapOutcome.SHOW_DETAIL ->
+                                notice = if (zh) "详情页（P-03）M6 接入" else "Detail page (P-03) lands in M6"
+                            ScanModel.CardTapOutcome.CONFIRM_SWITCH -> model.requestSwitch(outcome.second)
+                            ScanModel.CardTapOutcome.CONNECT ->
+                                notice = if (zh) "连接流程（P-02）M6 接入" else "Connect flow (P-02) lands in M6"
+                        }
+                    },
+                    onResidentTap = { notice = if (zh) "详情页（P-03）M6 接入" else "Detail page (P-03) lands in M6" },
+                    onRecentTap = {
+                        model.targetForLastSession()
+                        notice = if (zh) "连接流程（P-02）M6 接入" else "Connect flow (P-02) lands in M6"
+                    },
+                )
             }
         }
         SwitchDialogOverlay(model = model, zh = zh)
@@ -159,12 +195,22 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, zh: Boolean, m
 }
 
 @Composable
-private fun Content(model: ScanModel, query: String, zh: Boolean) {
+private fun Content(
+    model: ScanModel,
+    query: String,
+    zh: Boolean,
+    onDeviceTap: (DiscoveredDevice) -> Unit,
+    onResidentTap: () -> Unit,
+    onRecentTap: () -> Unit,
+) {
     val c = LocalHktColors.current
     val devices by model.devices.collectAsState()
     val isScanning by model.isScanning.collectAsState()
-    val resident = model.residentDevice
-    val residentActive = resident != null && model.activeSession != null
+    val resident by model.residentDevice.collectAsState()
+    val activeSession by model.activeSession.collectAsState()
+    val lastSession by model.lastSession.collectAsState()
+    val residentValue = resident
+    val residentActive = residentValue != null && activeSession != null
     val shown = devices.filter {
         query.trim().isEmpty() || it.name.contains(query.trim(), ignoreCase = true)
     }
@@ -177,11 +223,12 @@ private fun Content(model: ScanModel, query: String, zh: Boolean) {
             buttonTitle = if (zh) "附近设备" else "Nearby Devices",
             onButton = { model.startScan() },
         )
-        model.lastSession?.let { last ->
+        lastSession?.let { last ->
             SectionHeader(if (zh) "最近设备" else "Recent")
             ScanDeviceCard(
                 name = last.name,
                 subtitle = "ID …${idSuffix(last.identifier)}" + (if (zh) " · 昨天" else " · Yesterday"),
+                modifier = Modifier.clickableBox(onRecentTap),
                 trailing = { Text("↻", style = hkt(14f, FontWeight.SemiBold), color = c.info) },
             )
         }
@@ -189,20 +236,23 @@ private fun Content(model: ScanModel, query: String, zh: Boolean) {
     }
 
     Column(Modifier.padding(top = 0.dp)) {
-        if (residentActive && resident != null) {
+        if (residentActive && residentValue != null) {
+            // 驻留卡（R-32）：点击=回详情
             ScanDeviceCard(
-                name = resident.name,
-                subtitle = "ID …${idSuffix(resident.identifier)}",
+                name = residentValue.name,
+                subtitle = "ID …${idSuffix(residentValue.identifier)}",
+                modifier = Modifier.clickableBox(onResidentTap),
                 badge = { StateBadge(BadgeKind.OK, if (zh) "已连接" else "Connected", compact = true) },
                 trailing = { Text("›", style = hkt(14f, FontWeight.SemiBold), color = c.info) },
             )
             Spacer(Modifier.height(11.dp))
         }
         shown.forEach { device ->
-            if (device.identifier != resident?.identifier) {
+            if (device.identifier != residentValue?.identifier) {
                 ScanDeviceCard(
                     name = device.name,
                     subtitle = "ID …${idSuffix(device.identifier)} · ${device.rssi} dBm",
+                    modifier = Modifier.clickableBox { onDeviceTap(device) },
                     trailing = { RssiBars(lit = rssiLit(device.rssi)) },
                 )
                 Spacer(Modifier.height(11.dp))
@@ -218,10 +268,11 @@ private fun Content(model: ScanModel, query: String, zh: Boolean) {
             )
         }
         if (!residentActive && devices.isEmpty()) {
-            model.lastSession?.let { last ->
+            lastSession?.let { last ->
                 ScanDeviceCard(
                     name = last.name,
                     subtitle = "ID …${idSuffix(last.identifier)}" + (if (zh) " · 昨天" else " · Yesterday"),
+                    modifier = Modifier.clickableBox(onRecentTap),
                     trailing = { Text("↻", style = hkt(14f, FontWeight.SemiBold), color = c.info) },
                 )
             }
@@ -229,11 +280,23 @@ private fun Content(model: ScanModel, query: String, zh: Boolean) {
     }
 }
 
-/** R-32 切换确认框（.dialog 296/r18 遮罩；确认键主色 info）。 */
+/** R-32 切换确认框（.dialog 296/r18 遮罩；确认键主色 info；设备名加粗——规格卡 §2.6）。 */
 @Composable
 private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean) {
-    val target = model.pendingSwitch ?: return
-    val current = model.residentDevice ?: return
+    val target by model.pendingSwitch.collectAsState()
+    val current by model.residentDevice.collectAsState()
+    val t = target ?: return
+    val cur = current ?: return
+    fun segment(text: String, bold: Boolean) =
+        AnnotatedString(text, SpanStyle(fontWeight = if (bold) FontWeight.Bold else null))
+    val message = buildAnnotatedString {
+        append(if (zh) "当前已连接 " else "Currently connected to ")
+        append(segment(cur.name, bold = true))
+        append(" …${idSuffix(cur.identifier)}" + (if (zh) "。" else ". "))
+        append(if (zh) "切换将断开当前会话并连接 " else "Switching will disconnect it and connect to ")
+        append(segment(t.name, bold = true))
+        append(" …${idSuffix(t.identifier)}" + (if (zh) "。" else "."))
+    }
     Box(
         Modifier
             .fillMaxSize()
@@ -243,17 +306,14 @@ private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean) {
     ) {
         HktDialogCard(
             title = if (zh) "切换设备？" else "Switch device?",
-            message = (if (zh) "当前已连接 " else "Currently connected to ") +
-                current.name + " …${idSuffix(current.identifier)}" + (if (zh) "。" else ". ") +
-                (if (zh) "切换将断开当前会话并连接 " else "Switching will disconnect it and connect to ") +
-                target.name + " …${idSuffix(target.identifier)}" + (if (zh) "。" else "."),
+            message = message,
             buttons = listOf(
                 Triple(if (zh) "取消" else "Cancel", com.hkt.ble.bletools.designsystem.DialogButtonKind.SECONDARY) {
                     model.cancelSwitch()
                 },
                 Triple(if (zh) "切换并连接" else "Switch & Connect", com.hkt.ble.bletools.designsystem.DialogButtonKind.PRIMARY) {
+                    // 确认=原子释放当前会话 → 标准连接新设备（连接覆盖层 P-02 于 M6 接入）
                     val newTarget = model.confirmSwitch()
-                    // 连接覆盖层（P-02）M6 接入；本样板确认后仅释放旧会话
                     newTarget
                 },
             ),

@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -203,16 +204,17 @@ fun RssiBars(lit: Int) {
     }
 }
 
-/** 扫描设备卡（.card hcard：P-01；也用于驻留卡/最近设备卡）。 */
+/** 扫描设备卡（.card hcard：P-01；也用于驻留卡/最近设备卡）。modifier 供点击接线。 */
 @Composable
 fun ScanDeviceCard(
     name: String,
     subtitle: String,
+    modifier: Modifier = Modifier,
     badge: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit = {},
 ) {
     val c = hktColors()
-    HktCard(modifier = Modifier.fillMaxWidth()) {
+    HktCard(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Row(
@@ -285,12 +287,12 @@ fun CenterStateView(
 
 /**
  * 对话框卡片（.dialog 296 宽 / r18 / padding 18）：标题 + 正文 + 按钮纵列。
- * 遮罩与居中由页面 overlay 负责（switchTo 确认框等）。
+ * 正文用 AnnotatedString（规格卡 §2.6：设备名加粗）。遮罩与居中由页面 overlay 负责。
  */
 @Composable
 fun HktDialogCard(
     title: String,
-    message: String,
+    message: AnnotatedString,
     buttons: List<Triple<String, DialogButtonKind, () -> Unit>>,
 ) {
     val c = hktColors()

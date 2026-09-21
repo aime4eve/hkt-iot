@@ -179,7 +179,6 @@ class ScanRuleTests {
         advanceTimeBy(60_000)
         runCurrent()
         assertEquals(emptyList(), events, "Never 脚本永不推进（弱信号失败分支）")
-        assertNull(central.makeLink(DiscoveredDevice("SVC100", "id-1", -55)))
     }
 
     @Test

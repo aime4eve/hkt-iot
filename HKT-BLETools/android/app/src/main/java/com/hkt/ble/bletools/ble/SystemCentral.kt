@@ -166,7 +166,10 @@ class SystemCentral(private val context: Context) :
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             onMain {
                 when (newState) {
-                    BluetoothProfile.STATE_CONNECTED -> g.requestMtu(512)
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        // requestMtu 入队失败（部分机型）直接进服务发现，不留死等
+                        if (!g.requestMtu(512)) g.discoverServices()
+                    }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         val wasConnected = connectedDevice != null
                         runCatching { g.close() }
@@ -175,7 +178,7 @@ class SystemCentral(private val context: Context) :
                         indicateCharacteristic = null
                         writeCharacteristic = null
                         if (wasConnected) {
-                            onMain { onDisconnected?.invoke() }
+                            onDisconnected?.invoke()
                         } else {
                             connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.CONNECTION_LOST))
                             connectEvents = null
@@ -186,25 +189,28 @@ class SystemCentral(private val context: Context) :
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            // MTU 协商失败也继续发现服务（MTU 非硬前提；写长帧由固件 RX 缓冲兜底）
             onMain { g.discoverServices() }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             onMain {
+                val fail = {
+                    connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.SERVICE_MISSING))
+                    connectEvents = null
+                }
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    fail()
+                    return@onMain
+                }
                 val service = g.getService(HKTProfile.serviceUUID)
-                if (service == null) {
-                    connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.SERVICE_MISSING))
-                    connectEvents = null
+                val indicate = service?.getCharacteristic(HKTProfile.indicateUUID)
+                writeCharacteristic = service?.getCharacteristic(HKTProfile.writeUUID)
+                if (service == null || indicate == null) {
+                    fail()
                     return@onMain
                 }
-                indicateCharacteristic = service.getCharacteristic(HKTProfile.indicateUUID)
-                writeCharacteristic = service.getCharacteristic(HKTProfile.writeUUID)
-                val indicate = indicateCharacteristic
-                if (indicate == null) {
-                    connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.SERVICE_MISSING))
-                    connectEvents = null
-                    return@onMain
-                }
+                indicateCharacteristic = indicate
                 g.setCharacteristicNotification(indicate, true)
                 val cccd = indicate.getDescriptor(UUID_CCCD)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -220,9 +226,14 @@ class SystemCentral(private val context: Context) :
 
         override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             onMain {
-                if (descriptor.uuid == UUID_CCCD) {
+                if (descriptor.uuid != UUID_CCCD) return@onMain
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    // 订阅成功 = 链路就绪（失败不得报连接成功——M5 自查修正）
                     connectedDevice = pendingConnectDevice
                     connectEvents?.invoke(ConnectEvent.NotificationsEnabled)
+                    connectEvents = null
+                } else {
+                    connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.CONNECTION_LOST))
                     connectEvents = null
                 }
             }

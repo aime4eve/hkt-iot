@@ -79,7 +79,16 @@ class MockCentral(private val scope: CoroutineScope) : BluetoothPort, Peripheral
     }
 
     override fun makeLink(forDevice: DiscoveredDevice): PeripheralLink? =
-        if (connectedDevice == forDevice) this else null
+        when {
+            // 已连接同一设备 → 链路
+            connectedDevice == forDevice -> this
+            // 未连接（demo 直连流 demoAutoConnect 不经 connect()）→ 隐式连接取链路
+            connectedDevice == null -> {
+                connectedDevice = forDevice
+                this
+            }
+            else -> null
+        }
 
     // ---- 场景注入 API ----
 
