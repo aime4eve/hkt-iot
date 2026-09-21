@@ -331,6 +331,19 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 .search-box .clr:hover { color: var(--text); }
 .dev-code { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
 
+/* ============ 台账：异步操作闭环反馈（v1.4） ============ */
+.spinner {
+  width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; vertical-align: -1px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.badge.working { animation: breathe 1s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes flashOk { 0% { background: color-mix(in srgb, var(--ok) 28%, transparent); } 100% { background: transparent; } }
+@keyframes flashFail { 0% { background: color-mix(in srgb, var(--danger) 28%, transparent); } 100% { background: transparent; } }
+tbody tr.flash-ok { animation: flashOk 1.5s ease-out; }
+tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
+
 /* ============ 工作台：故障呈现模型（v1.2） ============ */
 .fault-select {
   background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
@@ -422,7 +435,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
     </div>
     <div class="counters">
       <span class="counter">LIVESTOCK <b>6│6</b></span>
-      <span class="counter">PARKING <b>14│14</b></span>
+      <span class="counter">PARKING <b>15│15</b></span>
     </div>
   </div>
   <nav class="tabs" id="tabs">
@@ -491,7 +504,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
         <div class="card">
           <h3><span class="badge proj">PARKING</span> 智慧停车</h3>
           <div class="stat-row">
-            <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">12<span class="dim" style="font-size:14px">/14</span></div></div>
+            <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">12<span class="dim" style="font-size:14px">/15</span></div></div>
             <div class="stat"><div class="lbl">无数据设备</div><div class="big" style="color:var(--warn)">2</div></div>
             <div class="stat"><div class="lbl">24h 帧数</div><div class="big">1,733</div></div>
           </div>
@@ -648,7 +661,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.3 · 2026-09-21</div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.4 · 2026-09-21</div>
 <script>
 'use strict';
 /* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
@@ -762,6 +775,13 @@ const DEVICES = [
     battery:null, rssi:null, snr:null, silent:false, noData:true, note:'注册流程未完成，TB 绑定待创建',
     health:{ ns:h(false,null), up:h(false,null), tb:h(false,null), db:h(false,null) },
     frames: [] },
+  { eui:'0095690000030999', project:'PARKING', type:'DC200 地磁', profile:'pk-geomag-dc200',
+    period:'心跳 30min', status:'PENDING', tbBind:'conflict', tbDeviceId:null,
+    externalRef:'ns://parking/0095690000030999', capabilities:['telemetry','geomagnetic'],
+    createdAt:'2026-09-18T14:02:00+08:00', lastFrame:'2026-09-21T09:40:00+08:00',
+    battery:90, rssi:-92, snr:8, silent:false, noData:false, note:'同名设备冲突未解决，注册挂起（遥测落在副本 tb-a41f0099-9a2e）',
+    health:{ ns:h(true,'2026-09-18T14:02:00+08:00'), up:h(true,'2026-09-21T09:40:00+08:00'), tb:h(false,null), db:h(false,null) },
+    frames: mkFrames('2026-09-21T09:40:00+08:00', 4, 1800e3, {fPort:5, bytes:11, rssi:-92, snr:8, battery:90}) },
   // 9 台试点地磁（正常）
   ...['0095690600028466','0095690600028478','0095690600028594','009569060002847b',
       '00956906000285c3','009569060002848d','00956906000285b8','00956906000285b4',
@@ -798,14 +818,14 @@ const DEVICE_CODES = {
   '001a0103ff000262':'LS-CAP-0262', '001a0102ff000644':'LS-CAP-0644', '001a0102ff000853':'LS-CAP-0853',
   '00956906001264af':'LS-TRK-64AF', '00956906001264ef':'LS-TRK-64EF', '00956906001267d6':'LS-TRK-67D6',
   '009569000003059c':'PK-GM-059C', '009569000003056c':'PK-GM-056C', '00956906000288cf':'PK-GM-88CF',
-  '0095690000030906':'PK-GM-0906', '00956900000305aa':'PK-GM-05AA'
+  '0095690000030906':'PK-GM-0906', '00956900000305aa':'PK-GM-05AA', '0095690000030999':'PK-GM-0999'
 };
 DEVICES.forEach(d => { d.code = DEVICE_CODES[d.eui] || ('PK-GM-' + d.eui.slice(-4).toUpperCase()); });
 
 /* ---- dashboard topology (nodes / edges / troubleshooting tips) ---- */
 const TOPO_NODES = [
   { id:'dev-ls', x:10,   y:40,  w:130, title:'设备 · LIVESTOCK', sub:'注册 6 · 活跃 3' },
-  { id:'dev-pk', x:10,   y:200, w:130, title:'设备 · PARKING',   sub:'注册 14 · 活跃 12' },
+  { id:'dev-pk', x:10,   y:200, w:130, title:'设备 · PARKING',   sub:'注册 15 · 活跃 12' },
   { id:'ns',     x:220,  y:115, w:130, title:'NS',               sub:'ChirpStack · 收帧正常' },
   { id:'oc',     x:460,  y:115, w:130, title:'TB 网关 OC',       sub:'项目→topic 映射' },
   { id:'tb',     x:670,  y:115, w:130, title:'ThingsBoard',      sub:'网关认证有效' },
@@ -833,7 +853,7 @@ const TOPO_EDGES = [
 ];
 const TOPO_TIPS = {
   'dev-ls': { t:'节点 · 设备分组 LIVESTOCK', tips:['6 台注册 / 3 台活跃；3 台沉默超期 → 台账开「只看异常」', '新设备接入走「接入预检」五项体检'] },
-  'dev-pk': { t:'节点 · 设备分组 PARKING', tips:['14 台注册 / 12 台活跃；2 台注册后无数据 → 治理中心「无数据设备」分区'] },
+  'dev-pk': { t:'节点 · 设备分组 PARKING', tips:['15 台注册 / 12 台活跃；2 台注册后无数据 → 治理中心「无数据设备」分区', '1 台同名设备冲突挂起中（0095690000030999）→ 治理中心处理'] },
   'ns':  { t:'节点 · NS（ChirpStack）', tips:['设备 NS 不在线 → 检查 AppKey/入网与网关覆盖', '收帧计数停滞 → 查 NS 与 TB 网关的集成转发'] },
   'oc':  { t:'节点 · TB 网关 OC', tips:['OC 共享属性维护 项目→topic 映射（当前 35 个项目）', '映射缺失 → 预检② FAIL，需网关侧补映射'] },
   'tb':  { t:'节点 · ThingsBoard', tips:['网关认证 401 → 检查 gateway access token', '同一 EUI 多台设备 → 同名设备冲突，治理中心处理'] },
@@ -913,7 +933,7 @@ const FAULT_SCENARIOS = {
     edges:{ 'mq-pk':{ state:'is-down', label:'Diff=128 ↑' } },
     nodes:{},
     primary:'mq-pk',
-    impact:['受影响设备：14 台（PARKING）', '估计延迟帧：积压 128 条，≈ +30 条/min 持续增长'],
+    impact:['受影响设备：15 台（PARKING）', '估计延迟帧：积压 128 条，≈ +30 条/min 持续增长'],
     steps:['积压排查 → 看单体 consumer 日志', '查 smart-parking 业务库慢查询/锁等待', '恢复消费后观察 Diff 归零'],
     logs:{ container:'smart-parking-server', grep:'consumer|lag' }
   },
@@ -1297,6 +1317,7 @@ function hlText(text, q) {
   if (i < 0) return esc(text);
   return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
 }
+const regOps = {}; // eui -> 'running' while a re-register request is in flight
 function renderDevices() {
   const fp = $('#fltProject').value, fs = $('#fltStatus').value, fh = $('#fltHealth').value;
   const onlyAbn = $('#fltAbnormal').checked;
@@ -1311,8 +1332,10 @@ function renderDevices() {
     return true;
   });
   const tbody = $('#devTbody');
-  tbody.innerHTML = rows.map(d =>
-    '<tr data-eui="' + d.eui + '"' + (isAbnormal(d) ? ' class="abnormal"' : '') + '>' +
+  tbody.innerHTML = rows.map(d => {
+    const running = regOps[d.eui] === 'running';
+    const regFailed = d.lastRegister && d.lastRegister.result === 'FAILED';
+    return '<tr data-eui="' + d.eui + '"' + (isAbnormal(d) ? ' class="abnormal"' : '') + '>' +
     '<td><span class="eui">' + hlText(d.eui, q) + '</span><div class="dev-code">' + hlText(d.code, q) + '</div></td>' +
     '<td><span class="badge proj">' + d.project + '</span></td>' +
     '<td>' + hlText(d.type, q) + '</td>' +
@@ -1320,13 +1343,15 @@ function renderDevices() {
     '<td class="dim">' + d.period + '</td>' +
     '<td title="' + fmtAbs(d.lastFrame) + '">' + relTime(d.lastFrame) + '</td>' +
     '<td>' + lightHtml(d) + '</td>' +
-    '<td>' + statusBadge(d) + '</td>' +
+    '<td>' + (running
+      ? '<span class="badge proj working">注册中</span>'
+      : statusBadge(d) + (regFailed ? ' <span class="badge danger" title="重新注册失败：' + esc(d.lastRegister.error) + '（结果枚举 FAILED）">失败</span>' : '')) + '</td>' +
     '<td><span class="row-actions">' +
-      '<button class="btn ghost sm" data-act="detail" data-eui="' + d.eui + '">详情</button>' +
-      '<button class="btn ghost sm" data-act="rereg" data-eui="' + d.eui + '">重新注册</button>' +
-      '<button class="btn ghost sm" data-act="reconcile" data-eui="' + d.eui + '">对账定位</button>' +
-    '</span></td></tr>'
-  ).join('');
+      '<button class="btn ghost sm" data-act="detail" data-eui="' + d.eui + '"' + (running ? ' disabled' : '') + '>详情</button>' +
+      '<button class="btn ghost sm" data-act="rereg" data-eui="' + d.eui + '"' + (running ? ' disabled' : '') + '>' + (running ? '<span class="spinner"></span> 注册中' : '重新注册') + '</button>' +
+      '<button class="btn ghost sm" data-act="reconcile" data-eui="' + d.eui + '"' + (running ? ' disabled' : '') + '>对账定位</button>' +
+    '</span></td></tr>';
+  }).join('');
   const abnCount = DEVICES.filter(isAbnormal).length;
   $('#devCount').textContent = '共 ' + rows.length + ' 台 / 全部 ' + DEVICES.length + ' 台 · 异常 ' + abnCount + ' 台';
   $('#devEmptyText').textContent = qRaw ? '没有匹配「' + qRaw + '」的设备' : '没有符合条件的设备';
@@ -1338,7 +1363,7 @@ $('#devTbody').addEventListener('click', e => {
     e.stopPropagation();
     const eui = actBtn.dataset.eui;
     if (actBtn.dataset.act === 'detail') openDrawer(eui);
-    else if (actBtn.dataset.act === 'rereg') toast('已提交重新注册请求：' + eui + '（POST /api/v1/devices/register，幂等）');
+    else if (actBtn.dataset.act === 'rereg') startReregister(eui);
     else if (actBtn.dataset.act === 'reconcile') toast('对账完成：' + eui + ' · NS 帧计数与本地游标一致（mock）');
     return;
   }
@@ -1366,7 +1391,63 @@ $('#devClearFlt').addEventListener('click', () => {
   renderDevices();
 });
 
+/* re-register lifecycle: running -> in-place row refresh + flash -> trace in drawer (§3.2) */
+function startReregister(eui) {
+  if (regOps[eui]) return;
+  regOps[eui] = 'running';
+  renderDevices();
+  setTimeout(() => {
+    delete regOps[eui];
+    const d = DEVICES.find(x => x.eui === eui);
+    if (!d) return;
+    const now = new Date();
+    let ok;
+    if (eui === '0095690000030999') {
+      /* demo failure path: identity conflict unresolved */
+      d.lastRegister = { at: now, result:'FAILED', tbDeviceId:null, error:'同名设备冲突未解决' };
+      ok = false;
+    } else {
+      const already = d.tbBind === 'bound';
+      d.lastRegister = { at: now, result: already ? 'ALREADY_REGISTERED' : 'REGISTERED',
+        tbDeviceId: d.tbDeviceId || ('tb-55d1cc33-' + eui.slice(-4)) };
+      if (!already) {
+        d.tbBind = 'bound';
+        d.tbDeviceId = d.lastRegister.tbDeviceId;
+        d.status = 'ACTIVE';
+        if (!d.health.ns.ok) { d.health.ns.ok = true; d.health.ns.at = now.toISOString(); }
+      }
+      ok = true;
+    }
+    renderDevices();
+    flashRow(eui, ok);
+    renderAttention();
+    if ($('#drawer').classList.contains('open') && $('#drawerEui').textContent === eui) openDrawer(eui);
+    toast(ok
+      ? '重新注册完成：' + eui + ' · ' + (d.lastRegister.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册')
+      : '重新注册失败：' + eui + ' · 同名设备冲突未解决', !ok);
+  }, 1500);
+}
+function flashRow(eui, ok) {
+  const tr = document.querySelector('#devTbody tr[data-eui="' + eui + '"]');
+  if (!tr) return;
+  const cls = ok ? 'flash-ok' : 'flash-fail';
+  tr.classList.add(cls);
+  setTimeout(() => tr.classList.remove(cls), 1500);
+}
+
 /* ================= 详情抽屉 ================= */
+/* drawer trace row for the latest register result (business label + enum in tooltip) */
+function regTraceHtml(d) {
+  const lr = d.lastRegister;
+  const label = lr.result === 'FAILED' ? '<span style="color:var(--danger)">失败</span>'
+    : lr.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册';
+  return '<div class="kv"><span class="k">最近注册</span><span class="v" title="结果枚举：' + lr.result + '">' +
+    fmtAbs(lr.at) + ' · ' + label + (lr.tbDeviceId ? ' · ' + lr.tbDeviceId : '') + '</span></div>' +
+    (lr.result === 'FAILED'
+      ? '<div class="kv"><span class="k">失败原因</span><span style="color:var(--danger);font-size:12.5px">' + esc(lr.error) + '</span></div>' +
+        '<div style="margin-top:var(--space-2)"><button class="btn ghost sm" data-drawer-retry="' + d.eui + '">重试注册</button></div>'
+      : '');
+}
 function openDrawer(eui) {
   const d = DEVICES.find(x => x.eui === eui);
   if (!d) return;
@@ -1395,6 +1476,7 @@ function openDrawer(eui) {
       '<div class="kv"><span class="k">capabilities</span><span class="tags">' + d.capabilities.map(c => '<span class="badge">' + c + '</span>').join('') + '</span></div>' +
       (d.gps ? '<div class="kv"><span class="k">最近 GPS</span><span class="v">' + d.gps + '</span></div>' : '') +
       (d.note ? '<div class="kv"><span class="k">备注</span><span class="dim" style="font-size:12.5px">' + esc(d.note) + '</span></div>' : '') +
+      (d.lastRegister ? regTraceHtml(d) : '') +
     '</div></div>' +
     '<div><h4>游标与消费位置</h4><div class="card" style="padding:var(--space-3)">' +
       '<div class="kv"><span class="k">last_frame_at</span><span class="v">' + fmtAbs(d.lastFrame) + '</span></div>' +
@@ -1405,6 +1487,8 @@ function openDrawer(eui) {
     '<div><h4>最近帧摘要（' + d.frames.length + ' / 最多 10）</h4>' + frameRows + '</div>';
   $('#drawer').classList.add('open');
   $('#drawerMask').classList.add('open');
+  const dr = $('#drawerBody').querySelector('[data-drawer-retry]');
+  if (dr) dr.addEventListener('click', () => startReregister(dr.dataset.drawerRetry));
 }
 function closeDrawer() { $('#drawer').classList.remove('open'); $('#drawerMask').classList.remove('open'); }
 $('#drawerClose').addEventListener('click', closeDrawer);
