@@ -103,8 +103,11 @@ private suspend fun verify(port: MacBridgePort, scope: CoroutineScope, mainCtx: 
     withContext(mainCtx) {
         printSnapshot(session)
         // 配置同值回写（0x02）：从当前快照取值，非破坏性往返
-        // FD-004：写窗口暂停 1s 轮询（设备单 RX 缓冲，与 App 端 ConfigScreen 同款防护）
+        // FD-004：写窗口暂停 1s 轮询（设备单 RX 缓冲，与 App 端 ConfigScreen 同款防护）。
+        // 9-15 排查结论：固件 50ms 空闲判帧 + 轮询阻塞处理数百 ms——suspend 后须等最后一条
+        // 在途轮询处理完（≥1s）再写，否则写帧拼进处理中的缓冲被整段丢弃。
         session.setPollingSuspended(true)
+        delay(1_200)
         val acked = roundTripConfig(session)
         session.setPollingSuspended(false)
         println(if (acked) "✓ 0x02 配置写入 ACK" else "✕ 0x02 无 ACK")
