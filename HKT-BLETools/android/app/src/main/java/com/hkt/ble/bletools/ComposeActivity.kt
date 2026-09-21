@@ -2,6 +2,7 @@ package com.hkt.ble.bletools
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.lifecycleScope
@@ -13,8 +14,11 @@ import com.hkt.ble.bletools.core.protocol.DeviceFamily
 import com.hkt.ble.bletools.designsystem.LocalHktColors
 import com.hkt.ble.bletools.designsystem.hktColors
 import com.hkt.ble.bletools.demo.DemoResponder
+import com.hkt.ble.bletools.model.LanguageMode
+import com.hkt.ble.bletools.model.LanguageStore
 import com.hkt.ble.bletools.model.ScanModel
 import com.hkt.ble.bletools.ui.ScanListScreen
+import androidx.core.os.LocaleListCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -34,6 +38,25 @@ class ComposeActivity : ComponentActivity() {
         val demo = intent.getBooleanExtra("demo", false)
         val demoConnect = intent.getBooleanExtra("demoConnect", false)
         val scope = lifecycleScope
+        // P-07 语言三态持久化：自管 SharedPreferences（ComponentActivity 不走 appcompat 自动存储）
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        LanguageStore.restore(
+            when (prefs.getString("language", "system")) {
+                "zh" -> LanguageMode.ZH
+                "en" -> LanguageMode.EN
+                else -> LanguageMode.SYSTEM
+            },
+        )
+        val onLocaleChange: (LanguageMode) -> Unit = { mode ->
+            prefs.edit().putString("language", mode.name.lowercase()).apply()
+            val locales = when (mode) {
+                LanguageMode.ZH -> LocaleListCompat.forLanguageTags("zh-CN")
+                LanguageMode.EN -> LocaleListCompat.forLanguageTags("en")
+                LanguageMode.SYSTEM -> LocaleListCompat.getEmptyLocaleList()
+            }
+            AppCompatDelegate.setApplicationLocales(locales)
+            recreate()   // ComponentActivity 不随 locale 自动重建，手动触发
+        }
         val model: ScanModel = if (demo) {
             val mock = MockCentral(scope)
             // 脚本设备（四家族；EPS100 -91 低于 -80 阈值——入列规则过滤演示同源 iOS -mockble）
@@ -71,7 +94,7 @@ class ComposeActivity : ComponentActivity() {
 
         setContent {
             CompositionLocalProvider(LocalHktColors provides hktColors()) {
-                ScanListScreen(model = model)
+                ScanListScreen(model = model, onLocaleChange = onLocaleChange)
             }
         }
     }

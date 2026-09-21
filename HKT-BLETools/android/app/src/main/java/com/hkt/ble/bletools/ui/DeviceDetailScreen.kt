@@ -54,6 +54,7 @@ import com.hkt.ble.bletools.designsystem.OpCard
 import com.hkt.ble.bletools.designsystem.StateBadge
 import com.hkt.ble.bletools.designsystem.clickableBox
 import com.hkt.ble.bletools.designsystem.hkt
+import com.hkt.ble.bletools.model.LanguageStore
 import com.hkt.ble.bletools.model.ScanModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -75,7 +76,7 @@ fun DeviceDetailScreen(
     onBack: () -> Unit,
 ) {
     val c = LocalHktColors.current
-    val zh = HktLang.isZh
+    val zh = LanguageStore.isZh
     val scope = rememberCoroutineScope()
     val snapshot by session.snapshot.collectAsState()
     val linkLost by session.linkLost.collectAsState()
@@ -93,6 +94,7 @@ fun DeviceDetailScreen(
         }
     }
 
+    var showCalibration by remember { mutableStateOf(false) }
     var confirmDisconnect by remember { mutableStateOf(false) }
     var confirmPowerOff by remember { mutableStateOf(false) }
     var powerSending by remember { mutableStateOf(false) }
@@ -137,6 +139,11 @@ fun DeviceDetailScreen(
                 powerSending = false
             }
         }
+    }
+
+    if (showCalibration) {
+        CalibrationScreen(session = session, onBack = { showCalibration = false })
+        return
     }
 
     val isPowerOff = snapshot.power == 0
@@ -229,7 +236,7 @@ fun DeviceDetailScreen(
                                 title = if (session.family == DeviceFamily.UDS100) (if (zh) "角度校准" else "Tilt Calibration")
                                 else (if (zh) "磁力计校准" else "Mag Calibration"),
                                 desc = if (zh) "环境检查 · 长时操作" else "Environment checks · long-running",
-                            ) { later(if (zh) "校准" else "Calibration") }
+                            ) { showCalibration = true }
                         }
                         if (session.family == DeviceFamily.DC200_FAMILY) {
                             OpCard(

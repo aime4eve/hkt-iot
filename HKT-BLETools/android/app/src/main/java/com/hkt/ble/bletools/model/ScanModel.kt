@@ -2,6 +2,7 @@ package com.hkt.ble.bletools.model
 
 import com.hkt.ble.bletools.core.ble.BLEAvailability
 import com.hkt.ble.bletools.core.ble.BluetoothPort
+import com.hkt.ble.bletools.ui.HktLang
 import com.hkt.ble.bletools.core.ble.DeviceSession
 import com.hkt.ble.bletools.core.ble.DiscoveredDevice
 import com.hkt.ble.bletools.core.protocol.DeviceFamily
@@ -49,11 +50,31 @@ class ScanModel(
     private val _scanElapsed = MutableStateFlow(0)
     val scanElapsed: StateFlow<Int> = _scanElapsed.asStateFlow()
 
+    private val _allowedPrefixes = MutableStateFlow(DiscoveredDevice.supportedPrefixes)
+
     /** SP-1：名称前缀过滤（MPS/SVC/UDS/EPS，设置页可调并持久化）。 */
-    var allowedPrefixes: Set<String> = DiscoveredDevice.supportedPrefixes
+    var allowedPrefixes: Set<String>
+        get() = _allowedPrefixes.value
+        set(value) { _allowedPrefixes.value = value }
+    val allowedPrefixesFlow: StateFlow<Set<String>> = _allowedPrefixes.asStateFlow()
+
+    private val _rssiThreshold = MutableStateFlow(-80)
 
     /** SP-1：信号强度阈值（默认 -80 dBm）。 */
-    var rssiThreshold: Int = -80
+    var rssiThreshold: Int
+        get() = _rssiThreshold.value
+        set(value) { _rssiThreshold.value = value }
+    val rssiThresholdFlow: StateFlow<Int> = _rssiThreshold.asStateFlow()
+
+    /** P-07 扫描过滤：勾选/取消某前缀；已在列的设备按新规则复筛（iOS togglePrefix 同构）。 */
+    fun togglePrefix(prefix: String) {
+        allowedPrefixes = if (prefix in allowedPrefixes) allowedPrefixes - prefix else allowedPrefixes + prefix
+        if (_isScanning.value) {
+            _devices.value = _devices.value.filter { d ->
+                DiscoveredDevice.prefixOf(d.name)?.let(allowedPrefixes::contains) ?: false
+            }
+        }
+    }
 
     /** R-32：驻留会话（null=无会话）。 */
     private val _residentDevice = MutableStateFlow<ResidentDevice?>(null)
@@ -82,6 +103,7 @@ class ScanModel(
     val isReady: Boolean get() = _availability.value.isUsable
 
     private var scanTicker: Job? = null
+    private val loggedDiscoveries = mutableSetOf<String>()
     private var scanTotalMs = 0L
     private var autoStarted = false
     private var stopped = false
@@ -147,7 +169,8 @@ class ScanModel(
         if (_isScanning.value) stopScan()
         if (!isReady) return
         _isScanning.value = true
-        _devices.value = emptyList()
+        loggedDiscoveries.clear()
+        LogStore.info(if (HktLang.isZh) "扫描启动" else "Scan started")
         _scanRound.value = 1
         _scanElapsed.value = 0
         scanTotalMs = 0
@@ -200,6 +223,11 @@ class ScanModel(
                 }
                 // 驻留/列表冻结规则（R-32）：列表仅在扫描进行中刷新
                 if (_isScanning.value) {
+                    devices.forEach { device ->
+                        if (loggedDiscoveries.add(device.identifier)) {
+                            LogStore.info(if (HktLang.isZh) "发现设备 ${device.name} ${device.rssi}dBm" else "Discovered ${device.name} ${device.rssi}dBm")
+                        }
+                    }
                     _devices.value = devices
                     val prefix = demoAutoConnectPrefix
                     if (prefix != null) {
@@ -223,6 +251,7 @@ class ScanModel(
         scanTicker?.cancel()
         scanTicker = null
         port.stopScan()
+        LogStore.info(if (HktLang.isZh) "扫描停止" else "Scan stopped")
     }
 
     // MARK: - R-2 目标设备定位（扫码 16 位 DevEUI → 后 6 位匹配）
@@ -296,6 +325,7 @@ class ScanModel(
 
     /** R-31 断开连接：停轮询 + GATT 断开 + 清驻留（设备进最近设备）。 */
     fun disconnectActive() {
+        LogStore.info(if (HktLang.isZh) "手动断开（预期断开，不自动重连）" else "Manual disconnect (expected, no auto-reconnect)")
         _residentDevice.value?.let { _lastSession.value = it }
         _activeSession.value?.stop()
         _activeSession.value = null
@@ -372,6 +402,7 @@ class ScanModel(
 
     companion object {
         const val SCAN_ROUND_SECONDS = 10
+
     }
 }
 

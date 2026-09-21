@@ -28,6 +28,7 @@ import com.hkt.ble.bletools.designsystem.LocalHktColors
 import com.hkt.ble.bletools.designsystem.Steps
 import com.hkt.ble.bletools.designsystem.hkt
 import com.hkt.ble.bletools.model.ConnectModel
+import com.hkt.ble.bletools.model.LanguageStore
 
 /**
  * P-02 连接覆盖层 —— 1:1 克隆冻结原型（规格卡 docs/ios/design/ui-spec/P-02.md）。
@@ -40,7 +41,7 @@ import com.hkt.ble.bletools.model.ConnectModel
 @Composable
 fun ConnectOverlayScreen(model: ConnectModel, onFinished: () -> Unit) {
     val c = LocalHktColors.current
-    val zh = HktLang.isZh
+    val zh = LanguageStore.isZh
     val outcome by model.outcome.collectAsState()
     val failure by model.failure.collectAsState()
     val phaseIndex by model.phaseIndex.collectAsState()

@@ -48,6 +48,8 @@ import com.hkt.ble.bletools.designsystem.StateBadge
 import com.hkt.ble.bletools.designsystem.clickableBox
 import com.hkt.ble.bletools.designsystem.hkt
 import com.hkt.ble.bletools.model.ConnectModel
+import com.hkt.ble.bletools.model.LanguageMode
+import com.hkt.ble.bletools.model.LanguageStore
 import com.hkt.ble.bletools.model.ScanModel
 
 /**
@@ -62,9 +64,9 @@ object HktLang {
 }
 
 @Composable
-fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
+fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}) {
     val c = LocalHktColors.current
-    val zh = HktLang.isZh
+    val zh = LanguageStore.isZh
     val devices by model.devices.collectAsState()
     val isScanning by model.isScanning.collectAsState()
     val round by model.scanRound.collectAsState()
@@ -73,6 +75,7 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
     var notice by remember { mutableStateOf<String?>(null) }
     var connector by remember { mutableStateOf<ConnectModel?>(null) }   // P-02 覆盖层（null=关闭）
     var showDetail by remember { mutableStateOf(false) }                // 详情（P-03 全量克隆）
+    var showSettings by remember { mutableStateOf(false) }              // P-07 设置（子页日志/隐私内嵌）
     val requestDetail by model.requestShowDetail.collectAsState()
     LaunchedEffect(notice) {
         if (notice != null) {
@@ -99,6 +102,11 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
         })
         return
     }
+    // P-07 设置（子页日志/隐私内嵌）
+    if (showSettings) {
+        SettingsScreen(model = model, onBack = { showSettings = false }, onLocaleChange = onLocaleChange)
+        return
+    }
     // 详情（P-03 全量克隆）
     val activeSessionNow = model.activeSession.value
     if (showDetail && activeSessionNow != null) {
@@ -122,7 +130,7 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // ⌖ 扫描：直启相机扫码定位（相机流 P-01b 于 M6 接入）
                     LinkButton(title = if (zh) "⌖ 扫描" else "⌖ Locate") { }
-                    LinkButton(title = if (zh) "⚙︎ 设置" else "⚙︎ Settings") { onOpenSettings() }
+                    LinkButton(title = if (zh) "⚙︎ 设置" else "⚙︎ Settings") { showSettings = true }
                 }
             }
             Column(
