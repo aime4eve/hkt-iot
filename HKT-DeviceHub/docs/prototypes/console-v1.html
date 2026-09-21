@@ -458,8 +458,8 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
       <div class="grid dash">
         <div class="card">
           <h3>通道健康 <span class="right dim">GET /api/v1/channels/health</span></h3>
-          <div class="kv"><span class="k"><i class="dot ok"></i> tb-ws（遥测 WebSocket）</span><span class="v" style="color:var(--ok)">CONNECTED</span></div>
-          <div class="kv"><span class="k"><i class="dot ok"></i> tb-rest（REST 轮询兜底）</span><span class="v" style="color:var(--ok)">CONNECTED · 38ms</span></div>
+          <div class="kv"><span class="k"><i class="dot ok"></i> tb-ws（遥测 WebSocket）</span><span class="v" style="color:var(--ok)" title="CONNECTED">已连接</span></div>
+          <div class="kv"><span class="k"><i class="dot ok"></i> tb-rest（REST 轮询兜底）</span><span class="v" style="color:var(--ok)" title="CONNECTED">已连接 · 38ms</span></div>
           <div class="kv"><span class="k">LIVESTOCK maxCursorLagMs</span><span class="v">0</span></div>
           <div class="kv"><span class="k">PARKING maxCursorLagMs</span><span class="v">0</span></div>
           <div class="kv"><span class="k">连续失败数（ws / rest）</span><span class="v">0 / 0</span></div>
@@ -468,7 +468,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
           <h3><span class="badge proj">LIVESTOCK</span> 智慧畜牧</h3>
           <div class="stat-row">
             <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">3<span class="dim" style="font-size:14px">/6</span></div></div>
-            <div class="stat"><div class="lbl">noDataDevices</div><div class="big">0</div></div>
+            <div class="stat"><div class="lbl">无数据设备</div><div class="big">0</div></div>
             <div class="stat"><div class="lbl">24h 帧数</div><div class="big">486</div></div>
           </div>
         </div>
@@ -476,7 +476,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
           <h3><span class="badge proj">PARKING</span> 智慧停车</h3>
           <div class="stat-row">
             <div class="stat"><div class="lbl">活跃设备</div><div class="big" style="color:var(--ok)">12<span class="dim" style="font-size:14px">/14</span></div></div>
-            <div class="stat"><div class="lbl">noDataDevices</div><div class="big" style="color:var(--warn)">2</div></div>
+            <div class="stat"><div class="lbl">无数据设备</div><div class="big" style="color:var(--warn)">2</div></div>
             <div class="stat"><div class="lbl">24h 帧数</div><div class="big">1,733</div></div>
           </div>
         </div>
@@ -503,9 +503,9 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
       </select>
       <select id="fltStatus">
         <option value="">全部状态</option>
-        <option value="ACTIVE">ACTIVE</option>
-        <option value="PENDING">PENDING</option>
-        <option value="FAILED">FAILED</option>
+        <option value="ACTIVE">正常</option>
+        <option value="PENDING">待开通</option>
+        <option value="FAILED">失败</option>
       </select>
       <select id="fltHealth">
         <option value="">全部健康灯</option>
@@ -632,7 +632,7 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.2.1 · 2026-09-21</div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.2.2 · 2026-09-21</div>
 <script>
 'use strict';
 /* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
@@ -814,10 +814,10 @@ const TOPO_EDGES = [
 ];
 const TOPO_TIPS = {
   'dev-ls': { t:'节点 · 设备分组 LIVESTOCK', tips:['6 台注册 / 3 台活跃；3 台沉默超期 → 台账开「只看异常」', '新设备接入走「接入预检」五项体检'] },
-  'dev-pk': { t:'节点 · 设备分组 PARKING', tips:['14 台注册 / 12 台活跃；2 台 noDataDevices → 治理中心「无数据设备」分区'] },
+  'dev-pk': { t:'节点 · 设备分组 PARKING', tips:['14 台注册 / 12 台活跃；2 台注册后无数据 → 治理中心「无数据设备」分区'] },
   'ns':  { t:'节点 · NS（ChirpStack）', tips:['设备 NS 不在线 → 检查 AppKey/入网与网关覆盖', '收帧计数停滞 → 查 NS 与 TB 网关的集成转发'] },
   'oc':  { t:'节点 · TB 网关 OC', tips:['OC 共享属性维护 项目→topic 映射（当前 35 个项目）', '映射缺失 → 预检② FAIL，需网关侧补映射'] },
-  'tb':  { t:'节点 · ThingsBoard', tips:['网关认证 401 → 检查 gateway access token', '同一 EUI 多台设备 → TB_IDENTITY_CONFLICT，治理中心处理'] },
+  'tb':  { t:'节点 · ThingsBoard', tips:['网关认证 401 → 检查 gateway access token', '同一 EUI 多台设备 → 同名设备冲突，治理中心处理'] },
   'hub': { t:'节点 · DeviceHub', tips:['tb-ws 断开 → 自动重连，rest 轮询兜底接管', '连续失败数 >5 → 触发告警；游标 cursorLagMs 应恒为 0'] },
   'mq':  { t:'节点 · RocketMQ', tips:['mqadmin 查 topic 堆积与消费位点', '24h 消息数突降 → 上游（DeviceHub 写入）断链'] },
   'be-ls': { t:'节点 · smart-livestock 后端', tips:['消费组 Diff>0 → 看单体 consumer 日志', '确认业务库连接池与慢查询'] },
@@ -1160,9 +1160,9 @@ const SKELETON = {
 function statePanel(view, kind) {
   if (kind === 'loading') return SKELETON[view];
   if (kind === 'error') {
-    return '<div class="error-state"><p>✕ 接口请求失败：GET /api/v1/' +
+    return '<div class="error-state" title="HTTP 502 Bad Gateway"><p>✕ 接口请求失败：GET /api/v1/' +
       (view === 'devices' ? 'devices' : view === 'governance' ? 'devices/conflicts' : view === 'preflight' ? 'devices/preflight' : 'channels/health') +
-      ' · 502 Bad Gateway（mock）</p><button class="btn ghost" data-retry="' + view + '">重试</button></div>';
+      ' · 服务暂时不可用（mock）</p><button class="btn ghost" data-retry="' + view + '">重试</button></div>';
   }
   if (kind === 'empty') {
     return '<div class="empty-state"><span class="icon">✓</span>一切正常 · 通道连通，无静默超期、无滞后、无待处理冲突</div>';
@@ -1204,7 +1204,7 @@ function renderAttention() {
       action:() => { switchView('devices'); openDrawer(d.eui); }, actionText:'定位' });
   });
   DEVICES.filter(d => d.noData).forEach(d => {
-    items.push({ level:'warn', eui:d.eui, text:(d.status === 'PENDING' ? '待注册（PENDING），注册流程未完成' : '注册但从无数据（noDataDevices）'),
+    items.push({ level:'warn', eui:d.eui, text:(d.status === 'PENDING' ? '待开通：注册流程未完成' : '注册但从无数据'),
       action:() => { switchView('governance'); }, actionText:'治理' });
   });
   CONFLICTS.filter(c => c.status === 'pending').forEach(c => {
@@ -1235,13 +1235,17 @@ function lightHtml(dev) {
     return '<i class="dot ' + (lv.ok ? 'ok' : 'off') + '" title="' + esc(tip) + '"></i>';
   }).join('') + '</span>';
 }
+/* business-language labels; raw enums live in tooltips (design doc §3.4 copy rule) */
+const STATUS_LABELS = { ACTIVE:'正常', PENDING:'待开通', FAILED:'失败' };
+const VERDICT_LABELS = { PASS:'通过', WARN:'注意', FAIL:'不通过' };
 function statusBadge(dev) {
-  if (dev.status === 'PENDING') return '<span class="badge warn">PENDING</span>';
-  if (dev.status === 'FAILED') return '<span class="badge danger">FAILED</span>';
+  const tip = ' title="状态枚举：' + dev.status + '"';
+  if (dev.status === 'PENDING') return '<span class="badge warn"' + tip + '>待开通</span>';
+  if (dev.status === 'FAILED') return '<span class="badge danger"' + tip + '>失败</span>';
   let extra = '';
   if (dev.silent) extra = ' <span class="badge warn">沉默</span>';
   if (dev.noData) extra = ' <span class="badge warn">无数据</span>';
-  return '<span class="badge ok">ACTIVE</span>' + extra;
+  return '<span class="badge ok"' + tip + '>正常</span>' + extra;
 }
 function tbBindHtml(dev) {
   if (dev.tbBind === 'bound') return '<span class="badge ok">已绑定</span>';
@@ -1403,7 +1407,7 @@ function renderReport(eui, checks) {
       '<div class="check-item ' + c.r + '">' +
       '<i class="dot lg ' + (c.r === 'PASS' ? 'ok' : c.r === 'WARN' ? 'warn' : 'danger') + '" style="margin-top:6px"></i>' +
       '<div class="c-main">' +
-        '<div class="c-title">' + c.t + ' <span class="badge ' + (c.r === 'PASS' ? 'ok' : c.r === 'WARN' ? 'warn' : 'danger') + '">' + c.r + '</span>' +
+        '<div class="c-title">' + c.t + ' <span class="badge ' + (c.r === 'PASS' ? 'ok' : c.r === 'WARN' ? 'warn' : 'danger') + '" title="判定枚举：' + c.r + '">' + VERDICT_LABELS[c.r] + '</span>' +
         '<span class="c-src">数据源：' + c.src + '</span></div>' +
         '<div class="c-detail">' + esc(c.d) + '</div>' +
         (c.candidates ? '<div class="table-wrap" style="margin-top:var(--space-2)"><table class="candidates"><thead><tr><th>TB 设备 ID</th><th>创建时间</th><th>最近遥测</th><th>遥测条数</th><th>绑定方</th></tr></thead><tbody>' +
@@ -1486,7 +1490,7 @@ function renderGovernance() {
         '<div class="conflict-head">' +
           '<span class="arrow">▶</span>' +
           '<span class="eui mono" style="color:var(--accent)">' + c.eui + '</span>' +
-          '<span class="badge danger">TB_IDENTITY_CONFLICT</span>' +
+          '<span class="badge danger" title="内部枚举：TB_IDENTITY_CONFLICT">同名设备冲突</span>' +
           '<span class="dim" style="font-size:12.5px">检出 ' + c.detected + ' · ' + c.candidates.length + ' 台候选副本</span>' +
           (resolved
             ? '<span class="badge ok" style="margin-left:auto">✓ 已解决 · ' + c.resolvedAt + '</span>'
@@ -1543,7 +1547,7 @@ function renderGovernance() {
     ? nodata.map(d =>
         '<div class="attn-item"><i class="dot warn"></i>' +
         '<span class="grow"><span class="eui">' + d.eui + '</span> · ' + esc(d.type) + ' · 注册于 ' + fmtAbs(d.createdAt) + ' · ' + esc(d.note) + '</span>' +
-        (d.status === 'PENDING' ? '<span class="badge warn">PENDING</span>' : '') +
+        (d.status === 'PENDING' ? '<span class="badge warn" title="状态枚举：PENDING">待开通</span>' : '') +
         '<button class="btn ghost sm" data-nd="onsite" data-eui="' + d.eui + '">现场确认</button>' +
         '<button class="btn ghost sm" data-nd="disable" data-eui="' + d.eui + '">停用</button>' +
         '</div>').join('')
