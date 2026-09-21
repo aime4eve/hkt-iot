@@ -241,7 +241,6 @@ class DeviceSession(
 
     private fun pollOnce() {
         if (stopped || pollingSuspended) return
-        println("PROBE poll fam=$family")
         _pollsSent.value += 1
         packNum = (packNum + 1) and 0xFF
         link.send(HKTFrameEncoder.appFrame(packNum, CommandCode.QUERY, HKTFrameEncoder.fillerPayload()))

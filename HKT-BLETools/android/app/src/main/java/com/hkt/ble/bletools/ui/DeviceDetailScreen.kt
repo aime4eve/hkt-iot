@@ -175,7 +175,8 @@ fun DeviceDetailScreen(
                 deviceName = session.deviceName,
                 meta = metaText(session, snapshot, zh),
                 badge = {
-                    headBadge(session, unknownTail, secondsSince, zh)?.invoke()
+                    // 首页/返回当前单层导航等效（多层导航接入时需分化，评审 P3）
+                    headBadge(session, unknownTail, secondsSince, zh)()
                 },
                 actions = listOf(
                     { SessionButton(if (zh) "返回" else "Back") { onBack() } },
@@ -395,7 +396,7 @@ private fun StatusContent(session: DeviceSession, snapshot: DeviceSnapshot, unkn
                     insertLabel = if (zh) "插入检测" else "Insert detect",
                     insertText = if (snapshot.valve1Inserted == 1) (if (zh) "是" else "Yes") else (if (zh) "否" else "No"),
                     pulseLabel = if (zh) "脉冲计数" else "Pulse count",
-                    pulseText = "%,d".format(snapshot.valve1Pulse ?: 0),
+                    pulseText = "%,d".format(Locale.US, snapshot.valve1Pulse ?: 0),
                     portLabel = if (zh) "端口功能" else "Port function",
                     portText = if (mode == 1 || mode == 3) (if (zh) "开关控制" else "Switch control") else (if (zh) "PWM 控制" else "PWM control"),
                 ),
@@ -406,7 +407,7 @@ private fun StatusContent(session: DeviceSession, snapshot: DeviceSnapshot, unkn
                     insertLabel = if (zh) "插入检测" else "Insert detect",
                     insertText = if (snapshot.valve2Inserted == 1) (if (zh) "是" else "Yes") else (if (zh) "否" else "No"),
                     pulseLabel = if (zh) "脉冲计数" else "Pulse count",
-                    pulseText = "%,d".format(snapshot.valve2Pulse ?: 0),
+                    pulseText = "%,d".format(Locale.US, snapshot.valve2Pulse ?: 0),
                     portLabel = if (zh) "端口功能" else "Port function",
                     portText = if (mode == 2 || mode == 3) (if (zh) "开关控制" else "Switch control") else (if (zh) "PWM 控制" else "PWM control"),
                 ),

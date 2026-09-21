@@ -128,18 +128,20 @@ fun SessionControlCard(
 /** 字段定义（P-03 §4：label + 格式化值 + 可选 unit span）。 */
 data class FieldSpec(val label: String, val value: String, val unit: String? = null)
 
-/** 字段卡（.field：r10 padding 10/12 min-height 70；.k 11/600 text2；.v 16/650 等宽数字 + unit span）。 */
+/** 字段卡（.field：r10 padding 10/12 **min-height 70 border-box**；.k 11/600 text2；.v 16/650 等宽数字 + unit span）。
+ *  ⚠️ heightIn(min) 必须在 padding 之前（链首）——链尾固定 height 会把 padding 加到外面变 90dp
+ *  （iOS 已踩过的同款坑在 Compose 重演，M6.2 评审 P1-2）；min 而非固定高度允许长值换行。 */
 @Composable
 fun FieldTile(spec: FieldSpec, modifier: Modifier = Modifier) {
     val c = hktColors()
     val shape = RoundedCornerShape(HktRadius.card.dp)
     Column(
         modifier
+            .heightIn(min = 70.dp)
             .hktShadow03(shape)
             .background(c.card, shape)
             .border(1.dp, c.line.copy(alpha = 0.82f), shape)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .height(70.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(spec.label, style = hkt(11f, FontWeight.SemiBold), color = c.text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -219,8 +221,7 @@ fun SvcChannelModule(title: String, tag: String, channels: List<SvcChannelSpec>)
             .hktShadow03(shape)
             .background(c.card, shape)
             .border(1.dp, c.line.copy(alpha = 0.82f), shape)
-            .padding(12.dp)
-            .padding(bottom = 0.dp),
+            .padding(12.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -238,25 +239,31 @@ fun SvcChannelModule(title: String, tag: String, channels: List<SvcChannelSpec>)
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             )
         }
+        // channel-grid 2 列 gap 8（规格卡 §3.4；M6.2 评审 P1-1：纵堆偏离 iOS 两列）
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            channels.forEach { ch ->
-                val inner = RoundedCornerShape(HktRadius.control.dp)
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(c.card2, inner)
-                        .border(1.dp, c.line.copy(alpha = 0.72f), inner)
-                        .padding(10.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(ch.name, style = hkt(12f, FontWeight.Bold), color = c.text2, modifier = Modifier.weight(1f))
-                        StatePill(on = ch.on, text = ch.onText)
+            channels.chunked(2).forEach { rowChannels ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowChannels.forEach { ch ->
+                        val inner = RoundedCornerShape(HktRadius.control.dp)
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .background(c.card2, inner)
+                                .border(1.dp, c.line.copy(alpha = 0.72f), inner)
+                                .padding(10.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(ch.name, style = hkt(12f, FontWeight.Bold), color = c.text2, modifier = Modifier.weight(1f))
+                                StatePill(on = ch.on, text = ch.onText)
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 9.dp)) {
+                                Kpi(label = ch.insertLabel, value = ch.insertText)
+                                Kpi(label = ch.pulseLabel, value = ch.pulseText)
+                                Kpi(label = ch.portLabel, value = ch.portText)
+                            }
+                        }
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 9.dp)) {
-                        Kpi(label = ch.insertLabel, value = ch.insertText)
-                        Kpi(label = ch.pulseLabel, value = ch.pulseText)
-                        Kpi(label = ch.portLabel, value = ch.portText)
-                    }
+                    repeat(2 - rowChannels.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -286,9 +293,9 @@ fun HktBanner(kind: BadgeKind, text: String, actionTitle: String? = null, action
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(bottom = 11.dp)   // 规格卡 §3.5：margin-bottom 11 是【外】间距（评审 P2-5）
             .background(color.copy(alpha = 0.12f), RoundedCornerShape(HktRadius.card.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .padding(bottom = 11.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(text, style = hkt(13f).copy(lineHeight = (13f * 1.4f).sp), color = color, modifier = Modifier.weight(1f))
         if (actionTitle != null) {
@@ -322,9 +329,9 @@ fun HktSwitch(isOn: Boolean) {
     }
 }
 
-/** 电源整行（.ops-power：min-height 58、底边 line 72%）。 */
+/** 电源整行（.ops-power：min-height 58、底边 line 72%）；[enabled]=false 整行不可点（校准置灰，评审 P2-7）。 */
 @Composable
-fun OpsPowerRow(label: String, stateText: String, isOn: Boolean, onToggle: () -> Unit) {
+fun OpsPowerRow(label: String, stateText: String, isOn: Boolean, enabled: Boolean = true, onToggle: () -> Unit) {
     val c = hktColors()
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -332,7 +339,7 @@ fun OpsPowerRow(label: String, stateText: String, isOn: Boolean, onToggle: () ->
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp)
-            .clickableBox(onToggle)
+            .clickableBox(enabled = enabled, action = onToggle)
             .padding(horizontal = 14.dp),
     ) {
         Text(label, style = hkt(15f, FontWeight.SemiBold), color = c.text)
@@ -344,7 +351,10 @@ fun OpsPowerRow(label: String, stateText: String, isOn: Boolean, onToggle: () ->
 
 private fun Modifier.heightIn(min: androidx.compose.ui.unit.Dp) = this.then(
     Modifier.defaultMinSize(minHeight = min)
-)/** 设备操作面板（.ops-panel：电源行 + ops-grid card2 底 2 列 gap 8 padding 10）。 */
+)
+
+/** 设备操作面板（.ops-panel：电源行 + ops-grid card2 底 2 列 gap 8 padding 10）。
+ *  [disabled]（校准运行中）：透明度 0.45 + 全面板拦截点击（评审 P2-7 休眠陷阱提前拆除）。 */
 @Composable
 fun OpsPanel(
     powerRow: @Composable () -> Unit,
@@ -353,24 +363,36 @@ fun OpsPanel(
 ) {
     val c = hktColors()
     val shape = RoundedCornerShape(HktRadius.card.dp)
-    Column(
+    Box(
         Modifier
             .fillMaxWidth()
-            .hktShadow03(shape)
-            .background(c.card, shape)
-            .border(1.dp, c.line.copy(alpha = 0.82f), shape)
-            .alpha(if (disabled) 0.45f else 1f),
+            .hktShadow03(shape),
     ) {
-        powerRow()
-        Row(Modifier.background(c.card2)) {}
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
+            Modifier
                 .fillMaxWidth()
-                .background(c.card2)
-                .padding(10.dp),
+                .background(c.card, shape)
+                .border(1.dp, c.line.copy(alpha = 0.82f), shape)
+                .alpha(if (disabled) 0.45f else 1f),
         ) {
-            content()
+            powerRow()
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(c.card2)
+                    .padding(10.dp),
+            ) {
+                content()
+            }
+        }
+        if (disabled) {
+            // 置灰时拦截全部点击（powerRow/OpCard 均被盖住）
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clickableBox { }
+            )
         }
     }
 }

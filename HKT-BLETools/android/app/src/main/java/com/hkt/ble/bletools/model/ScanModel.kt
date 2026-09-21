@@ -303,10 +303,12 @@ class ScanModel(
         _residentDevice.value = null
     }
 
-    /** P-01 断线态「重新连接」：驻留设备原身份重建会话。 */
+    /** P-01 断线态「重新连接」：驻留设备原身份重建会话。
+     *  ⚠️ linkLost 时死会话仍占位——须先原子释放（预期断开）再重连，否则本函数是空操作
+     *  （M6.2 评审 P1-3；iOS ScanModel.swift 同病，另行提请两端同步）。 */
     fun reconnectResident(): DeviceSession? {
-        if (_activeSession.value != null) return _activeSession.value
         val resident = _residentDevice.value ?: return null
+        if (_activeSession.value != null) disconnectActive()
         val device = _devices.value.firstOrNull { it.identifier == resident.identifier }
             ?: DiscoveredDevice(resident.name, resident.identifier, Int.MIN_VALUE)
         return makeAndStartSession(device)

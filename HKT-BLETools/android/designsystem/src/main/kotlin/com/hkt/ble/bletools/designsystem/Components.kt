@@ -44,7 +44,12 @@ private fun Modifier.hktCardShadow(): Modifier =
     shadow(elevation = 2.dp, shape = shadowShape, clip = false, ambientColor = Color(0x0D0F172A), spotColor = Color(0x0D0F172A))
 
 /** 无涟漪点击（原型按钮无 Material 波纹）。 */
-fun Modifier.clickableBox(action: () -> Unit): Modifier = this.clickable(onClick = action)
+fun Modifier.clickableBox(action: () -> Unit): Modifier =
+    clickableBox(enabled = true, action = action)
+
+/** 无涟漪点击 + 可禁用（置灰面板拦截点击，评审 P2-7）。 */
+fun Modifier.clickableBox(enabled: Boolean, action: () -> Unit): Modifier =
+    this.clickable(enabled = enabled, indication = null, interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(), onClick = action)
 
 /** 卡片容器（.card）：card 底、`line 82%` 描边、r10、阴影；padding 由调用方给（.card=13/14）。 */
 @Composable
