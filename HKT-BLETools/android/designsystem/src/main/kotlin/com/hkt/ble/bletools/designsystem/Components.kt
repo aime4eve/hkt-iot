@@ -312,3 +312,22 @@ fun HktDialogCard(
         }
     }
 }
+
+/** 分段进度条（.steps：P-02 连接三阶段；24×5 圆角 3 gap 6，亮=info 灭=fill）。 */
+@Composable
+fun Steps(total: Int, onCount: Int) {
+    val c = hktColors()
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(vertical = 8.dp),
+    ) {
+        repeat(total) { i ->
+            Box(
+                Modifier
+                    .width(24.dp)
+                    .height(5.dp)
+                    .background(if (i < onCount) c.info else c.fill, RoundedCornerShape(3.dp))
+            )
+        }
+    }
+}

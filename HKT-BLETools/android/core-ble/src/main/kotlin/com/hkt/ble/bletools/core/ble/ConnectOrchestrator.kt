@@ -3,6 +3,9 @@ package com.hkt.ble.bletools.core.ble
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** P-02 连接三阶段：连接链路 → 发现服务 → 订阅通知。 */
@@ -27,14 +30,14 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
     /** SP-4 阶段预算（默认连接 10s / 发现 5s / 订阅 5s；测试可注入小预算）。 */
     data class Budget(val linkMs: Long = 10_000, val servicesMs: Long = 5_000, val subscribingMs: Long = 5_000)
 
-    var phase: ConnectPhase? = null
-        private set
-    var failure: ConnectFailure? = null
-        private set
-    var isConnected: Boolean = false
-        private set
-    var isCancelled: Boolean = false
-        private set
+    private val _phase = MutableStateFlow<ConnectPhase?>(null)
+    val phase: StateFlow<ConnectPhase?> = _phase.asStateFlow()
+    private val _failure = MutableStateFlow<ConnectFailure?>(null)
+    val failure: StateFlow<ConnectFailure?> = _failure.asStateFlow()
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    private val _isCancelled = MutableStateFlow(false)
+    val isCancelled: StateFlow<Boolean> = _isCancelled.asStateFlow()
 
     private var budget = Budget()
     private var timeoutTask: Job? = null
@@ -44,23 +47,23 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
     var onFinish: ((ConnectFailure?) -> Unit)? = null
 
     /** 会话仍在（未到终态）。 */
-    val isActive: Boolean get() = phase != null && !finished
+    val isActive: Boolean get() = _phase.value != null && !finished
 
     /** 开始三阶段（可重复调用，内部先复位）。 */
     fun begin(budget: Budget = Budget()) {
         timeoutTask?.cancel()
         this.budget = budget
-        failure = null
-        isConnected = false
-        isCancelled = false
+        _failure.value = null
+        _isConnected.value = false
+        _isCancelled.value = false
         finished = false
-        phase = ConnectPhase.LINK
+        _phase.value = ConnectPhase.LINK
         armTimeout(ConnectPhase.LINK)
     }
 
     /** 传输层回调：当前阶段完成（链路建立/服务发现完成/订阅完成）。 */
     fun advance() {
-        val p = phase
+        val p = _phase.value
         if (!isActive || p == null) return
         timeoutTask?.cancel()
         val next = p.nextPhase
@@ -68,7 +71,7 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
             succeed()
             return
         }
-        phase = next
+        _phase.value = next
         armTimeout(next)
     }
 
@@ -86,16 +89,16 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
 
     private fun succeed() {
         finished = true
-        phase = null
-        isConnected = true
+        _phase.value = null
+        _isConnected.value = true
         onFinish?.invoke(null)
     }
 
     private fun fail(failure: ConnectFailure) {
         finished = true
-        phase = null
-        this.failure = failure
-        if (failure == ConnectFailure.CANCELLED) isCancelled = true
+        _phase.value = null
+        _failure.value = failure
+        if (failure == ConnectFailure.CANCELLED) _isCancelled.value = true
         onFinish?.invoke(failure)
     }
 
@@ -109,7 +112,7 @@ class ConnectOrchestrator(private val scope: CoroutineScope) {
         timeoutTask = scope.launch {
             delay(ms)
             // delay 被 cancel（新预算接管）时直接退出，不得误杀新阶段（iOS 取消竞态教训）
-            if (!finished && this@ConnectOrchestrator.phase == phase) {
+            if (!finished && _phase.value == phase) {
                 fail(
                     when (phase) {
                         ConnectPhase.LINK -> ConnectFailure.TIMEOUT_LINK

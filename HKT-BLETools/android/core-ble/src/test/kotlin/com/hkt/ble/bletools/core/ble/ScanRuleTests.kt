@@ -87,19 +87,19 @@ class ScanRuleTests {
         var finishFailure: ConnectFailure? = ConnectFailure.CONNECTION_LOST
         orchestrator.onFinish = { finishFailure = it }
         orchestrator.begin()
-        assertEquals(ConnectPhase.LINK, orchestrator.phase)
+        assertEquals(ConnectPhase.LINK, orchestrator.phase.value)
         assertTrue(orchestrator.isActive)
         orchestrator.advance()
-        assertEquals(ConnectPhase.SERVICES, orchestrator.phase)
+        assertEquals(ConnectPhase.SERVICES, orchestrator.phase.value)
         orchestrator.advance()
-        assertEquals(ConnectPhase.SUBSCRIBING, orchestrator.phase)
+        assertEquals(ConnectPhase.SUBSCRIBING, orchestrator.phase.value)
         orchestrator.advance()
-        assertTrue(orchestrator.isConnected)
+        assertTrue(orchestrator.isConnected.value)
         assertNull(finishFailure)
         assertFalse(orchestrator.isActive)
         // 终态后 advance 不再推进
         orchestrator.advance()
-        assertNull(orchestrator.phase)
+        assertNull(orchestrator.phase.value)
     }
 
     @Test
@@ -122,7 +122,7 @@ class ScanRuleTests {
         orchestrator.begin()
         orchestrator.cancel()
         assertEquals(ConnectFailure.CANCELLED, finishFailure)
-        assertTrue(orchestrator.isCancelled)
+        assertTrue(orchestrator.isCancelled.value)
 
         // 终态后 abort 被忽略
         orchestrator.abort(ConnectFailure.SERVICE_MISSING)
@@ -146,9 +146,9 @@ class ScanRuleTests {
         orchestrator.begin()
         orchestrator.cancel()
         orchestrator.begin()
-        assertEquals(ConnectPhase.LINK, orchestrator.phase)
-        assertEquals(null, orchestrator.failure)
-        assertFalse(orchestrator.isCancelled)
+        assertEquals(ConnectPhase.LINK, orchestrator.phase.value)
+        assertEquals(null, orchestrator.failure.value)
+        assertFalse(orchestrator.isCancelled.value)
         assertTrue(orchestrator.isActive)
     }
 

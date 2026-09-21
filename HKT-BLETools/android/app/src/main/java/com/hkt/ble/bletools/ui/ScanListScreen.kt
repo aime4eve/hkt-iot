@@ -46,6 +46,7 @@ import com.hkt.ble.bletools.designsystem.SectionHeader
 import com.hkt.ble.bletools.designsystem.StateBadge
 import com.hkt.ble.bletools.designsystem.clickableBox
 import com.hkt.ble.bletools.designsystem.hkt
+import com.hkt.ble.bletools.model.ConnectModel
 import com.hkt.ble.bletools.model.ScanModel
 
 /**
@@ -69,11 +70,31 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
     val elapsed by model.scanElapsed.collectAsState()
     var query by remember { mutableStateOf("") }   // R-33 列表模糊查询
     var notice by remember { mutableStateOf<String?>(null) }
+    var connector by remember { mutableStateOf<ConnectModel?>(null) }   // P-02 覆盖层（null=关闭）
+    var showDetail by remember { mutableStateOf(false) }                // 详情（P-03 全量克隆前的占位）
     LaunchedEffect(notice) {
         if (notice != null) {
             delay(3_000)
             notice = null
         }
+    }
+
+    // P-02 连接覆盖层（fullScreenCover 语义：覆盖整屏；弹出即 start）
+    connector?.let { cm ->
+        ConnectOverlayScreen(model = cm, onFinished = {
+            if (cm.outcome.value == ConnectModel.Outcome.CONNECTED) {
+                model.makeAndStartSession(cm.target)
+                showDetail = true
+            }
+            connector = null
+        })
+        return
+    }
+    // 详情（占位——P-03 全量克隆下一站替换）
+    val activeNow by model.activeSession.collectAsState()
+    if (showDetail && activeNow != null) {
+        DeviceDetailPlaceholder(session = activeNow!!, onBack = { showDetail = false })
+        return
     }
 
     Box(Modifier.fillMaxSize().background(c.bg)) {
@@ -132,22 +153,19 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
                         // deviceCardClick 三分支（规格卡 §1；R-31/R-32）
                         val outcome = model.cardTapOutcome(device)
                         when (outcome.first) {
-                            ScanModel.CardTapOutcome.SHOW_DETAIL ->
-                                notice = if (zh) "详情页（P-03）M6 接入" else "Detail page (P-03) lands in M6"
+                            ScanModel.CardTapOutcome.SHOW_DETAIL -> showDetail = true
                             ScanModel.CardTapOutcome.CONFIRM_SWITCH -> model.requestSwitch(outcome.second)
-                            ScanModel.CardTapOutcome.CONNECT ->
-                                notice = if (zh) "连接流程（P-02）M6 接入" else "Connect flow (P-02) lands in M6"
+                            ScanModel.CardTapOutcome.CONNECT -> connector = model.connectModel(outcome.second)
                         }
                     },
-                    onResidentTap = { notice = if (zh) "详情页（P-03）M6 接入" else "Detail page (P-03) lands in M6" },
+                    onResidentTap = { showDetail = true },
                     onRecentTap = {
-                        model.targetForLastSession()
-                        notice = if (zh) "连接流程（P-02）M6 接入" else "Connect flow (P-02) lands in M6"
+                        model.targetForLastSession()?.let { connector = model.connectModel(it) }
                     },
                 )
             }
         }
-        SwitchDialogOverlay(model = model, zh = zh)
+        SwitchDialogOverlay(model = model, zh = zh, onConnect = { connector = model.connectModel(it) })
     }
 }
 
@@ -282,7 +300,7 @@ private fun Content(
 
 /** R-32 切换确认框（.dialog 296/r18 遮罩；确认键主色 info；设备名加粗——规格卡 §2.6）。 */
 @Composable
-private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean) {
+private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean, onConnect: (DiscoveredDevice) -> Unit) {
     val target by model.pendingSwitch.collectAsState()
     val current by model.residentDevice.collectAsState()
     val t = target ?: return
@@ -312,9 +330,8 @@ private fun SwitchDialogOverlay(model: ScanModel, zh: Boolean) {
                     model.cancelSwitch()
                 },
                 Triple(if (zh) "切换并连接" else "Switch & Connect", com.hkt.ble.bletools.designsystem.DialogButtonKind.PRIMARY) {
-                    // 确认=原子释放当前会话 → 标准连接新设备（连接覆盖层 P-02 于 M6 接入）
-                    val newTarget = model.confirmSwitch()
-                    newTarget
+                    // 确认=原子释放当前会话 → 标准连接新设备（P-02 覆盖层）
+                    model.confirmSwitch()?.let(onConnect)
                 },
             ),
         )

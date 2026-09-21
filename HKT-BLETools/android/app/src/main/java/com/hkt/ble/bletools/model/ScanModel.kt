@@ -276,6 +276,8 @@ class ScanModel(
         if (_activeSession.value != null) return _activeSession.value
         val session = makeSession(forDevice) ?: return null
         _activeSession.value = session
+        // 先通知（演示应答器需要 family 才回夹具帧）再启动轮询——首帧 0xFF 就要有应答
+        onSessionStarted?.invoke(session)
         session.start()
         _residentDevice.value = ResidentDevice(forDevice.name, forDevice.identifier)
         return session
@@ -337,6 +339,10 @@ class ScanModel(
     fun cancelSwitch() {
         _pendingSwitch.value = null
     }
+
+    /** 为指定设备创建连接过程模型（P-02；端口与扫描同源）。 */
+    fun connectModel(forDevice: DiscoveredDevice): ConnectModel =
+        ConnectModel(target = forDevice, port = port, scope = scope)
 
     fun requestSwitch(toDevice: DiscoveredDevice) {
         _pendingSwitch.value = toDevice
