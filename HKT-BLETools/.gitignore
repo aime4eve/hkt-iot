@@ -41,3 +41,7 @@ release_log.txt
 # AI tool session state (mimosa hooks / SwiftPM workspace 残留)
 .mimosa/
 .swiftpm/
+
+# M7 Mac 蓝牙桥构建产物
+tools/macble-bridge/.build/
+tools/macble-bridge/MacBLEBridge.app/Contents/MacOS/

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "HKT_BLETools"
-include(":app", ":core-protocol", ":core-device", ":core-ota", ":core-ble", ":designsystem")
+include(":app", ":core-protocol", ":core-device", ":core-ota", ":core-ble", ":designsystem", ":harness")
  
