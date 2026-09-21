@@ -95,6 +95,7 @@ fun DeviceDetailScreen(
     }
 
     var showCalibration by remember { mutableStateOf(false) }
+    var showConfig by remember { mutableStateOf(false) }
     var confirmDisconnect by remember { mutableStateOf(false) }
     var confirmPowerOff by remember { mutableStateOf(false) }
     var powerSending by remember { mutableStateOf(false) }
@@ -143,6 +144,10 @@ fun DeviceDetailScreen(
 
     if (showCalibration) {
         CalibrationScreen(session = session, onBack = { showCalibration = false })
+        return
+    }
+    if (showConfig) {
+        ConfigScreen(session = session, onBack = { showConfig = false })
         return
     }
 
@@ -256,7 +261,7 @@ fun DeviceDetailScreen(
                             badge = "CFG",
                             title = if (zh) "参数配置" else "Configuration",
                             desc = if (zh) "上报 / 端口 / 时区" else "Reporting / port / timezone",
-                        ) { later(if (zh) "配置" else "Config") }
+                        ) { showConfig = true }
                         if (session.family != DeviceFamily.DC200_FAMILY) {
                             // DC200 家族隐藏对时入口（用户裁决 2026-09-20：FD-002/FD-003 固件缺陷期）
                             val outcome = timeSyncOutcome
