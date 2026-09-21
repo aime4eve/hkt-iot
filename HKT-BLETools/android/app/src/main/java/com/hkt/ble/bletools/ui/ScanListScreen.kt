@@ -90,10 +90,19 @@ fun ScanListScreen(model: ScanModel, onOpenSettings: () -> Unit = {}) {
         })
         return
     }
-    // 详情（占位——P-03 全量克隆下一站替换）
+    // 详情（P-03 全量克隆）
     val activeNow by model.activeSession.collectAsState()
     if (showDetail && activeNow != null) {
-        DeviceDetailPlaceholder(session = activeNow!!, onBack = { showDetail = false })
+        DeviceDetailScreen(
+            session = activeNow!!,
+            scanModel = model,
+            onDisconnect = {
+                // 关机成功/断开确认=预期断开（R-31）：释放会话、设备进最近设备、回扫描首页
+                model.disconnectActive()
+                showDetail = false
+            },
+            onBack = { showDetail = false },
+        )
         return
     }
 
