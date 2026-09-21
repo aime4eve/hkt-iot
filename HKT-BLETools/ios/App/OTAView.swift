@@ -109,7 +109,11 @@ struct OTAView: View {
         defer { if secured { url.stopAccessingSecurityScopedResource() } }
         guard var data = try? Data(contentsOf: url) else { return }
         var rejectReason: String?
-        if !(8192...245_760).contains(data.count) {
+        // 用户裁决 2026-09-21：0 字节固件包显式拒绝（与 Android V6.0.0b1 同款；先于区间检查给出准确文案）
+        if data.isEmpty {
+            rejectReason = zh ? "固件包为空（0 字节），不允许升级"
+                              : "Firmware file is empty (0 bytes); update not allowed"
+        } else if !(8192...245_760).contains(data.count) {
             rejectReason = zh ? "固件包大小 \(data.count) B 超出 App 分区合法范围（8KB–240KB）"
                               : "Firmware size \(data.count) B outside the 8KB–240KB app partition range"
         } else if data.count < 8 {
