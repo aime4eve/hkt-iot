@@ -121,7 +121,7 @@ struct SettingsView: View {
 
     /// 版本号与安卓 versionName 一致（MARKETING_VERSION=3.21），不拼接 build 号
     private var versionText: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "3.21"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "V6.0.0b1+1"
     }
 
     /// 原型 taps()：连点版本行 7 次开启调试模式。
