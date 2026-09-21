@@ -8,6 +8,22 @@ android {
     namespace = "com.hkt.ble.bletools"
     compileSdk = 34
 
+    // M8 版本方案（用户裁决 2026-09-21，09-22 澄清）：versionName = "V<主>.<次>.<修订>b<beta 序>+<构建数>"。
+    // 基线（VERSION_BASE）随版本发布手写；"+构建数" 每次打包自动 +1——计数持久化在
+    // android/version.properties（gitignore，本机独立计数），仅当本次任务图包含
+    // assemble/bundle/install 打包任务时递增；IDE sync、test 等不计。
+    val VERSION_BASE = "V6.0.0b1"
+    val counterFile = rootProject.file("version.properties")
+    var buildCount = counterFile.takeIf { it.exists() }
+        ?.readText()?.trim()?.toIntOrNull() ?: 0
+    val isPackageBuild = gradle.startParameter.taskNames.any {
+        it.contains("assemble", true) || it.contains("bundle", true) || it.contains("install", true)
+    }
+    if (isPackageBuild) {
+        buildCount += 1
+        counterFile.writeText(buildCount.toString())
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true
@@ -29,11 +45,10 @@ android {
         applicationId = "com.hkt.ble.bletools"
         minSdk = 26
         targetSdk = 34
-        // M8 版本方案（用户裁决 2026-09-21）：versionName = "<主>.<次>.<修订>b<beta 序>+<构建号>"，
-        // 如 6.0.0b1+1；versionCode 保持旧式单调递增 = YYYYMMDDNN（日期 + 当日构建序号），
+        // versionName 基线+构建数见文件头注释；versionCode 保持旧式单调递增 = YYYYMMDDNN，
         // 保证对现网 3.21（versionCode 20260906）可直接覆盖升级。
         versionCode = 2026092101
-        versionName = "V6.0.0b1+1"
+        versionName = "$VERSION_BASE+$buildCount"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
