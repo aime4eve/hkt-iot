@@ -231,15 +231,18 @@ class SystemCentral(private val context: Context) :
                 }
                 indicateCharacteristic = indicate
                 g.setCharacteristicNotification(indicate, true)
+                // 现网 V3.21 同款坑位修正：该特征属性为 NOTIFY，CCCD 必须写 0x0100——
+                // 写 INDICATION 值(0x0200)设备拒收 → onDescriptorWrite status=129（真机实证）
                 val cccd = indicate.getDescriptor(UUID_CCCD)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    g.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
+                val cccdValue = if (indicate.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
+                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 } else {
-                    @Suppress("DEPRECATION")
-                    cccd.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
-                    @Suppress("DEPRECATION")
-                    g.writeDescriptor(cccd)
+                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
                 }
+                @Suppress("DEPRECATION")
+                cccd.value = cccdValue
+                @Suppress("DEPRECATION")
+                g.writeDescriptor(cccd)
             }
         }
 
