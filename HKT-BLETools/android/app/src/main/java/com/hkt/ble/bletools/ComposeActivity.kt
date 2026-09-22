@@ -44,7 +44,6 @@ class ComposeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestBlePermissionsIfNeeded()
-        super.onCreate(savedInstanceState)
         val demo = intent.getBooleanExtra("demo", false)
         val demoConnect = intent.getBooleanExtra("demoConnect", false)
         // 演示深链（iOS -demo-page locate-finding 同构）：直入定位流并自动 startLocate
