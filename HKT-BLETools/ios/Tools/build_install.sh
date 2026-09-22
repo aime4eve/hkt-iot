@@ -44,7 +44,7 @@ say() { printf '\n==> %s\n' "$*"; }
 mkdir -p "$OUT_DIR"
 
 # 1. 编译（真机切片 + 自动签名；-allowProvisioningUpdates 静默刷新免费团队 profile）
-# 版本方案（用户裁决 2026-09-21）：基线 V6.0.0b1（pbxproj 手写）+ 构建计数（每次打包 +1，
+# 版本方案（用户裁决 2026-09-21，09-22 澄清）：基线 V6.0.0b（pbxproj 手写）+ 构建数连写（每次打包 +1，
 # 计数在 build-counter.txt，gitignore 本机独立）。注入 MARKETING_VERSION/CURRENT_PROJECT_VERSION。
 COUNTER_FILE="$IOS_DIR/build-counter.txt"
 COUNT=$(cat "$COUNTER_FILE" 2>/dev/null | tr -d "[:space:]")
@@ -52,7 +52,7 @@ COUNT=$(cat "$COUNTER_FILE" 2>/dev/null | tr -d "[:space:]")
 COUNT=$((COUNT + 1))
 echo "$COUNT" > "$COUNTER_FILE"
 FULL_VERSION="V6.0.0b1+$COUNT"
-say "版本：${FULL_VERSION}（构建 ${COUNT}）"
+say "版本：${FULL_VERSION}"
 
 say "xcodebuild 编译：$CONFIG / 真机（generic/platform=iOS）"
 LOG="$IOS_DIR/build/last_build.log"
