@@ -293,6 +293,7 @@ td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 .topo-node { cursor: pointer; }
 .topo-node rect { fill: var(--bg-inset); stroke: var(--border); transition: stroke .15s; }
 .topo-node:hover rect { stroke: var(--accent); }
+.topo-node.is-down rect { stroke: var(--danger); fill: color-mix(in srgb, var(--danger) 10%, var(--bg-inset)); }
 .tn-title { fill: var(--text); font-size: 13px; font-weight: 600; text-anchor: middle; }
 .tn-sub { fill: var(--text-dim); font-size: 10.5px; text-anchor: middle; font-family: var(--mono); }
 .tn-chan { fill: var(--text-dim); font-size: 9.5px; font-family: var(--mono); }
@@ -315,27 +316,36 @@ td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 .topo-tip .tt-head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; margin-bottom: var(--space-1); }
 .topo-tip .tt-close { margin-left: auto; color: var(--text-dim); padding: 0 var(--space-2); font-size: 16px; }
 .topo-tip .tt-close:hover { color: var(--text); }
-.topo-tip ul { padding-left: var(--space-4); color: var(--text-dim); }
+.topo-tip ul, .topo-tip ol { padding-left: var(--space-4); color: var(--text-dim); }
+.topo-tip .kv { padding: 0; }
+.topo-tip .tt-log { margin-top: var(--space-2); font-family: var(--mono); font-size: 12px; color: var(--text-dim); background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); word-break: break-all; }
 .drill-switch { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 12.5px; color: var(--text-dim); cursor: pointer; border: 1px solid var(--border); border-radius: 999px; padding: 1px var(--space-3); font-weight: 400; }
 .drill-switch.on { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.fault-select { background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius); padding: 1px var(--space-2); font-size: 12.5px; color: var(--text); }
+.fault-select:disabled { opacity: .45; }
+.fault-history { margin-top: var(--space-2); font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+
+/* ============ 拓扑泳道（平台分组容器，v1.3） ============ */
+.topo-lane { cursor: pointer; }
+.lane-rect { fill: color-mix(in srgb, var(--text) 4%, transparent); stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.topo-lane.is-warn .lane-rect { stroke: var(--warn); }
+.topo-lane.is-down .lane-rect { stroke: var(--danger); fill: color-mix(in srgb, var(--danger) 5%, transparent); }
+.lane-label { fill: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+.lane-metric { fill: var(--text-dim); font-size: 10.5px; font-family: var(--mono); text-anchor: middle; paint-order: stroke; stroke: var(--bg-panel); stroke-width: 4.5px; stroke-linejoin: round; }
+.topo-lane.is-down .lane-metric { fill: var(--danger); }
+.topo-lane.is-warn .lane-metric { fill: var(--warn); }
 
 /* ============ 台账：模糊查询 ============ */
 mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--text); border-radius: 3px; padding: 0 1px; }
 .search-box { position: relative; display: inline-flex; align-items: center; }
-.search-box input {
-  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: var(--space-1) 26px var(--space-1) var(--space-3); font-size: 13px; width: 250px; outline: none;
-}
+.search-box input { background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-1) 26px var(--space-1) var(--space-3); font-size: 13px; width: 250px; outline: none; }
 .search-box input:focus { border-color: var(--accent); }
 .search-box .clr { position: absolute; right: 4px; color: var(--text-dim); padding: 0 var(--space-2); font-size: 15px; line-height: 1; }
 .search-box .clr:hover { color: var(--text); }
 .dev-code { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
 
 /* ============ 台账：异步操作闭环反馈（v1.4） ============ */
-.spinner {
-  width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--accent);
-  border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; vertical-align: -1px;
-}
+.spinner { width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; vertical-align: -1px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .badge.working { animation: breathe 1s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
@@ -344,37 +354,20 @@ mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(
 tbody tr.flash-ok { animation: flashOk 1.5s ease-out; }
 tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
 
-/* ============ 工作台：故障呈现模型（v1.2） ============ */
-.fault-select {
-  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 1px var(--space-2); font-size: 12.5px; color: var(--text);
-}
-.fault-select:disabled { opacity: .45; }
-.topo-node.is-down rect { stroke: var(--danger); fill: color-mix(in srgb, var(--danger) 10%, var(--bg-inset)); }
-.topo-tip .kv { padding: 0; }
-.topo-tip ol { padding-left: var(--space-4); color: var(--text-dim); }
-.topo-tip .tt-log {
-  margin-top: var(--space-2); font-family: var(--mono); font-size: 12px; color: var(--text-dim);
-  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2); word-break: break-all;
-}
-.fault-history { margin-top: var(--space-2); font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
-
-/* ============ 拓扑泳道（平台分组容器，v1.3） ============ */
-.topo-lane { cursor: pointer; }
-.lane-rect {
-  fill: color-mix(in srgb, var(--text) 4%, transparent);
-  stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 5 4;
-}
-.topo-lane.is-warn .lane-rect { stroke: var(--warn); }
-.topo-lane.is-down .lane-rect { stroke: var(--danger); fill: color-mix(in srgb, var(--danger) 5%, transparent); }
-.lane-label { fill: var(--text-dim); font-size: 11px; font-family: var(--mono); }
-.lane-metric {
-  fill: var(--text-dim); font-size: 10.5px; font-family: var(--mono); text-anchor: middle;
-  paint-order: stroke; stroke: var(--bg-panel); stroke-width: 4.5px; stroke-linejoin: round;
-}
-.topo-lane.is-down .lane-metric { fill: var(--danger); }
-.topo-lane.is-warn .lane-metric { fill: var(--warn); }
+/* ============ 治理中心：无数据设备处置队列（v1.5） ============ */
+.ticket-card { background: var(--bg-panel); border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: var(--radius); margin-bottom: var(--space-3); overflow: hidden; }
+.ticket-card.sev-crit { border-left-color: var(--danger); }
+.ticket-card.terminal { border-left-color: var(--ok); opacity: .85; }
+.ticket-card.state-disabled { border-left-color: var(--border); opacity: .7; }
+.ticket-card.flash-ok { animation: flashOk 1.5s ease-out; }
+.ticket-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); cursor: pointer; flex-wrap: wrap; font-size: 13px; }
+.ticket-head:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.ticket-head .arrow { color: var(--text-dim); transition: transform .15s; }
+.ticket-card.expanded .ticket-head .arrow { transform: rotate(90deg); }
+.ticket-body { display: none; padding: 0 var(--space-4) var(--space-4); }
+.ticket-card.expanded .ticket-body { display: block; }
+.ticket-body .t-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+.tk-age { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
 
 /* ============ 弹窗 / Toast ============ */
 .modal-mask {
@@ -621,8 +614,8 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
         <div id="conflictList"></div>
       </div>
       <div class="gov-section">
-        <h3><i class="dot warn"></i> 无数据设备 <span class="dim" style="font-size:12px;font-weight:400">注册但从无帧</span></h3>
-        <div id="nodataList"></div>
+        <h3><i class="dot warn"></i> 无数据设备处置队列 <span class="dim" style="font-size:12px;font-weight:400">注册后超 2×周期无帧自动建单 · 钉钉 OA 对接（mock，OaWorkflowPort）</span></h3>
+        <div id="ticketList"></div>
       </div>
       <div class="gov-section">
         <h3><i class="dot ok"></i> 滞后异常 <span class="dim" style="font-size:12px;font-weight:400">有新数据未追平才出现</span></h3>
@@ -650,8 +643,8 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
 <!-- ============ 二次确认弹窗 ============ -->
 <div class="modal-mask" id="modalMask" hidden>
   <div class="modal">
-    <h3>⚠ 删除 TB 空副本（不可恢复）</h3>
-    <p>即将从 ThingsBoard 删除以下空副本设备。服务端将二次校验<b>遥测条数 = 0</b>，操作写入审计日志：</p>
+    <h3 id="modalTitle">⚠ 删除 TB 空副本（不可恢复）</h3>
+    <p id="modalDesc">即将从 ThingsBoard 删除以下空副本设备。服务端将二次校验<b>遥测条数 = 0</b>，操作写入审计日志：</p>
     <div class="mono-box" id="modalTarget"></div>
     <div class="m-actions">
       <button class="btn ghost" id="modalCancel">取消</button>
@@ -661,7 +654,7 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
 </div>
 
 <div class="toasts" id="toasts"></div>
-<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.4 · 2026-09-21</div>
+<div class="footer-mark">Mock 数据 · HKT-DeviceHub 控制台原型 v1.5 · 2026-09-22</div>
 <script>
 'use strict';
 /* ================= Mock 数据（取自 dev 真实环境快照 2026-09-21 15:30） ================= */
@@ -822,7 +815,7 @@ const DEVICE_CODES = {
 };
 DEVICES.forEach(d => { d.code = DEVICE_CODES[d.eui] || ('PK-GM-' + d.eui.slice(-4).toUpperCase()); });
 
-/* ---- dashboard topology (nodes / edges / troubleshooting tips) ---- */
+/* ---- dashboard topology (nodes / edges / swimlane / troubleshooting tips) ---- */
 const TOPO_NODES = [
   { id:'dev-ls', x:10,   y:40,  w:130, title:'设备 · LIVESTOCK', sub:'注册 6 · 活跃 3' },
   { id:'dev-pk', x:10,   y:200, w:130, title:'设备 · PARKING',   sub:'注册 15 · 活跃 12' },
@@ -855,7 +848,7 @@ const TOPO_TIPS = {
   'dev-ls': { t:'节点 · 设备分组 LIVESTOCK', tips:['6 台注册 / 3 台活跃；3 台沉默超期 → 台账开「只看异常」', '新设备接入走「接入预检」五项体检'] },
   'dev-pk': { t:'节点 · 设备分组 PARKING', tips:['15 台注册 / 12 台活跃；2 台注册后无数据 → 治理中心「无数据设备」分区', '1 台同名设备冲突挂起中（0095690000030999）→ 治理中心处理'] },
   'ns':  { t:'节点 · NS（ChirpStack）', tips:['设备 NS 不在线 → 检查 AppKey/入网与网关覆盖', '收帧计数停滞 → 查 NS 与 TB 网关的集成转发'] },
-  'oc':  { t:'节点 · TB 网关 OC', tips:['OC 共享属性维护 项目→topic 映射（当前 35 个项目）', '映射缺失 → 预检② FAIL，需网关侧补映射'] },
+  'oc':  { t:'节点 · TB 网关 OC', tips:['OC 共享属性维护 项目→topic 映射（当前 35 个项目）', '映射缺失 → 预检② 不通过，需网关侧补映射'] },
   'tb':  { t:'节点 · ThingsBoard', tips:['网关认证 401 → 检查 gateway access token', '同一 EUI 多台设备 → 同名设备冲突，治理中心处理'] },
   'lane-tb': { t:'分组 · ThingsBoard 平台', tips:['TB 网关 OC 与 ThingsBoard 服务同属一个平台，故障域独立：网关侧（映射/共享属性）与平台侧（认证/租户）分开定位', '容器边框取内部最严重级别：红 > 黄 > 绿'] },
   'hub': { t:'节点 · DeviceHub', tips:['tb-ws 断开 → 自动重连，rest 轮询兜底接管', '连续失败数 >5 → 触发告警；游标 cursorLagMs 应恒为 0'] },
@@ -892,7 +885,7 @@ const FAULT_SCENARIOS = {
     edges:{ 'ls-ns':{ state:'is-down', label:'MQTT 连接失败' }, 'pk-ns':{ state:'is-down', label:'MQTT 连接失败' } },
     nodes:{ 'ns':'is-down' },
     primary:'ls-ns',
-    impact:['受影响设备：20 台（LIVESTOCK 6 + PARKING 14）', '估计延迟帧：≈92 帧/h（全项目收帧停滞）'],
+    impact:['受影响设备：21 台（LIVESTOCK 6 + PARKING 15）', '估计延迟帧：≈92 帧/h（全项目收帧停滞）'],
     steps:['TCP 探测 NS 1883 端口确认网络连通性', '查 chirpstack 容器状态与最近重启记录', '恢复后观察两侧设备组收帧计数回升'],
     logs:{ container:'chirpstack', grep:'mqtt|connection|error' }
   },
@@ -902,7 +895,7 @@ const FAULT_SCENARIOS = {
     edges:{ 'tb-hub':{ state:'is-warn', label:'401·兜底中' } },
     nodes:{ 'tb':'is-down' },
     primary:'tb',
-    impact:['受影响设备：20 台（全项目，经 rest 兜底降级）', '估计延迟帧：无丢失，入库延迟 +5s/帧'],
+    impact:['受影响设备：21 台（全项目，经 rest 兜底降级）', '估计延迟帧：无丢失，入库延迟 +5s/帧'],
     steps:['检查 TB 网关 access token 有效期', '重新签发 token 并观察 401 计数归零', '确认 tb-ws 订阅自动恢复 20'],
     logs:{ container:'thingsboard', grep:'401|Unauthorized' }
   },
@@ -1263,7 +1256,7 @@ function renderAttention() {
   });
   DEVICES.filter(d => d.noData).forEach(d => {
     items.push({ level:'warn', eui:d.eui, text:(d.status === 'PENDING' ? '待开通：注册流程未完成' : '注册但从无数据'),
-      action:() => { switchView('governance'); }, actionText:'治理' });
+      action:() => { switchView('governance'); }, actionText:'处置' });
   });
   CONFLICTS.filter(c => c.status === 'pending').forEach(c => {
     items.push({ level:'danger', eui:c.eui, text:'TB 重名冲突待处理（2 台候选副本）',
@@ -1584,7 +1577,11 @@ $('#euiForm').addEventListener('submit', e => {
 
 /* ================= 治理中心 ================= */
 let modalContext = null;
-function openModal(html, onConfirm) {
+function openModal(html, onConfirm, opts) {
+  opts = opts || {};
+  $('#modalTitle').textContent = opts.title || '⚠ 删除 TB 空副本（不可恢复）';
+  $('#modalDesc').innerHTML = opts.desc || '即将从 ThingsBoard 删除以下空副本设备。服务端将二次校验<b>遥测条数 = 0</b>，操作写入审计日志：';
+  $('#modalConfirm').textContent = opts.confirmText || '确认删除';
   $('#modalTarget').innerHTML = html;
   $('#modalMask').hidden = false;
   modalContext = onConfirm;
@@ -1593,8 +1590,9 @@ function closeModal() { $('#modalMask').hidden = true; modalContext = null; }
 $('#modalCancel').addEventListener('click', closeModal);
 $('#modalMask').addEventListener('click', e => { if (e.target === $('#modalMask')) closeModal(); });
 $('#modalConfirm').addEventListener('click', () => {
-  const fn = modalContext; closeModal();
-  if (fn) fn();
+  const fn = modalContext;
+  if (fn && fn() === false) return; // handler may veto closing (e.g. required field empty)
+  closeModal();
 });
 
 function renderGovernance() {
@@ -1663,22 +1661,230 @@ function renderGovernance() {
   box.querySelectorAll('[data-rereg]').forEach(btn => btn.addEventListener('click', () =>
     toast('已提交重新注册请求：' + btn.dataset.rereg + '（幂等，绑定至保留副本）')));
 
-  // 无数据设备分区
-  const nodata = DEVICES.filter(d => d.noData);
-  $('#nodataList').innerHTML = nodata.length
-    ? nodata.map(d =>
-        '<div class="attn-item"><i class="dot warn"></i>' +
-        '<span class="grow"><span class="eui">' + d.eui + '</span> · ' + esc(d.type) + ' · 注册于 ' + fmtAbs(d.createdAt) + ' · ' + esc(d.note) + '</span>' +
-        (d.status === 'PENDING' ? '<span class="badge warn" title="状态枚举：PENDING">待开通</span>' : '') +
-        '<button class="btn ghost sm" data-nd="onsite" data-eui="' + d.eui + '">现场确认</button>' +
-        '<button class="btn ghost sm" data-nd="disable" data-eui="' + d.eui + '">停用</button>' +
-        '</div>').join('')
-    : '<div class="empty-state small"><span class="icon">✓</span>暂无无数据设备</div>';
-  $('#nodataList').querySelectorAll('[data-nd]').forEach(btn => btn.addEventListener('click', () => {
-    if (btn.dataset.nd === 'onsite') toast('已为 ' + btn.dataset.eui + ' 创建现场确认工单（mock）');
-    else toast('已提交停用申请：' + btn.dataset.eui + '（mock，需审批）');
+  // 无数据设备处置队列（v1.5 工作流化）
+  renderTickets();
+}
+
+/* ================= 治理中心：无数据设备处置队列（v1.5，钉钉 OA mock） ================= */
+/* state machine: PENDING_ASSIGN -> APPROVING(DingTalk OA) -> WORKING -> OBSERVING -> RESOLVED / DISABLED */
+const TICKET_STATES = {
+  PENDING_ASSIGN: { label:'待分派', cls:'warn' },
+  APPROVING:      { label:'审批中', cls:'proj' },
+  WORKING:        { label:'处理中', cls:'proj' },
+  OBSERVING:      { label:'待观察', cls:'warn' },
+  RESOLVED:       { label:'已解决', cls:'ok' },
+  DISABLED:       { label:'已停用', cls:'' }
+};
+/* severity rule (design doc §3.4): silence > 2×period = 注意, > 24h = 严重 */
+const SEVERITY = {
+  warn: { label:'注意', cls:'warn',   tip:'沉默 > 2×上报周期' },
+  crit: { label:'严重', cls:'danger', tip:'沉默 > 24h' }
+};
+const DISPOSAL_TICKETS = [
+  { id:'T-0906', eui:'0095690000030906', type:'DC200 地磁', severity:'crit', state:'PENDING_ASSIGN',
+    triage:{ path:'现场类', reason:'NS 帧计数=0，设备从未激活（预检① 存在性未过）' },
+    assignee:null, dingtalk:null, createdAt:'2026-09-17T14:35:00+08:00', observeUntil:null, closedAt:null,
+    timeline:[{ at:'2026-09-17 14:35', actor:'系统自动分诊', action:'建单：注册后超 2×周期无帧（严重度：严重）' }] },
+  { id:'T-05aa', eui:'00956900000305aa', type:'DC200 地磁', severity:'warn', state:'WORKING',
+    triage:{ path:'平台类', reason:'NS 在线但 TB 绑定未创建（预检⑤ 绑定缺失）' },
+    assignee:'张工（值班）', dingtalk:{ inst:'DD-20260921-0007', notified:'张工（值班）' },
+    createdAt:'2026-09-20T19:20:00+08:00', observeUntil:null, closedAt:null,
+    timeline:[
+      { at:'2026-09-20 19:20', actor:'系统自动分诊', action:'建单：注册后超 2×周期无帧（严重度：注意）' },
+      { at:'2026-09-20 19:22', actor:'运维 · 李工', action:'推送钉钉审批 DD-20260921-0007，已通知 张工（值班）' },
+      { at:'2026-09-20 19:40', actor:'钉钉回调（mock）', action:'审批通过 → 处理中' },
+      { at:'2026-09-21 09:10', actor:'张工（值班）', action:'开始处理：补建 TB 绑定' }
+    ] },
+  { id:'T-64af', eui:'00956906001264af', type:'牛羊追踪器 T100', severity:'crit', state:'RESOLVED',
+    triage:{ path:'平台类', reason:'NS 在线有上行但 TB 无数据 → 网关项目映射缺失' },
+    assignee:'张工（值班）', dingtalk:{ inst:'DD-20260917-0003', notified:'张工（值班）' },
+    createdAt:'2026-09-17T10:05:00+08:00', observeUntil:null, closedAt:'2026-09-17T16:47:00+08:00',
+    firstFrameAt:'2026-09-17 16:47',
+    timeline:[
+      { at:'2026-09-17 10:05', actor:'系统自动分诊', action:'建单：超 24h 无有效入库（严重度：严重）' },
+      { at:'2026-09-17 10:06', actor:'系统自动分诊', action:'归类：平台类（网关映射缺失）' },
+      { at:'2026-09-17 10:08', actor:'运维 · 李工', action:'分派并推送钉钉审批 DD-20260917-0003' },
+      { at:'2026-09-17 10:15', actor:'钉钉回调（mock）', action:'审批通过 → 处理中' },
+      { at:'2026-09-17 16:20', actor:'张工（值班）', action:'补齐 OC 项目映射 → 待观察（观察期 20min）' },
+      { at:'2026-09-17 16:47', actor:'系统自动核销', action:'首帧到达（fPort=3），观察期内自动关单 → 已解决' }
+    ] }
+];
+const ticketOps = {}; // ticket id -> busy while an async transition is in flight
+let ddSeq = 1;        // mock DingTalk approval instance sequence
+function nowStamp() { const d = new Date(); return fmtAbs(d) + ':' + pad(d.getSeconds()); }
+function fmtAge(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400);
+  return (d ? d + ' 天 ' : '') + pad(Math.floor(s % 86400 / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
+}
+function ticketStateBadge(t) {
+  const st = TICKET_STATES[t.state];
+  return '<span class="badge ' + st.cls + '" title="状态枚举：' + t.state + '">' + st.label + '</span>';
+}
+function ticketActions(t, busy) {
+  const dis = busy ? ' disabled' : '';
+  const spin = busy ? '<span class="spinner"></span> ' : '';
+  switch (t.state) {
+    case 'PENDING_ASSIGN':
+      return '<button class="btn sm"' + dis + ' data-tk="push">' + spin + '推送钉钉审批</button>' +
+        '<button class="btn ghost sm"' + dis + ' data-tk="disable">停用</button>';
+    case 'APPROVING':
+      return '<span class="dim" style="font-size:12px">审批实例 <span class="mono">' + t.dingtalk.inst + '</span> · 已通知 ' + esc(t.dingtalk.notified) + '（钉钉 OA mock）</span>' +
+        '<button class="btn sm"' + dis + ' data-tk="approve">' + spin + '钉钉端：通过</button>' +
+        '<button class="btn ghost sm"' + dis + ' data-tk="reject">钉钉端：驳回</button>' +
+        '<button class="btn ghost sm"' + dis + ' data-tk="disable">停用</button>';
+    case 'WORKING':
+      return '<span class="dim" style="font-size:12px">责任人 ' + esc(t.assignee) + ' 处理中（审批 ' + t.dingtalk.inst + ' 已通过）</span>' +
+        '<button class="btn sm"' + dis + ' data-tk="done">' + spin + '标记已处理</button>' +
+        '<button class="btn ghost sm"' + dis + ' data-tk="disable">停用</button>';
+    case 'OBSERVING':
+      return '<span class="dim" style="font-size:12px">观察期剩余 <span class="mono" data-countdown="' + t.id + '">--:--</span>（2×上报周期；超时自动升级值班经理）</span>' +
+        '<button class="btn sm"' + dis + ' data-tk="frame">' + spin + '模拟首帧到达</button>' +
+        '<button class="btn ghost sm"' + dis + ' data-tk="disable">停用</button>';
+    case 'RESOLVED':
+      return '<span class="badge ok" title="观察期内首帧到达，自动核销">首帧 ' + t.firstFrameAt + ' 到达 · 自动核销</span>';
+    default:
+      return '<span class="dim" style="font-size:12.5px">停用原因见流转时间线</span>';
+  }
+}
+function renderTickets() {
+  const box = $('#ticketList');
+  box.innerHTML = DISPOSAL_TICKETS.map(t => {
+    const sev = SEVERITY[t.severity];
+    const busy = !!ticketOps[t.id];
+    const terminal = t.state === 'RESOLVED' || t.state === 'DISABLED';
+    const ageHtml = terminal
+      ? '<span class="tk-age">历时 ' + fmtAge(new Date(t.closedAt) - new Date(t.createdAt)) + '</span>'
+      : '<span class="tk-age">滞留 <span data-age="' + t.createdAt + '">' + fmtAge(Date.now() - new Date(t.createdAt)) + '</span></span>';
+    return '<div class="ticket-card' + (t.severity === 'crit' && !terminal ? ' sev-crit' : '') +
+      (terminal ? (t.state === 'DISABLED' ? ' state-disabled' : ' terminal') : '') + '" data-tid="' + t.id + '">' +
+      '<div class="ticket-head">' +
+        '<span class="arrow">▶</span>' +
+        '<span class="eui mono" style="color:var(--accent);cursor:pointer" data-open-dev="' + t.eui + '" title="打开设备详情">' + t.eui + '</span>' +
+        '<span class="dim">' + esc(t.type) + '</span>' +
+        '<span class="badge ' + sev.cls + '" title="严重度规则：' + sev.tip + '">' + sev.label + '</span>' +
+        ticketStateBadge(t) +
+        '<span class="badge proj" title="' + esc(t.triage.reason) + '">' + t.triage.path + '</span>' +
+        '<span class="dim" style="font-size:12.5px">责任人：' + (t.assignee ? esc(t.assignee) : '未分派') + '</span>' +
+        ageHtml +
+        (t.dingtalk
+          ? '<span class="badge" title="钉钉 OA 审批实例（mock）">钉钉 ' + t.dingtalk.inst + '</span>'
+          : '<span class="dim" style="font-size:12px">钉钉未推送</span>') +
+      '</div>' +
+      '<div class="ticket-body">' +
+        '<div class="kv"><span class="k">自动分诊</span><span style="font-size:12.5px">' + t.triage.path + ' · ' + esc(t.triage.reason) + '</span></div>' +
+        '<h4 style="margin-top:var(--space-2)">流转时间线</h4>' +
+        '<div class="timeline">' + t.timeline.map(ev =>
+          '<div class="t-item"><i class="dot lg ' + (terminal ? 'ok' : 'warn') + '" style="margin-top:5px"></i>' +
+          '<div><div class="t-text">' + esc(ev.action) + '</div>' +
+          '<div class="t-time">' + ev.at + ' · ' + esc(ev.actor) + '</div></div></div>').join('') + '</div>' +
+        '<div class="t-actions">' + ticketActions(t, busy) + '</div>' +
+      '</div></div>';
+  }).join('');
+  box.querySelectorAll('.ticket-head').forEach(h => h.addEventListener('click', e => {
+    if (e.target.closest('[data-open-dev]')) return;
+    h.parentElement.classList.toggle('expanded');
+  }));
+  box.querySelectorAll('[data-open-dev]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation();
+    openDrawer(el.dataset.openDev);
+  }));
+  box.querySelectorAll('[data-tk]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const t = DISPOSAL_TICKETS.find(x => x.id === btn.closest('.ticket-card').dataset.tid);
+    ticketAction(t, btn.dataset.tk);
   }));
 }
+/* async transition wrapper: busy state -> in-place re-render + flash -> trace in timeline (§3.2 loop) */
+function runTicketOp(t, applyFn) {
+  if (ticketOps[t.id]) return;
+  ticketOps[t.id] = true;
+  renderTickets();
+  document.querySelector('.ticket-card[data-tid="' + t.id + '"]').classList.add('expanded');
+  setTimeout(() => {
+    delete ticketOps[t.id];
+    applyFn();
+    renderTickets();
+    const card = document.querySelector('.ticket-card[data-tid="' + t.id + '"]');
+    card.classList.add('expanded', 'flash-ok');
+    setTimeout(() => card.classList.remove('flash-ok'), 1500);
+    renderAttention();
+  }, 900);
+}
+function ticketAction(t, act) {
+  if (act === 'push') runTicketOp(t, () => {
+    t.dingtalk = { inst:'DD-20260922-' + String(ddSeq++).padStart(4, '0'), notified:'张工（值班）' };
+    t.assignee = '张工（值班）';
+    t.state = 'APPROVING';
+    t.timeline.push({ at: nowStamp(), actor:'当前用户', action:'推送钉钉审批 ' + t.dingtalk.inst + '，已通知 张工（值班）' });
+    toast('已推送钉钉审批 ' + t.dingtalk.inst + '（mock）');
+  });
+  else if (act === 'approve') runTicketOp(t, () => {
+    t.state = 'WORKING';
+    t.timeline.push({ at: nowStamp(), actor:'钉钉回调（mock）', action:'审批通过 → 处理中' });
+    toast('钉钉回调：审批通过（mock）');
+  });
+  else if (act === 'reject') runTicketOp(t, () => {
+    t.state = 'PENDING_ASSIGN';
+    t.timeline.push({ at: nowStamp(), actor:'钉钉回调（mock）', action:'审批驳回（理由：请补充现场情况说明）→ 退回待分派' });
+    toast('钉钉回调：审批驳回，已退回待分派', true);
+  });
+  else if (act === 'done') runTicketOp(t, () => {
+    t.state = 'OBSERVING';
+    t.observeUntil = Date.now() + 60 * 60e3; // 2 × 30min heartbeat period
+    t.timeline.push({ at: nowStamp(), actor:'当前用户', action:'标记已处理 → 待观察（观察期 60min，首帧到达自动核销）' });
+    toast('已标记处理完成，进入观察期');
+  });
+  else if (act === 'frame') runTicketOp(t, () => {
+    t.state = 'RESOLVED';
+    t.closedAt = new Date().toISOString();
+    t.firstFrameAt = nowStamp();
+    t.timeline.push({ at: nowStamp(), actor:'系统自动核销', action:'首帧到达（fPort=5），观察期内自动关单 → 已解决' });
+    const d = DEVICES.find(x => x.eui === t.eui);
+    if (d) {
+      const iso = new Date().toISOString();
+      d.noData = false;
+      d.lastFrame = iso;
+      d.health.up = { ok:true, at:iso };
+      d.health.tb = { ok:true, at:iso };
+      d.health.db = { ok:true, at:iso };
+      d.frames.unshift({ t:iso, fPort:5, bytes:11, rssi:-90, snr:9, battery:88 });
+      renderDevices();
+    }
+    toast('首帧到达，处置单已自动核销（已解决）');
+  });
+  else if (act === 'disable') {
+    openModal(
+      'EUI：<b style="color:var(--text)">' + t.eui + '</b><br>请填写停用原因（必填，写入审计日志）：' +
+      '<input type="text" id="disableReason" placeholder="如：现场拆除，设备回收" autocomplete="off" ' +
+      'style="width:100%;margin-top:var(--space-2);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-2) var(--space-3);outline:none;color:var(--text)">',
+      () => {
+        const v = $('#disableReason').value.trim();
+        if (!v) { toast('停用原因必填', true); return false; }
+        runTicketOp(t, () => {
+          t.state = 'DISABLED';
+          t.closedAt = new Date().toISOString();
+          t.timeline.push({ at: nowStamp(), actor:'当前用户', action:'停用：' + v + '（设备转停用，处置单关闭）' });
+          toast('已停用：' + t.eui + '（原因已记录审计日志）');
+        });
+      },
+      { title:'⚠ 停用设备（不可恢复）', desc:'停用后设备标记为已停用，处置单关闭：', confirmText:'确认停用' });
+  }
+}
+/* live tickers: ticket age + observation countdown */
+setInterval(() => {
+  $$('#ticketList [data-age]').forEach(el => {
+    el.textContent = fmtAge(Date.now() - new Date(el.dataset.age).getTime());
+  });
+  $$('#ticketList [data-countdown]').forEach(el => {
+    const t = DISPOSAL_TICKETS.find(x => x.id === el.dataset.countdown);
+    if (!t || !t.observeUntil) return;
+    const left = t.observeUntil - Date.now();
+    el.textContent = left > 0
+      ? pad(Math.floor(left / 60000)) + ':' + pad(Math.floor(left % 60000 / 1000))
+      : '已超时';
+  });
+}, 1000);
 
 /* ================= 初始化 ================= */
 function initFromHash() {
