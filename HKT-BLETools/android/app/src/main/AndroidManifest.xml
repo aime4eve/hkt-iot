@@ -24,7 +24,11 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- neverForLocation：扫描仅用于发现设备广播名，不用于定位——
+         缺此标记时系统同时要求定位运行时授权，卸载重装后（定位未授权）扫描恒零结果（真机实证） -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
     <!-- 适配 Android 12 的附近设备权限 -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.NEARBY_DEVICES" />
@@ -59,14 +63,9 @@
         android:hardwareAccelerated="true"
         tools:targetApi="tiramisu">
 
-        <service
-            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
-            android:enabled="false"
-            android:exported="false">
-            <meta-data
-                android:name="autoStoreLocales"
-                android:value="true" />
-        </service>
+        <!-- 应用内语言持久化由 BaseApp 自管（SharedPreferences），不启用 appcompat 的
+             autoStoreLocales：该机制与 ComposeActivity（非 AppCompatActivity）组合会在
+             进程重启后的 onCreate 触发 SavedStateRegistry 双重恢复 → 必崩（真机 FD 实证） -->
 
         <!-- v3.21 旧 UI（V6.0.0b1 起退居二线：类保留可回退，入口经 adb 全限定名可达） -->
         <activity
