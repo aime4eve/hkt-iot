@@ -32,7 +32,8 @@ object LogStore {
     /** 导出文本（时间 级别 消息，倒序=最新在上），供日志页「导出」分享。 */
     val exportText: String
         get() {
-            val header = "HKT BLETools 诊断日志 · ${_entries.size} 条 · 导出于 ${Date()}\n"
+            // 头部带构建版本：真机排障日志必须自证出自哪个包（b18/b19 日志同型无标识的教训）
+            val header = "HKT BLETools 诊断日志 · ${_entries.size} 条 · 版本 ${com.hkt.ble.bletools.BuildConfig.VERSION_NAME} · 导出于 ${Date()}\n"
             return header + _entries.toList().asReversed()
                 .joinToString("\n") { "${it.timestamp} [${it.level}] ${it.message}" }
         }

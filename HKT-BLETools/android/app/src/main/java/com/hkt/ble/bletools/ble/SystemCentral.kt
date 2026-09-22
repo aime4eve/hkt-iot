@@ -27,7 +27,8 @@ import no.nordicsemi.android.support.v18.scanner.ScanSettings
 /**
  * 真蓝牙实现（SystemCentral 的 Kotlin 移植）：BluetoothPort + PeripheralLink 双角色。
  *
- * 连接序列对齐现网 BLEUtils 语义（MTU 512 → 发现服务 → 订阅 Indicate → 就绪）；
+ * 连接序（b20 对调，Google BLE 指南/iOS 同序）：链路一通 → 发现服务 → 订阅
+ * Indicate（就绪）→ 后置协商 MTU 512（仅 OTA 长帧需要，fire-and-forget）；
  * 写特征无响应优先；回调统一投递主线程（BluetoothPort 契约）。
  *
  * CoreBluetooth「同会话对同设备只报一次 didDiscover」的坑在安卓 Nordic scanner 不存在
@@ -174,7 +175,10 @@ class SystemCentral(private val context: Context) :
     /** 服务发现单飞：仅在 discoverServices 受理（返回 true）时置位；被拒（操作在途）留给下个回调补发。 */
     private fun ensureDiscovery(g: BluetoothGatt) {
         if (discoveryIssued) return
-        if (g.discoverServices()) discoveryIssued = true
+        val accepted = g.discoverServices()
+        discoveryIssued = accepted
+        // 受理=false＝操作队列忙（真机排障关键信号：出现即序位冲突，回调必不来）
+        LogStore.info("GATT 服务发现请求 受理=$accepted")
     }
 
     // ---- GATT 回调（系统线程 → 主线程投递） ----
@@ -195,18 +199,12 @@ class SystemCentral(private val context: Context) :
                         // 预算、给服务发现独立计时——此前只发末端 NotificationsEnabled，
                         // 阶段恒停 LINK，真机 BLE 全链成功也 10s 报「连接超时」
                         connectEvents?.invoke(ConnectEvent.LinkEstablished)
-                        // requestMtu 入队失败（部分机型）直接进服务发现，不留死等
-                        if (g.requestMtu(512)) {
-                            // MTU 协商兜底：部分设备/连接参数下 onMtuChanged 迟迟不回——
-                            // 1s 未回即直接发现服务（MTU 非硬前提）。ensureDiscovery 按
-                            // discoverServices 返回值单飞：兜底若因 MTU 操作在途被拒(false)
-                            // 不置位，晚到的 onMtuChanged 补发，不再重复发起
-                            mainHandler.postDelayed({
-                                if (g === gatt) ensureDiscovery(g)
-                            }, 1_000)
-                        } else {
-                            ensureDiscovery(g)
-                        }
+                        // 连接序对调（b20）：链路一通立即发现服务（Google BLE 指南/iOS 同序），
+                        // MTU 后置到订阅完成之后。真机实证（b18/b19 八连试）：requestMtu
+                        // 先行时即使 onMtuChanged 已回 status=0，部分机型 GATT 操作队列
+                        // 仍视 MTU 在途，discoverServices 恒被拒（受理=false）且无补发时机，
+                        // 服务发现回调永不至——现网 V3.21 的 MTU 先行序在此机型不可复刻
+                        ensureDiscovery(g)
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         val wasConnected = connectedDevice != null
@@ -227,11 +225,8 @@ class SystemCentral(private val context: Context) :
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
-            // MTU 协商失败也继续发现服务（MTU 非硬前提；写长帧由固件 RX 缓冲兜底）
-            onMain {
-                LogStore.info("GATT MTU=$mtu status=$status")
-                if (g === gatt) ensureDiscovery(g)
-            }
+            // MTU 已后置为链路就绪后的长帧准备（仅 OTA 需要）：结果只记录，不驱动连接流程
+            onMain { LogStore.info("GATT MTU=$mtu status=$status") }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
@@ -282,6 +277,11 @@ class SystemCentral(private val context: Context) :
                     connectedDevice = pendingConnectDevice
                     connectEvents?.invoke(ConnectEvent.NotificationsEnabled)
                     connectEvents = null
+                    // 就绪后再协商 MTU（fire-and-forget，写描述符刚完成队列必空闲）：
+                    // 命令帧 ≤20 字节不依赖大 MTU，OTA 长帧前通常早已谈妥（真机 ~1s 回）；
+                    // 部分设备不回也不阻塞链路——正是 b17「MTU 迟迟不回」场景的安全位
+                    val ok = g.requestMtu(512)
+                    LogStore.info("GATT MTU 后置协商 受理=$ok")
                 } else {
                     connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.CONNECTION_LOST))
                     connectEvents = null
