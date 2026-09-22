@@ -8,11 +8,12 @@ android {
     namespace = "com.hkt.ble.bletools"
     compileSdk = 34
 
-    // M8 版本方案（用户裁决 2026-09-21，09-22 澄清）：versionName = "V<主>.<次>.<修订>b<beta 序>+<构建数>"。
-    // 基线（VERSION_BASE）随版本发布手写；"+构建数" 每次打包自动 +1——计数持久化在
+    // M8 版本方案（用户裁决 2026-09-21，09-22 两次澄清）：versionName = "V<主>.<次>.<修订>b<构建数>"，
+    // 如 V6.0.0b12——b 后即自增构建数（无 + 号、无独立 beta 序号）。基线（VERSION_BASE）随版本发布手写；
+    // 构建数每次打包自动 +1——计数持久化在
     // android/version.properties（gitignore，本机独立计数），仅当本次任务图包含
     // assemble/bundle/install 打包任务时递增；IDE sync、test 等不计。
-    val VERSION_BASE = "V6.0.0b1"
+    val VERSION_BASE = "V6.0.0b"
     val counterFile = rootProject.file("version.properties")
     var buildCount = counterFile.takeIf { it.exists() }
         ?.readText()?.trim()?.toIntOrNull() ?: 0
@@ -48,7 +49,7 @@ android {
         // versionName 基线+构建数见文件头注释；versionCode 保持旧式单调递增 = YYYYMMDDNN，
         // 保证对现网 3.21（versionCode 20260906）可直接覆盖升级。
         versionCode = 2026092101
-        versionName = "$VERSION_BASE+$buildCount"
+        versionName = "$VERSION_BASE$buildCount"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
