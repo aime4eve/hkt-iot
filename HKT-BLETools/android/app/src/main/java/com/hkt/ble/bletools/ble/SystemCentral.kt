@@ -59,7 +59,8 @@ class SystemCentral(private val context: Context) :
     private var connectedDevice: DiscoveredDevice? = null
     private var indicateCharacteristic: BluetoothGattCharacteristic? = null
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
-    private var mtuSettled = false
+    /** 服务发现已受理（discoverServices 返回 true）；false=操作排队被拒，允许补发。 */
+    private var discoveryIssued = false
 
     // ---- PeripheralLink 对外回调 ----
     override var onReceive: ((ByteArray) -> Unit)? = null
@@ -122,7 +123,7 @@ class SystemCentral(private val context: Context) :
         // 现网同款：连接前先停扫描（macOS/安卓同经验，边扫边连干扰 GATT 建立）
         stopScan()
         LogStore.info("GATT 连接发起 ${device.name} (${device.identifier})")
-        mtuSettled = false
+        discoveryIssued = false
         val g = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 remote.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
@@ -170,6 +171,12 @@ class SystemCentral(private val context: Context) :
         }
     }
 
+    /** 服务发现单飞：仅在 discoverServices 受理（返回 true）时置位；被拒（操作在途）留给下个回调补发。 */
+    private fun ensureDiscovery(g: BluetoothGatt) {
+        if (discoveryIssued) return
+        if (g.discoverServices()) discoveryIssued = true
+    }
+
     // ---- GATT 回调（系统线程 → 主线程投递） ----
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -184,16 +191,21 @@ class SystemCentral(private val context: Context) :
                 }
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
+                        // 三阶段上报①链路建立（iOS didConnect 对位）：编排器据此结束 LINK
+                        // 预算、给服务发现独立计时——此前只发末端 NotificationsEnabled，
+                        // 阶段恒停 LINK，真机 BLE 全链成功也 10s 报「连接超时」
+                        connectEvents?.invoke(ConnectEvent.LinkEstablished)
                         // requestMtu 入队失败（部分机型）直接进服务发现，不留死等
                         if (g.requestMtu(512)) {
-                            // MTU 协商兜底：部分设备/连接参数下 onMtuChanged 迟迟不回（真机 EPS
-                            // 实证卡 5s 致服务发现阶段超时）——1s 未回即直接发现服务；
-                            // 晚到的 onMtuChanged 幂等无害（mtuSettled 防重复）
+                            // MTU 协商兜底：部分设备/连接参数下 onMtuChanged 迟迟不回——
+                            // 1s 未回即直接发现服务（MTU 非硬前提）。ensureDiscovery 按
+                            // discoverServices 返回值单飞：兜底若因 MTU 操作在途被拒(false)
+                            // 不置位，晚到的 onMtuChanged 补发，不再重复发起
                             mainHandler.postDelayed({
-                                if (!mtuSettled && g === gatt) g.discoverServices()
+                                if (g === gatt) ensureDiscovery(g)
                             }, 1_000)
                         } else {
-                            g.discoverServices()
+                            ensureDiscovery(g)
                         }
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
@@ -218,9 +230,7 @@ class SystemCentral(private val context: Context) :
             // MTU 协商失败也继续发现服务（MTU 非硬前提；写长帧由固件 RX 缓冲兜底）
             onMain {
                 LogStore.info("GATT MTU=$mtu status=$status")
-                if (mtuSettled) return@onMain   // 兜底已触发过服务发现，防重复
-                mtuSettled = true
-                g.discoverServices()
+                if (g === gatt) ensureDiscovery(g)
             }
         }
 
@@ -237,12 +247,16 @@ class SystemCentral(private val context: Context) :
                 }
                 val service = g.getService(HKTProfile.serviceUUID)
                 val indicate = service?.getCharacteristic(HKTProfile.indicateUUID)
-                writeCharacteristic = service?.getCharacteristic(HKTProfile.writeUUID)
-                if (service == null || indicate == null) {
+                val write = service?.getCharacteristic(HKTProfile.writeUUID)
+                // iOS didDiscoverCharacteristicsFor 对位：两特征缺一即服务不完整
+                if (service == null || indicate == null || write == null) {
                     fail()
                     return@onMain
                 }
                 indicateCharacteristic = indicate
+                writeCharacteristic = write
+                // 三阶段上报②服务与特征就绪（Android 单回调＝iOS 服务发现+特征发现两步合并）
+                connectEvents?.invoke(ConnectEvent.ServicesDiscovered)
                 g.setCharacteristicNotification(indicate, true)
                 // 现网 V3.21 同款坑位修正：该特征属性为 NOTIFY，CCCD 必须写 0x0100——
                 // 写 INDICATION 值(0x0200)设备拒收 → onDescriptorWrite status=129（真机实证）
