@@ -3,7 +3,7 @@
 const { createApp } = Vue;
 
 // 前端错误可视化：任何未捕获错误直接显示为页面顶部红色横幅（便于用户截图反馈）
-window.APP_VER = '20260917d';
+window.APP_VER = '20260922a';
 function showFatalBanner(msg) {
   let bar = document.getElementById('fatal-banner');
   if (!bar) {
@@ -31,7 +31,7 @@ createApp({
       codeView: { open: false, file: '', content: '' },
       syncing: false,
       importing: false,
-      newDev: { open: false, saving: false, err: '', form: this.blankNewDev() },
+      newDev: { open: false, saving: false, err: '', warnDev: null, ackFor: '', form: this.blankNewDev() },
       mgmt: { saving: false, form: {}, nc: { platform: 'chirpstack', lang: '', version: '', firmwareVersion: '', changelog: '', code: '' }, samplesText: '[]' },
       toast: null,
     };
@@ -58,6 +58,53 @@ createApp({
       return { model: '', modelKey: '', name: '', origin: 'out-sourced', vendor: '', vendorKey: '', category: '', fPortDefault: '', aliases: '', authType: 'protocol-doc', authPath: '', authRef: '', authSection: '', authMissing: false };
     },
     modelKeyBad(s) { return !/^[a-z0-9][a-z0-9-]*$/.test(s || ''); },
+    // 型号查重归一：大小写、空格、连字符不敏感（B2315L 与 b-2315l 视为同名）
+    normName(s) { return String(s || '').toLowerCase().replace(/[\s-]+/g, ''); },
+    // Damerau-Levenshtein（含相邻换位），长度≥5 容忍距离 2（B1325L↔B2315L 这类隔位颠倒）
+    editDistance(a, b) {
+      const m = a.length, n = b.length;
+      if (!m) return n; if (!n) return m;
+      const d = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) d[i][0] = i;
+      for (let j = 0; j <= n; j++) d[0][j] = j;
+      for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, d[i - 2][j - 2] + 1);
+        d[i][j] = v;
+      }
+      return d[m][n];
+    },
+    // 型号/标识与现有设备比对：精确重复（拒）与高度相似（警示）
+    checkNameDup() {
+      const f = this.newDev.form;
+      const mine = [...new Set([this.normName(f.model), this.normName(f.modelKey),
+        ...f.aliases.split(/[,，\s]+/).filter(Boolean).map(x => this.normName(x))].filter(Boolean))];
+      if (!mine.length) return { dup: null, similar: null };
+      let dup = null, similar = null;
+      for (const d of this.devices) {
+        const theirs = [...new Set([this.normName(d.model), this.normName(d.modelKey),
+          ...(d.aliases || []).map(x => this.normName(x))].filter(Boolean))];
+        for (const t of theirs) {
+          if (mine.includes(t)) { dup = dup || d; continue; }
+          if (similar || t.length < 4) continue; // 过短型号不做模糊比对，避免误报
+          const tol = Math.max(t.length, Math.max(...mine.map(x => x.length))) >= 5 ? 2 : 1;
+          if (mine.some(x => this.editDistance(x, t) <= tol)) similar = similar || d;
+        }
+      }
+      return { dup, similar };
+    },
+    ackSimilar() {
+      const f = this.newDev.form;
+      this.newDev.ackFor = this.normName(f.model) + '|' + this.normName(f.modelKey);
+      this.createDevice();
+    },
+    useExisting(d) {
+      this.newDev.open = false;
+      this.openDevice(d.id);
+      this.showToast('已切换到现有设备: ' + d.model);
+    },
+    onNewDevInput() { this.newDev.warnDev = null; this.newDev.ackFor = ''; },
     onOriginChange() {
       this.newDev.form.authType = this.newDev.form.origin === 'in-house' ? 'firmware' : 'protocol-doc';
     },
@@ -199,6 +246,12 @@ createApp({
         return;
       }
       if (f.origin === 'out-sourced' && !f.vendorKey) { this.newDev.err = '采购设备需填厂商目录名（如 oufu）'; return; }
+      // 查重拦截：精确重复直接拒；高度相似需显式确认（防 B1325L 这类换位误录）
+      const { dup, similar } = this.checkNameDup();
+      if (dup) { this.newDev.warnDev = null; this.newDev.err = '型号/别名与现有设备重复: ' + dup.model + '（' + dup.id + '）。如确为不同设备请先核对型号拼写'; return; }
+      const ackKey = this.normName(f.model) + '|' + this.normName(f.modelKey);
+      if (similar && this.newDev.ackFor !== ackKey) { this.newDev.warnDev = similar; return; }
+      this.newDev.warnDev = null;
       this.newDev.saving = true;
       try {
         const body = {
@@ -217,6 +270,7 @@ createApp({
         this.showToast('设备已创建: ' + r.id);
         this.newDev.open = false;
         this.newDev.form = this.blankNewDev();
+        this.newDev.warnDev = null; this.newDev.ackFor = '';
         await this.loadDevices();
         await this.openDevice(r.id);
         this.tab = 'manage';
@@ -310,6 +364,20 @@ createApp({
       if (r.error) return this.showToast(r.error, 'bad');
       this.showToast('已删除: ' + c.file);
       await this.openDevice(this.currentId); this.tab = 'codecs';
+    },
+    async deleteDevice() {
+      const d = this.dev;
+      const hasContent = d.codecs.length > 0 || d.files.some(f => f !== 'decoder.json');
+      const msg = hasContent
+        ? '⚠ 设备「' + d.model + '」含解码器/文档/样例，删除将把整个目录移入服务器回收站（不直接销毁）。\n\n确认删除设备 ' + d.model + '（' + d.id + '）？'
+        : '设备「' + d.model + '」是空壳（无解码器/文档/样例），将被直接删除。\n\n确认删除？';
+      if (!confirm(msg)) return;
+      const r = await fetch('/api/device', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: this.currentId }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast(r.mode === 'trashed' ? '设备已整体移入回收站: ' + d.model : '设备已删除: ' + d.model);
+      this.currentId = null; this.dev = null;
+      history.replaceState(null, '', location.pathname);
+      await this.loadDevices();
     },
     async saveSamples() {
       let samples;

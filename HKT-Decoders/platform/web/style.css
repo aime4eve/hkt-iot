@@ -151,8 +151,12 @@ input.full { width: 100%; padding: 7px 10px; border: 1px solid var(--line); bord
 .filebtn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .btn.tiny.danger { color: var(--bad); }
 .btn.tiny.danger:hover { border-color: var(--bad); }
+.btn.danger { color: var(--bad); border-color: var(--bad); background: #fff; }
+.btn.danger:hover { background: var(--bad); color: #fff; }
 .hint.inline { font-size: 12px; }
 .modal-box.narrow { width: min(640px, 92vw); }
 .modal-body { padding: 16px 18px; overflow-y: auto; }
 
 .ferr { color: var(--bad); font-size: 12px; margin-top: 4px; }
+.fwarn { border: 1px solid #e6a23c; background: #fdf6ec; color: #8a5a00; font-size: 12.5px; line-height: 1.6; border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
+.fwarn b { color: #6b4300; }

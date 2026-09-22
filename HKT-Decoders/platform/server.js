@@ -102,6 +102,14 @@ app.delete('/api/device/codec', async (req, reply) => {
   return { ok: true };
 });
 
+app.delete('/api/device', async (req, reply) => {
+  const { id } = req.body || {};
+  if (!id) return reply.code(400).send({ error: '需要 id' });
+  const r = repo.deleteDevice(String(id));
+  if (r.error) return reply.code(404).send(r);
+  return { ok: true, mode: r.mode, trashName: r.trashName || null };
+});
+
 app.post('/api/device/samples', async (req, reply) => {
   const { id, samples } = req.body || {};
   const r = repo.saveSamples(String(id || ''), samples);

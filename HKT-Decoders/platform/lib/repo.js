@@ -163,6 +163,13 @@ function createDevice(b) {
   const id = (b.origin === 'in-house' ? 'in-house/' : 'out-sourced/' + vendorKey + '/') + b.modelKey;
   const dir = path.join(DEC, id);
   if (fs.existsSync(dir)) return { error: '设备已存在: ' + id };
+  // 型号/别名精确查重（大小写、空格、连字符不敏感）——拦截 B1325L 这类换位录重
+  const norm = s => String(s || '').toLowerCase().replace(/[\s-]+/g, '');
+  const newNames = [norm(b.model), norm(b.modelKey), ...(Array.isArray(b.aliases) ? b.aliases : []).map(norm)].filter(Boolean);
+  for (const s of listDevices()) {
+    const oldNames = [norm(s.model), norm(s.modelKey), ...(s.aliases || []).map(norm)].filter(Boolean);
+    if (oldNames.some(x => newNames.includes(x))) return { error: '型号/别名与现有设备重复: ' + s.model + '（' + s.id + '）。如确为两台不同设备，请先核对型号' };
+  }
   const meta = {
     model: String(b.model).trim(),
     modelKey: b.modelKey,
@@ -324,10 +331,35 @@ function saveDoc(id, filename, buf) {
   return { file: 'docs/' + safe };
 }
 
+/** 删除设备：无实质内容（无解码器，且除 decoder.json 外无任何文件）直接删除目录；
+ *  有内容则整体移入 .trash/（与删版本同一回收站，不直接销毁）。
+ *  删除后若厂商目录（out-sourced/<vendor>/）因此变空则一并清理。 */
+function deleteDevice(id) {
+  const dir = safeJoin(id);
+  if (!dir || !fs.existsSync(path.join(dir, 'decoder.json'))) return { error: '设备不存在: ' + id };
+  const detail = deviceDetail(id);
+  const hasContent = detail.codecs.length > 0 || detail.files.some(f => f !== 'decoder.json');
+  const parent = path.dirname(dir);
+  const pruneVendor = () => {
+    // 只清理 out-sourced/<vendor>/ 这一层空目录；DEC 根与 in-house/ 不动
+    if (path.dirname(parent) !== DEC && fs.existsSync(parent) && fs.readdirSync(parent).length === 0) fs.rmdirSync(parent);
+  };
+  if (!hasContent) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    pruneVendor();
+    return { mode: 'purged' };
+  }
+  fs.mkdirSync(TRASH, { recursive: true });
+  const trashName = Date.now() + '_device_' + String(id).replace(/\//g, '_');
+  fs.renameSync(dir, path.join(TRASH, trashName));
+  pruneVendor();
+  return { mode: 'trashed', trashName };
+}
+
 module.exports = {
   DATA_DIR, DEC, ensureDataDir, safeJoin,
   listDevices, deviceDetail, readTextFile, getFileInfo, readCodecCode,
   getMeta, validateDevicePayload, createDevice, updateMeta,
-  addCodec, setCurrent, setStatus, deleteCodec, saveSamples, saveDoc,
+  addCodec, setCurrent, setStatus, deleteCodec, deleteDevice, saveSamples, saveDoc,
   FILE_RE, VER_RE, NAME_RE,
 };
