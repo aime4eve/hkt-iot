@@ -59,6 +59,7 @@ class SystemCentral(private val context: Context) :
     private var connectedDevice: DiscoveredDevice? = null
     private var indicateCharacteristic: BluetoothGattCharacteristic? = null
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
+    private var mtuSettled = false
 
     // ---- PeripheralLink 对外回调 ----
     override var onReceive: ((ByteArray) -> Unit)? = null
@@ -121,6 +122,7 @@ class SystemCentral(private val context: Context) :
         // 现网同款：连接前先停扫描（macOS/安卓同经验，边扫边连干扰 GATT 建立）
         stopScan()
         LogStore.info("GATT 连接发起 ${device.name} (${device.identifier})")
+        mtuSettled = false
         val g = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 remote.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
@@ -183,7 +185,16 @@ class SystemCentral(private val context: Context) :
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         // requestMtu 入队失败（部分机型）直接进服务发现，不留死等
-                        if (!g.requestMtu(512)) g.discoverServices()
+                        if (g.requestMtu(512)) {
+                            // MTU 协商兜底：部分设备/连接参数下 onMtuChanged 迟迟不回（真机 EPS
+                            // 实证卡 5s 致服务发现阶段超时）——1s 未回即直接发现服务；
+                            // 晚到的 onMtuChanged 幂等无害（mtuSettled 防重复）
+                            mainHandler.postDelayed({
+                                if (!mtuSettled && g === gatt) g.discoverServices()
+                            }, 1_000)
+                        } else {
+                            g.discoverServices()
+                        }
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         val wasConnected = connectedDevice != null
@@ -207,6 +218,8 @@ class SystemCentral(private val context: Context) :
             // MTU 协商失败也继续发现服务（MTU 非硬前提；写长帧由固件 RX 缓冲兜底）
             onMain {
                 LogStore.info("GATT MTU=$mtu status=$status")
+                if (mtuSettled) return@onMain   // 兜底已触发过服务发现，防重复
+                mtuSettled = true
                 g.discoverServices()
             }
         }
