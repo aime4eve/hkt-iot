@@ -124,7 +124,7 @@ struct SettingsView: View {
         {
             let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "V6.0.0b1"
             let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-            return "\(short)+\(build)"
+            return "\(short)\(build)"
         }()
     }
 
