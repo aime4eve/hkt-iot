@@ -49,6 +49,17 @@ public class RegisteredDevice {
     @Column(name = "external_ref")
     private String externalRef;
 
+    /** CAPSULE / TRACKER / GEOMAGNETIC; drives profile mapping and interval defaults. */
+    @Column(name = "device_type")
+    private String deviceType;
+
+    /**
+     * Expected uplink interval; silence judgement window = 2x this value.
+     * Seeded per deviceType at registration (R-06); self-learning TODO.
+     */
+    @Column(name = "expected_report_interval_seconds", nullable = false)
+    private int expectedReportIntervalSeconds = 3600;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "capabilities", columnDefinition = "jsonb")
     private String capabilities = "{}";

@@ -5,9 +5,12 @@ package com.hkt.devicehub.domain.model;
  * PENDING: created locally, TB binding not yet confirmed.
  * ACTIVE: TB device bound, subscribed by the WS channel and polled by backfill.
  * FAILED: provisioning failed (see consecutiveFailures / logs).
+ * DECOMMISSIONED: retired via the disposal workflow (console §3.4); excluded
+ * from channels.
  */
 public enum RegistrationStatus {
     PENDING,
     ACTIVE,
-    FAILED
+    FAILED,
+    DECOMMISSIONED
 }

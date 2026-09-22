@@ -16,5 +16,8 @@ public record RegisterDeviceRequest(
         @Pattern(regexp = "(?i)LIVESTOCK|PARKING", message = "project must be LIVESTOCK or PARKING")
         String project,
         String externalRef,
+        @Pattern(regexp = "(?i)CAPSULE|TRACKER|GEOMAGNETIC",
+                message = "deviceType must be CAPSULE, TRACKER or GEOMAGNETIC")
+        String deviceType,
         Map<String, Object> capabilities) {
 }

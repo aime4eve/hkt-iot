@@ -25,6 +25,8 @@ public class TbProperties {
     private long pollIntervalMs = 300_000;
     private int lookbackDays = 7;
     private int batchSize = 200;
+    /** TB id of the IoT gateway device whose shared attributes hold OC project mappings. */
+    private String gatewayDeviceId = "0f7da2b0-e91d-11ef-a8ee-99a8c68f9649";
 
     @PostConstruct
     void validateCredentials() {

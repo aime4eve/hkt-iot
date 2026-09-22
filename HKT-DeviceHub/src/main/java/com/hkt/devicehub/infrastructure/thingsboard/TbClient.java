@@ -102,11 +102,127 @@ public class TbClient {
             for (JsonNode device : page.path("data")) {
                 if (variant.equals(device.path("name").asText())) {
                     String id = device.path("id").path("id").asText();
-                    matches.putIfAbsent(id, new TbDeviceView(id, device.path("name").asText()));
+                    matches.putIfAbsent(id, toView(device));
                 }
             }
         }
         return List.copyOf(matches.values());
+    }
+
+    /** Paged listing of all tenant devices (for reconcile / conflicts). */
+    public List<TbDeviceView> listTenantDevices() {
+        List<TbDeviceView> devices = new ArrayList<>();
+        int page = 0;
+        while (true) {
+            JsonNode result = exchangeForJson(
+                    "/api/tenant/devices?pageSize=100&page=" + page, HttpMethod.GET, null);
+            JsonNode data = result.path("data");
+            for (JsonNode device : data) {
+                devices.add(toView(device));
+            }
+            if (data.size() < 100) break;
+            page++;
+        }
+        return devices;
+    }
+
+    /** All TB device profiles as profileId → name (for profile matching). */
+    public Map<String, String> fetchDeviceProfiles() {
+        Map<String, String> profiles = new LinkedHashMap<>();
+        int page = 0;
+        while (true) {
+            JsonNode result = exchangeForJson("/api/deviceProfiles?pageSize=100&page=" + page,
+                    HttpMethod.GET, null);
+            JsonNode data = result.path("data");
+            for (JsonNode profile : data) {
+                profiles.put(profile.path("id").path("id").asText(), profile.path("name").asText());
+            }
+            if (data.size() < 100) break;
+            page++;
+        }
+        return profiles;
+    }
+
+    /** Shared attributes of a device as key → value (gateway OC mapping lives here). */
+    public Map<String, JsonNode> fetchSharedAttributes(String tbDeviceId) {
+        JsonNode attrs = exchangeForJson("/api/plugins/telemetry/DEVICE/" + tbDeviceId
+                + "/values/attributes/SHARED_SCOPE", HttpMethod.GET, null);
+        Map<String, JsonNode> out = new LinkedHashMap<>();
+        if (attrs.isArray()) {
+            for (JsonNode attr : attrs) {
+                out.put(attr.path("key").asText(), attr.path("value"));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Recent frame summaries (DESC, null-artifact filtered) for the device
+     * detail drawer. Values are truncated to keep the payload small.
+     */
+    public List<FrameSummary> fetchRecentFrames(String tbDeviceId, int limit) {
+        String path = "/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/values/timeseries"
+                + "?keys=result,dataHex&startTs=0&endTs=" + System.currentTimeMillis()
+                + "&orderBy=DESC&limit=" + limit;
+        JsonNode timeseries = exchangeForJson(path, HttpMethod.GET, null);
+        List<FrameSummary> frames = new ArrayList<>();
+        for (String key : List.of("result", "dataHex")) {
+            for (JsonNode point : timeseries.path(key)) {
+                JsonNode value = point.path("value");
+                if (value.isNull() || value.isMissingNode()) continue;
+                String text = value.isTextual() ? value.asText() : value.toString();
+                frames.add(new FrameSummary(point.path("ts").asLong(), key,
+                        text.length() > 200 ? text.substring(0, 200) + "…" : text));
+            }
+        }
+        frames.sort((a, b) -> Long.compare(b.ts(), a.ts()));
+        return frames.size() > limit ? frames.subList(0, limit) : frames;
+    }
+
+    /**
+     * Zero-telemetry probe (governance delete precondition): any non-null
+     * point on result/data/dataHex counts as telemetry.
+     */
+    public boolean hasAnyTelemetry(String tbDeviceId) {
+        String path = "/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/values/timeseries"
+                + "?keys=result,data,dataHex&startTs=0&endTs=" + System.currentTimeMillis()
+                + "&orderBy=DESC&limit=5";
+        JsonNode timeseries = exchangeForJson(path, HttpMethod.GET, null);
+        for (String key : List.of("result", "data", "dataHex")) {
+            for (JsonNode point : timeseries.path(key)) {
+                if (!point.path("value").isNull()) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Approximate telemetry volume: non-null points across keys, capped at limit per key. */
+    public int approximateTelemetryCount(String tbDeviceId, int limitPerKey) {
+        String path = "/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/values/timeseries"
+                + "?keys=result,dataHex&startTs=0&endTs=" + System.currentTimeMillis()
+                + "&orderBy=DESC&limit=" + limitPerKey;
+        JsonNode timeseries = exchangeForJson(path, HttpMethod.GET, null);
+        int count = 0;
+        for (String key : List.of("result", "dataHex")) {
+            for (JsonNode point : timeseries.path(key)) {
+                if (!point.path("value").isNull()) count++;
+            }
+        }
+        return count;
+    }
+
+    /** Governance: delete a TB device (only after the zero-telemetry check). */
+    public void deleteDevice(String tbDeviceId) {
+        exchangeForJson("/api/device/" + tbDeviceId, HttpMethod.DELETE, null);
+        log.info("[TB] deleted device {}", tbDeviceId);
+    }
+
+    private static TbDeviceView toView(JsonNode device) {
+        return new TbDeviceView(
+                device.path("id").path("id").asText(),
+                device.path("name").asText(),
+                device.path("createdTime").asLong(0),
+                device.path("deviceProfileId").path("id").asText(null));
     }
 
     /**
@@ -124,24 +240,6 @@ public class TbClient {
         }
         log.info("[TB] created device {} -> {}", devEui, id);
         return id;
-    }
-
-    /** Paged listing of all tenant devices (for reconcile). */
-    public List<TbDeviceView> listTenantDevices() {
-        List<TbDeviceView> devices = new ArrayList<>();
-        int page = 0;
-        while (true) {
-            JsonNode result = exchangeForJson(
-                    "/api/tenant/devices?pageSize=100&page=" + page, HttpMethod.GET, null);
-            JsonNode data = result.path("data");
-            for (JsonNode device : data) {
-                devices.add(new TbDeviceView(
-                        device.path("id").path("id").asText(), device.path("name").asText()));
-            }
-            if (data.size() < 100) break;
-            page++;
-        }
-        return devices;
     }
 
     /**
@@ -273,7 +371,9 @@ public class TbClient {
 
     private record CachedToken(String token, Instant expiresAt) {}
 
-    public record TbDeviceView(String id, String name) {}
+    public record TbDeviceView(String id, String name, long createdTime, String profileId) {}
+
+    public record FrameSummary(long ts, String key, String preview) {}
 
     private static class TbUnauthorizedException extends RuntimeException {
         TbUnauthorizedException(Throwable cause) {

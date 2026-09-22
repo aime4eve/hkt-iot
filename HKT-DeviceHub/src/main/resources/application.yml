@@ -36,6 +36,34 @@ devicehub:
     lookback-days: ${TB_LOOKBACK_DAYS:7}
     batch-size: ${TB_BATCH_SIZE:200}
     last-frame-flush-ms: ${TB_LAST_FRAME_FLUSH_MS:10000}
+    gateway-device-id: ${TB_GATEWAY_DEVICE_ID:0f7da2b0-e91d-11ef-a8ee-99a8c68f9649}
+  ns:
+    enabled: ${NS_ENABLED:false}
+    base-url: ${NS_BASE_URL:http://172.17.201.15:8080}
+    username: ${NS_USERNAME:}
+    password: ${NS_PASSWORD:}
+    org-id: ${NS_ORG_ID:1}
+  # R-02/R-11: deviceType → TB profile mapping. ids resolved by name at
+  # preflight time; fill in concrete ids when the tenant is stable.
+  profiles:
+    CAPSULE:
+      name: 瘤胃胶囊-OC-配置-v2
+    TRACKER:
+      name: 牛羊追踪器-OC-配置-v2
+    GEOMAGNETIC:
+      name: 地磁-OC-配置-v2
+  # R-06: initial expected report intervals (seconds); self-learning TODO.
+  report-intervals:
+    CAPSULE: 14400
+    TRACKER: 60
+    GEOMAGNETIC: 3600
+  topology:
+    ns-host: ${NS_PROBE_HOST:172.17.201.15}
+    ns-port: ${NS_PROBE_PORT:1883}
+    probe-cache-ms: ${TOPOLOGY_PROBE_CACHE_MS:30000}
+  disposal:
+    scan-interval-ms: ${DISPOSAL_SCAN_INTERVAL_MS:300000}
+    scan-initial-delay-ms: ${DISPOSAL_SCAN_INITIAL_DELAY_MS:60000}
 
 management:
   endpoints:

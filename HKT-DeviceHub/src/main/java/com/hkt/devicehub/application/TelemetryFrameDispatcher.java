@@ -1,5 +1,6 @@
 package com.hkt.devicehub.application;
 
+import com.hkt.devicehub.application.disposal.DisposalService;
 import com.hkt.devicehub.domain.model.RegisteredDevice;
 import com.hkt.devicehub.domain.repository.RegisteredDeviceRepository;
 import com.hkt.devicehub.infrastructure.monitoring.TelemetryChannelMetrics;
@@ -25,6 +26,7 @@ public class TelemetryFrameDispatcher {
     private final TelemetryEventPublisher publisher;
     private final RegisteredDeviceRepository deviceRepository;
     private final TelemetryChannelMetrics metrics;
+    private final DisposalService disposalService;
 
     /**
      * @return true when the frame was handed to the broker; false means the
@@ -38,6 +40,12 @@ public class TelemetryFrameDispatcher {
         if (sent) {
             device.setLastEventAt(Instant.ofEpochMilli(frame.ts()));
             deviceRepository.save(device);
+            // Observation auto-close hook (console §3.4 ③) — fail-open.
+            try {
+                disposalService.onFrameArrived(device.getDevEui(), Instant.ofEpochMilli(frame.ts()));
+            } catch (Exception e) {
+                log.warn("[Disposal] resolve hook for {} failed: {}", device.getDevEui(), e.getMessage());
+            }
         }
         return sent;
     }

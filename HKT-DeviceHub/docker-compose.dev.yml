@@ -17,6 +17,11 @@ services:
       TB_USERNAME: ${TB_USERNAME:-tenant@hkt.com}
       TB_PASSWORD: ${TB_PASSWORD:-}
       TB_LOOKBACK_DAYS: ${TB_LOOKBACK_DAYS:-7}
+      NS_ENABLED: ${NS_ENABLED:-false}
+      NS_BASE_URL: ${NS_BASE_URL:-http://172.17.201.15}
+      NS_USERNAME: ${NS_USERNAME:-}
+      NS_PASSWORD: ${NS_PASSWORD:-}
+      NS_ORG_ID: ${NS_ORG_ID:-1}
       ROCKETMQ_NAME_SERVER: rmqnamesrv:9876
     depends_on:
       postgres:

@@ -1,5 +1,6 @@
 package com.hkt.devicehub.interfaces;
 
+import com.hkt.devicehub.application.UnprocessableEntityException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,5 +31,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> conflict(IllegalStateException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                 "status", 409, "error", "Conflict", "message", e.getMessage()));
+    }
+
+    @ExceptionHandler(UnprocessableEntityException.class)
+    public ResponseEntity<Map<String, Object>> unprocessable(UnprocessableEntityException e) {
+        return ResponseEntity.unprocessableEntity().body(Map.of(
+                "status", 422, "error", "Unprocessable Entity", "message", e.getMessage()));
     }
 }

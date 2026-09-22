@@ -66,6 +66,15 @@ LoRaWAN 设备 → NS → IoT Gateway (TB connector) → ThingsBoard
 | devicehub.tb.lookback-days | `TB_LOOKBACK_DAYS` | 7 |
 | devicehub.tb.batch-size | `TB_BATCH_SIZE` | 200 |
 | devicehub.tb.last-frame-flush-ms | `TB_LAST_FRAME_FLUSH_MS` | 10000（WS 侧 last_frame_at 批量刷盘周期） |
+| devicehub.tb.gateway-device-id | `TB_GATEWAY_DEVICE_ID` | 0f7da2b0-e91d-11ef-a8ee-99a8c68f9649（网关 OC 共享属性所在设备） |
+| devicehub.ns.enabled | `NS_ENABLED` | false |
+| devicehub.ns.base-url | `NS_BASE_URL` | http://172.17.201.15:8080 |
+| devicehub.ns.username/password/org-id | `NS_USERNAME`/`NS_PASSWORD`/`NS_ORG_ID` | 空/空/1 |
+| devicehub.profiles.<TYPE>.name | （application.yml） | CAPSULE=瘤胃胶囊-OC-配置-v2 / TRACKER=牛羊追踪器-OC-配置-v2 / GEOMAGNETIC=地磁-OC-配置-v2；profile id 运行时按名称解析，未硬编码 |
+| devicehub.report-intervals.<TYPE> | （application.yml） | CAPSULE=14400 / TRACKER=60 / GEOMAGNETIC=3600 秒（自学习 TODO） |
+| devicehub.topology.ns-host/ns-port | `NS_PROBE_HOST`/`NS_PROBE_PORT` | 172.17.201.15 / 1883 |
+| devicehub.topology.probe-cache-ms | `TOPOLOGY_PROBE_CACHE_MS` | 30000 |
+| devicehub.disposal.scan-interval-ms | `DISPOSAL_SCAN_INTERVAL_MS` | 300000 |
 | spring.cloud.stream.rocketmq.binder.name-server | `ROCKETMQ_NAME_SERVER` | 172.17.10.206:9876 |
 | telemetryFrame-out-0 destination | `DEVICEHUB_TELEMETRY_TOPIC` | DEVICEHUB_TELEMETRY_FRAME |
 
@@ -96,13 +105,32 @@ TB_ENABLED=false ./mvnw spring-boot:run
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/v1/devices/register` | 单设备注册（devEui+project+externalRef+capabilities） |
+| POST | `/api/v1/devices/register` | 单设备注册（devEui+project+externalRef+deviceType+capabilities） |
 | POST | `/api/v1/devices/import` | 批量注册 |
 | GET | `/api/v1/devices/reconcile?project=` | 对账：TB_MISSING / TB_ONLY / TB_IDENTITY_CONFLICT / CONSISTENT |
+| GET | `/api/v1/devices` | 台账分页列表（project/status 筛选 + q 模糊：devEui/externalRef/deviceType） |
+| GET | `/api/v1/devices/{id}` | 详情 + 最近 10 帧摘要（TB REST，null 伪影已过滤） |
+| GET | `/api/v1/devices/preflight?devEui=&deviceType=` | 接入预检五项（R-01）：NS 归属 / 网关映射 / TB 唯一性 / profile 匹配 / 本地绑定，各 PASS/WARN/FAIL + 中文建议 + 依据字段 |
+| GET | `/api/v1/devices/conflicts?project=` | TB 重名冲突清单（R-04），每台候选副本附创建时间/最近遥测/近似遥测条数/绑定方/建议保留 |
+| DELETE | `/api/v1/devices/tb/{tbDeviceId}` | 删除 TB 空副本：服务端强制零遥测校验（含 null 伪影过滤）+ 本地未绑定校验，违反返回 422；成功与拒绝均写 audit_logs（operator 取请求头 X-Operator，默认 console） |
 | GET | `/api/v1/channels/health` | WS 连接状态、各项目追赶滞后、无数据设备数、失败计数 |
+| GET | `/api/v1/channels/topology` | 工作台拓扑聚合（R-10）：NS TCP 可达性、TB 认证、OC 映射项目清单、WS 订阅数 vs ACTIVE 一致性、MQ 24h 消息数（暂为 null+说明）、各项目追赶滞后/noDataDevices；探测缓存 30s |
+| GET | `/api/v1/disposals?status=&project=` | 处置单列表 |
+| GET | `/api/v1/disposals/{id}` | 处置单详情（含 timeline） |
+| POST | `/api/v1/disposals/{id}/submit-approval?assignee=` | 分派并推送钉钉审批（mock）：PENDING_ASSIGN→APPROVING |
+| POST | `/api/v1/disposals/{id}/approve-callback?approved=` | mock 钉钉回调：通过→PROCESSING，驳回→PENDING_ASSIGN |
+| POST | `/api/v1/disposals/{id}/mark-handled` | PROCESSING→OBSERVING（观察截止=now+2×周期） |
+| POST | `/api/v1/disposals/{id}/decommission` | 停用（body.reason 必填）：任意未关闭态→DECOMMISSIONED，设备转 DECOMMISSIONED |
 | ANY | `/api/v1/devices/{id}/commands/**` | 二期占位，一律 501 |
 | GET | `/actuator/health` `/actuator/prometheus` | 健康与指标 |
 | GET | `/swagger-ui.html` | OpenAPI UI |
+
+### 处置队列（console §3.4）
+
+- **自动建单**：定时任务（默认 5min）扫描"注册超过 2×expectedReportIntervalSeconds 且 last_frame_at 为 null"的 ACTIVE 设备；同设备存在未关闭单时不重复建。沉默 >2×周期=NOTICE，>24h=CRITICAL。
+- **自动分诊**：NS 查不到/离线/帧计数=0 → FIELD（现场类）；NS 有上行但 TB 无数据 → PLATFORM（平台类）；NS 不可用默认 FIELD 并记录证据。
+- **观察期自动核销**：帧发布出口（TelemetryFrameDispatcher）挂钩子——OBSERVING 单的设备来帧即 RESOLVED 并记录 first_frame_at；观察超期由定时任务升级 CRITICAL + timeline（不流转状态）。
+- **四级健康灯字段**（台账列表/详情返回 `health`）：`nsActivated`/`hasUplink` 待 NS 逐设备接口，当前恒为 null（文档标注）；`tbDecoded`=TB 侧有帧（含 dataHex fallback 未解码帧）；`ingested`=已发布 MQ。
 
 ### 健康端点字段语义（2026-09 调整）
 

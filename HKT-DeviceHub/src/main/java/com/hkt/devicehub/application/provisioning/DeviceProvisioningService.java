@@ -40,9 +40,10 @@ public class DeviceProvisioningService {
     private final RegisteredDeviceRepository deviceRepository;
     private final NsReconciliationPort nsReconciliation;
     private final ObjectMapper objectMapper;
+    private final com.hkt.devicehub.infrastructure.config.DeviceHubProperties deviceHubProperties;
 
     public record RegisterCommand(String devEui, String project, String externalRef,
-                                  Map<String, Object> capabilities) {}
+                                  String deviceType, Map<String, Object> capabilities) {}
 
     public record RegisterResult(Long id, String devEui, String project, String tbDeviceId,
                                  String status, String result) {}
@@ -71,6 +72,13 @@ public class DeviceProvisioningService {
             device.setStatus(RegistrationStatus.PENDING);
         }
         if (command.externalRef() != null) device.setExternalRef(command.externalRef());
+        if (command.deviceType() != null && !command.deviceType().isBlank()) {
+            device.setDeviceType(command.deviceType().toUpperCase(Locale.ROOT));
+        }
+        // R-06: silence windows derive from the expected interval; seeded per
+        // deviceType, historical-interval self-learning is a TODO.
+        device.setExpectedReportIntervalSeconds(
+                deviceHubProperties.defaultIntervalSeconds(device.getDeviceType()));
         if (command.capabilities() != null) {
             device.setCapabilities(writeCapabilities(command.capabilities()));
         }

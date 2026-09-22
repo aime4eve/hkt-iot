@@ -61,8 +61,7 @@ public class TbWebSocketChannel {
         t.setDaemon(true);
         return t;
     });
-    final Map<Integer, RegisteredDevice> subscriptions = new ConcurrentHashMap<>();
-    private final StringBuilder buffer = new StringBuilder();
+    final Map<Integer, RegisteredDevice> subscriptions = new ConcurrentHashMap<>();    private final StringBuilder buffer = new StringBuilder();
     private final AtomicBoolean reconnectPending = new AtomicBoolean();
     private final AtomicLong epoch = new AtomicLong();
     private volatile WebSocket socket;
@@ -226,6 +225,11 @@ public class TbWebSocketChannel {
             ping.cancel(false);
             ping = null;
         }
+    }
+
+    /** Current WS subscription count, for the topology consistency check (R-10). */
+    public int subscriptionCount() {
+        return subscriptions.size();
     }
 
     @PreDestroy
