@@ -67,6 +67,17 @@ private fun main2(args: Array<String>) = runBlocking {
             val prefix = args.getOrNull(1) ?: error("缺名称前缀")
             verify(port, scope, mainCtx, prefix)
         }
+        "svc-valve" -> {
+            // 开关控制模式下的真实阀动作验证：切端口功能 → 开阀(dur) → 轮询见开 → 自动复位 → 恢复端口
+            val prefix = args.getOrNull(1) ?: error("缺名称前缀")
+            val portValue = args.getOrNull(2)?.toIntOrNull() ?: 3
+            val dur = args.getOrNull(3)?.toIntOrNull() ?: 30
+            svcValveTest(port, scope, mainCtx, prefix, portValue, dur)
+        }
+        "svc-test" -> {
+            val prefix = args.getOrNull(1) ?: error("缺名称前缀")
+            svcTest(port, scope, mainCtx, prefix)
+        }
         "ota" -> {
             val prefix = args.getOrNull(1) ?: error("缺名称前缀")
             val bin = args.getOrNull(2) ?: error("缺固件路径")
@@ -166,6 +177,152 @@ private fun printSnapshot(session: DeviceSession) {
         }
     }
     println("   unknownTail=${session.unknownTail.value} linkLost=${session.linkLost.value} 距上次应答=${session.secondsSinceLastResponse.value}s")
+}
+
+// MARK: - SVC 阀门任务真机专项（实时任务/定时回位/busy）
+
+private suspend fun svcTest(port: MacBridgePort, scope: CoroutineScope, mainCtx: CoroutineContext, prefix: String) {
+    val device = port.scanAndPick(prefix) ?: return
+    val link = port.connectAndWait(device) ?: return
+    val session = DeviceSession(
+        family = DeviceFamily.SVC100, deviceName = device.name, link = link,
+        scope = scope, nowMs = System::currentTimeMillis, epochSeconds = { System.currentTimeMillis() / 1000 },
+    )
+    withContext(mainCtx) { session.start() }
+    delay(4_000)
+
+    suspend fun valve1() = withContext(mainCtx) { session.snapshot.value.valve1State }
+
+    // 对时（SVC=0x06 hkt 帧，应有 ACK）
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val outcome = session.sendTimeSync()
+        session.setPollingSuspended(false)
+        println("① SVC 对时: $outcome")
+    }
+
+    // A. 实时任务：阀1 开、60s 定时回位 → ACK → 轮询见开 → 65s 后设备自动复位关
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(
+            CommandCode.SVC_REALTIME_TASK,
+            HKTFrameEncoder.svcRealtimeTaskPayload(valve = 1, state = 1, durationS = 60, pulse = 0),
+        )
+        session.setPollingSuspended(false)
+        println("② 实时任务(阀1开/60s回位): " + (if (acked) "ACK" else "NO ACK"))
+    }
+    delay(3_000)
+    println("   +3s 阀1=${valve1()}（期望 1=开）")
+    delay(62_000)
+    println("   +65s 阀1=${valve1()}（期望 0=设备自动复位）")
+
+    // B. 全天关阀定时任务（slot15，不依赖设备时钟）→ 设备进入执行中 → 0x03 应被静默忽略(busy)
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(
+            CommandCode.SVC_TIMED_TASK,
+            HKTFrameEncoder.svcTimedTaskPayload(
+                id = 15, valve = 0, state = 0, pulse = 0,
+                startMinute = 0, endMinute = 1439, repeatMask = 0x7F,
+            ),
+        )
+        session.setPollingSuspended(false)
+        println("③ 定时任务(slot15 全天关阀): " + (if (acked) "ACK" else "NO ACK"))
+    }
+    delay(2_500)   // 等固件受理并进入执行
+
+    var busyCount = 0
+    repeat(2) { attempt ->
+        withContext(mainCtx) {
+            // 轮询心跳旁证：链路活着（device 未断），无 ACK 才能归因于 busy
+            delay(1_500)
+            val alive = session.secondsSinceLastResponse.value
+            session.setPollingSuspended(true); delay(1_200)
+            val acked = session.sendWrite(
+                CommandCode.SVC_REALTIME_TASK,
+                HKTFrameEncoder.svcRealtimeTaskPayload(valve = 1, state = 1, durationS = 0, pulse = 0),
+            )
+            session.setPollingSuspended(false)
+            val verdict = if (acked) "ACK（未 busy！）" else "无 ACK"
+            println("④ busy 测试#$attempt 心跳=${alive}s 前 → 0x03: $verdict")
+            if (!acked) busyCount += 1
+        }
+    }
+    println(if (busyCount >= 1) "   ✓ busy 行为证实：定时任务执行中实时任务被固件静默忽略" else "   ✕ 未复现 busy（设备可能未在执行定时任务）")
+
+    // C. 删除任务（ACK 后设备强制停止阀动作）→ 实时任务恢复受理
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(CommandCode.SVC_DELETE_TASK, HKTFrameEncoder.svcDeleteTaskPayload(15))
+        session.setPollingSuspended(false)
+        println("⑤ 删除 slot15: " + (if (acked) "ACK" else "NO ACK"))
+    }
+    delay(2_000)
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(
+            CommandCode.SVC_REALTIME_TASK,
+            HKTFrameEncoder.svcRealtimeTaskPayload(valve = 1, state = 0, durationS = 0, pulse = 0),
+        )
+        session.setPollingSuspended(false)
+        println("⑥ 实时任务(阀1关): " + (if (acked) "ACK（busy 解除，恢复受理）" else "NO ACK"))
+    }
+    println("== SVC 专项完成 ==")
+    withContext(mainCtx) { session.stop() }
+    port.disconnectDevice()
+}
+
+/** 开关控制模式阀动作验证：写 port（其余参数同值）→ 0x03 开阀 → 轮询见开 → 自动复位 → 恢复原 port。 */
+private suspend fun svcValveTest(port: MacBridgePort, scope: CoroutineScope, mainCtx: CoroutineContext, prefix: String, portValue: Int, dur: Int) {
+    val device = port.scanAndPick(prefix) ?: return
+    val link = port.connectAndWait(device) ?: return
+    val session = DeviceSession(
+        family = DeviceFamily.SVC100, deviceName = device.name, link = link,
+        scope = scope, nowMs = System::currentTimeMillis, epochSeconds = { System.currentTimeMillis() / 1000 },
+    )
+    withContext(mainCtx) { session.start() }
+    delay(4_000)
+
+    val base = withContext(mainCtx) { session.snapshot.value }
+    val originalPort = base.portFunction ?: 0
+    println("基线: 端口=$originalPort 阀1=${base.valve1State} 阀2=${base.valve2State} 稳定=${base.stableTimeS}s")
+
+    suspend fun writeConfig(port: Int): Boolean = withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(
+            CommandCode.CONFIG,
+            HKTFrameEncoder.svcConfigPayload(
+                volLevel = base.voltageLevel ?: 1, port = port, stableS = base.stableTimeS ?: 5,
+                autoPower = base.smartPower ?: 0, timezone = base.timezone ?: 8, reportMin = base.reportPeriodMin ?: 60,
+            ),
+        )
+        session.setPollingSuspended(false)
+        acked
+    }
+
+    println("① 端口切换到开关控制(port=$portValue): " + (if (writeConfig(portValue)) "ACK" else "NO ACK"))
+    delay(2_000)
+
+    withContext(mainCtx) {
+        session.setPollingSuspended(true); delay(1_200)
+        val acked = session.sendWrite(
+            CommandCode.SVC_REALTIME_TASK,
+            HKTFrameEncoder.svcRealtimeTaskPayload(valve = 1, state = 1, durationS = dur, pulse = 0),
+        )
+        session.setPollingSuspended(false)
+        println("② 开阀(阀1/${dur}s 回位): " + (if (acked) "ACK" else "NO ACK"))
+    }
+    delay(3_000)
+    val opened = withContext(mainCtx) { session.snapshot.value.valve1State }
+    println("   +3s 阀1=$opened（期望 1=开）")
+    delay((dur + 5) * 1000L)
+    val restored = withContext(mainCtx) { session.snapshot.value.valve1State }
+    println("   自动回位后阀1=$restored（期望 0）")
+
+    println("③ 恢复端口=$originalPort: " + (if (writeConfig(originalPort)) "ACK" else "NO ACK"))
+    println("== SVC 阀动作验证完成 ==")
+    withContext(mainCtx) { session.stop() }
+    port.disconnectDevice()
 }
 
 // MARK: - OTA 真包传输
