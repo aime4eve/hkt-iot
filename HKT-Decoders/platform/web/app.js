@@ -3,7 +3,7 @@
 const { createApp } = Vue;
 
 // 前端错误可视化：任何未捕获错误直接显示为页面顶部红色横幅（便于用户截图反馈）
-window.APP_VER = '20260922a';
+window.APP_VER = '20260922b';
 function showFatalBanner(msg) {
   let bar = document.getElementById('fatal-banner');
   if (!bar) {
@@ -32,6 +32,7 @@ createApp({
       syncing: false,
       importing: false,
       newDev: { open: false, saving: false, err: '', warnDev: null, ackFor: '', form: this.blankNewDev() },
+      trash: { open: false, loading: false, entries: [] },
       mgmt: { saving: false, form: {}, nc: { platform: 'chirpstack', lang: '', version: '', firmwareVersion: '', changelog: '', code: '' }, samplesText: '[]' },
       toast: null,
     };
@@ -402,6 +403,36 @@ createApp({
       this.showToast('文档已上传: ' + r.file);
       await this.openDevice(this.currentId); this.tab = 'manage';
     },
+    async openTrash() {
+      this.trash.open = true;
+      this.trash.loading = true;
+      try {
+        const r = await fetch('/api/trash').then(r => r.json());
+        if (r.error) return this.showToast(r.error, 'bad');
+        this.trash.entries = r.entries || [];
+      } catch (e) { this.showToast('回收站加载失败: ' + e.message, 'bad'); }
+      this.trash.loading = false;
+    },
+    async restoreTrashEntry(e) {
+      const target = e.kind === 'device' ? '设备 ' + e.deviceId : '版本 ' + e.file + ' → ' + e.deviceId;
+      if (!confirm('恢复 ' + target + ' ？')) return;
+      const r = await fetch('/api/trash/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: e.name }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('已恢复: ' + target);
+      await this.openTrash();
+      await this.loadDevices();
+      // 当前打开的设备若受影响（恢复了自己设备的版本），刷新详情
+      if (this.currentId && r.deviceId === this.currentId) await this.openDevice(this.currentId);
+    },
+    async purgeTrashEntry(e) {
+      const target = e.kind === 'device' ? '设备 ' + (e.deviceId || e.name) : (e.file || e.name);
+      if (!confirm('⚠ 彻底删除 ' + target + ' ？\n（从回收站永久移除，不可恢复）')) return;
+      const r = await fetch('/api/trash', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: e.name }) }).then(r => r.json());
+      if (r.error) return this.showToast(r.error, 'bad');
+      this.showToast('已彻底删除');
+      await this.openTrash();
+    },
+    fmtSize(n) { return n == null ? '' : (n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B'); },
     showToast(text, type) {
       this.toast = { text, type: type || 'ok' };
       clearTimeout(this._tt);

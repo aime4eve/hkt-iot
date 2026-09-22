@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HKT 负载解码器调试平台</title>
-<link rel="stylesheet" href="style.css?v=20260922a">
+<link rel="stylesheet" href="style.css?v=20260922b">
 </head>
 <body>
 <div id="app" v-cloak>
@@ -20,6 +20,7 @@
       <button class="btn ghost" @click="newDev.err=''; newDev.warnDev=null; newDev.ackFor=''; newDev.open = true">＋ 新增设备</button>
       <button class="btn ghost" @click="importClick" :disabled="importing">{{ importing ? '导入中…' : '⬆ 导入' }}</button>
       <button class="btn ghost" @click="exportBackup">⬇ 导出备份</button>
+      <button class="btn ghost" @click="openTrash">🗑 回收站</button>
       <input type="file" ref="importFile" accept=".zip" style="display:none" @change="doImport">
     </div>
   </header>
@@ -316,6 +317,35 @@
     </main>
   </div>
 
+
+  <div class="modal" v-if="trash.open" @click.self="trash.open=false">
+    <div class="modal-box">
+      <div class="modal-head"><b>回收站（删除的设备与解码器版本）</b>
+        <button class="btn tiny ghost" @click="trash.open=false">关闭</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint">删除的设备/版本移入此处，不直接销毁。恢复时若目标路径已被占用或版本已重新存在会拒绝并说明原因；「彻底删除」从回收站永久移除。</p>
+        <div v-if="trash.loading" class="hint">加载中…</div>
+        <div v-else-if="!trash.entries.length" class="empty small">回收站是空的</div>
+        <table v-else class="tbl">
+          <thead><tr><th>删除时间</th><th>类型</th><th>归属设备</th><th>文件 / 说明</th><th class="ops">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="e in trash.entries" :key="e.name">
+              <td class="small">{{ e.tsText }}</td>
+              <td><span class="badge" :class="e.kind==='device' ? 'warn' : 'neutral'">{{ e.kind==='device' ? '设备' : (e.kind==='codec' ? '版本' : '未知') }}</span><span v-if="e.legacy" class="badge neutral">旧格式</span></td>
+              <td><code class="small">{{ e.deviceId || '—' }}</code></td>
+              <td class="cl"><code v-if="e.file" class="small">{{ e.file }}</code> <span v-if="e.size" class="dim-text">{{ fmtSize(e.size) }}</span><div v-if="e.note" class="hint">{{ e.note }}</div></td>
+              <td class="ops">
+                <button class="btn tiny" v-if="e.restorable" @click="restoreTrashEntry(e)">恢复</button>
+                <button class="btn tiny danger" @click="purgeTrashEntry(e)">彻底删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" v-if="codeView.open" @click.self="codeView.open=false">
     <div class="modal-box">
       <div class="modal-head">
@@ -400,6 +430,6 @@ setTimeout(function () {
   }
 }, 8000);
 </script>
-<script src="app.js?v=20260922a"></script>
+<script src="app.js?v=20260922b"></script>
 </body>
 </html>

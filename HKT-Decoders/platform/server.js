@@ -110,6 +110,26 @@ app.delete('/api/device', async (req, reply) => {
   return { ok: true, mode: r.mode, trashName: r.trashName || null };
 });
 
+/* ---------------- 回收站 ---------------- */
+
+app.get('/api/trash', async () => ({ entries: repo.listTrash() }));
+
+app.post('/api/trash/restore', async (req, reply) => {
+  const { name } = req.body || {};
+  if (!name) return reply.code(400).send({ error: '需要 name' });
+  const r = repo.restoreTrash(String(name));
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true, ...r };
+});
+
+app.delete('/api/trash', async (req, reply) => {
+  const { name } = req.body || {};
+  if (!name) return reply.code(400).send({ error: '需要 name' });
+  const r = repo.purgeTrash(String(name));
+  if (r.error) return reply.code(400).send(r);
+  return { ok: true };
+});
+
 app.post('/api/device/samples', async (req, reply) => {
   const { id, samples } = req.body || {};
   const r = repo.saveSamples(String(id || ''), samples);

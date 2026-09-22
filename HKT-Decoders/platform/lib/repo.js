@@ -271,7 +271,8 @@ function setStatus(id, file, status, basis) {
 }
 
 /** 删除版本：移入 .trash/（不直接销毁）。current 也可删（强确认在前端），
- *  删除后该平台+语言槽可能无 current（设备可正常展示，回归跳过该槽）。 */
+ *  删除后该平台+语言槽可能无 current（设备可正常展示，回归跳过该槽）。
+ *  回收站条目名 <ts>_codec_<设备路径以.连接>_<原文件名>，并写 .meta.json 台账快照供恢复。 */
 function deleteCodec(id, file) {
   const { dir, meta } = getMeta(id) || {};
   if (!meta) return { error: '设备不存在' };
@@ -279,8 +280,10 @@ function deleteCodec(id, file) {
   if (!c) return { error: '版本不存在: ' + file };
   const src = path.join(dir, file);
   if (fs.existsSync(src)) {
-    const dst = path.join(TRASH, Date.now() + '_' + file.replace(/\//g, '_'));
-    fs.renameSync(src, dst);
+    fs.mkdirSync(TRASH, { recursive: true });
+    const trashName = Date.now() + '_codec_' + String(id).replace(/\//g, '.') + '_' + file;
+    fs.renameSync(src, path.join(TRASH, trashName));
+    writeJson(path.join(TRASH, trashName + '.meta.json'), { ...c });
   }
   meta.codecs = meta.codecs.filter(x => x.file !== file);
   // 清理绑定到被删文件的样例指向，回退为"跑全部 current"逻辑
@@ -350,10 +353,121 @@ function deleteDevice(id) {
     return { mode: 'purged' };
   }
   fs.mkdirSync(TRASH, { recursive: true });
-  const trashName = Date.now() + '_device_' + String(id).replace(/\//g, '_');
+  const trashName = Date.now() + '_device_' + String(id).replace(/\//g, '.');
   fs.renameSync(dir, path.join(TRASH, trashName));
   pruneVendor();
   return { mode: 'trashed', trashName };
+}
+
+/* ---------------- 回收站 ---------------- */
+// 条目命名：新版 <ts>_codec_<设备路径以.连接>_<原文件名>（附 .meta.json 台账快照）/
+//           <ts>_device_<设备路径以.连接>（整目录）。设备路径段（origin/vendor/modelKey）
+//           规范上不含 "." 和 "_"，故 "." 连接可无歧义还原。
+// 旧版条目 <ts>_<原文件名>：按文件名前缀 modelKey 反查设备，查不到/多义则仅展示不可自动恢复。
+
+function trashEntryFromName(name) {
+  const tokens = name.split('_');
+  const ts = Number(tokens[0]);
+  const tsText = Number.isFinite(ts) && ts > 0 ? new Date(ts).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : '';
+  if (tokens[1] === 'device') {
+    // 兼容两种连字符：新 "." 连接；早期 "_" 连接
+    const raw = tokens.slice(2).join('_');
+    const deviceId = raw.includes('.') ? raw.replace(/\./g, '/') : raw.replace(/_/g, '/');
+    return { name, kind: 'device', deviceId, ts, tsText, restorable: true };
+  }
+  if (tokens[1] === 'codec' && tokens[2] && tokens[2].includes('.')) {
+    const deviceId = tokens[2].replace(/\./g, '/');
+    const file = tokens.slice(3).join('_');
+    return { name, kind: 'codec', deviceId, file, ts, tsText, restorable: !!file, hasMeta: fs.existsSync(path.join(TRASH, name + '.meta.json')) };
+  }
+  // 旧格式：<ts>_<modelKey>_<platform>[_<lang>]_v<x.y.z>.js
+  const file = tokens.slice(1).join('_');
+  const modelKey = tokens[1];
+  if (modelKey && /^([a-z0-9][a-z0-9-]*_(chirpstack|ttn|thingsboard|private)(_(cn|en))?_v\d+\.\d+\.\d+\.js)$/.test(file)) {
+    const hits = listDevices().filter(d => d.modelKey === modelKey);
+    if (hits.length === 1) {
+      return { name, kind: 'codec', legacy: true, deviceId: hits[0].id, file, ts, tsText, restorable: true, hasMeta: false, note: '旧格式条目（无台账快照），恢复后按文件名重建台账记录' };
+    }
+    return { name, kind: 'codec', legacy: true, deviceId: null, file, ts, tsText, restorable: false, hasMeta: false, note: hits.length ? 'modelKey 对应多台设备，无法自动归属，需手动恢复' : '未找到 modelKey 对应的现有设备（设备已删或未导入），需先恢复设备或手动恢复' };
+  }
+  return { name, kind: 'unknown', deviceId: null, file: null, ts, tsText, restorable: false, note: '无法识别的回收站条目' };
+}
+
+function listTrash() {
+  if (!fs.existsSync(TRASH)) return [];
+  const out = [];
+  for (const ent of fs.readdirSync(TRASH, { withFileTypes: true }).sort((a, b) => b.name.localeCompare(a.name))) {
+    if (!ent.isFile() && !ent.isDirectory()) continue;
+    if (ent.name.endsWith('.meta.json')) continue; // 台账快照随主条目展示
+    const st = fs.statSync(path.join(TRASH, ent.name));
+    const e = trashEntryFromName(ent.name);
+    // 形态校验：设备条目必须是目录，版本条目必须是文件（防 modelKey 撞 "device"/"codec" 保留字的旧条目误判）
+    if ((e.kind === 'device' && !ent.isDirectory()) || (e.kind === 'codec' && ent.isDirectory())) {
+      e.kind = 'unknown'; e.restorable = false;
+      e.note = '条目形态与类型不符（可能是旧格式条目撞保留字），需手动处理';
+    }
+    e.isDirectory = ent.isDirectory();
+    e.size = ent.isDirectory() ? null : st.size;
+    out.push(e);
+  }
+  return out;
+}
+
+// 回收站条目名仅允许裸文件名，防路径穿越
+function trashPath(name) {
+  if (!name || /[/\\]/.test(name) || name.includes('..')) return null;
+  const p = path.join(TRASH, name);
+  if (path.dirname(p) !== TRASH) return null;
+  return p;
+}
+
+function restoreTrash(name) {
+  const p = trashPath(name);
+  if (!p || !fs.existsSync(p)) return { error: '回收站条目不存在' };
+  const e = trashEntryFromName(name);
+  if (e.kind === 'device') {
+    const dir = safeJoin(e.deviceId);
+    if (!dir) return { error: '非法设备路径: ' + e.deviceId };
+    if (fs.existsSync(dir)) return { error: '目标路径已被占用: ' + e.deviceId + '（已有同名设备，请先处理冲突）' };
+    fs.mkdirSync(path.dirname(dir), { recursive: true });
+    fs.renameSync(p, dir);
+    return { kind: 'device', deviceId: e.deviceId };
+  }
+  if (e.kind === 'codec' && e.restorable) {
+    const { dir, meta } = getMeta(e.deviceId) || {};
+    if (!meta) return { error: '所属设备不存在: ' + e.deviceId + '（若设备也删了，请先在回收站恢复设备）' };
+    if (meta.codecs.some(x => x.file === e.file)) return { error: '该版本已在设备台账中: ' + e.file };
+    const dst = path.join(dir, e.file);
+    if (fs.existsSync(dst)) return { error: '设备目录下已有同名文件: ' + e.file };
+    // 台账记录：优先删除时的快照；旧条目按文件名合成最小记录
+    let rec = readJson(p + '.meta.json');
+    if (rec && rec.file === e.file) {
+      // 快照有效
+    } else {
+      const m = e.file.match(/^([a-z0-9-]+)_(chirpstack|ttn|thingsboard|private)(_(cn|en))?_v(\d+\.\d+\.\d+)\.js$/);
+      if (!m) return { error: '文件名不符合规范，无法重建台账: ' + e.file };
+      rec = { platform: m[2], lang: m[3] ? m[4] : null, file: e.file, decoderVersion: m[5], firmwareVersion: null, current: false, status: 'unverified', basis: [], verifiedAt: null, changelog: '从回收站恢复（旧条目无台账快照，按文件名重建记录）' };
+    }
+    // current 唯一性：同槽位已有别的 current，则恢复项降为非 current
+    if (rec.current && meta.codecs.some(x => x.current && x.file !== e.file && x.platform === rec.platform && (x.lang || null) === (rec.lang || null))) {
+      rec = { ...rec, current: false, changelog: rec.changelog + '；恢复时槽位已有 current，降为非 current' };
+    }
+    fs.renameSync(p, dst);
+    if (fs.existsSync(p + '.meta.json')) fs.unlinkSync(p + '.meta.json'); // 快照信息已入台账
+    meta.codecs.push(rec);
+    writeJson(path.join(dir, 'decoder.json'), meta);
+    return { kind: 'codec', deviceId: e.deviceId, file: e.file, current: !!rec.current };
+  }
+  return { error: '该条目不支持自动恢复: ' + (e.note || e.kind) };
+}
+
+/** 彻底删除回收站条目（含其 .meta.json 快照） */
+function purgeTrash(name) {
+  const p = trashPath(name);
+  if (!p || !fs.existsSync(p)) return { error: '回收站条目不存在' };
+  fs.rmSync(p, { recursive: true, force: true });
+  if (fs.existsSync(p + '.meta.json')) fs.unlinkSync(p + '.meta.json');
+  return { purged: name };
 }
 
 module.exports = {
@@ -361,5 +475,6 @@ module.exports = {
   listDevices, deviceDetail, readTextFile, getFileInfo, readCodecCode,
   getMeta, validateDevicePayload, createDevice, updateMeta,
   addCodec, setCurrent, setStatus, deleteCodec, deleteDevice, saveSamples, saveDoc,
+  listTrash, restoreTrash, purgeTrash,
   FILE_RE, VER_RE, NAME_RE,
 };
