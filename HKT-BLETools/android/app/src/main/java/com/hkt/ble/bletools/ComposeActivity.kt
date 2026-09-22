@@ -34,7 +34,16 @@ import kotlinx.coroutines.launch
  * demoConnect=true：扫描命中 SVC100 前缀即停扫直连（-demo-flow 同构），可演示驻留卡/轮询数据。
  */
 class ComposeActivity : ComponentActivity() {
+
+    // 运行时权限（真机必需）：旧 MainActivity 的请求逻辑未随 UI 迁移，覆盖安装沿用旧授权
+    // 的设备无感，新装设备若不请求则扫描/连接静默失败
+    private val permissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
+    ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestBlePermissionsIfNeeded()
         super.onCreate(savedInstanceState)
         val demo = intent.getBooleanExtra("demo", false)
         val demoConnect = intent.getBooleanExtra("demoConnect", false)
@@ -112,6 +121,24 @@ class ComposeActivity : ComponentActivity() {
             CompositionLocalProvider(LocalHktColors provides hktColors()) {
                 ScanListScreen(model = model, onLocaleChange = onLocaleChange, demoLocateEUI = demoLocateEUI)
             }
+        }
+    }
+
+    /** Android 12+ 需 BLUETOOTH_CONNECT/SCAN 运行时授权；11 及以下需定位。 */
+    private fun requestBlePermissionsIfNeeded() {
+        val needed = buildList {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                add(android.Manifest.permission.BLUETOOTH_CONNECT)
+                add(android.Manifest.permission.BLUETOOTH_SCAN)
+            } else {
+                add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        }.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (needed.isNotEmpty()) {
+            permissionLauncher.launch(needed.toTypedArray())
         }
     }
 }

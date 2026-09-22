@@ -18,6 +18,7 @@ import com.hkt.ble.bletools.core.ble.DiscoveredDevice
 import com.hkt.ble.bletools.core.ble.HKTProfile
 import com.hkt.ble.bletools.core.ble.PeripheralLink
 import com.hkt.ble.bletools.core.ble.ScanOptions
+import com.hkt.ble.bletools.model.LogStore
 import no.nordicsemi.android.support.v18.scanner.BluetoothLeScannerCompat
 import no.nordicsemi.android.support.v18.scanner.ScanCallback
 import no.nordicsemi.android.support.v18.scanner.ScanResult
@@ -119,10 +120,17 @@ class SystemCentral(private val context: Context) :
         val remote: BluetoothDevice = a.getRemoteDevice(device.identifier)
         // 现网同款：连接前先停扫描（macOS/安卓同经验，边扫边连干扰 GATT 建立）
         stopScan()
-        val g = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            remote.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
-        } else {
-            remote.connectGatt(context, false, gattCallback)
+        LogStore.info("GATT 连接发起 ${device.name} (${device.identifier})")
+        val g = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                remote.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            } else {
+                remote.connectGatt(context, false, gattCallback)
+            }
+        } catch (e: SecurityException) {
+            LogStore.error("GATT 连接权限异常: $e")
+            events(ConnectEvent.Failed(ConnectFailure.CONNECTION_LOST))
+            return
         }
         gatt = g
     }
@@ -165,6 +173,13 @@ class SystemCentral(private val context: Context) :
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             onMain {
+                LogStore.info("GATT 状态: newState=$newState status=$status")
+                // 残留回调守卫：旧 gatt 的回调不得误伤新连接的回调槽（真机竞态）
+                if (g !== gatt && newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    LogStore.info("GATT 忽略残留实例断开回调")
+                    runCatching { g.close() }
+                    return@onMain
+                }
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         // requestMtu 入队失败（部分机型）直接进服务发现，不留死等
@@ -190,11 +205,15 @@ class SystemCentral(private val context: Context) :
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
             // MTU 协商失败也继续发现服务（MTU 非硬前提；写长帧由固件 RX 缓冲兜底）
-            onMain { g.discoverServices() }
+            onMain {
+                LogStore.info("GATT MTU=$mtu status=$status")
+                g.discoverServices()
+            }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             onMain {
+                LogStore.info("GATT 服务发现 status=$status")
                 val fail = {
                     connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.SERVICE_MISSING))
                     connectEvents = null
@@ -226,6 +245,7 @@ class SystemCentral(private val context: Context) :
 
         override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             onMain {
+                LogStore.info("GATT 订阅回执 status=$status")
                 if (descriptor.uuid != UUID_CCCD) return@onMain
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     // 订阅成功 = 链路就绪（失败不得报连接成功——M5 自查修正）
