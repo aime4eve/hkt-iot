@@ -27,8 +27,8 @@ import no.nordicsemi.android.support.v18.scanner.ScanSettings
 /**
  * 真蓝牙实现（SystemCentral 的 Kotlin 移植）：BluetoothPort + PeripheralLink 双角色。
  *
- * 连接序（b20 对调，Google BLE 指南/iOS 同序）：链路一通 → 发现服务 → 订阅
- * Indicate（就绪）→ 后置协商 MTU 512（仅 OTA 长帧需要，fire-and-forget）；
+ * 连接序（b21 定稿，V3.21 现网语义 + 本机队列防御）：链路一通 → 立即发现服务
+ * （Google BLE 指南/iOS 同序）→ MTU 512 落定 → 订阅 Indicate（就绪）；
  * 写特征无响应优先；回调统一投递主线程（BluetoothPort 契约）。
  *
  * CoreBluetooth「同会话对同设备只报一次 didDiscover」的坑在安卓 Nordic scanner 不存在
@@ -62,6 +62,10 @@ class SystemCentral(private val context: Context) :
     private var writeCharacteristic: BluetoothGattCharacteristic? = null
     /** 服务发现已受理（discoverServices 返回 true）；false=操作排队被拒，允许补发。 */
     private var discoveryIssued = false
+    /** 订阅已受理（writeDescriptor 返回 true）；false=MTU 在途被拒，允许补发。 */
+    private var subscribeIssued = false
+    /** 收帧计数（遥测：首 5 帧逐帧记，之后每 50 帧记一次——区分「无上行」与「有上行」）。 */
+    private var receivedFrames = 0
 
     // ---- PeripheralLink 对外回调 ----
     override var onReceive: ((ByteArray) -> Unit)? = null
@@ -125,6 +129,8 @@ class SystemCentral(private val context: Context) :
         stopScan()
         LogStore.info("GATT 连接发起 ${device.name} (${device.identifier})")
         discoveryIssued = false
+        subscribeIssued = false
+        receivedFrames = 0
         val g = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 remote.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
@@ -162,13 +168,29 @@ class SystemCentral(private val context: Context) :
     override fun send(frame: ByteArray) {
         val g = gatt ?: return
         val ch = writeCharacteristic ?: return
+        // iOS 对位（canSendWriteWithoutResponse 优先）：特征支持则用无响应写——
+        // 透明桥模组按 write-command 收帧最稳，也免占客户端操作队列等写回执
+        val noResponse =
+            ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            g.writeCharacteristic(ch, frame, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+            val code = g.writeCharacteristic(
+                ch, frame,
+                if (noResponse) BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+            )
+            if (code != 0) {   // BluetoothStatusCodes.SUCCESS == 0（常量内联，免引 33+ 类）
+                LogStore.warn("GATT 写被拒 err=$code len=${frame.size}")
+            }
         } else {
+            @Suppress("DEPRECATION")
+            ch.writeType = if (noResponse) BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             @Suppress("DEPRECATION")
             ch.value = frame
             @Suppress("DEPRECATION")
-            g.writeCharacteristic(ch)
+            if (!g.writeCharacteristic(ch)) {
+                LogStore.warn("GATT 写被拒（旧 API）len=${frame.size}")
+            }
         }
     }
 
@@ -179,6 +201,28 @@ class SystemCentral(private val context: Context) :
         discoveryIssued = accepted
         // 受理=false＝操作队列忙（真机排障关键信号：出现即序位冲突，回调必不来）
         LogStore.info("GATT 服务发现请求 受理=$accepted")
+    }
+
+    /** 订阅单飞（本地通知开关 + CCCD 写）：仅在 writeDescriptor 受理时置位；被拒留给 MTU 回调/兜底时钟补发。 */
+    private fun ensureSubscribe(g: BluetoothGatt) {
+        if (subscribeIssued) return
+        val indicate = indicateCharacteristic ?: return
+        g.setCharacteristicNotification(indicate, true)
+        val cccd = indicate.getDescriptor(UUID_CCCD) ?: return
+        // 现网 V3.21 同款坑位修正：该特征属性为 NOTIFY，CCCD 必须写 0x0100——
+        // 写 INDICATION 值(0x0200)设备拒收 → onDescriptorWrite status=129（真机实证）
+        val cccdValue =
+            if (indicate.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
+                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            } else {
+                BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+            }
+        @Suppress("DEPRECATION")
+        cccd.value = cccdValue
+        @Suppress("DEPRECATION")
+        val accepted = g.writeDescriptor(cccd)
+        subscribeIssued = accepted
+        LogStore.info("GATT 订阅请求 受理=$accepted")
     }
 
     // ---- GATT 回调（系统线程 → 主线程投递） ----
@@ -225,8 +269,11 @@ class SystemCentral(private val context: Context) :
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
-            // MTU 已后置为链路就绪后的长帧准备（仅 OTA 需要）：结果只记录，不驱动连接流程
-            onMain { LogStore.info("GATT MTU=$mtu status=$status") }
+            // MTU 落定 → 订阅（正常路径：此刻队列空闲必受理；兜底已受理过则单飞跳过）
+            onMain {
+                LogStore.info("GATT MTU=$mtu status=$status")
+                if (g === gatt) ensureSubscribe(g)
+            }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
@@ -252,19 +299,18 @@ class SystemCentral(private val context: Context) :
                 writeCharacteristic = write
                 // 三阶段上报②服务与特征就绪（Android 单回调＝iOS 服务发现+特征发现两步合并）
                 connectEvents?.invoke(ConnectEvent.ServicesDiscovered)
-                g.setCharacteristicNotification(indicate, true)
-                // 现网 V3.21 同款坑位修正：该特征属性为 NOTIFY，CCCD 必须写 0x0100——
-                // 写 INDICATION 值(0x0200)设备拒收 → onDescriptorWrite status=129（真机实证）
-                val cccd = indicate.getDescriptor(UUID_CCCD)
-                val cccdValue = if (indicate.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
-                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                // 订阅序（b21 回归 V3.21 现网语义）：先谈 MTU、落定后再写 CCCD——
+                // b20 曾把 MTU 后置到订阅之后，真机轮询/ACK 双无（设备开机却显示
+                // 开机页＝上行帧零到达）：透明桥模组 notify 管线在订阅后遭遇 MTU
+                // 交换会停摆。本机队列怪癖防御（b18/b19 教训）：MTU 请求在途时写
+                // CCCD 会被拒（ensureSubscribe 受理=false 不置位），由 onMtuChanged
+                // 或兜底时钟补发。
+                if (g.requestMtu(512)) {
+                    mainHandler.postDelayed({ if (g === gatt) ensureSubscribe(g) }, 1_500)
+                    mainHandler.postDelayed({ if (g === gatt) ensureSubscribe(g) }, 3_000)
                 } else {
-                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                    ensureSubscribe(g)
                 }
-                @Suppress("DEPRECATION")
-                cccd.value = cccdValue
-                @Suppress("DEPRECATION")
-                g.writeDescriptor(cccd)
             }
         }
 
@@ -277,11 +323,6 @@ class SystemCentral(private val context: Context) :
                     connectedDevice = pendingConnectDevice
                     connectEvents?.invoke(ConnectEvent.NotificationsEnabled)
                     connectEvents = null
-                    // 就绪后再协商 MTU（fire-and-forget，写描述符刚完成队列必空闲）：
-                    // 命令帧 ≤20 字节不依赖大 MTU，OTA 长帧前通常早已谈妥（真机 ~1s 回）；
-                    // 部分设备不回也不阻塞链路——正是 b17「MTU 迟迟不回」场景的安全位
-                    val ok = g.requestMtu(512)
-                    LogStore.info("GATT MTU 后置协商 受理=$ok")
                 } else {
                     connectEvents?.invoke(ConnectEvent.Failed(ConnectFailure.CONNECTION_LOST))
                     connectEvents = null
@@ -290,7 +331,15 @@ class SystemCentral(private val context: Context) :
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
-            onMain { onReceive?.invoke(value) }
+            onMain {
+                // 收帧遥测：区分「上行断流」与「上行正常」的关键信号（b20 后真机
+                // 设备开机却零上行，日志无从分辨）
+                receivedFrames += 1
+                if (receivedFrames <= 5 || receivedFrames % 50 == 0) {
+                    LogStore.info("GATT 收帧 #$receivedFrames len=${value.size}")
+                }
+                onReceive?.invoke(value)
+            }
         }
 
         @Deprecated("pre-33 path")
@@ -298,6 +347,11 @@ class SystemCentral(private val context: Context) :
         override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             val value = characteristic.value ?: return
             onCharacteristicChanged(g, characteristic, value)
+        }
+
+        override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            // 仅带响应写会回调（无响应写靠 send() 的受理码把关）
+            onMain { if (status != BluetoothGatt.GATT_SUCCESS) LogStore.warn("GATT 写回执 err=$status") }
         }
     }
 
