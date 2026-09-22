@@ -284,5 +284,17 @@
     },
     "expectError": false,
     "note": "示例帧原文；回执 MSGID 0x17。期望值=文档语义字段（解码器输出与文档示例逐字段核对一致）"
+  },
+  {
+    "name": "真机：4.3.1 固件版本应答（无校验和尾字节）",
+    "source": "field",
+    "payload": "BDBB104332333130414C2E383638414F2E3036",
+    "fPort": null,
+    "expectData": {
+      "Version_len": 16,
+      "Version": "C2310AL.868AO.06"
+    },
+    "expectError": false,
+    "note": "真机 EU868 手环版本应答（用户报障帧，2026-09-22）。长度字节 0x10=16 与 16 字节 ASCII 精确吻合后帧即结束——无校验和尾字节：尾字节 0x36 是 ASCII \"6\"（补全版本串 .06，与手册示例串形 C2310L.470.AA.01 同构），而手册带 CK 帧按 0xFF-Σ(除CK外全帧) 验尾应为 1A 类字节。期望值由长度字段+ASCII 逐字节独立推导。v1.0.3 判 truncated 拒解，v1.0.4 修复"
   }
 ]

@@ -34,11 +34,23 @@
       "file": "b2315l_chirpstack_en_v1.0.3.js",
       "decoderVersion": "1.0.3",
       "firmwareVersion": "v2.1",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
       "changelog": "dateFormat 固定北京时间（UTC+8 偏移 + getUTC*），修复 v1.0.2 依赖宿主时区的问题——在 UTC 服务器上时间字段偏 8 小时（黄金样例服务器回归暴露）；其余与 v1.0.2 一致"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "b2315l_chirpstack_en_v1.0.4.js",
+      "decoderVersion": "1.0.4",
+      "firmwareVersion": "v2.1",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "0xBB 版本应答帧容忍无校验和尾字节：真机 EU868 手环（版本串 C2310AL.868AO.06，与手册 4.3.1 示例 C2310L.470.AA.01 同族）应答长度字节 0x10 与 16 字节 ASCII 精确吻合后帧即结束——v1.0.3 的 4+len 守卫判 truncated 拒解。checksum 槽位缺失或为下一帧 0xBD 头时按 3+len 消费；带 CK 手册帧与紧凑帧行为不变。其余帧型未见过无 CK 实证，不臆测扩展"
     }
   ],
   "deviations": [],
