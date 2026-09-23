@@ -641,6 +641,21 @@ async function api(path, opts) {
   if (r.status === 204) return null;
   return r.json();
 }
+/* register-specific client: 200 = REGISTERED/ALREADY_REGISTERED; 422 body is
+   {status:"FAILED", result:"FAILED: <reason>"} — surface the reason, not the HTTP code */
+async function registerDevice(payload) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (OPERATOR) headers['X-Operator'] = encodeURIComponent(OPERATOR);
+  const r = await fetch(API + '/devices/register', { method:'POST', headers, body: JSON.stringify(payload) });
+  let j = null;
+  try { j = await r.json(); } catch (e) { /* non-json body */ }
+  if (!r.ok) {
+    let reason = j && typeof j.result === 'string' ? j.result.replace(/^FAILED:\s*/, '') : '';
+    if (!reason) reason = j && j.message ? j.message : 'HTTP ' + r.status;
+    throw new Error(reason);
+  }
+  return j;
+}
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1182,8 +1197,7 @@ async function startReregister(row) {
   regOps[row.id] = 'running';
   renderDeviceRows();
   try {
-    const r = await api('/devices/register', { method:'POST', body: JSON.stringify({
-      devEui: row.devEui, project: row.project, deviceType: row.deviceType }) });
+    const r = await registerDevice({ devEui: row.devEui, project: row.project, deviceType: row.deviceType });
     regTrace[row.devEui] = { at: new Date(), result: r.result, tbDeviceId: r.tbDeviceId };
     toast('重新注册完成：' + row.devEui + ' · ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册'));
     delete regOps[row.id];
@@ -1209,12 +1223,13 @@ function flashRow(id, ok) {
 }
 async function startReconcile(row) {
   if (!row) return;
+  const DIFF_LABELS = { TB_MISSING:'TB 侧缺失', LOCAL_NOT_ACTIVE:'本地未激活', TB_IDENTITY_CONFLICT:'同名设备冲突' };
   try {
     const r = await api('/devices/reconcile?project=' + row.project);
     const hit = (r.rows || []).find(x => x.devEui === row.devEui);
     if (!hit) toast('对账：' + row.devEui + ' 不在本项对账清单中');
     else if (!hit.differenceCodes || !hit.differenceCodes.length) toast('对账一致：' + row.devEui + ' · NS/TB/本地无差异');
-    else toast('对账差异：' + row.devEui + ' · ' + hit.differenceCodes.join('、'), true);
+    else toast('对账差异：' + row.devEui + ' · ' + hit.differenceCodes.map(c => DIFF_LABELS[c] || c).join('、'), true);
   } catch (e) { toast('对账失败：' + e.message, true); }
 }
 
@@ -1332,8 +1347,7 @@ function renderReport(eui, report) {
   if (reg) reg.addEventListener('click', async () => {
     reg.disabled = true; reg.textContent = '注册中…';
     try {
-      const r = await api('/devices/register', { method:'POST', body: JSON.stringify({
-        devEui: eui, project: $('#pfProject').value }) });
+      const r = await registerDevice({ devEui: eui, project: $('#pfProject').value });
       reg.textContent = '✓ ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册');
       toast('注册成功：' + eui + ' · ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册') + ' · ' + (r.tbDeviceId || ''));
       regTrace[eui] = { at: new Date(), result: r.result, tbDeviceId: r.tbDeviceId };
@@ -1458,7 +1472,9 @@ function renderConflicts() {
               : '<button class="btn danger sm" data-del="' + ci + '|' + cd.tbDeviceId + '">删除空副本</button>') + '</td>' +
           '</tr>').join('') +
         '</tbody></table></div>' +
-        '<div style="margin-top:var(--space-3)"><button class="btn sm" data-rereg="' + c.devEui + '" data-proj="PARKING">重新注册 ' + c.devEui + '</button></div>' +
+        '<div style="margin-top:var(--space-3)"><button class="btn sm" data-rereg="' + c.devEui + '" data-proj="PARKING"' +
+          (c.candidates.length > 1 ? ' disabled' : '') + '>重新注册 ' + c.devEui + '</button>' +
+          (c.candidates.length > 1 ? ' <span class="dim" style="font-size:12px">请先删除空副本至仅剩一台，再重新注册</span>' : '') + '</div>' +
       '</div></div>'
   ).join('');
 }
@@ -1486,7 +1502,7 @@ $('#conflictList').addEventListener('click', async e => {
     e.stopPropagation();
     reregBtn.disabled = true;
     try {
-      const r = await api('/devices/register', { method:'POST', body: JSON.stringify({ devEui: reregBtn.dataset.rereg, project: reregBtn.dataset.proj }) });
+      const r = await registerDevice({ devEui: reregBtn.dataset.rereg, project: reregBtn.dataset.proj });
       regTrace[reregBtn.dataset.rereg] = { at: new Date(), result: r.result, tbDeviceId: r.tbDeviceId };
       toast('重新注册完成：' + reregBtn.dataset.rereg + ' · ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册'));
     } catch (err) { toast('重新注册失败：' + err.message, true); }
