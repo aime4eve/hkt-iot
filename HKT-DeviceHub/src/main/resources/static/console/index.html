@@ -1459,9 +1459,17 @@ function renderConflicts() {
         '<span class="badge warn" style="margin-left:auto">待处理</span>' +
       '</div>' +
       '<div class="conflict-body">' +
-        '<div class="table-wrap"><table class="cmp-table"><thead><tr><th>TB 设备 ID</th><th>创建时间</th><th>最近遥测</th><th>遥测条数</th><th>当前被谁绑定</th><th>判定 / 操作</th></tr></thead><tbody>' +
-        c.candidates.map(cd =>
-          '<tr' + (cd.suggestedKeep ? ' class="keep"' : '') + '>' +
+        '<div class="table-wrap"><table class="cmp-table"><thead><tr><th>设备名称</th><th>Profile</th><th>TB 设备 ID</th><th>创建时间</th><th>最近遥测</th><th>遥测条数</th><th>当前被谁绑定</th><th>判定 / 操作</th></tr></thead><tbody>' +
+        c.candidates.map(cd => {
+          /* case-variant detection: same lowercase name across candidates, but raw form differs */
+          const lower = (cd.tbName || '').toLowerCase();
+          const caseVariant = !!cd.tbName && cd.tbName !== lower &&
+            c.candidates.every(o => (o.tbName || '').toLowerCase() === lower);
+          return '<tr' + (cd.suggestedKeep ? ' class="keep"' : '') + '>' +
+          '<td class="mono" style="white-space:nowrap">' + (caseVariant
+            ? '<span title="大小写变体，平台规范为小写" style="color:var(--warn);background:color-mix(in srgb, var(--warn) 12%, transparent);border-radius:3px;padding:0 3px">' + esc(cd.tbName) + '</span>'
+            : esc(cd.tbName || '—')) + '</td>' +
+          '<td class="dim">' + esc(cd.profileName || '-') + '</td>' +
           '<td class="mono">' + cd.tbDeviceId + '</td>' +
           '<td class="mono">' + fmtAbs(new Date(cd.createdTime).toISOString()) + '</td>' +
           '<td class="mono">' + (cd.latestTelemetryAt ? fmtAbs(cd.latestTelemetryAt) : '—') + '</td>' +
@@ -1470,7 +1478,8 @@ function renderConflicts() {
           '<td>' + (cd.suggestedKeep
               ? '<span class="badge ok">★ 建议保留（有遥测）</span>'
               : '<button class="btn danger sm" data-del="' + ci + '|' + cd.tbDeviceId + '">删除空副本</button>') + '</td>' +
-          '</tr>').join('') +
+          '</tr>';
+        }).join('') +
         '</tbody></table></div>' +
         '<div style="margin-top:var(--space-3)"><button class="btn sm" data-rereg="' + c.devEui + '" data-proj="PARKING"' +
           (c.candidates.length > 1 ? ' disabled' : '') + '>重新注册 ' + c.devEui + '</button>' +

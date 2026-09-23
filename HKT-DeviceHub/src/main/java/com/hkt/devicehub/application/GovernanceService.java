@@ -40,7 +40,7 @@ public class GovernanceService {
 
     public record ConflictCopy(String tbDeviceId, String tbName, long createdTime,
                                Instant latestTelemetryAt, int approxTelemetryCount,
-                               boolean boundLocally, boolean suggestedKeep) {}
+                               String profileName, boolean boundLocally, boolean suggestedKeep) {}
 
     public record ConflictRow(String devEui, Long localDeviceId, String boundTbDeviceId,
                               List<ConflictCopy> candidates) {}
@@ -61,6 +61,7 @@ public class GovernanceService {
         }
 
         List<ConflictRow> rows = new ArrayList<>();
+        Map<String, String> profileNames = tbClient.fetchDeviceProfiles();
         byLowerName.forEach((eui, views) -> {
             if (views.size() < 2) return;
             RegisteredDevice local = localByEui.get(eui);
@@ -68,12 +69,13 @@ public class GovernanceService {
                     local == null ? null : local.getId(),
                     local == null || local.getTbDeviceId() == null
                             ? null : local.getTbDeviceId().toString(),
-                    views.stream().map(view -> toCopy(view, local)).toList()));
+                    views.stream().map(view -> toCopy(view, local, profileNames)).toList()));
         });
         return rows;
     }
 
-    private ConflictCopy toCopy(TbClient.TbDeviceView view, RegisteredDevice local) {
+    private ConflictCopy toCopy(TbClient.TbDeviceView view, RegisteredDevice local,
+                                Map<String, String> profileNames) {
         Instant latest = null;
         int count = 0;
         try {
@@ -84,8 +86,9 @@ public class GovernanceService {
         }
         boolean bound = local != null && local.getTbDeviceId() != null
                 && local.getTbDeviceId().toString().equals(view.id());
+        String profileName = profileNames.get(view.profileId());
         return new ConflictCopy(view.id(), view.name(), view.createdTime(), latest, count,
-                bound, count > 0 || latest != null);
+                profileName, bound, count > 0 || latest != null);
     }
 
     /**
