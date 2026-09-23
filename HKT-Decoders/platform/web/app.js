@@ -3,7 +3,7 @@
 const { createApp } = Vue;
 
 // 前端错误可视化：任何未捕获错误直接显示为页面顶部红色横幅（便于用户截图反馈）
-window.APP_VER = '20260922b';
+window.APP_VER = '20260922c';
 function showFatalBanner(msg) {
   let bar = document.getElementById('fatal-banner');
   if (!bar) {
@@ -210,12 +210,27 @@ createApp({
     async copyCode(file) {
       const r = await fetch('/api/file?path=' + encodeURIComponent(this.devicePath(file))).then(r => r.json());
       if (r.error) return this.showToast(r.error, 'bad');
-      try { await navigator.clipboard.writeText(r.content); this.showToast('已复制 ' + file); }
-      catch (e) { this.showToast('复制失败（浏览器权限）', 'bad'); }
+      (await this.copyText(r.content)) ? this.showToast('已复制 ' + file) : this.showToast('复制失败', 'bad');
     },
     async copyViewed() {
-      try { await navigator.clipboard.writeText(this.codeView.content); this.showToast('已复制'); }
-      catch (e) { this.showToast('复制失败（浏览器权限）', 'bad'); }
+      (await this.copyText(this.codeView.content)) ? this.showToast('已复制') : this.showToast('复制失败', 'bad');
+    },
+    // navigator.clipboard 只在安全上下文（HTTPS / localhost）可用——平台常以
+    // http://<内网IP> 访问，该接口不存在或被拒；必须回退到 execCommand 才能复制
+    async copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* 落入回退 */ }
+      }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) { return false; }
     },
     openDoc(file) { window.open('/api/doc?path=' + encodeURIComponent(this.devicePath(file)), '_blank'); },
     exportBackup() { window.open('/api/export', '_blank'); this.showToast('备份包开始下载'); },
