@@ -66,8 +66,8 @@ class SystemCentral(private val context: Context) :
     private var subscribeIssued = false
     /** 收帧计数（遥测：首 5 帧逐帧记，之后每 50 帧记一次——区分「无上行」与「有上行」）。 */
     private var receivedFrames = 0
-    /** 写类型按特征能力位定（服务发现时解析）：有无响应位→无响应写，否则带响应写。 */
-    private var preferNoResponseWrite = true
+    /** 写类型（服务发现时按特征写位定案）：一律无响应写命令（v1/iOS 生产语义）。 */
+    private var writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
 
     // ---- PeripheralLink 对外回调 ----
     override var onReceive: ((ByteArray) -> Unit)? = null
@@ -170,25 +170,20 @@ class SystemCentral(private val context: Context) :
     override fun send(frame: ByteArray) {
         val g = gatt ?: return
         val ch = writeCharacteristic ?: return
-        // 写类型按特征能力位选（b22）：Android 13+ 新写接口会先校验 writeType 与特征
-        // 属性位——EPS/SVC 的写特征只声明「带响应写」，统一无响应写被 201
-        // (FEATURE_NOT_SUPPORTED) 拒收、轮询全灭（b21 真机实证）；MPS 两位齐备走
-        // 无响应（v1 生产语义）。旧 API 不校验，但按同一位选法保持两路径一致。
-        val noResponse = preferNoResponseWrite &&
-            ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+        // 写类型一律无响应写命令（b23，v1/iOS 生产语义）：EPS/SVC 固件不回 ATT 写
+        // 应答——带响应写的回执永不到 → 客户端 mDeviceBusy 卡死 → 后续写全部
+        // 201(ERROR_GATT_WRITE_REQUEST_BUSY) 拒发（真机实证，SDK 源码核实数值：
+        // 200=WRITE_NOT_ALLOWED 才是能力缺失，201=BUSY）。无响应写命令无需设备
+        // 回执、发送即完成，v1 一直这么写故从未出事；新 API 客户端校验仅要求
+        // 「特征有任一写位」，与写类型无关。
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val code = g.writeCharacteristic(
-                ch, frame,
-                if (noResponse) BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-            )
+            val code = g.writeCharacteristic(ch, frame, writeType)
             if (code != 0) {   // BluetoothStatusCodes.SUCCESS == 0（常量内联，免引 33+ 类）
                 LogStore.warn("GATT 写被拒 err=$code len=${frame.size}")
             }
         } else {
             @Suppress("DEPRECATION")
-            ch.writeType = if (noResponse) BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-            else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            ch.writeType = writeType
             @Suppress("DEPRECATION")
             ch.value = frame
             @Suppress("DEPRECATION")
@@ -301,11 +296,19 @@ class SystemCentral(private val context: Context) :
                 }
                 indicateCharacteristic = indicate
                 writeCharacteristic = write
-                // 写类型按该设备特征能力位定案并留遥测（EPS/SVC 只声明带响应位——b21 真机 201 拒收实证）
-                preferNoResponseWrite =
-                    write.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+                // 写类型定案并留遥测：无响应写命令优先（b23 定稿）；仅特征连任一写位
+                // 都没有时兜底带响应（该兜底下新 API 会拒 200，日志可见）
+                val props = write.properties
+                writeType =
+                    if (props and (BluetoothGattCharacteristic.PROPERTY_WRITE
+                            or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) == 0
+                    ) {
+                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    } else {
+                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                    }
                 LogStore.info(
-                    "GATT 写特征属性=0x${write.properties.toString(16)} 写法=${if (preferNoResponseWrite) "无响应" else "带响应"}",
+                    "GATT 写特征属性=0x${props.toString(16)} 写法=${if (writeType == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) "无响应" else "带响应"}",
                 )
                 // 三阶段上报②服务与特征就绪（Android 单回调＝iOS 服务发现+特征发现两步合并）
                 connectEvents?.invoke(ConnectEvent.ServicesDiscovered)
