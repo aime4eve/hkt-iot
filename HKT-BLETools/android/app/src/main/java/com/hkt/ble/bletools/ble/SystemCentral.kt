@@ -66,6 +66,8 @@ class SystemCentral(private val context: Context) :
     private var subscribeIssued = false
     /** 收帧计数（遥测：首 5 帧逐帧记，之后每 50 帧记一次——区分「无上行」与「有上行」）。 */
     private var receivedFrames = 0
+    /** 写类型按特征能力位定（服务发现时解析）：有无响应位→无响应写，否则带响应写。 */
+    private var preferNoResponseWrite = true
 
     // ---- PeripheralLink 对外回调 ----
     override var onReceive: ((ByteArray) -> Unit)? = null
@@ -168,9 +170,11 @@ class SystemCentral(private val context: Context) :
     override fun send(frame: ByteArray) {
         val g = gatt ?: return
         val ch = writeCharacteristic ?: return
-        // iOS 对位（canSendWriteWithoutResponse 优先）：特征支持则用无响应写——
-        // 透明桥模组按 write-command 收帧最稳，也免占客户端操作队列等写回执
-        val noResponse =
+        // 写类型按特征能力位选（b22）：Android 13+ 新写接口会先校验 writeType 与特征
+        // 属性位——EPS/SVC 的写特征只声明「带响应写」，统一无响应写被 201
+        // (FEATURE_NOT_SUPPORTED) 拒收、轮询全灭（b21 真机实证）；MPS 两位齐备走
+        // 无响应（v1 生产语义）。旧 API 不校验，但按同一位选法保持两路径一致。
+        val noResponse = preferNoResponseWrite &&
             ch.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val code = g.writeCharacteristic(
@@ -297,6 +301,12 @@ class SystemCentral(private val context: Context) :
                 }
                 indicateCharacteristic = indicate
                 writeCharacteristic = write
+                // 写类型按该设备特征能力位定案并留遥测（EPS/SVC 只声明带响应位——b21 真机 201 拒收实证）
+                preferNoResponseWrite =
+                    write.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+                LogStore.info(
+                    "GATT 写特征属性=0x${write.properties.toString(16)} 写法=${if (preferNoResponseWrite) "无响应" else "带响应"}",
+                )
                 // 三阶段上报②服务与特征就绪（Android 单回调＝iOS 服务发现+特征发现两步合并）
                 connectEvents?.invoke(ConnectEvent.ServicesDiscovered)
                 // 订阅序（b21 回归 V3.21 现网语义）：先谈 MTU、落定后再写 CCCD——

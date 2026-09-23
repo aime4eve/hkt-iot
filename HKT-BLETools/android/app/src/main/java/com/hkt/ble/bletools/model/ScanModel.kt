@@ -340,7 +340,10 @@ class ScanModel(
 
     /** R-31 断开连接：停轮询 + GATT 断开 + 清驻留（设备进最近设备）。 */
     fun disconnectActive() {
-        LogStore.info(if (HktLang.isZh) "手动断开（预期断开，不自动重连）" else "Manual disconnect (expected, no auto-reconnect)")
+        // 双调用路径（对话框确认/连接前清理）会让本函数走到两次——仅首次落日志（真机日志双行实证）
+        if (_activeSession.value != null) {
+            LogStore.info(if (HktLang.isZh) "手动断开（预期断开，不自动重连）" else "Manual disconnect (expected, no auto-reconnect)")
+        }
         _residentDevice.value?.let { _lastSession.value = it }
         _activeSession.value?.stop()
         _activeSession.value = null
