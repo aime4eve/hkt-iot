@@ -1074,7 +1074,7 @@ bool AT_LoRaWAN_setPower(int power)
 {
     u16 retry = 0;
     char powerStr[] = "AT+POWER=0";
-    sprintf(powerStr, "AT+POWER=%d", powerStr);
+    sprintf(powerStr, "AT+POWER=%d", power);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(powerStr, 1500, "OK")) {
             return TRUE;
