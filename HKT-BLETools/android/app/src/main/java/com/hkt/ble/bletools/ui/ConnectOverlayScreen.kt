@@ -59,7 +59,8 @@ fun ConnectOverlayScreen(model: ConnectModel, onFinished: () -> Unit) {
     val failureText = connectFailureText(failure, zh)
 
     Column(Modifier.fillMaxSize().background(c.bg)) {
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        // ⚠️ 必须填满宽度再居中：Box 只包内容宽时会被外层 Column 贴左放置（真机截图 2026-09-23）
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             if (failed) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

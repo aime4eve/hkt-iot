@@ -133,7 +133,11 @@ fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}
     Box(Modifier.fillMaxSize().background(c.bg)) {
         Column(Modifier.fillMaxSize()) {
             NavbarLarge(title = "HKT BLETools") {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 两按钮字形行高不同（⚙︎ emoji 回退撑高）→ 必须显式垂直居中（真机截图 2026-09-23）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     // ⌖ 扫描：直启相机扫码定位（P-01b 定位流）
                     LinkButton(title = if (zh) "⌖ 扫描" else "⌖ Locate") { showLocate = true }
                     LinkButton(title = if (zh) "⚙︎ 设置" else "⚙︎ Settings") { showSettings = true }

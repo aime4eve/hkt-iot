@@ -75,7 +75,8 @@ fun SessionButton(title: String, danger: Boolean = false, action: () -> Unit) {
 
 /**
  * 会话控制卡（.sessionbar，规格卡 §3.1）：r12、card 底、外边距 0 16 12、内边距 13 14；
- * 设备名 23px/750；badge 右侧；meta 右对齐 12px text2 等宽数字；动作 2×2。
+ * 设备名 23px/750；badge 右侧；meta 右对齐 12px text2 等宽数字；
+ * 动作单行 2+2（2026-09-23 用户裁决）：前半居左、后半居右。
  */
 @Composable
 fun SessionControlCard(
@@ -113,14 +114,17 @@ fun SessionControlCard(
             modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 12.dp),
             textAlign = TextAlign.Right,
         )
-        // session-actions 2×2 grid gap 6
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            actions.chunked(2).forEach { rowActions ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    rowActions.forEach { it() }
-                    repeat(2 - rowActions.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
+        // session-actions 单行：左组（返回/首页）+ 弹性空隙 + 右组（固件升级/断开连接）；
+        // ≤2 个动作全部居左（防其他调用点右组悬空）
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            val split = if (actions.size <= 2) actions.size else actions.size / 2
+            actions.take(split).forEach { it() }
+            Spacer(Modifier.weight(1f))
+            actions.drop(split).forEach { it() }
         }
     }
 }

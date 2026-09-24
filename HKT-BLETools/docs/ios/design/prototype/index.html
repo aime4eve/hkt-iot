@@ -146,7 +146,8 @@
   .session-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .device-name{font-size:23px;font-weight:750;letter-spacing:0;line-height:1.1}
   .device-meta{margin:5px 0 12px;text-align:right;font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums}
-  .session-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .session-actions{display:flex;justify-content:space-between;gap:6px}
+  .session-actions .grp{display:flex;gap:6px}
   .session-btn{height:34px;padding:0 4px;border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .session-btn.danger{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 24%,transparent);color:var(--err)}
   .session-btn:disabled{opacity:.4;cursor:not-allowed}
@@ -971,16 +972,16 @@ function P_detail(){
       <div class="b">${t("discConfirmB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.discConfirm=false;render()">${t("cancel")}</button>
       <button class="btn danger" style="margin:0" onclick="S.discConfirm=false;disconnectSession()">${t("confirmDisc")}</button></div></div></div>`:"";
-  /* 会话操作条（用户 2026-09-08）：返回/首页/固件升级/断开连接 集中一行；OTA 传输中/校准中断开置灰 */
+  /* 会话操作条（用户 2026-09-08 集中一行；2026-09-23 裁决改单行 2+2：返回/首页居左、固件升级/断开连接居右）；OTA 传输中/校准中断开置灰 */
   const discDisabled=(S.page==="ota"&&otaGuardActive())||(S.cal&&S.cal.state==="running");
   const sessBar=`<div class="sessionbar">
     <div class="session-top"><div class="device-name">${S.device}</div>${head}</div>
     <div class="device-meta">${t("fw")} ${SIM[S.device].fw} · ${battDisplay()}</div>
     <div class="session-actions">
-      <button class="session-btn" data-act="back">${lang==="zh"?"返回":"Back"}</button>
-      <button class="session-btn" data-act="home">${lang==="zh"?"首页":"Home"}</button>
-      <button class="session-btn" onclick="openOTA()">${t("ota")}</button>
-      <button class="session-btn danger" ${discDisabled?"disabled":""} onclick="askDisconnectSession()">${t("discBtn")}</button>
+      <div class="grp"><button class="session-btn" data-act="back">${lang==="zh"?"返回":"Back"}</button>
+      <button class="session-btn" data-act="home">${lang==="zh"?"首页":"Home"}</button></div>
+      <div class="grp"><button class="session-btn" onclick="openOTA()">${t("ota")}</button>
+      <button class="session-btn danger" ${discDisabled?"disabled":""} onclick="askDisconnectSession()">${t("discBtn")}</button></div>
     </div></div>`;
   return statusbar()+sessBar+`<div class="body">${body}</div>`+pwConfirm+discConfirm;
 }
