@@ -316,6 +316,9 @@ void LoRaWAN_Init(void)
     AT_LoRaWAN_setClass(LoRaWAN_DEFAULT_CLASS);
     AT_LoRaWAN_setPORT(LoRaWAN_DEFAULT_PORT);
     AT_LoRaWAN_setConfirm(1, 3);
+		
+		// AT_LoRaWAN_setADR(0);
+		// AT_LoRaWAN_setDataRate(0);
     // AT_LoRaWAN_setConfirm(0, 3);
 
     AT_LoRaWAN_setJOIN();
