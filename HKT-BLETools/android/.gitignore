@@ -1,1 +1,4 @@
 version.properties
+
+# Kotlin 编译器会话错误日志
+.kotlin/
