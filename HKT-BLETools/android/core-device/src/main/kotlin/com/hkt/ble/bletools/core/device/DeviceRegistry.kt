@@ -59,4 +59,17 @@ object DeviceRegistry {
         }
         return null
     }
+
+    /**
+     * 广播名中的设备 EUI（用户裁决 2026-09-24：详情页头部显示 EUI 而非广播名）。
+     * 真机广播名 = 型号关键字 + 分隔符 + EUI 段（如 "SVC100_0D26CF"→"0D26CF"，与 R-2 定位
+     * 后缀匹配同一 EUI 段）；去掉型号关键字与分隔符后须全为 hex 才认，否则返回 null（交调用方回退原值）。
+     */
+    fun euiOf(broadcastName: String?): String? {
+        broadcastName ?: return null
+        var rest = broadcastName.uppercase()
+        for (key in familiesByAdvertisedName.keys) rest = rest.replace(key, "")
+        val eui = rest.trim(' ', '_', '-')
+        return eui.takeIf { it.isNotEmpty() && it.all { ch -> ch in "0123456789ABCDEF" } }
+    }
 }

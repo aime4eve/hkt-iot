@@ -75,7 +75,7 @@ fun SessionButton(title: String, danger: Boolean = false, action: () -> Unit) {
 
 /**
  * 会话控制卡（.sessionbar，规格卡 §3.1）：r12、card 底、外边距 0 16 12、内边距 13 14；
- * 设备名 23px/750；badge 右侧；meta 右对齐 12px text2 等宽数字；
+ * 头部名称槽默认 23px/750（用户裁决 2026-09-24：详情页传设备 EUI + 17px）；badge 右侧；meta 右对齐 12px text2 等宽数字；
  * 动作单行 2+2（2026-09-23 用户裁决）：前半居左、后半居右。
  */
 @Composable
@@ -83,6 +83,7 @@ fun SessionControlCard(
     deviceName: String,
     meta: String,
     badge: (@Composable () -> Unit)? = null,
+    nameSizeSp: Float = 23f,
     actions: List<@Composable () -> Unit>,
 ) {
     val c = hktColors()
@@ -98,7 +99,7 @@ fun SessionControlCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 deviceName,
-                style = hkt(23f, FontWeight.Bold).copy(lineHeight = (23f * 1.1f).sp),
+                style = tnum(hkt(nameSizeSp, FontWeight.Bold)).copy(lineHeight = (nameSizeSp * 1.1f).sp),
                 color = c.text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

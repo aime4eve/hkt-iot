@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +66,8 @@ import java.util.Locale
  * 固件包经系统文件选择器选取（真实文件名/大小/CRC32，期望版本从文件名解析）。
  * 真实传输：OTAEngine ACK 驱动分页传输（模拟器由 DemoBootloader 扮演 bootloader，同一代码路径）；
  * 传输完成后的重启/重连/版本确认后程按原型节奏推进（真机重连随真机验证里程碑接入）。
+ * 升级过程（stage 2-7）不允许取消：无取消按钮、无离开保护弹窗，系统返回被拦截
+ * （用户裁决 2026-09-24，取代原 R-13 离开保护；引擎超时/失败走 stage 9 失败页返回）。
  * 镜像三重防线（真机变砖事故 2026-09-11，iOS 同源）：大小 8KB–240KB / 栈顶指针在 RAM /
  * 复位向量在 App 区——HEX/文本文件必被拒。
  */
@@ -86,7 +87,6 @@ fun OtaScreen(session: DeviceSession, onBack: () -> Unit) {
     var expectedVersion by remember { mutableStateOf("") }
     var totalPackets by remember { mutableIntStateOf(0) }
     var waitTick by remember { mutableIntStateOf(0) }
-    var showGuard by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
     var failureReason by remember { mutableStateOf("") }
     var startedAtMs by remember { mutableStateOf(0L) }
@@ -136,8 +136,8 @@ fun OtaScreen(session: DeviceSession, onBack: () -> Unit) {
         totalPackets = 0
     }
 
-    // 运行中系统返回触发离开保护（R-13），非运行态直接返回
-    BackHandler(enabled = stage in 2..7) { showGuard = true }
+    // 运行中系统返回直接拦截（用户裁决 2026-09-24：升级过程不允许取消/离开），非运行态直接返回
+    BackHandler(enabled = stage in 2..7) { /* 升级中：吞掉返回 */ }
 
     // 真实传输驱动：state Done（stage==2 时）→ 传输完成；Failed → 失败
     LaunchedEffect(engineState) {
@@ -217,13 +217,12 @@ fun OtaScreen(session: DeviceSession, onBack: () -> Unit) {
         }
     }
 
-    // ===== 运行六段：内容垂直居中 + 取消贴底（校准页同款布局）=====
+    // ===== 运行六段：内容垂直居中（用户裁决 2026-09-24：升级过程不允许取消，无退出入口）=====
     if (stage in 2..7) {
-        BackHandler { showGuard = true }
         Column(Modifier.fillMaxSize().background(c.bg)) {
             NavbarHeader(
                 title = if (zh) "固件升级" else "Firmware Update",
-                backText = "",   // 原型运行态无返回入口，离开走页面内取消按钮
+                backText = "",   // 原型运行态无返回入口；升级中不允许离开（2026-09-24 裁决）
                 onBack = {},
             )
             Column(
@@ -287,40 +286,6 @@ fun OtaScreen(session: DeviceSession, onBack: () -> Unit) {
                         Text("⏱ $waitTick s", style = hkt(13f), color = c.text2)
                     }
                 }
-                // 取消升级：贴底全宽（err 系）
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(c.err.copy(alpha = 0.10f), RoundedCornerShape(HktRadius.control.dp))
-                        .border(1.dp, c.err.copy(alpha = 0.22f), RoundedCornerShape(HktRadius.control.dp))
-                        .clickableBox { showGuard = true }
-                        .padding(vertical = 13.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        if (zh) "取消升级" else "Cancel Update",
-                        style = hkt(16f, FontWeight.SemiBold),
-                        color = c.err,
-                    )
-                }
-            }
-        }
-        if (showGuard) {
-            DialogScrimOta(onDismiss = { showGuard = false }) {
-                HktDialogCard(
-                    title = "⚠︎ " + (if (zh) "升级正在进行" else "Update in progress"),
-                    message = AnnotatedString(
-                        if (zh) "现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？"
-                        else "Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?",
-                    ),
-                    buttons = listOf(
-                        Triple(if (zh) "继续升级" else "Keep Updating", DialogButtonKind.SECONDARY) { showGuard = false },
-                        Triple(if (zh) "仍然离开" else "Leave", DialogButtonKind.DANGER) {
-                            showGuard = false
-                            onBack()
-                        },
-                    ),
-                )
             }
         }
         return

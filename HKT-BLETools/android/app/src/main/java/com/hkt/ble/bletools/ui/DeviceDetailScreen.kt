@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hkt.ble.bletools.core.ble.DeviceSession
+import com.hkt.ble.bletools.core.device.DeviceRegistry
 import com.hkt.ble.bletools.core.protocol.CommandCode
 import com.hkt.ble.bletools.core.protocol.DeviceFamily
 import com.hkt.ble.bletools.core.protocol.DeviceSnapshot
@@ -67,6 +68,7 @@ import java.util.Locale
  * P-03 设备详情页 —— 1:1 克隆冻结原型（规格卡 docs/ios/design/ui-spec/P-03.md）。
  * 结构：会话控制卡（页头，无导航栏）→ 滚动区（横幅/状态/设备操作）→ 确认对话框浮层。
  * 早退优先级：关机 > 断线 > 正常（升级模式随 OTA 里程碑接入）。
+ * 头部名称槽显示设备 EUI 而非广播名（用户裁决 2026-09-24，17px 小一号；广播名无 EUI 段时回退原值）。
  * 数据 = DeviceSession 1s 轮询快照；校准/配置/任务/OTA/技术参数页为 M6.3 队列（按钮占位 notice）。
  */
 @Composable
@@ -78,6 +80,7 @@ fun DeviceDetailScreen(
 ) {
     val c = LocalHktColors.current
     val zh = LanguageStore.isZh
+    val headIdentity = DeviceRegistry.euiOf(session.deviceName) ?: session.deviceName
     val scope = rememberCoroutineScope()
     val snapshot by session.snapshot.collectAsState()
     val linkLost by session.linkLost.collectAsState()
@@ -173,7 +176,7 @@ fun DeviceDetailScreen(
     // ===== 早退：关机（原型 !powerOn）=====
     if (isPowerOff) {
         Column(Modifier.fillMaxSize().background(c.bg)) {
-            NavbarLarge(title = session.deviceName) {
+            NavbarLarge(title = headIdentity) {
                 LinkButton(if (zh) "‹ 返回" else "‹ Back") { onBack() }
             }
             powerError?.let { err ->
@@ -194,9 +197,10 @@ fun DeviceDetailScreen(
     // ===== 正常骨架 =====
     Box(Modifier.fillMaxSize().background(c.bg)) {
         Column(Modifier.fillMaxSize()) {
-            // 会话控制卡（规格卡 §3.1）
+            // 会话控制卡（规格卡 §3.1；名称槽=EUI 17px，用户裁决 2026-09-24）
             SessionControlCard(
-                deviceName = session.deviceName,
+                deviceName = headIdentity,
+                nameSizeSp = 17f,
                 meta = metaText(session, snapshot, zh),
                 badge = {
                     // 首页/返回当前单层导航等效（多层导航接入时需分化，评审 P3）

@@ -198,14 +198,17 @@ struct SessionControlCard<Actions: View>: View {
     let deviceName: String
     let meta: String
     var badge: StateBadge?
+    /// 头部名称槽字号：默认 23（原型 .device-name）；详情页传 17（EUI 显示，用户裁决 2026-09-24）
+    var nameSize: CGFloat = 23
     @ViewBuilder var actions: Actions
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
                 Text(deviceName)
-                    .font(.hkt(23, .bold))          // 23px / 750
-                    .lineSpacing(23 * 1.1 - 23)
+                    .font(.hkt(nameSize, .bold))          // 23px / 750（EUI 态 17px）
+                    .lineSpacing(nameSize * 1.1 - nameSize)
+                    .monospacedDigit()                    // EUI hex 等宽（Android tnum 同款）
                 Spacer(minLength: 10)
                 if let badge { badge }
             }

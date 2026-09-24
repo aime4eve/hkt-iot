@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 /// 真实设备：OTAEngine ACK 驱动分页传输（设备复位重传≤2 次，进度=已确认包数）；
 /// 演示模式（-mockble）：tick 380ms 复刻原型。传输完成后的重启/重连/版本确认六段后程
 /// 仍按原型节奏推进（真机重连随真机验证里程碑接入）。
+/// 升级过程（stage 2-7）不允许取消：无返回入口、无取消按钮、无离开保护弹窗，
+/// 侧滑返回一并禁用（用户裁决 2026-09-24，取代原 R-13 离开保护；失败走 stage 9 返回）。
 struct OTAView: View {
     let session: DeviceSession
 
@@ -26,7 +28,6 @@ struct OTAView: View {
     @State private var pkt = 0
     @State private var pageWrite = false
     @State private var wait = 0
-    @State private var showGuard = false
     @State private var showReport = false
     @State private var startedAt = Date()
     @State private var totalText = ""
@@ -38,6 +39,8 @@ struct OTAView: View {
     private var zh: Bool { langStore.isZh }
     private var picked: Bool { pickedURL != nil }
     private var isDemo: Bool { ProcessInfo.processInfo.arguments.contains("-mockble") }
+    /// 升级进行中（不允许取消/离开，用户裁决 2026-09-24）。
+    private var isRunning: Bool { (2...7).contains(stage) }
     /// 当前版本：轮询快照的 固件版本（演示设备 v11.28，真机即真实版本）。
     private var currentVersion: String {
         "v\(snapshot.hardwareVersion).\(snapshot.softwareVersion)"
@@ -46,16 +49,17 @@ struct OTAView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // R-13：运行中点返回触发离开保护弹窗（原型 backPage 同款），非运行态直接返回
+            // 用户裁决 2026-09-24：运行中无返回入口且 onBack 不放行（取代原 R-13 离开保护弹窗）
             NavbarHeader(title: zh ? "固件升级" : "Firmware Update",
-                         backText: zh ? "‹ 返回" : "‹ Back",
+                         backText: isRunning ? "" : (zh ? "‹ 返回" : "‹ Back"),
                          onBack: {
-                if (2...7).contains(stage) { showGuard = true } else { stopTimer(); dismiss() }
+                guard !isRunning else { return }
+                stopTimer(); dismiss()
             }) {
                 EmptyView()
             }
-            if (2...7).contains(stage) {
-                // 运行六段：内容垂直居中 + 取消贴底，不进滚动容器（校准页同款布局）
+            if isRunning {
+                // 运行六段：内容垂直居中，无取消/离开入口，不进滚动容器（校准页同款布局）
                 runningStage
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
@@ -71,6 +75,7 @@ struct OTAView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(isRunning)   // 运行中禁用侧滑返回（升级不允许取消）
         .overlay { dialogs }
         .onDisappear {
             stopTimer()
@@ -234,7 +239,8 @@ struct OTAView: View {
         }
     }
 
-    /// stage 2–7：进行中（用户 2026-09-10 裁决：标注目标设备；提示与进度居中；取消升级贴底——与校准页同风格）。
+    /// stage 2–7：进行中（用户 2026-09-10 裁决：标注目标设备；提示与进度居中；
+    /// 用户 2026-09-24 裁决：升级过程不允许取消——取消升级按钮移除，无退出入口）。
     private var runningStage: some View {
         VStack(spacing: 0) {
             stageList(activeIndex: max(0, min(stage - 2, 5)))
@@ -285,18 +291,6 @@ struct OTAView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)   // 中段垂直居中
-            Button {
-                showGuard = true
-            } label: {
-                Text(zh ? "取消升级" : "Cancel Update")
-                    .font(.hkt(16, .semibold))
-                    .foregroundStyle(Theme.err)
-                    .frame(maxWidth: .infinity)
-                    .padding(13)
-                    .background(Theme.err.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.controlRadius)
-                        .stroke(Theme.err.opacity(0.22), lineWidth: 1))
-            }
         }
     }
 
@@ -404,7 +398,7 @@ struct OTAView: View {
         .frame(maxWidth: .infinity, minHeight: 430)
     }
 
-    // MARK: - 对话框（确认升级 / 离开保护 / 升级报告）
+    // MARK: - 对话框（确认升级 / 升级报告）
 
     @ViewBuilder
     private var dialogs: some View {
@@ -421,21 +415,6 @@ struct OTAView: View {
                 }
                 DialogButton(title: zh ? "确认升级" : "Update", kind: .primary) {
                     runOTA()
-                }
-            })
-        }
-        if showGuard {
-            DialogScaffold(title: "⚠︎ " + (zh ? "升级正在进行" : "Update in progress"),
-                           centeredBody: true,
-                           content: {
-                Text(zh ? "现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？"
-                        : "Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?")
-            }, buttons: {
-                DialogButton(title: zh ? "继续升级" : "Keep Updating") { showGuard = false }
-                DialogButton(title: zh ? "仍然离开" : "Leave", kind: .danger) {
-                    showGuard = false
-                    stopTimer()
-                    dismiss()
                 }
             })
         }
