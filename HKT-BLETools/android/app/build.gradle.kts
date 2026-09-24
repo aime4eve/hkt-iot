@@ -9,11 +9,11 @@ android {
     compileSdk = 34
 
     // M8 版本方案（用户裁决 2026-09-21，09-22 两次澄清）：versionName = "V<主>.<次>.<修订>b<构建数>"，
-    // 如 V6.0.0b12——b 后即自增构建数（无 + 号、无独立 beta 序号）。基线（VERSION_BASE）随版本发布手写；
+    // 如 V6.1.1b26——b 后即自增构建数（无 + 号、无独立 beta 序号）。基线（VERSION_BASE）随版本发布手写；
     // 构建数每次打包自动 +1——计数持久化在
     // android/version.properties（gitignore，本机独立计数），仅当本次任务图包含
     // assemble/bundle/install 打包任务时递增；IDE sync、test 等不计。
-    val VERSION_BASE = "V6.0.0b"
+    val VERSION_BASE = "V6.1.1b"
     val counterFile = rootProject.file("version.properties")
     var buildCount = counterFile.takeIf { it.exists() }
         ?.readText()?.trim()?.toIntOrNull() ?: 0
