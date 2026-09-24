@@ -1,6 +1,6 @@
 # HKT BLETools iOS 编译与装机操作说明
 
-> 更新：2026-09-15 · 适用：HKT-BLETools/ios（原生 SwiftUI 工程，Xcode 16+ 文件系统同步组）
+> 更新：2026-09-22（补 7 天续命实录与 Wi-Fi 装机排障）· 适用：HKT-BLETools/ios（原生 SwiftUI 工程，Xcode 16+ 文件系统同步组）
 > 签名方式：免费个人团队开发签名（Team `J62PU4Y357`，工程内已配置自动签名，无需手工管理证书）
 > 一句话装机：`HKT-BLETools/ios/Tools/build_install.sh`
 
@@ -79,6 +79,28 @@ HKT-BLETools/ios/Tools/build_install.sh        # 重跑即续命，数据不丢
 
 已配对手机在同 Wi-Fi 下即可远程续命，不必插线。覆盖安装保留 App 数据。
 
+**过期前后的行为差异（2026-09-22 实证）**：
+- **未过期时**重跑构建会**复用现有 profile**，到期时间不变（白跑，不续命）。
+- **过期后**重跑构建才联系苹果签发**新 profile**（顺延 7 天），无需手工删证书缓存——构建日志 `CodeSign` 段会直接打印新 profile 的名字（UUID），出现新 UUID 即续命成功。
+
+**查真实到期日**（以查出来的为准，别信"应该续上了"）：
+
+```bash
+# profile 文件在 ~/Library/Developer/Xcode/UserData/Provisioning Profiles/
+security cms -D -i ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/<UUID>.mobileprovision \
+  | plutil -extract ExpirationDate raw -     # 输出 UTC 时间，+8 = 北京时间
+```
+
+**续命实录**（2026-09-22，供对照）：profile 9/22 13:58（北京时间）过期 → 重跑脚本 → 新 profile `e7d9acef` 自动签发，有效期至 9/29 14:26 → 重装 myiPhone 成功。
+
+**Wi-Fi 续命失败的处理**（按顺序试）：
+
+1. `xcrun devicectl list devices` 看状态——`available` 才能装；显示 `unavailable` 就是手机 asleep/掉线了。
+2. 报 `CoreDeviceError 1011`（locate 不到设备）= 典型的锁屏 Wi-Fi 降功耗掉线。**ping 得通不算数**（延迟在几毫秒到几百毫秒大幅抖动就是锁屏降功耗形态，ping 通 ≠ devicectl 可用），别反复盲目重试。
+3. 让手机"动一下"：解锁亮屏、或插上 USB——设备状态回到 `available` 后立刻重跑安装，通常一次成功。
+4. 插线要确认是**数据线**：`system_profiler SPUSBDataType | grep -i iphone` 有输出才是真连上（充电线不枚举设备）。此命令仅作辅助，最终以 `devicectl list devices` 状态为准。
+5. 仍不行 → 手机设置里关 Wi-Fi 再开，或重启手机后重试。
+
 ### 4.4 只编译打包（不装机）
 
 ```bash
@@ -110,6 +132,7 @@ xcrun simctl launch <UDID> com.hkt.ble.bletools.ios -mockble -demo-flow SVC -dem
 | 现象 | 原因与处理 |
 |---|---|
 | `未找到可用 iPhone` | 手机锁屏/未信任/未配对。USB 重连并解锁，跑 `xcrun devicectl list devices` 确认状态含 `available`；只显示 `unavailable` 就插线重新配对 |
+| `CoreDeviceError 1011`（locate 不到设备） | 锁屏后 Wi-Fi 降功耗掉线（状态从 available 掉成 unavailable；ping 通但延迟大幅抖动）。解锁亮屏或插**数据线**，状态回 `available` 后重试，详见 §4.3 排障卡 |
 | 构建报签名错误（Signing / provisioning） | Xcode 未登录团队账号，或免费账号一周 10 个 App ID 上限用满（等额度刷新）。Settings → Accounts 确认 sales@hktlora.com 在列 |
 | 安装成功但手机上点不开 | 免费签名 7 天过期 → 重跑脚本续命（§4.3）；刚装完系统弹「不受信任的开发者」→ 手机 设置 → 通用 → VPN与设备管理 → 信任该开发者证书 |
 | `device install` 报 0x…/install 失败 | 手机存储不足，或手机上已有**不同签名来源**的同名 App——先删掉手机上的旧 HKTBLETools 再装 |
@@ -147,6 +170,6 @@ xcrun simctl launch <UDID> com.hkt.ble.bletools.ios -mockble -demo-flow SVC -dem
 ## 8. 附：App 基本信息
 
 - Bundle ID：`com.hkt.ble.bletools.ios`（与 Android/其他 App 无冲突）
-- 当前版本：1.0.0 (1)，`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` 在 Xcode 工程设置里改
+- 当前版本：3.21 (1)，`MARKETING_VERSION` 在 Xcode 工程设置里改（`CURRENT_PROJECT_VERSION` 构建号保持 1 即可）
 - 最低系统：iOS 17.0 · 仅竖屏 iPhone（iPad 竖屏兼容）
 - 蓝牙权限文案等 Info 键：工程 Build Settings 的 `INFOPLIST_KEY_*`（生成式 Info.plist，无独立文件）
