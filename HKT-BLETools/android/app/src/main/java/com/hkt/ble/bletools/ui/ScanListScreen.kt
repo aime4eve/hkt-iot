@@ -154,8 +154,10 @@ fun ScanListScreen(model: ScanModel, onLocaleChange: (LanguageMode) -> Unit = {}
                 Column {
                     ScanStatusRow(
                         title = if (isScanning) {
-                            if (zh) "扫描中… 已发现 ${devices.size} 台 · 第 $round/3 轮 · 剩余 ${ScanModel.SCAN_ROUND_SECONDS - elapsed} 秒"
-                            else "Scanning… ${devices.size} found · round $round/3 · ${ScanModel.SCAN_ROUND_SECONDS - elapsed}s left"
+                            // 轮次与倒计时固定分两行（用户裁决 2026-09-24）：英文单行过长
+                            // 会把 "left" 孤行换行；中文长文案同理收窄保护
+                            if (zh) "扫描中… 已发现 ${devices.size} 台 · 第 $round/3 轮\n剩余 ${ScanModel.SCAN_ROUND_SECONDS - elapsed} 秒"
+                            else "Scanning… ${devices.size} found · round $round/3\n${ScanModel.SCAN_ROUND_SECONDS - elapsed}s left"
                         } else {
                             if (zh) "扫描完成 · ${devices.size} 台" else "Scan finished · ${devices.size} found"
                         },
