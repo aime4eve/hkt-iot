@@ -144,9 +144,11 @@
   .body.savebody .savebar{margin-bottom:0}
   .sessionbar{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:12px;margin:0 16px 12px;padding:13px 14px;box-shadow:var(--card-shadow)}
   .session-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .device-name{font-size:23px;font-weight:750;letter-spacing:0;line-height:1.1}
+  /* 用户裁决 2026-09-24：名称槽显示已连接设备 EUI（广播名 hex 段），17px 小一号 */
+  .device-name{font-size:17px;font-weight:750;letter-spacing:0;line-height:1.1;font-variant-numeric:tabular-nums}
   .device-meta{margin:5px 0 12px;text-align:right;font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums}
-  .session-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .session-actions{display:flex;justify-content:space-between;gap:6px}
+  .session-actions .grp{display:flex;gap:6px}
   .session-btn{height:34px;padding:0 4px;border:1px solid var(--line);border-radius:var(--r-control);background:var(--card2);color:var(--text);font-size:12px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
   .session-btn.danger{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 24%,transparent);color:var(--err)}
   .session-btn:disabled{opacity:.4;cursor:not-allowed}
@@ -299,8 +301,6 @@ const ZH={
   waitConn:"正在重新连接设备…", waitVer:"正在读取新固件版本…", notDone:"尚未完成",
   pkt:(a,b)=>`包 ${a.toLocaleString()} / ${b.toLocaleString()}`, pageWrite:"页写入中…",
   keepFront:"升级期间请保持 App 前台、勿锁屏", resetBanner:(n)=>`设备超时复位，已自动从包 0 重传（第 ${n}/2 次）`,
-  leaveT:"升级正在进行", leaveB:"现在离开会中断升级，可能导致设备无法正常工作，需要重新执行完整升级。确定要离开吗？",
-  stay:"继续升级", leave:"仍然离开", cancelUp:"取消升级",
   targetDev:(d,id)=>`正在升级设备 ${d} ${id}`,   // 用户 2026-09-10 裁决：运行态标注目标设备
   okT:"升级成功", report:"查看升级报告", done:"完成", failT:"升级失败", retry:"重新升级",
   reason:"原因", rConnLost:"蓝牙连接丢失", rBtOff:"蓝牙已被关闭", rMismatch:"读到版本 v1.26，与期望 v1.28 不符", rNoResp:"设备长时间无响应",
@@ -411,8 +411,6 @@ const EN={
   waitConn:"Reconnecting to the device…", waitVer:"Reading the new firmware version…", notDone:"not done yet",
   pkt:(a,b)=>`Packet ${a.toLocaleString()} / ${b.toLocaleString()}`, pageWrite:"page writing…",
   keepFront:"Keep the app in the foreground; don't lock the screen", resetBanner:n=>`Device timed out and reset; restarted from packet 0 (attempt ${n}/2)`,
-  leaveT:"Update in progress", leaveB:"Leaving now interrupts the update and may leave the device unusable, requiring a full re-run. Leave anyway?",
-  stay:"Keep Updating", leave:"Leave", cancelUp:"Cancel Update",
   targetDev:(d,id)=>`Upgrading device ${d} ${id}`,
   okT:"Update succeeded", report:"View update report", done:"Done", failT:"Update failed", retry:"Retry Update",
   reason:"Reason", rConnLost:"Bluetooth connection lost", rBtOff:"Bluetooth was turned off", rMismatch:"Read v1.26 but expected v1.28", rNoResp:"The device stopped responding",
@@ -944,10 +942,10 @@ function P_detail(){
       <span class="op-go">›</span></button>`:"";
   /* 时间同步入口：DC200 家族（MPS/EPS/DC200）隐藏——hkt 对时死代码（FD-002）+ ASCII 月份 +1（FD-003），
      固件修复后随台账解除（用户裁决 2026-09-20） */
+  const timeState=S.tsState==="sending"?t("opSyncing"):S.tsState==="ok"?t("opDone"):t("opSync");  /* 声明须先于 timeTile（TDZ：UDS/SVC 详情页曾抛错，2026-09-24 修） */
   const timeTile=(S.device==="MPS100"||S.device==="EPS100"||S.device==="DC200")?"":`<button class="op-card ok wide" onclick="doTimeSync()" ${opsDisabled||S.tsState==="sending"?"disabled":""}><span class="op-badge">TIME</span>
       <span class="op-copy"><span class="op-title">${t("tsTitle")}</span><span class="op-desc op-clock" id="liveClock">${liveClockStr()}</span></span>
       <span class="op-action">${timeState}</span></button>`;
-  const timeState=S.tsState==="sending"?t("opSyncing"):S.tsState==="ok"?t("opDone"):t("opSync");
   const operationTiles=`${calTile}
     ${techTile}
     ${taskTile}
@@ -971,16 +969,16 @@ function P_detail(){
       <div class="b">${t("discConfirmB")}</div>
       <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.discConfirm=false;render()">${t("cancel")}</button>
       <button class="btn danger" style="margin:0" onclick="S.discConfirm=false;disconnectSession()">${t("confirmDisc")}</button></div></div></div>`:"";
-  /* 会话操作条（用户 2026-09-08）：返回/首页/固件升级/断开连接 集中一行；OTA 传输中/校准中断开置灰 */
-  const discDisabled=(S.page==="ota"&&otaGuardActive())||(S.cal&&S.cal.state==="running");
+  /* 会话操作条（用户 2026-09-08 集中一行；2026-09-23 裁决改单行 2+2：返回/首页居左、固件升级/断开连接居右）；OTA 传输中/校准中断开置灰 */
+  const discDisabled=(S.page==="ota"&&otaRunning())||(S.cal&&S.cal.state==="running");
   const sessBar=`<div class="sessionbar">
-    <div class="session-top"><div class="device-name">${S.device}</div>${head}</div>
+    <div class="session-top"><div class="device-name">${((S.id||"").replace(/^…/,"").toUpperCase())||S.device}</div>${head}</div>
     <div class="device-meta">${t("fw")} ${SIM[S.device].fw} · ${battDisplay()}</div>
     <div class="session-actions">
-      <button class="session-btn" data-act="back">${lang==="zh"?"返回":"Back"}</button>
-      <button class="session-btn" data-act="home">${lang==="zh"?"首页":"Home"}</button>
-      <button class="session-btn" onclick="openOTA()">${t("ota")}</button>
-      <button class="session-btn danger" ${discDisabled?"disabled":""} onclick="askDisconnectSession()">${t("discBtn")}</button>
+      <div class="grp"><button class="session-btn" data-act="back">${lang==="zh"?"返回":"Back"}</button>
+      <button class="session-btn" data-act="home">${lang==="zh"?"首页":"Home"}</button></div>
+      <div class="grp"><button class="session-btn" onclick="openOTA()">${t("ota")}</button>
+      <button class="session-btn danger" ${discDisabled?"disabled":""} onclick="askDisconnectSession()">${t("discBtn")}</button></div>
     </div></div>`;
   return statusbar()+sessBar+`<div class="body">${body}</div>`+pwConfirm+discConfirm;
 }
@@ -1083,10 +1081,7 @@ function openOTA(){
 }
 function P_ota(){
   const o=S.ota;
-  const guard=o.guard?`<div class="dialog-mask"><div class="dialog"><div class="t">⚠︎ ${t("leaveT")}</div>
-      <div class="b">${t("leaveB")}</div>
-      <div class="btns"><button class="btn secondary" style="margin:0" onclick="S.ota.guard=false;render()">${t("stay")}</button>
-      <button class="btn danger" style="margin:0" onclick="forceAbort()">${t("leave")}</button></div></div></div>`:"";
+  /* 用户裁决 2026-09-24：升级过程不允许取消——离开保护弹窗（guard）与取消升级按钮移除 */
   let inner="";
   if(o.stage===0){
     inner=`<div class="row" style="cursor:pointer" onclick="pickFile()"><span class="label">📄 ${t("pick")}</span><span class="value">▸</span></div>
@@ -1106,7 +1101,7 @@ function P_ota(){
     let inject="";
     if(o.resetBanner)inject=`<div class="banner warn">↻ ${t("resetBanner")(o.restarts)}</div>`;
     if(o.stage>=4)inject+=`<div class="kv" style="text-align:center">⏱ ${o.wait} s</div>`;
-    /* 用户 2026-09-10 裁决：运行态标注目标设备；提示与进度居中；取消升级贴底（校准页同风格） */
+    /* 用户 2026-09-10 裁决：运行态标注目标设备；提示与进度居中；2026-09-24 裁决：不允许取消（原贴底取消按钮废弃） */
     inner=`<div style="display:flex;flex-direction:column;height:100%">
       ${stageList(idx)}
       <div style="margin:auto 0;display:flex;flex-direction:column;gap:9px">
@@ -1117,7 +1112,6 @@ function P_ota(){
           <div class="kv" style="margin-top:4px">${t("pkt")(o.pkt,PKTS)}${o.stage<=3?" · "+t("pct")(Math.round(o.pkt/PKTS*100)):""}</div></div>
         ${o.stage<=3?`<div class="banner warn" style="text-align:center">⚠︎ ${t("keepFront")}</div>`:""}${inject}
       </div>
-      <button class="btn danger" onclick="askGuard()">${t("cancelUp")}</button>
     </div>`;
   } else if(o.result==="ok"){
     inner=`<div class="center" style="min-height:430px"><div style="font-size:48px;color:var(--ok)">✓</div>
@@ -1145,7 +1139,8 @@ function P_ota(){
       <tr><td>${t("rpTime")}</td><td>${o.report.total}</td></tr>
     </table>
     <button class="btn" onclick="S.ota.showReport=false;render()">${t("done")}</button></div></div>`:"";
-  return statusbar()+navbar(t("ota"),"",true,false)+`<div class="body">${inner}</div>`+guard+report;
+  /* 2026-09-24 裁决：升级进行中（otaRunning）隐藏返回入口，与双端实现一致 */
+  return statusbar()+navbar(t("ota"),"",!otaRunning(),false)+`<div class="body">${inner}</div>`+report;
 }
 function stageList(active){
   const names=[t("st1"),t("st2"),t("st3"),t("st4"),t("st5"),t("st6")];
@@ -1208,8 +1203,7 @@ function runOTA(){
   },380);
 }
 function failOTA(msg){clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=msg;log(t("otaStageEv"),"ERR",msg);render();}
-function forceAbort(){S.ota.guard=false;clearInterval(S.ota.timer);S.ota.result="fail";S.ota.err=t("rConnLost");S.ota.stage=0;nav("detail");}
-function askGuard(){const o=S.ota;if(o.stage>=2&&o.stage<7&&!o.result){o.guard=true;render();}else{nav("detail");}}
+/* 用户裁决 2026-09-24：升级进行中不允许取消/离开——原 forceAbort/askGuard 废弃 */
 
 /* ═══════════ 配置（按设备家族，固件边界校验） ═══════════ */
 /* 契约依据 firmware-traceability.md §2.1：
@@ -1799,12 +1793,12 @@ function nav(p,opts){
   if(S.page!==p){navStack.push(S.page);if(navStack.length>20)navStack.shift();}
   S.page=p;render();
 }
-function otaGuardActive(){const o=S.ota;return o.stage>=2&&o.stage<7&&!o.result;}
+function otaRunning(){const o=S.ota;return o.stage>=2&&o.stage<7&&!o.result;}
 function backPage(){
-  if(S.page==="ota"&&otaGuardActive()){S.ota.guard=true;render();return;}
+  if(S.page==="ota"&&otaRunning())return;   /* 2026-09-24 裁决：升级中无出口 */
   S.page=navStack.pop()||"home";render();}
 function goHome(){
-  if(S.page==="ota"&&otaGuardActive()){S.ota.guard=true;render();return;}
+  if(S.page==="ota"&&otaRunning())return;
   navStack=[];S.page="home";render();}
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{S.page=b.dataset.nav;if(b.dataset.nav==="detail"&&S.phase!=="ready"){S.phase="ready";S.device=S.device||"MPS100";S.p3="ready";startPoll();}render();});
 document.getElementById("themeBtn").onclick=()=>{S.theme=S.theme==="light"?"dark":"light";render();};

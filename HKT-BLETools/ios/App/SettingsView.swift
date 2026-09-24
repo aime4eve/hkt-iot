@@ -122,7 +122,7 @@ struct SettingsView: View {
     /// 版本号与安卓 versionName 一致（MARKETING_VERSION=3.21），不拼接 build 号
     private var versionText: String {
         {
-            let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "V6.0.0b1"
+            let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "V6.1.1b1"
             let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
             return "\(short)\(build)"
         }()

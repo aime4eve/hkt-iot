@@ -1,9 +1,11 @@
 import CoreBLE
+import CoreDevice
 import CoreProtocol
 import SwiftUI
 
 /// P-03 设备详情页 —— 1:1 克隆冻结原型（规格卡 `docs/ios/design/ui-spec/P-03.md`）。
 /// 结构：会话控制卡（页头，无系统导航栏）→ 滚动区（横幅/状态/设备操作）→ 确认对话框浮层。
+/// 头部名称槽显示设备 EUI 而非广播名（用户裁决 2026-09-24，17px 小一号；广播名无 EUI 段时回退原值）。
 /// 数据 = DeviceSession 1s 轮询快照；组件全部来自 DesignSystem，本页不私调样式（AGENTS.md §9）。
 struct DeviceDetailView: View {
     let session: DeviceSession
@@ -24,6 +26,8 @@ struct DeviceDetailView: View {
 
     private var snapshot: DeviceSnapshot { session.snapshot }
     private var zh: Bool { langStore.isZh }
+    /// 头部名称槽身份：广播名中的 EUI 段（无则回退广播名）。
+    private var headIdentity: String { DeviceRegistry.euiOf(session.deviceName) ?? session.deviceName }
 
     var body: some View {
         // 早退优先级与原型一致：关机 > 断线 > 正常（升级模式随 OTA 里程碑接入）
@@ -98,7 +102,7 @@ struct DeviceDetailView: View {
     /// 用户裁决（2026-09-11）：开机页无「⌂ 首页」；开机命令走 ACK 确认（无确认给横幅）。
     private var powerOffView: some View {
         VStack(spacing: 0) {
-            NavbarHeader(title: session.deviceName,
+            NavbarHeader(title: headIdentity,
                          backText: zh ? "‹ 返回" : "‹ Back",
                          onBack: { dismiss() }) {
                 EmptyView()
@@ -169,9 +173,10 @@ struct DeviceDetailView: View {
     // MARK: - 会话控制卡（规格卡 §3.1）
 
     private var sessionCard: some View {
-        SessionControlCard(deviceName: session.deviceName,
+        SessionControlCard(deviceName: headIdentity,
                            meta: metaText,
-                           badge: headBadge) {
+                           badge: headBadge,
+                           nameSize: 17) {
             SessionButton(title: zh ? "返回" : "Back") { dismiss() }
             SessionButton(title: zh ? "首页" : "Home") { popToRoot() }
             SessionButton(title: zh ? "固件升级" : "Firmware Update") { showOTA = true }
