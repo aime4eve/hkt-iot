@@ -76,7 +76,8 @@ APP_DIR="$DERIVED/Build/Products/$CONFIG-iphoneos/HKTBLETools.app"
 PB=/usr/libexec/PlistBuddy
 VERSION=$($PB -c 'Print CFBundleShortVersionString' "$APP_DIR/Info.plist")
 BUILD=$($PB -c 'Print CFBundleVersion' "$APP_DIR/Info.plist")
-IPA="$OUT_DIR/HKTBLETools-v$VERSION-b$BUILD-$(date +%Y%m%d-%H%M).ipa"
+# 命名规范（与 Android releases 统一）：HKTBLETools-<版本>-<日期>.ipa；版本串已含构建数（V6.1.1bN）
+IPA="$OUT_DIR/HKTBLETools-$VERSION-$(date +%Y%m%d).ipa"
 rm -rf "$OUT_DIR/Payload"
 mkdir -p "$OUT_DIR/Payload"
 cp -R "$APP_DIR" "$OUT_DIR/Payload/"
