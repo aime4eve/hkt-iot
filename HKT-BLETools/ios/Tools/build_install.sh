@@ -10,10 +10,11 @@
 #   ./Tools/build_install.sh --no-launch        # 装完不启动
 #
 # 前提:
-#   - Xcode 已登录团队账号（J62PU4Y357，免费个人团队，工程内已配置自动签名）
+#   - Xcode 已登录团队账号并配置自动签名（2026-09-28 实测签名身份 Apple Development: sales@hktlora.com，
+#     SSQKW29ZR3；早期免费个人团队 J62PU4Y357 已不再使用，账号以 Xcode 当前登录为准）
 #   - iPhone 已与 Mac 配对（USB 或同 Wi-Fi），`xcrun devicectl list devices` 可见
 #
-# 免费账号注意: 签名 profile 7 天过期，App 在手机上打不开时重跑本脚本即续命。
+# 免费账号注意: 若仍使用免费团队，签名 profile 7 天过期，App 在手机上打不开时重跑本脚本即续命。
 # 免费团队 3 个 App ID 并发上限；新设备首次装机需构建时连着 Mac（自动注册进 profile）。
 
 set -euo pipefail
@@ -44,15 +45,14 @@ say() { printf '\n==> %s\n' "$*"; }
 mkdir -p "$OUT_DIR"
 
 # 1. 编译（真机切片 + 自动签名；-allowProvisioningUpdates 静默刷新免费团队 profile）
-# 版本方案（用户裁决 2026-09-21，09-22 澄清）：基线 V6.1.1b（pbxproj 手写）+ 构建数连写（每次打包 +1，
-# 计数在 build-counter.txt，gitignore 本机独立）。注入 MARKETING_VERSION/CURRENT_PROJECT_VERSION。
-COUNTER_FILE="$IOS_DIR/build-counter.txt"
-# 计数文件缺失（首跑/清理过）按 0 起步——必须吞掉 cat 的非零退出，set -e 会因此杀脚本
-COUNT=$(cat "$COUNTER_FILE" 2>/dev/null | tr -d "[:space:]" || true)
-[[ "$COUNT" =~ ^[0-9]+$ ]] || COUNT=0
-COUNT=$((COUNT + 1))
-echo "$COUNT" > "$COUNTER_FILE"
-FULL_VERSION="V6.1.1b$COUNT"
+# 版本方案（用户裁决 2026-09-28）：双端版本号必须一致——唯一事实源 = 仓库根 VERSION 文件（如 V6.1.1b30）。
+# 打包不再自动递增（旧 ios/build-counter.txt 独立计数已废）；版本升级用 ./release.sh --bump 或手工编辑 VERSION。
+# CURRENT_PROJECT_VERSION 取 b 后数字，保证同基线内单调。
+VERSION_FILE="$IOS_DIR/../VERSION"
+[[ -f "$VERSION_FILE" ]] || { echo "缺少版本文件: ${VERSION_FILE}（内容如 V6.1.1b30，双端同源）" >&2; exit 1; }
+FULL_VERSION=$(tr -d "[:space:]" < "$VERSION_FILE")
+BUILD_NUM=$(printf '%s' "$FULL_VERSION" | sed -E 's/^.*b([0-9]+)$/\1/')
+[[ "$BUILD_NUM" =~ ^[0-9]+$ ]] || { echo "VERSION 末尾需为 b<数字>（如 V6.1.1b30），当前: $FULL_VERSION" >&2; exit 1; }
 say "版本：${FULL_VERSION}"
 
 say "xcodebuild 编译：$CONFIG / 真机（generic/platform=iOS）"
@@ -62,7 +62,7 @@ if ! xcodebuild -project "$PROJECT" -scheme HKTBLETools \
       -configuration "$CONFIG" \
       -destination 'generic/platform=iOS' \
       -derivedDataPath "$DERIVED" \
-      MARKETING_VERSION="$FULL_VERSION" CURRENT_PROJECT_VERSION="$COUNT" \
+      MARKETING_VERSION="$FULL_VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUM" \
       -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
       build 2>&1 | tee "$LOG"; then
   echo "构建失败，完整日志: $LOG" >&2

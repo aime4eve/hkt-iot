@@ -34,6 +34,7 @@ sdk.dir=D\:\\Android\\sdk
 
 | 事项 | 实测命令 / 结论 |
 |------|----------------|
+| 双端发布打包（2026-09-28 用户裁决） | `./release.sh` 双端一条龙（APK+IPA，不装机）；发新版用 `./release.sh --bump`（b 尾数+1）或 `./release.sh V6.2.0b1` 指定版本。**版本唯一事实源 = 仓库根 `VERSION` 文件**（如 V6.1.1b30）：APK/IPA 文件名、系统版本号、App 内关于页显示全部同源；打包不自动递增（旧 android/version.properties 与 ios/build-counter.txt 独立计数已废）；装机另跑 `ios/Tools/build_install.sh` |
 | iOS 测试 | `cd ios && swift test`（83 个测试） |
 | iOS 模拟器构建 | `cd ios && xcodebuild -scheme HKTBLETools -destination 'generic/platform=iOS Simulator' build`；一键构建+装机用 `ios/Tools/build_install.sh` |
 | Mac 真电波运行 | Xcode 选 "My Mac (Designed for iPhone)" ⌘R；CLI 精确写法 `-destination 'platform=macOS,arch=arm64,variant=Designed for iPhone,id=<Mac-id>'`（showdestinations 打印的方括号串不能直接喂 CLI，会截断报错） |

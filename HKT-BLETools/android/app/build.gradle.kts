@@ -8,22 +8,12 @@ android {
     namespace = "com.hkt.ble.bletools"
     compileSdk = 34
 
-    // M8 版本方案（用户裁决 2026-09-21，09-22 两次澄清）：versionName = "V<主>.<次>.<修订>b<构建数>"，
-    // 如 V6.1.1b26——b 后即自增构建数（无 + 号、无独立 beta 序号）。基线（VERSION_BASE）随版本发布手写；
-    // 构建数每次打包自动 +1——计数持久化在
-    // android/version.properties（gitignore，本机独立计数），仅当本次任务图包含
-    // assemble/bundle/install 打包任务时递增；IDE sync、test 等不计。
-    val VERSION_BASE = "V6.1.1b"
-    val counterFile = rootProject.file("version.properties")
-    var buildCount = counterFile.takeIf { it.exists() }
-        ?.readText()?.trim()?.toIntOrNull() ?: 0
-    val isPackageBuild = gradle.startParameter.taskNames.any {
-        it.contains("assemble", true) || it.contains("bundle", true) || it.contains("install", true)
-    }
-    if (isPackageBuild) {
-        buildCount += 1
-        counterFile.writeText(buildCount.toString())
-    }
+    // 版本方案（用户裁决 2026-09-28）：双端版本号必须一致——唯一事实源 = 仓库根 VERSION 文件
+    //（内容如 V6.1.1b30），APK/IPA 文件名与 App 内显示全部同源。打包不再自动递增；
+    // 版本升级用 ./release.sh --bump 或手工编辑 VERSION（旧 android/version.properties 独立计数已废）。
+    val versionFile = rootProject.file("../VERSION")
+    val versionFull = versionFile.takeIf { it.exists() }?.readText()?.trim()
+        ?: throw GradleException("缺少版本文件 $versionFile（内容如 V6.1.1b30，双端同源）")
 
     buildFeatures {
         buildConfig = true
@@ -46,10 +36,10 @@ android {
         applicationId = "com.hkt.ble.bletools"
         minSdk = 26
         targetSdk = 34
-        // versionName 基线+构建数见文件头注释；versionCode 保持旧式单调递增 = YYYYMMDDNN，
+        // versionName 取自仓库根 VERSION 文件（双端同源，见文件头注释）；versionCode 保持旧式单调递增 = YYYYMMDDNN，
         // 保证对现网 3.21（versionCode 20260906）可直接覆盖升级。
         versionCode = 2026092101
-        versionName = "$VERSION_BASE$buildCount"
+        versionName = versionFull
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
