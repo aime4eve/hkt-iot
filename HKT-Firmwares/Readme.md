@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- |
 | 地磁车位传感器 | MPS100、EPS100 | [LoRaWAN_ParkingSensor](in-house/LoRaWAN_ParkingSensor/) | STM32L431RCTx | 应用与 Bootloader 工程齐全 |
 | 智能空开 | SCB100 | [LoRaWAN_Air_Switch](in-house/LoRaWAN_Air_Switch/) | GD32F103C8 | 应用工程齐全 |
+| 智能空开 | SCB100 | [LoRaWAN_Air_Switch_CL](in-house/LoRaWAN_Air_Switch_CL/) | STM32L051C8Tx | 应用工程齐全(此工程为车位锁硬件实现的空开软件项目代码仓库)| 
 | 车位锁 | CL100 | [LoRaWAN_Car_Lock](in-house/LoRaWAN_Car_Lock/) | STM32L051C8Tx | 应用工程齐全 |
 | 三合一空气质量传感器 | IAQ300 | [LoRaWAN_IAQ300](in-house/LoRaWAN_IAQ300/) | FM33A06XEV | 应用工程齐全 |
 | 多参数空气质量传感器 | IAQ300、IAQ600、IAQ900；解码协议为 AQS1000 | [LoRaWAN_IAQ1000](in-house/LoRaWAN_IAQ1000/) | FM33A06XEV | 应用与 Bootloader 工程齐全 |
