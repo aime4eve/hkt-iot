@@ -289,4 +289,24 @@ class MappingChangeServiceTest {
         assertFalse(failed.success());
         assertTrue(failed.error().contains("device offline"));
     }
+
+    @Test
+    void prefersTemplateWithDeviceTypeJsonExpression() {
+        // First entry is a bare legacy one without deviceTypeJsonExpression —
+        // copying it produced frames dropped at device registration (p219, 2026-09-28).
+        String oc = "{\"configurationJson\":{\"mapping\":["
+                + "{\"topicFilter\":\"org/1/project/1/device/+/dat/up\"},"
+                + "{\"topicFilter\":\"org/1/project/217/device/+/dat/up\","
+                + "\"converter\":{\"deviceNameJsonExpression\":\"${devEUI}\","
+                + "\"deviceTypeJsonExpression\":\"牛羊追踪器-OC-配置-v2\"}}]}}";
+        when(tbClient.fetchSharedAttributes(GW))
+                .thenReturn(attrs(oc), attrs(oc));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, true, false);
+
+        assertTrue(report.changed());
+        assertTrue(report.newValue().contains("deviceTypeJsonExpression"),
+                "the copied entry must carry the device type from the full template");
+        assertTrue(report.newValue().contains("project/219"));
+    }
 }

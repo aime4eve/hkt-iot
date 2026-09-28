@@ -122,12 +122,21 @@ public class MappingChangeService {
                     "未找到已有 mapping 条目（configurationJson.mapping），无从复制字段结构，请走人工工单");
         }
         JsonNode template = null;
+        JsonNode fallback = null;
         for (JsonNode entry : mapping) {
-            if (entry.isObject() && TOPIC_PATTERN.matcher(entry.toString()).find()) {
+            if (!entry.isObject() || !TOPIC_PATTERN.matcher(entry.toString()).find()) continue;
+            if (fallback == null) fallback = entry;
+            // Prefer a template with deviceTypeJsonExpression: the gateway
+            // registers the device per message against that type, and an entry
+            // without it drops frames for every device after a gateway restart
+            // (observed 2026-09-28: the p219 copy taken from a bare first entry
+            // silenced the project until the entry was rebuilt from a full one).
+            if (entry.path("converter").hasNonNull("deviceTypeJsonExpression")) {
                 template = entry;
                 break;
             }
         }
+        if (template == null) template = fallback;
         if (template == null) {
             return fail(nsProjectId, dryRun, "mapping 条目中不含 topic 过滤器，无法复制结构，请走人工工单");
         }
