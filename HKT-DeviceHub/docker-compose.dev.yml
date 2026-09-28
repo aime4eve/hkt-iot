@@ -23,6 +23,10 @@ services:
       NS_PASSWORD: ${NS_PASSWORD:-}
       NS_ORG_ID: ${NS_ORG_ID:-1}
       ROCKETMQ_NAME_SERVER: rmqnamesrv:9876
+    volumes:
+      # mapping auto-fix backups (devicehub.tb.mapping-backup-dir=data/oc-backups,
+      # relative to WORKDIR /app) must survive container recreation
+      - ./data/app:/app/data
     depends_on:
       postgres:
         condition: service_healthy
