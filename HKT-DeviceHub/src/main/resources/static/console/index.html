@@ -1052,12 +1052,19 @@ async function renderAttention() {
       action:() => { switchView('governance'); }, actionText:'处理' }));
     // R-07 mapping gaps: NS projects with devices but no OC topic mapping —
     // their uplinks never reach TB; show availability honestly instead of
-    // claiming healthy when the probe could not run.
+    // claiming healthy when the probe could not run. Live NS has ~100+
+    // legacy/test projects without mappings, so only the largest gaps render
+    // as actionable items and the rest collapse into one summary.
     if (gapCache) {
       if (gapCache.nsAvailable && gapCache.mappingReadable) {
-        (gapCache.gaps || []).forEach(g => items.push({ level:'danger', eui:'项目 ' + g.nsProjectId,
+        const GAP_RENDER_LIMIT = 8;
+        const gaps = (gapCache.gaps || []).slice().sort((a, b) => b.deviceCount - a.deviceCount);
+        gaps.slice(0, GAP_RENDER_LIMIT).forEach(g => items.push({ level:'danger', eui:'项目 ' + g.nsProjectId,
           text:'NS 项目 ' + g.nsProjectId + ' 有 ' + g.deviceCount + ' 台设备但无网关 OC 映射，上行不会到达 TB（样例 ' + g.sampleDevEuis.join('、') + '）',
           action:() => confirmFixMapping(g.nsProjectId, () => refreshDashboard()), actionText:'修复' }));
+        if (gaps.length > GAP_RENDER_LIMIT) items.push({ level:'warn', eui:'映射巡检',
+          text:'其余 ' + (gaps.length - GAP_RENDER_LIMIT) + ' 个项目同样无网关映射（多为历史/测试项目），完整清单 GET /api/v1/channels/mapping-gaps',
+          action:null });
       } else {
         items.push({ level:'warn', eui:'映射巡检',
           text:'缺口巡检不可用：' + (gapCache.nsError || gapCache.mappingError || '探测失败'),
