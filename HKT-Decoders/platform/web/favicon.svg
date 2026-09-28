@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- HKT 负载解码器调试平台站点图标
+       设计：品牌蓝对角三段渐变（与 HKT-BLETools iOS 图标同族）+ 白色「花括号 { } + 信号脉冲」
+       花括号 = 解码器输出 JSON；脉冲 = LoRa 负载信号被解出。
+       重新生成各尺寸位图：platform/tools/make_favicons.sh -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4CA2FF"/>
+      <stop offset=".55" stop-color="#0A68D6"/>
+      <stop offset="1" stop-color="#06479C"/>
+    </linearGradient>
+    <radialGradient id="hl" cx=".27" cy=".2" r=".8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".22"/>
+      <stop offset=".55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="116" fill="url(#hl)"/>
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 左花括号 { -->
+    <path stroke-width="34" d="M196 130 C156 130 146 150 146 184 L146 228 C146 246 128 256 96 256 C128 256 146 266 146 284 L146 328 C146 362 156 382 196 382"/>
+    <!-- 右花括号 } -->
+    <path stroke-width="34" d="M316 130 C356 130 366 150 366 184 L366 228 C366 246 384 256 416 256 C384 256 366 266 366 284 L366 328 C366 362 356 382 316 382"/>
+    <!-- 信号脉冲 -->
+    <path stroke-width="30" d="M196 256 H238 L257 206 L279 306 L296 256 H316"/>
+  </g>
+</svg>
