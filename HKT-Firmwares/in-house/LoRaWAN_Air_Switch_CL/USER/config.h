@@ -78,7 +78,7 @@
 #define SEC_DELAY         (1000 / SYSTEM_TIMER_BASE) // u16 不能超过65秒
 
 #define HARDWARE_VER 0x07
-#define SOFTWARE_VER 0x0D
+#define SOFTWARE_VER 0x0E
 
 #define FUNC_LoRaWAN_ABP      0
 #define FUNC_LoRaWAN_SAMPLE   1

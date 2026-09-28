@@ -74,46 +74,46 @@ void parse_radiorx(const char *recv, RadioRxData *rx_data)
     strncpy(recv_copy, valid_data, sizeof(recv_copy) - 1);
     char *token = strtok(recv_copy, ",");
 
-    int  field_idx = 0;
+    int field_idx = 0;
     char hex_str[256] = {0}; /* 存储十六进制字符串段 */
 
     /* +macrx,-77,9,10,010169554880093f80000017233c00000e10 */
     while (token != NULL) {
         switch (field_idx) {
-            case 0:
-                /* 跳过头部标识字段 "+radiorx" 或 "+macrx" */
-                break;
+        case 0:
+            /* 跳过头部标识字段 "+radiorx" 或 "+macrx" */
+            break;
 
-            case 1:
-                rx_data->rssi = atoi(token);
-                /* 校验 RSSI 合理性（LoRa 的 RSSI 通常在 -148~0 之间） */
-                if (rx_data->rssi < -148 || rx_data->rssi > 0) {
-                    INFO("Warning: Abnormal RSSI value %d\n", rx_data->rssi);
-                }
-                break;
+        case 1:
+            rx_data->rssi = atoi(token);
+            /* 校验 RSSI 合理性（LoRa 的 RSSI 通常在 -148~0 之间） */
+            if (rx_data->rssi < -148 || rx_data->rssi > 0) {
+                INFO("Warning: Abnormal RSSI value %d\n", rx_data->rssi);
+            }
+            break;
 
-            case 2:
-                rx_data->snr = atoi(token);
-                if (rx_data->snr <= -50 || rx_data->snr > 127) {
-                    INFO("Error: Abnormal SNR value %d\n", rx_data->snr);
-                    return;
-                }
-                break;
+        case 2:
+            rx_data->snr = atoi(token);
+            if (rx_data->snr <= -50 || rx_data->snr > 127) {
+                INFO("Error: Abnormal SNR value %d\n", rx_data->snr);
+                return;
+            }
+            break;
 
-            case 3:
-                if (strstr(recv, "+macrx")) {
-                    rx_data->port = atoi(token);
-                } else {
-                    strncpy(hex_str, token, sizeof(hex_str) - 1);
-                }
-                break;
-            case 4:
-                if (strstr(recv, "+macrx")) {
-                    strncpy(hex_str, token, sizeof(hex_str) - 1);
-                }
-                break;
-            default: /* 多余字段，忽略 */
-                break;
+        case 3:
+            if (strstr(recv, "+macrx")) {
+                rx_data->port = atoi(token);
+            } else {
+                strncpy(hex_str, token, sizeof(hex_str) - 1);
+            }
+            break;
+        case 4:
+            if (strstr(recv, "+macrx")) {
+                strncpy(hex_str, token, sizeof(hex_str) - 1);
+            }
+            break;
+        default: /* 多余字段，忽略 */
+            break;
         }
         token = strtok(NULL, ",");
         field_idx++;
@@ -305,7 +305,7 @@ void sendLoRaWANData(void)
  * @param
  * @retval
  */
-void ACK_Server(u8 cmd, u8 addr) 
+void ACK_Server(u8 cmd, u8 addr)
 {
     u16 crc;
     memset(sendBuffer, 0, sizeof(sendBuffer));
@@ -386,6 +386,34 @@ void ACK_Server2(u8 cmd, u8 addr, u16 value)
     sendBuffer[8] = 0x55;               // 帧尾
 
     sendNum = 9;
+    sendLoRaWANData();
+}
+
+
+/**
+ * @brief  将设备版本号上传给服务器
+ * @param  cmd：下发的命令码(0D)
+ * @param  addr：空开地址(此命令地址无效，默认0x00)
+ * @retval
+ */
+void reportDeviceVersion(u8 cmd, u8 addr)
+{
+    u16 crc;
+    memset(sendBuffer, 0, sizeof(sendBuffer));
+    sendNum = 0;
+
+    sendBuffer[sendNum++] = 0xAA;         // 帧头
+    sendBuffer[sendNum++] = cmd;          // CMD
+    sendBuffer[sendNum++] = addr;         // 设备编号(无效)
+    sendBuffer[sendNum++] = 0x00;         // 数据长度
+    sendBuffer[sendNum++] = HARDWARE_VER; // 硬件版本号 0x07
+    sendBuffer[sendNum++] = SOFTWARE_VER; // 软件版本号 0x0D
+
+    crc = crc_cal_value(sendBuffer, sendNum); // 求crc
+    sendBuffer[sendNum++] = (u8)crc;          // CRC低字节
+    sendBuffer[sendNum++] = (u8)(crc >> 8);   // CRC高字节
+    sendBuffer[sendNum++] = 0x55;             // 帧尾
+
     sendLoRaWANData();
 }
 
@@ -740,6 +768,39 @@ void fromLoRaWANDataHandle(u8 *data, u16 len)
                 }
                 ACK_Server2(cmd, 0, flag);
                 DEBUG_TRACE(LOG_TAG, "Exec Air Switch Leakage Protection %d", flag);
+            }
+            break;
+        case 0x0C:        // 清零指定空开电量(不支持批量，需先解锁再逐个下发清零指令)
+            if (len == 7) // 帧长度判断
+            {
+                u8 flag = 0;
+                if (addr < DEFAULT_AS_NUMBER) // 空开地址0~9，单次只清零一个空开
+                {
+                    if (as_an001_t.is_alive[addr]) {
+                        as_write_cmd(CMD_AS_UNLOCK_ELECTRICITY, addr, 0);  // 电量解锁
+                        as_write_cmd(CMD_AS_CLEAR_ELECTRICITY_H, addr, 0); // 电量高清零
+                        as_write_cmd(CMD_AS_CLEAR_ELECTRICITY_L, addr, 0); // 电量低清零
+                        flag = 1;
+                    }
+                } else if (addr == 0xFF) { // 清零所有空开：逐个空开依次下发，不支持批量
+                    for (u8 j = 0; j < DEFAULT_AS_NUMBER; j++) {
+                        if (!as_an001_t.is_alive[j])
+                            continue;
+                        as_write_cmd(CMD_AS_UNLOCK_ELECTRICITY, j, 0);  // 电量解锁
+                        as_write_cmd(CMD_AS_CLEAR_ELECTRICITY_H, j, 0); // 电量高清零
+                        as_write_cmd(CMD_AS_CLEAR_ELECTRICITY_L, j, 0); // 电量低清零
+                        flag = 1;
+                    }
+                }
+                ACK_Server2(cmd, addr, flag); // 应答服务器(应答包中含有执行结果)
+                DEBUG_TRACE(LOG_TAG, "Clear Air Switch Electricity %d %d", addr, flag);
+            }
+            break;
+        case 0x0D:        // 查询设备版本号
+            if (len == 7) // 帧长度判断
+            {
+                reportDeviceVersion(cmd, 0x00); // 应答服务器，地址字节默认为0x00
+                DEBUG_TRACE(LOG_TAG, "Report Device Version %d.%d", HARDWARE_VER, SOFTWARE_VER);
             }
             break;
         case 0xEE:       // 透传指令

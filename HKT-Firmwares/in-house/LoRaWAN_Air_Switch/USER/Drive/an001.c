@@ -140,7 +140,7 @@ u8 as_check_slave_number(void)
             DEBUG_TRACE(ERROR_TAG, "Air Switch No Reply %s", __func__);
             break;
         }
-				fwdgt_reload();
+        fwdgt_reload();
     }
     return number;
 }
@@ -214,7 +214,7 @@ void as_get_slave_info(as_event_t event)
                     // DEBUG_TRACE(ERROR_TAG, "Air Switch No Reply[%d][%2x]", READ_AS_SLAVE_PARAM, as_addr[p]);
                     break;
                 }
-								fwdgt_reload();
+                fwdgt_reload();
             }
         }
         if (event == READ_AS_SLAVE_PARAM) {
@@ -322,7 +322,7 @@ void as_get_slave_info(as_event_t event)
                 DEBUG_TRACE(ERROR_TAG, "Air Switch No Reply");
                 break;
             }
-						fwdgt_reload();
+            fwdgt_reload();
         }
     }
 }
@@ -339,6 +339,7 @@ void as_period_upload(void)
         as_get_slave_info(READ_AS_REAL_TIME_DATA);    // 读取空开实时数据
         as_get_slave_info(READ_AS_CONTACT_STATUS);    // 读取空开地址状态
         as_get_slave_info(READ_AS_IS_REMOTE_CONTROL); // 读取空开远程使能状态
+        as_get_slave_info(READ_AS_SLAVE_PARAM);       // 读取所有空开的配置参数
         // 确认是否存在报警事件
         for (j = 0; j < DEFAULT_AS_NUMBER; j++) {
             if (as_an001_t.is_alive[j] && as_an001_t.slave_realtime_data[j].alarm_t.alarm && as_an001_t.slave_realtime_data[j].alarm_t.alarm != alarm_state[j]) {
@@ -389,47 +390,47 @@ void as_period_upload(void)
                 if (!as_an001_t.is_alive[j])
                     continue;
             }
-                u16 *ptr = &as_an001_t.slave_realtime_data[j].total_voltage;
-                u16 value = 0;
-                memset(sendBuffer, 0, sizeof(sendBuffer));
-                sendNum = 0;
+            u16 *ptr = &as_an001_t.slave_realtime_data[j].total_voltage;
+            u16 value = 0;
+            memset(sendBuffer, 0, sizeof(sendBuffer));
+            sendNum = 0;
 
-                sendBuffer[sendNum++] = 0xAA;
-                sendBuffer[sendNum++] = REPORT_REAL_TIME_DATA_CMD;              // CMD
-                sendBuffer[sendNum++] = j;                                      // 设备编号
-                sendBuffer[sendNum++] = as_an001_t.slave_param[j].version >> 8; // 设备型号
-                sendBuffer[sendNum++] = as_an001_t.slave_param[j].item & 0xFF;  // 空开类型
-                sendBuffer[sendNum++] = 59;                                     // 数据长度=29*2+1=59字节
+            sendBuffer[sendNum++] = 0xAA;
+            sendBuffer[sendNum++] = REPORT_REAL_TIME_DATA_CMD;              // CMD
+            sendBuffer[sendNum++] = j;                                      // 设备编号
+            sendBuffer[sendNum++] = as_an001_t.slave_param[j].version >> 8; // 设备型号
+            sendBuffer[sendNum++] = as_an001_t.slave_param[j].item & 0xFF;  // 空开类型
+            sendBuffer[sendNum++] = 59;                                     // 数据长度=29*2+1=59字节
 
-                for (u8 p = 0; p < 29; p++) // 将29个u16类型的实时数据拷贝到填充帧
-                {
-                    value = *(ptr + p);
-                    sendBuffer[sendNum++] = (u8)(value >> 8); // 高字节
-                    sendBuffer[sendNum++] = (u8)value;        // 低字节
+            for (u8 p = 0; p < 29; p++) // 将29个u16类型的实时数据拷贝到填充帧
+            {
+                value = *(ptr + p);
+                sendBuffer[sendNum++] = (u8)(value >> 8); // 高字节
+                sendBuffer[sendNum++] = (u8)value;        // 低字节
+            }
+            sendBuffer[sendNum++] = as_an001_t.is_remote_control[j]; // 能否被远程控制
+
+            value = crc_cal_value(sendBuffer, sendNum); // 求crc
+            sendBuffer[sendNum++] = (u8)value;          // CRC低字节
+            sendBuffer[sendNum++] = (u8)(value >> 8);   // CRC高字节
+            sendBuffer[sendNum++] = 0x55;
+
+            // 检查剩余空间，不足时丢弃最旧数据
+            while (lwrb_get_free(&lwrbBuff_t) < (size_t)(1 + sendNum)) {
+                u8 old_len;
+                if (lwrb_read(&lwrbBuff_t, &old_len, 1) == 1) {
+                    lwrb_skip(&lwrbBuff_t, old_len);
+                } else {
+                    lwrb_reset(&lwrbBuff_t);
+                    break;
                 }
-                sendBuffer[sendNum++] = as_an001_t.is_remote_control[j]; // 能否被远程控制
-
-                value = crc_cal_value(sendBuffer, sendNum); // 求crc
-                sendBuffer[sendNum++] = (u8)value;          // CRC低字节
-                sendBuffer[sendNum++] = (u8)(value >> 8);   // CRC高字节
-                sendBuffer[sendNum++] = 0x55;
-
-                // 检查剩余空间，不足时丢弃最旧数据
-                while (lwrb_get_free(&lwrbBuff_t) < (size_t)(1 + sendNum)) {
-                    u8 old_len;
-                    if (lwrb_read(&lwrbBuff_t, &old_len, 1) == 1) {
-                        lwrb_skip(&lwrbBuff_t, old_len);
-                    } else {
-                        lwrb_reset(&lwrbBuff_t);
-                        break;
-                    }
-                    if (lwrb_write_count > 0)
-                        lwrb_write_count--;
-                }
-                lwrb_write_count++;
-                DEBUG_TRACE(LOG_TAG, "Lwrb Write Count %d", lwrb_write_count);
-                lwrb_write(&lwrbBuff_t, &sendNum, 1); // 写入数据长度
-                lwrb_write(&lwrbBuff_t, sendBuffer, sendNum);
+                if (lwrb_write_count > 0)
+                    lwrb_write_count--;
+            }
+            lwrb_write_count++;
+            DEBUG_TRACE(LOG_TAG, "Lwrb Write Count %d", lwrb_write_count);
+            lwrb_write(&lwrbBuff_t, &sendNum, 1); // 写入数据长度
+            lwrb_write(&lwrbBuff_t, sendBuffer, sendNum);
         }
     }
 }
@@ -468,6 +469,27 @@ void as_write_cmd(u8 event, u8 addr, u8 cmd)
         bufer[4] = 0;
         bufer[5] = 0x5A;
         break;
+    case CMD_AS_UNLOCK_ELECTRICITY:
+        bufer[1] = 0x06;
+        bufer[2] = 0x09;
+        bufer[3] = addr;
+        bufer[4] = 0;
+        bufer[5] = 0xA5;
+        break;
+    case CMD_AS_CLEAR_ELECTRICITY_H:
+        bufer[1] = 0x06;
+        bufer[2] = 0x16;
+        bufer[3] = addr;
+        bufer[4] = 0;
+        bufer[5] = 0;
+        break;
+    case CMD_AS_CLEAR_ELECTRICITY_L:
+        bufer[1] = 0x06;
+        bufer[2] = 0x17;
+        bufer[3] = addr;
+        bufer[4] = 0;
+        bufer[5] = 0;
+        break;
     default:
         break;
     }
@@ -480,9 +502,9 @@ send:
     bufer[7] = (u8)(crc >> 8); // CRC高字节
     AS_SendData(bufer, 8);
     startTimer = get_syspant_ms() + 500;
-		
-		memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
-		uartLoRa.recvLen = 0;
+
+    memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
+    uartLoRa.recvLen = 0;
 
     while (1) {
         if (!uartAS.recvTimeout && uartAS.recvLen) {
@@ -516,6 +538,15 @@ send:
                 case CMD_AS_LEAKAGE_PROTECTION:
                     DEBUG_TRACE(LOG_TAG, "AS Leakage Protection %d Success", addr);
                     return;
+                case CMD_AS_UNLOCK_ELECTRICITY:
+                    DEBUG_TRACE(LOG_TAG, "AS Unlock Electricity %d Success", addr);
+                    return;
+                case CMD_AS_CLEAR_ELECTRICITY_H:
+                    DEBUG_TRACE(LOG_TAG, "AS Clear Electricity High %d Success", addr);
+                    return;
+                case CMD_AS_CLEAR_ELECTRICITY_L:
+                    DEBUG_TRACE(LOG_TAG, "AS Clear Electricity Low %d Success", addr);
+                    return;
                 default:
                     break;
                 }
@@ -533,8 +564,7 @@ send:
             memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
             uartLoRa.recvLen = 0;
         }
-        if (startTimer <= get_syspant_ms()) // 超时未回应直接跳出
-        {
+        if (startTimer <= get_syspant_ms()) { // 超时未回应直接跳出
             switch (event) {
             case CMD_AS_ENTER_ADDR_MODE:
                 DEBUG_TRACE(LOG_TAG, "AS Enter Addr Mode Timeout")
@@ -550,7 +580,7 @@ send:
             }
             return;
         }
-				fwdgt_reload();
+        fwdgt_reload();
     }
 }
 

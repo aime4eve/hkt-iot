@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#define DEFAULT_AS_NUMBER 10        // 最大支持空开数量
+#define DEFAULT_AS_NUMBER 10         // 最大支持空开数量
 #define DEFAULT_AS_REPORT_TIME 36000 // 默认上报间隔36000秒
 
 #define TRIGGER_REAL_TIME_DATA_CMD 6 // 被动上报实时数据
@@ -24,8 +24,10 @@ typedef enum {
     CMD_AS_SET_CONTACT,          // 设置空开开合状态
     CMD_AS_RESET_FACTORY_MODE_2, // 恢复出厂设置2
     CMD_AS_READ_SLAVE_PARAM,     // 读取指定空开阈值
-    CMD_AS_LEAKAGE_PROTECTION,   // 漏保自检
-
+    CMD_AS_LEAKAGE_PROTECTION,   // 漏电保护
+    CMD_AS_UNLOCK_ELECTRICITY,   // 开关电量解锁
+    CMD_AS_CLEAR_ELECTRICITY_H,  // 开关电量清零高
+    CMD_AS_CLEAR_ELECTRICITY_L,  // 开关电量清零低
 } as_cmd_t;
 
 typedef union {
