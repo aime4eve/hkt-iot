@@ -42,7 +42,7 @@
     {
       "platform": "chirpstack",
       "lang": null,
-      "file": "air-switch_chirpstack_v3.0.0.js",
+      "file": "dms01_chirpstack_v3.0.0.js",
       "decoderVersion": "3.0.0",
       "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
       "current": false,
