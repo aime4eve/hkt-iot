@@ -43,7 +43,7 @@ curl -sS -X POST "$DEVICEHUB/api/v1/gateway-mapping/reload"
 
 实现要点（`MappingChangeService`，fail-closed）：
 
-- **条目结构不猜**：复制 mapping 数组里现有条目整体结构，仅把 `project/{id}/` 段替换为目标项目（up/down 变体都随模板走）；
+- **条目结构不猜**：复制 mapping 数组里现有条目整体结构，仅把 `project/{id}/` 段替换为目标项目（up/down 变体都随模板走）。**模板必须选带 `deviceTypeJsonExpression` 的条目**（代码已优先选取，ddd98a3）：缺该字段的消息在网关重启后设备注册阶段被整条丢弃——2026-09-28 项目 219 从"裸条目"复制后静默两小时即此因；
 - **结构异常一律拒绝执行**：attr 缺失 / 值非 JSON / 无 mapping 数组 / 无可复制条目 → 不写任何东西；
 - **先备份后写入**：每次真实执行先把变更前的共享属性值落到 `data/oc-backups/`（路径 `devicehub.tb.mapping-backup-dir`）；
 - **幂等**：项目已有映射时不写；写入后回读校验并刷新预检用的 30s 缓存；
