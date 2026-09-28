@@ -113,7 +113,8 @@ public class PreflightService {
             }
             return new CheckResult("GATEWAY_MAPPING", Verdict.FAIL,
                     "项目 " + nsProjectId + " 无网关映射，上行不会到达 TB；"
-                            + "需走映射变更工单（备份→变更→重载→验证）",
+                            + "可在控制台一键自动修复（自动备份→追加→写入→回读校验），"
+                            + "或走人工工单（备份→变更→重载→验证）",
                     Map.of("nsProjectId", nsProjectId));
         } catch (Exception e) {
             return new CheckResult("GATEWAY_MAPPING", Verdict.WARN,

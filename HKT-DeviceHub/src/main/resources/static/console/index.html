@@ -760,7 +760,7 @@ document.addEventListener('click', e => {
 ['dashboard', 'devices', 'governance'].forEach(v => showState(v, 'loading'));
 
 /* ================= 全局状态栏 / 横幅 ================= */
-let healthCache = null, topoCache = null;
+let healthCache = null, topoCache = null, gapCache = null;
 function renderHeader() {
   const h = healthCache;
   const down = [];
@@ -844,12 +844,26 @@ function topoSegState(id) {
             evidence:[['探测', 'TCP ' + t.ns.host + ':' + t.ns.port], ['延迟', t.ns.latencyMs + ' ms']] }
         : { state:'is-down', label:'NS 不可达',
             evidence:[['探测', 'TCP ' + t.ns.host + ':' + t.ns.port], ['错误', t.ns.error || '连接失败']] };
-    case 'ns-oc':
-      return t.gatewayMapping.readable
-        ? { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount,
-            evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—']] }
-        : { state:'is-down', label:'OC 映射读取失败',
+    case 'ns-oc': {
+      if (!t.gatewayMapping.readable) {
+        return { state:'is-down', label:'OC 映射读取失败',
             evidence:[['错误', t.gatewayMapping.error || '共享属性不可读']] };
+      }
+      const gaps = gapCache && gapCache.nsAvailable && gapCache.mappingReadable
+        ? (gapCache.gaps || []) : null;
+      if (gaps == null) {
+        return { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount,
+            evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—'], ['缺口巡检', '不可用']] };
+      }
+      if (gaps.length) {
+        return { state:'is-warn', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 缺口 ' + gaps.length,
+            evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount],
+                      ['无映射项目', gaps.map(g => '项目 ' + g.nsProjectId + '（' + g.deviceCount + ' 台设备）').join('、')],
+                      ['影响', '这些项目上行到不了 TB，需走映射变更工单']] };
+      }
+      return { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 无缺口',
+          evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—'], ['缺口巡检', '通过（R-07）']] };
+    }
     case 'oc-tb':
       return t.tbAuth.authenticated
         ? { state:'', label:'', evidence:[['TB 认证', '有效']] }
@@ -886,7 +900,11 @@ function topoNodeState(id) {
   const t = topoCache;
   if (!t) return '';
   if (id === 'ns') return t.ns.reachable ? '' : 'is-down';
-  if (id === 'oc') return t.gatewayMapping.readable ? '' : 'is-down';
+  if (id === 'oc') {
+    if (!t.gatewayMapping.readable) return 'is-down';
+    const gaps = gapCache && gapCache.nsAvailable && gapCache.mappingReadable ? (gapCache.gaps || []) : null;
+    return (gaps && gaps.length) ? 'is-warn' : '';
+  }
   if (id === 'tb') return t.tbAuth.authenticated ? '' : 'is-down';
   if (id === 'hub') return (t.channels['tb-ws'] && t.channels['tb-rest']) ? '' : 'is-warn';
   return '';
@@ -1032,6 +1050,20 @@ async function renderAttention() {
     conflicts.forEach(c => items.push({ level:'danger', eui:c.devEui,
       text:'同名设备冲突待处理（' + c.candidates.length + ' 台候选副本）',
       action:() => { switchView('governance'); }, actionText:'处理' }));
+    // R-07 mapping gaps: NS projects with devices but no OC topic mapping —
+    // their uplinks never reach TB; show availability honestly instead of
+    // claiming healthy when the probe could not run.
+    if (gapCache) {
+      if (gapCache.nsAvailable && gapCache.mappingReadable) {
+        (gapCache.gaps || []).forEach(g => items.push({ level:'danger', eui:'项目 ' + g.nsProjectId,
+          text:'NS 项目 ' + g.nsProjectId + ' 有 ' + g.deviceCount + ' 台设备但无网关 OC 映射，上行不会到达 TB（样例 ' + g.sampleDevEuis.join('、') + '）',
+          action:() => confirmFixMapping(g.nsProjectId, () => refreshDashboard()), actionText:'修复' }));
+      } else {
+        items.push({ level:'warn', eui:'映射巡检',
+          text:'缺口巡检不可用：' + (gapCache.nsError || gapCache.mappingError || '探测失败'),
+          action:null });
+      }
+    }
   } catch (e) { /* partial failure keeps earlier items */ }
   const box = $('#attnList');
   if (!items.length) {
@@ -1040,16 +1072,20 @@ async function renderAttention() {
   }
   box.innerHTML = items.map((it, i) =>
     '<div class="attn-item"><i class="dot ' + it.level + '"></i>' +
-    '<span class="grow"><span class="eui">' + it.eui + '</span> · ' + esc(it.text) + '</span>' +
-    '<button class="btn ghost sm" data-attn="' + i + '">' + it.actionText + '</button></div>'
+    '<span class="grow"><span class="eui">' + esc(it.eui) + '</span> · ' + esc(it.text) + '</span>' +
+    (it.action && it.actionText ? '<button class="btn ghost sm" data-attn="' + i + '">' + it.actionText + '</button>' : '') +
+    '</div>'
   ).join('');
   box.querySelectorAll('[data-attn]').forEach(btn =>
     btn.addEventListener('click', () => items[+btn.dataset.attn].action()));
 }
 async function refreshDashboard(manual) {
   try {
-    const [h, t] = await Promise.all([api('/channels/health'), api('/channels/topology')]);
-    healthCache = h; topoCache = t; headerOffline = false;
+    const [h, t, g] = await Promise.all([
+      api('/channels/health'), api('/channels/topology'),
+      api('/channels/mapping-gaps').then(r => r, () => null)
+    ]);
+    healthCache = h; topoCache = t; gapCache = g; headerOffline = false;
     renderHeader();
     renderHealthCard();
     renderTopology();
@@ -1314,7 +1350,7 @@ $('#drawerMask').addEventListener('click', closeDrawer);
 /* ================= 接入预检 ================= */
 const CHECK_META = {
   NS_DEVICE:       { t:'① NS 设备与项目归属',   src:'NS API' },
-  GATEWAY_MAPPING: { t:'② 网关项目映射',        src:'TB 网关 OC 共享属性（只读）' },
+  GATEWAY_MAPPING: { t:'② 网关项目映射',        src:'TB 网关 OC 共享属性（支持自动修复）' },
   TB_UNIQUENESS:   { t:'③ TB 设备唯一性',       src:'TB tenant devices（含大小写变体搜索）' },
   PROFILE_MATCH:   { t:'④ 设备 profile 匹配',   src:'TB device profile' },
   LOCAL_BINDING:   { t:'⑤ 本地/DeviceHub 绑定', src:'registered_devices' }
@@ -1339,10 +1375,15 @@ function renderReport(eui, report) {
         '<span class="c-src">数据源：' + meta.src + '</span></div>' +
         '<div class="c-detail">' + esc(c.advice || '') + '</div>' +
         evidenceHtml(c.evidence) +
-        (c.verdict === 'FAIL' ? '<div class="c-fix FAIL">→ 请按上方建议处理后重试；重名冲突请 <a href="#/governance" data-goto-gov>前往治理中心</a></div>' : '') +
+        (c.verdict === 'FAIL' ? '<div class="c-fix FAIL">→ 请按上方建议处理后重试；重名冲突请 <a href="#/governance" data-goto-gov>前往治理中心</a>' +
+          (c.key === 'GATEWAY_MAPPING' && c.evidence && c.evidence.nsProjectId != null
+            ? ' <button class="btn sm" data-fix-mapping="' + c.evidence.nsProjectId + '">一键自动修复映射</button>' : '') +
+          '</div>' : '') +
       '</div></div>';
     }).join('');
   box.querySelectorAll('[data-goto-gov]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchView('governance'); }));
+  box.querySelectorAll('[data-fix-mapping]').forEach(b => b.addEventListener('click', () =>
+    confirmFixMapping(+b.dataset.fixMapping, () => $('#euiForm').dispatchEvent(new Event('submit')))));
   const actions = $('#reportActions');
   actions.hidden = false;
   actions.innerHTML =
@@ -1431,6 +1472,29 @@ function ensureOperator() {
         resolve(v);
       },
       { title:'登记操作者', desc:'首次治理操作前登记一次，本机保存：', confirmText:'保存' });
+  });
+}
+
+/* ---- 网关映射自动修复（R-07 assist）：备份→追加→写入→回读校验 ---- */
+function confirmFixMapping(pid, onDone) {
+  ensureOperator().then(() => {
+    openModal(
+      '<div>NS 项目 <b>' + pid + '</b>：向 TB 网关 OC 连接器追加该项目的 topic 映射。</div>' +
+      '<div style="margin-top:6px">流程：自动备份当前共享属性 → 复制现有条目结构追加 → 写入 → 回读校验。' +
+      '映射写错会影响<b>全部</b>项目的上行；服务端已内置先备份后写入与结构异常拒绝执行。</div>',
+      async () => {
+        try {
+          const r = await api('/gateway-mapping/' + pid + '/apply', { method:'POST' });
+          if (r.error) { toast('修复失败：' + r.error, true); return; }
+          toast((r.changed ? '✓ 映射已写入（项目 ' + pid + '）：' : '无需变更：') + (r.note || ''));
+          if (r.changed && onDone) onDone();
+        } catch (err) {
+          toast('修复失败：' + err.message, true);
+        }
+      },
+      { title:'⚠ 网关映射自动修复（生产写入）',
+        desc:'此操作修改 ThingsBoard 网关设备共享属性（影响上行链路），并登记操作者审计：',
+        confirmText:'确认修复' });
   });
 }
 

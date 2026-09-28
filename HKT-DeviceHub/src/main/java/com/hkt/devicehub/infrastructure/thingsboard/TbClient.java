@@ -157,6 +157,19 @@ public class TbClient {
     }
 
     /**
+     * Write one shared attribute (OC mapping auto-fix). The gateway device
+     * subscribes to shared-attribute updates, so connector config changes
+     * reach it without a restart on standard TB IoT Gateway behavior.
+     */
+    public void saveSharedAttribute(String tbDeviceId, String key, JsonNode value) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.set(key, value);
+        exchangeForJson("/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/SHARED_SCOPE",
+                HttpMethod.POST, body);
+        log.info("[TB] shared attribute '{}' updated on device {}", key, tbDeviceId);
+    }
+
+    /**
      * Recent frame summaries (DESC, null-artifact filtered) for the device
      * detail drawer. Values are truncated to keep the payload small.
      */

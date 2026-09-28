@@ -1,5 +1,6 @@
 package com.hkt.devicehub.interfaces;
 
+import com.hkt.devicehub.application.MappingGapService;
 import com.hkt.devicehub.application.TopologyService;
 import com.hkt.devicehub.application.TopologyService.TopologyResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,14 +19,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class TopologyController {
 
     private final TopologyService topologyService;
+    private final MappingGapService mappingGapService;
 
-    public TopologyController(TopologyService topologyService) {
+    public TopologyController(TopologyService topologyService, MappingGapService mappingGapService) {
         this.topologyService = topologyService;
+        this.mappingGapService = mappingGapService;
     }
 
     @GetMapping("/topology")
     @Operation(summary = "End-to-end link topology probes (cached 30s)")
     public TopologyResponse topology() {
         return topologyService.topology();
+    }
+
+    @GetMapping("/mapping-gaps")
+    @Operation(summary = "R-07 gateway mapping gap inspection: NS projects with "
+            + "devices but no OC topic mapping (read-only, cached 30s)")
+    public MappingGapService.MappingGapReport mappingGaps() {
+        return mappingGapService.report();
     }
 }

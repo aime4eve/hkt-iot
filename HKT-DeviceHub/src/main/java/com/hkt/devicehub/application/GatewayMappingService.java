@@ -44,15 +44,24 @@ public class GatewayMappingService {
             return cached;
         }
         try {
-            Map<String, JsonNode> attrs =
-                    tbClient.fetchSharedAttributes(tbProperties.getGatewayDeviceId());
-            Set<Integer> ids = new LinkedHashSet<>();
-            attrs.forEach((key, value) -> extractProjectIds(key, value, ids));
-            cached = Set.copyOf(ids);
-            cachedAtMs = now;
+            return refreshMappedProjectIds();
         } catch (Exception e) {
             log.warn("[GatewayMapping] shared attributes read failed: {}", e.getMessage());
+            return Set.of();
         }
+    }
+
+    /**
+     * Like {@link #mappedProjectIds()} but propagates the TB read failure, so
+     * callers can tell "no mappings" apart from "cannot read mappings".
+     */
+    public synchronized Set<Integer> refreshMappedProjectIds() {
+        Map<String, JsonNode> attrs =
+                tbClient.fetchSharedAttributes(tbProperties.getGatewayDeviceId());
+        Set<Integer> ids = new LinkedHashSet<>();
+        attrs.forEach((key, value) -> extractProjectIds(key, value, ids));
+        cached = Set.copyOf(ids);
+        cachedAtMs = System.currentTimeMillis();
         return cached;
     }
 

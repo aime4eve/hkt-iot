@@ -27,6 +27,16 @@ public class TbProperties {
     private int batchSize = 200;
     /** TB id of the IoT gateway device whose shared attributes hold OC project mappings. */
     private String gatewayDeviceId = "0f7da2b0-e91d-11ef-a8ee-99a8c68f9649";
+    /**
+     * Auto-fix (R-07 assist): allow DeviceHub to append missing OC topic
+     * mappings to the gateway shared attributes itself. Off switches the
+     * apply endpoint back to manual-runbook-only.
+     */
+    private boolean mappingAutoFixEnabled = true;
+    /** Shared attribute key holding the OC connector config (JSON-encoded string). */
+    private String mappingAttrKey = "OC";
+    /** Local directory where each auto-fix stores the pre-change shared-attribute backup. */
+    private String mappingBackupDir = "data/oc-backups";
 
     @PostConstruct
     void validateCredentials() {

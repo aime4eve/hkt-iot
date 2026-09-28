@@ -37,6 +37,10 @@ devicehub:
     batch-size: ${TB_BATCH_SIZE:200}
     last-frame-flush-ms: ${TB_LAST_FRAME_FLUSH_MS:10000}
     gateway-device-id: ${TB_GATEWAY_DEVICE_ID:0f7da2b0-e91d-11ef-a8ee-99a8c68f9649}
+    # R-07 assist: console one-click mapping auto-fix (backup → append → write → verify)
+    mapping-auto-fix-enabled: ${TB_MAPPING_AUTO_FIX_ENABLED:true}
+    mapping-attr-key: ${TB_MAPPING_ATTR_KEY:OC}
+    mapping-backup-dir: ${TB_MAPPING_BACKUP_DIR:data/oc-backups}
   ns:
     enabled: ${NS_ENABLED:false}
     base-url: ${NS_BASE_URL:http://172.17.201.15:8080}
