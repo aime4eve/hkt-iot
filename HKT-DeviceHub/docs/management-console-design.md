@@ -194,3 +194,12 @@ DeviceHub 的设备注册、通道健康、对账能力已在 API 层具备，�
 - **P0（本期原型）**：四个视图完整交互 + mock 数据（取自 dev 真实环境快照）
 - **P1（实现）**：台账只读 + 健康总览 + 预检（依赖 R-01/R-11 后端接口）
 - **P2（实现）**：治理中心（依赖删除接口）+ 二期命令控制台联动
+
+## 9. 站点图标（favicon）
+
+2026-09-28 定稿，设计源 `static/console/favicon.svg`（生成器 `scripts/make_favicon.py`，改设计=改 SVG 重跑脚本）。
+
+- **设计语言**：与 HKT-BLETools iOS 图标同族——品牌蓝对角三段渐变（#4CA2FF → #0A68D6 → #06479C）+ 左上径向柔光 + 白色几何符文 + 深蓝微投影（16/32px 渲染时自动剥离投影保对比度）。
+- **符文语义**：中心枢纽节点辐射连接三个卫星节点（NS / 平台 / 业务端）+ 顶部卫星两道广播弧（无线设备上报，HKT 家族签名元素）。
+- **产物**：console/ 下 favicon.svg + favicon-{16,32,48}.png + apple-touch-icon.png(180) + icon-{192,512}.png；static 根 favicon.ico（16+32+48，兜底浏览器默认请求）。
+- **接线**：index.html head 四条 `<link>` + `<meta name="theme-color" content="#0d1117">`；页头品牌区内嵌同图标（20px 圆角）。

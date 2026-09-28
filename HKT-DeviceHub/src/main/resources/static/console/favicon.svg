@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- HKT-DeviceHub favicon
+       设计语言与 HKT-BLETools iOS 图标同族（2026-09-15）：
+       品牌蓝对角三段渐变 + 左上径向柔光 + 白色几何符文 + 深蓝微投影。
+       符文语义：中心枢纽（DeviceHub）辐射连接三个卫星节点（NS / 平台 / 业务端），
+       顶部节点上方两道广播弧 = 无线设备上报（HKT 家族签名元素）。
+       改设计 = 改本文件后运行 scripts/make_favicon.py 重新生成全套 PNG/ICO。 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4CA2FF"/>
+      <stop offset="0.55" stop-color="#0A68D6"/>
+      <stop offset="1" stop-color="#06479C"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.27" cy="0.23" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 底：全出血方底（浏览器标签页内铺满显示）+ 左上柔光 -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- 深蓝微投影（符文整体下移 14px，勿加模糊滤镜，ICO 缩图会糊；
+       id="shadow"：生成器对 16/32px 渲染时剥离此组，小尺寸保对比度） -->
+  <g id="shadow" fill="#06479C" opacity="0.28" transform="translate(0,14)">
+    <line x1="256" y1="144" x2="119.2" y2="381" stroke="#06479C" stroke-width="30" stroke-linecap="round"/>
+    <line x1="256" y1="144" x2="392.8" y2="381" stroke="#06479C" stroke-width="30" stroke-linecap="round"/>
+    <line x1="256" y1="302" x2="256" y2="144" stroke="#06479C" stroke-width="30" stroke-linecap="round"/>
+    <circle cx="256" cy="302" r="58"/>
+    <circle cx="256" cy="144" r="38"/>
+    <circle cx="119.2" cy="381" r="38"/>
+    <circle cx="392.8" cy="381" r="38"/>
+  </g>
+
+  <!-- 白色符文：连线 → 节点（线压在下层，圆盖住接头） -->
+  <g stroke="#FFFFFF" stroke-width="30" stroke-linecap="round">
+    <line x1="256" y1="144" x2="119.2" y2="381"/>
+    <line x1="256" y1="144" x2="392.8" y2="381"/>
+    <line x1="256" y1="302" x2="256" y2="144"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="256" cy="302" r="58"/>
+    <circle cx="256" cy="144" r="38"/>
+    <circle cx="119.2" cy="381" r="38"/>
+    <circle cx="392.8" cy="381" r="38"/>
+  </g>
+
+  <!-- 顶部广播弧（中心 = 顶部卫星，向上张角 ±48°） -->
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <path d="M 207.0 99.8 A 66 66 0 0 1 305.0 99.8" stroke-width="16" opacity="0.9"/>
+    <path d="M 183.2 78.4 A 98 98 0 0 1 328.8 78.4" stroke-width="14" opacity="0.55"/>
+  </g>
+</svg>

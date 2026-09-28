@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HKT-DeviceHub 运维控制台</title>
+<link rel="icon" href="/console/favicon.svg" type="image/svg+xml" sizes="any">
+<link rel="icon" href="/console/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/console/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/console/apple-touch-icon.png" sizes="180x180">
+<meta name="theme-color" content="#0d1117">
 <style>
 
 /* ============ 设计令牌（management-console-design.md §5） ============ */
@@ -420,7 +425,7 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
 <!-- ============ 顶部：品牌 + 全局状态栏 + Tabs ============ -->
 <header>
   <div class="header-top">
-    <div class="brand">HKT-DeviceHub<span>运维控制台</span></div>
+    <div class="brand"><img src="/console/favicon.svg" alt="" width="20" height="20" style="vertical-align:-4px;border-radius:5px;margin-right:8px">HKT-DeviceHub<span>运维控制台</span></div>
     <div class="channels">
       <span class="chan" title="实时状态（30s 轮询）">tb-ws <i class="dot off" id="chanWsDot"></i></span>
       <span class="chan" title="实时状态（30s 轮询）">tb-rest <i class="dot off" id="chanRestDot"></i></span>
