@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -118,5 +120,19 @@ class MappingGapServiceTest {
         assertEquals("NS timeout", report.nsError());
         assertTrue(report.mappingReadable());
         assertTrue(report.gaps().isEmpty());
+    }
+
+    @Test
+    void invalidateForcesRecomputeOnNextReport() {
+        when(nsClient.isEnabled()).thenReturn(true);
+        when(nsClient.listDevices(null)).thenReturn(List.of(
+                device("0095690e00003588", 219)));
+        when(gatewayMapping.refreshMappedProjectIds()).thenReturn(Set.of());
+
+        service.report();
+        service.invalidate();
+        service.report();
+
+        verify(nsClient, times(2)).listDevices(null);
     }
 }

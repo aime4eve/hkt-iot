@@ -43,6 +43,7 @@ class MappingChangeServiceTest {
 
     private TbClient tbClient;
     private GatewayMappingService gatewayMapping;
+    private MappingGapService mappingGapService;
     private TbProperties properties;
     private MappingChangeService service;
 
@@ -50,11 +51,13 @@ class MappingChangeServiceTest {
     void setUp() {
         tbClient = mock(TbClient.class);
         gatewayMapping = mock(GatewayMappingService.class);
+        mappingGapService = mock(MappingGapService.class);
         properties = new TbProperties();
         properties.setEnabled(true);
         properties.setGatewayDeviceId(GW);
         properties.setMappingBackupDir(tempDir.resolve("backups").toString());
-        service = new MappingChangeService(tbClient, properties, gatewayMapping, MAPPER);
+        service = new MappingChangeService(tbClient, properties, gatewayMapping,
+                mappingGapService, MAPPER);
     }
 
     /** Mirrors the real OC shared attribute: a JSON-encoded string. */
@@ -99,6 +102,18 @@ class MappingChangeServiceTest {
         JsonNode parsed = MAPPER.readTree(written.asText());
         assertEquals(3, parsed.at("/configurationJson/mapping").size());
         verify(tbClient).sendRpcTwoWay(eq(GW), eq(Map.of("method", "gateway_restart", "params", Map.of())), eq(20_000L));
+        verify(mappingGapService).invalidate();
+    }
+
+    @Test
+    void dryRunAndFailuresDoNotInvalidateGapCache() {
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(148)));
+        service.apply(219, true, false);
+        verify(mappingGapService, never()).invalidate();
+
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(Map.of());
+        service.apply(219, false, false);
+        verify(mappingGapService, never()).invalidate();
     }
 
     @Test

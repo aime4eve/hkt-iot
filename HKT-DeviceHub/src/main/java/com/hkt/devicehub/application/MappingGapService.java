@@ -71,6 +71,17 @@ public class MappingGapService {
         return fresh;
     }
 
+    /**
+     * Drop the cached report so the next {@link #report()} recomputes. Called
+     * right after a mapping auto-fix, otherwise the console keeps showing the
+     * just-fixed project as a pending gap for up to 30s — which reads as "the
+     * fix did nothing" and invites repeated clicks.
+     */
+    public synchronized void invalidate() {
+        cached = null;
+        cachedAtMs = 0;
+    }
+
     MappingGapReport inspect() {
         if (!nsClient.isEnabled()) {
             return unavailable("NS 检查未启用（devicehub.ns.enabled=false）");

@@ -201,6 +201,9 @@ td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 .timeline .t-item .t-text { font-size: 13px; }
 .timeline .t-item .t-time { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
 .frames-table { width: 100%; min-width: 0; font-size: 12px; }
+.gap-table { width: 100%; min-width: 0; font-size: 12.5px; }
+.gap-table td, .gap-table th { white-space: normal; }
+.gap-table tr.done td { color: var(--text-dim); }
 .frames-table td, .frames-table th { padding: var(--space-1) var(--space-2); white-space: nowrap; }
 
 /* ============ 预检 ============ */
@@ -491,6 +494,17 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
       <div class="card" style="margin-top:var(--space-4)">
         <h3>异常关注列表 <span class="right dim">聚合：静默超期 / 滞后&gt;0 / 待处理冲突</span></h3>
         <div class="attn-list" id="attnList"></div>
+      </div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <h3>网关映射缺口巡检 <span class="count" id="gapCount"></span>
+          <span class="right dim">R-07 · 有设备但无 OC 映射的项目，上行不会到达 TB</span></h3>
+        <div class="toolbar" style="margin-bottom:var(--space-3)">
+          <span class="search-box">
+            <input type="text" id="gapFilter" placeholder="按项目号或设备 EUI 过滤" autocomplete="off" spellcheck="false">
+          </span>
+          <span class="count" id="gapFixedRecord"></span>
+        </div>
+        <div id="gapPanelBody"></div>
       </div>
     </div>
     <div data-state-panel="dashboard" hidden></div>
@@ -1050,21 +1064,15 @@ async function renderAttention() {
     conflicts.forEach(c => items.push({ level:'danger', eui:c.devEui,
       text:'同名设备冲突待处理（' + c.candidates.length + ' 台候选副本）',
       action:() => { switchView('governance'); }, actionText:'处理' }));
-    // R-07 mapping gaps: NS projects with devices but no OC topic mapping —
-    // their uplinks never reach TB; show availability honestly instead of
-    // claiming healthy when the probe could not run. Live NS has ~100+
-    // legacy/test projects without mappings, so only the largest gaps render
-    // as actionable items and the rest collapse into one summary.
+    // R-07 mapping gaps: one summary entry here — the actionable per-project
+    // list lives in the dedicated gap panel card below (search + pagination +
+    // per-row state), so the attention list never drowns in 100+ legacy gaps.
     if (gapCache) {
       if (gapCache.nsAvailable && gapCache.mappingReadable) {
-        const GAP_RENDER_LIMIT = 8;
-        const gaps = (gapCache.gaps || []).slice().sort((a, b) => b.deviceCount - a.deviceCount);
-        gaps.slice(0, GAP_RENDER_LIMIT).forEach(g => items.push({ level:'danger', eui:'项目 ' + g.nsProjectId,
-          text:'NS 项目 ' + g.nsProjectId + ' 有 ' + g.deviceCount + ' 台设备但无网关 OC 映射，上行不会到达 TB（样例 ' + g.sampleDevEuis.join('、') + '）',
-          action:() => confirmFixMapping(g.nsProjectId, () => refreshDashboard()), actionText:'修复' }));
-        if (gaps.length > GAP_RENDER_LIMIT) items.push({ level:'warn', eui:'映射巡检',
-          text:'其余 ' + (gaps.length - GAP_RENDER_LIMIT) + ' 个项目同样无网关映射（多为历史/测试项目），完整清单 GET /api/v1/channels/mapping-gaps',
-          action:null });
+        const n = (gapCache.gaps || []).length;
+        if (n) items.push({ level:'danger', eui:'映射巡检',
+          text:'网关映射缺口：' + n + ' 个项目无 OC 映射，上行不会到达 TB（明细与修复见下方缺口巡检卡）',
+          action:() => { const el = $('#gapPanelBody'); if (el) el.scrollIntoView({ behavior:'smooth' }); }, actionText:'查看' });
       } else {
         items.push({ level:'warn', eui:'映射巡检',
           text:'缺口巡检不可用：' + (gapCache.nsError || gapCache.mappingError || '探测失败'),
@@ -1086,6 +1094,79 @@ async function renderAttention() {
   box.querySelectorAll('[data-attn]').forEach(btn =>
     btn.addEventListener('click', () => items[+btn.dataset.attn].action()));
 }
+/* ---- R-07 缺口巡检卡：搜索/分页/行内状态机（防重复点击、修复后行内即时反馈） ---- */
+const GAP_PAGE_SIZE = 8;
+let gapPage = 0;
+const gapRowState = {};  // pid -> 'idle' | 'busy' | 'done'
+const gapFixed = [];     // 本次会话已修复的项目号，页脚留痕
+function renderGapPanel() {
+  const box = $('#gapPanelBody'), count = $('#gapCount'), record = $('#gapFixedRecord');
+  if (!box) return;
+  if (!gapCache) { count.textContent = ''; box.innerHTML = '<div class="empty-state small">加载中…</div>'; return; }
+  if (!(gapCache.nsAvailable && gapCache.mappingReadable)) {
+    count.textContent = '';
+    record.textContent = '';
+    box.innerHTML = '<div class="empty-state small"><span class="icon">–</span>巡检不可用：' +
+      esc(gapCache.nsError || gapCache.mappingError || '探测失败') + '</div>';
+    return;
+  }
+  const gaps = (gapCache.gaps || []).slice().sort((a, b) => b.deviceCount - a.deviceCount);
+  count.textContent = gaps.length ? '待修 ' + gaps.length + ' 个项目' : '无缺口';
+  const kw = ($('#gapFilter').value || '').trim().toLowerCase();
+  const filtered = kw ? gaps.filter(g =>
+      String(g.nsProjectId).includes(kw) ||
+      (g.sampleDevEuis || []).some(e => e.toLowerCase().includes(kw))) : gaps;
+  const pages = Math.max(1, Math.ceil(filtered.length / GAP_PAGE_SIZE));
+  if (gapPage >= pages) gapPage = pages - 1;
+  const rows = filtered.slice(gapPage * GAP_PAGE_SIZE, gapPage * GAP_PAGE_SIZE + GAP_PAGE_SIZE);
+  let html = '<div class="table-wrap"><table class="gap-table"><thead><tr>' +
+    '<th>项目</th><th>设备数</th><th>样例 EUI</th><th style="width:130px">操作</th></tr></thead><tbody>';
+  if (!rows.length) {
+    html += '<tr><td colspan="4"><div class="empty-state small">' + (kw ? '无匹配项目' : '✓ 一切正常') + '</div></td></tr>';
+  }
+  rows.forEach(g => {
+    const st = gapRowState[g.nsProjectId] || 'idle';
+    html += '<tr class="' + (st === 'done' ? 'done' : '') + '">' +
+      '<td class="mono">' + g.nsProjectId + '</td>' +
+      '<td>' + g.deviceCount + '</td>' +
+      '<td class="mono dim" style="font-size:11px;word-break:break-all">' + esc((g.sampleDevEuis || []).join('、')) + '</td>' +
+      '<td>' + (st === 'busy'
+        ? '<button class="btn ghost sm" disabled>修复中…</button>'
+        : st === 'done'
+          ? '<span class="badge ok">✓ 已修复</span>'
+          : '<button class="btn sm" data-gap-fix="' + g.nsProjectId + '">修复</button>') +
+      '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  if (pages > 1 || kw) {
+    html += '<div class="toolbar" style="margin-top:var(--space-2)">' +
+      (pages > 1
+        ? '<button class="btn ghost sm" id="gapPrev"' + (gapPage === 0 ? ' disabled' : '') + '>上一页</button>' +
+          '<span class="count">第 ' + (gapPage + 1) + ' / ' + pages + ' 页 · 匹配 ' + filtered.length + ' 条</span>' +
+          '<button class="btn ghost sm" id="gapNext"' + (gapPage >= pages - 1 ? ' disabled' : '') + '>下一页</button>'
+        : '<span class="count">匹配 ' + filtered.length + ' 条</span>') +
+      '</div>';
+  }
+  box.innerHTML = html;
+  record.textContent = gapFixed.length ? '本次已修复：' + gapFixed.join('、') : '';
+  box.querySelectorAll('[data-gap-fix]').forEach(b => b.addEventListener('click', () => {
+    const pid = +b.dataset.gapFix;
+    confirmFixMapping(pid, null, {
+      start: p => { gapRowState[p] = 'busy'; renderGapPanel(); },
+      success: p => {
+        gapRowState[p] = 'done';
+        if (!gapFixed.includes(p)) gapFixed.unshift(p);
+        renderGapPanel();
+        refreshDashboard(); // 服务端缓存已失效，重取后该行消失，页脚留痕
+      },
+      error: p => { gapRowState[p] = 'idle'; renderGapPanel(); }
+    });
+  }));
+  const prev = $('#gapPrev'), next = $('#gapNext');
+  if (prev) prev.addEventListener('click', () => { gapPage = Math.max(0, gapPage - 1); renderGapPanel(); });
+  if (next) next.addEventListener('click', () => { gapPage = Math.min(pages - 1, gapPage + 1); renderGapPanel(); });
+}
+$('#gapFilter').addEventListener('input', () => { gapPage = 0; renderGapPanel(); });
 async function refreshDashboard(manual) {
   try {
     const [h, t, g] = await Promise.all([
@@ -1099,6 +1180,7 @@ async function refreshDashboard(manual) {
     await refreshProjTotals();
     renderHeader();
     renderAttention();
+    renderGapPanel();
     $('#dashUpdated').textContent = '更新于 ' + fmtClock(new Date()) + '（探测缓存 ' + Math.round((t.cacheTtlMs || 30000) / 1000) + 's）';
     showState('dashboard', 'normal');
   } catch (e) {
@@ -1483,24 +1565,29 @@ function ensureOperator() {
 }
 
 /* ---- 网关映射自动修复（R-07 assist）：备份→追加→写入→回读→网关重载 ---- */
-function confirmFixMapping(pid, onDone) {
+/* events: {start(pid), success(pid, r), error(pid, msg)} —— 缺口巡检卡用它做行内状态机 */
+function confirmFixMapping(pid, onDone, events) {
+  events = events || {};
   ensureOperator().then(() => {
     openModal(
       '<div>NS 项目 <b>' + pid + '</b>：向 TB 网关 OC 连接器追加该项目的 topic 映射。</div>' +
       '<div style="margin-top:6px">流程：自动备份当前共享属性 → 复制现有条目结构追加 → 写入 → 回读校验 → <b>网关重载</b>。</div>' +
       '<div style="margin-top:6px">注意：网关不会热重载配置，修复将触发 gateway_restart，<b>全部项目</b>的上行会中断数秒；映射写错同样影响全部项目。服务端已内置先备份后写入与结构异常拒绝执行。</div>',
       async () => {
+        if (events.start) events.start(pid);
         try {
           const r = await api('/gateway-mapping/' + pid + '/apply', { method:'POST' });
-          if (r.error) { toast('修复失败：' + r.error, true); return; }
+          if (r.error) { toast('修复失败（项目 ' + pid + '）：' + r.error, true); if (events.error) events.error(pid, r.error); return; }
           if (r.reloaded === false) {
-            toast('映射已写入但网关重载失败，需按 runbook 手动重载：' + (r.reloadNote || ''), true);
+            toast('项目 ' + pid + ' 映射已写入但网关重载失败，需按 runbook 手动重载', true);
           } else {
-            toast((r.changed ? '✓ 映射已写入且网关已重载（项目 ' + pid + '）' : '无需变更：') + '；等设备下一真实上行到达 TB 即完成', r.changed ? false : true);
+            toast((r.changed ? '✓ 项目 ' + pid + ' 映射已写入且网关已重载' : '项目 ' + pid + ' 已有映射，无需变更') + '；等设备下一真实上行到达 TB 即完成', r.changed ? false : true);
           }
-          if (r.changed && onDone) onDone();
+          if (events.success) events.success(pid, r);
+          if (onDone) onDone(r);
         } catch (err) {
-          toast('修复失败：' + err.message, true);
+          toast('修复失败（项目 ' + pid + '）：' + err.message, true);
+          if (events.error) events.error(pid, err.message);
         }
       },
       { title:'⚠ 网关映射自动修复（含网关重载）',

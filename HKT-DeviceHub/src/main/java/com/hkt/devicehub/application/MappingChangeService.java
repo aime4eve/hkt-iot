@@ -49,13 +49,16 @@ public class MappingChangeService {
     private final TbClient tbClient;
     private final TbProperties tbProperties;
     private final GatewayMappingService gatewayMapping;
+    private final MappingGapService mappingGapService;
     private final ObjectMapper objectMapper;
 
     public MappingChangeService(TbClient tbClient, TbProperties tbProperties,
-                                GatewayMappingService gatewayMapping, ObjectMapper objectMapper) {
+                                GatewayMappingService gatewayMapping,
+                                MappingGapService mappingGapService, ObjectMapper objectMapper) {
         this.tbClient = tbClient;
         this.tbProperties = tbProperties;
         this.gatewayMapping = gatewayMapping;
+        this.mappingGapService = mappingGapService;
         this.objectMapper = objectMapper;
     }
 
@@ -181,6 +184,7 @@ public class MappingChangeService {
             }
             verified = ids.contains(nsProjectId);
             gatewayMapping.refreshMappedProjectIds(); // preflight reads this 30s cache
+            mappingGapService.invalidate();            // gap panel must not show the just-fixed project
         } catch (Exception e) {
             verified = null;
         }
