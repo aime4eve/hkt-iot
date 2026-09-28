@@ -30,9 +30,15 @@ curl -s "$DEVICEHUB/api/v1/channels/mapping-gaps" | jq
 
 ```bash
 # 先试运行看计划（不写入）
-curl -s -X POST "$DEVICEHUB/api/v1/gateway-mapping/219/apply?dryRun=true" | jq '{addedTopicFilters,newValue}'
-# 确认后真正执行：自动备份 → 复制现有条目结构追加 → 写入 → 回读校验
-curl -s -X POST "$DEVICEHUB/api/v1/gateway-mapping/219/apply" | jq
+curl -sS -X POST "$DEVICEHUB/api/v1/gateway-mapping/219/apply?dryRun=true" | jq '{addedTopicFilters,newValue}'
+# 确认后真正执行：自动备份 → 复制现有条目结构追加 → 写入 → 回读校验 → 网关重载（gateway_restart）
+curl -sS -X POST "$DEVICEHUB/api/v1/gateway-mapping/219/apply" | jq
+```
+
+映射已在 TB 手工加好、只差重载的场景，直接调独立重载端点：
+
+```bash
+curl -sS -X POST "$DEVICEHUB/api/v1/gateway-mapping/reload"
 ```
 
 实现要点（`MappingChangeService`，fail-closed）：
@@ -41,9 +47,11 @@ curl -s -X POST "$DEVICEHUB/api/v1/gateway-mapping/219/apply" | jq
 - **结构异常一律拒绝执行**：attr 缺失 / 值非 JSON / 无 mapping 数组 / 无可复制条目 → 不写任何东西；
 - **先备份后写入**：每次真实执行先把变更前的共享属性值落到 `data/oc-backups/`（路径 `devicehub.tb.mapping-backup-dir`）；
 - **幂等**：项目已有映射时不写；写入后回读校验并刷新预检用的 30s 缓存；
+- **写入后自动重载**：真实写入成功即触发 `gateway_restart` RPC（该网关不会热重载共享属性变更，实测 2026-09-28）；`reload=false` 可跳过重载；
 - **总开关**：`devicehub.tb.mapping-auto-fix-enabled=false` 回退为纯人工工单。
 
-写入后 TB 网关（标准 IoT Gateway 行为）订阅共享属性变更会自动热重载连接器；若实际网关未热重载，仍需执行下文第 3 步重载，并以下述第 4 步真实上行到达作为最终验证。
+重载后 TB 网关重新按共享属性配置订阅全部 topic（数秒中断），以下述第 4 步真实上行到达作为最终验证。
+
 
 ## 前置信息
 

@@ -61,14 +61,19 @@ public class MappingChangeService {
 
     /**
      * @param dryRun true → plan only: report the new value without backup/write
+     * @param reloadGateway after a real write, restart the TB gateway via RPC so
+     *                      the connector re-reads its config — this gateway does
+     *                      NOT hot-reload shared-attribute changes (verified
+     *                      2026-09-28), so a mapping without reload stays dead
      */
     public record MappingChangeReport(
             boolean dryRun, boolean changed, int nsProjectId,
             List<String> addedTopicFilters, String orgId, String backupPath,
             String previousValue, String newValue, Boolean verifiedAfterWrite,
+            Boolean reloaded, String reloadNote,
             String note, String error) {}
 
-    public synchronized MappingChangeReport apply(int nsProjectId, boolean dryRun) {
+    public synchronized MappingChangeReport apply(int nsProjectId, boolean dryRun, boolean reloadGateway) {
         if (!tbProperties.isEnabled()) {
             return fail(nsProjectId, dryRun, "TB 集成未启用（devicehub.tb.enabled=false）");
         }
@@ -107,7 +112,8 @@ public class MappingChangeService {
 
         if (containsProject(content.toString(), nsProjectId)) {
             return new MappingChangeReport(dryRun, false, nsProjectId, List.of(), null, null,
-                    rawAsText, rawAsText, true, "项目 " + nsProjectId + " 已有映射，无需变更", null);
+                    rawAsText, rawAsText, true, null, null,
+                    "项目 " + nsProjectId + " 已有映射，无需变更", null);
         }
 
         ArrayNode mapping = findMappingArray(content);
@@ -138,7 +144,8 @@ public class MappingChangeService {
 
         if (dryRun) {
             return new MappingChangeReport(true, true, nsProjectId, added, orgOf(entry),
-                    null, rawAsText, newSerialized, null, "试运行：仅生成计划，未写入", null);
+                    null, rawAsText, newSerialized, null, null, null,
+                    "试运行：仅生成计划，未写入", null);
         }
 
         String backupPath;
@@ -165,22 +172,58 @@ public class MappingChangeService {
             }
             verified = ids.contains(nsProjectId);
             gatewayMapping.refreshMappedProjectIds(); // preflight reads this 30s cache
-            note = verified
-                    ? "映射已写入并回读确认；若网关未热重载连接器，请按 runbook 第 3 步重载，再以真实上行到达 TB 作为最终验证"
-                    : "写入已执行，但回读未见项目 " + nsProjectId + "，请人工核查";
         } catch (Exception e) {
             verified = null;
-            note = "写入已执行，回读校验失败：" + e.getMessage();
         }
-        log.info("[MappingChange] project {} auto-fixed, added {}, backup {}", nsProjectId, added, backupPath);
+        Boolean reloaded = null;
+        String reloadNote = null;
+        if (reloadGateway) {
+            var reload = reloadGateway();
+            reloaded = reload.success();
+            reloadNote = reload.success()
+                    ? "网关已重载（gateway_restart 成功），等设备下一真实上行到达 TB 作最终验证"
+                    : "网关重载失败：" + (reload.error() == null ? "未知错误" : reload.error())
+                            + "；映射已写入，需按 runbook 手动重载";
+        }
+        note = verified == null
+                ? "写入已执行，回读校验失败"
+                : Boolean.TRUE.equals(verified) ? "映射已写入并回读确认" : "写入已执行，但回读未见项目 " + nsProjectId;
+        if (reloadNote != null) {
+            note = note + "；" + reloadNote;
+        }
+        log.info("[MappingChange] project {} auto-fixed, added {}, backup {}, reloaded {}",
+                nsProjectId, added, backupPath, reloaded);
         return new MappingChangeReport(false, true, nsProjectId, added, orgOf(entry), backupPath,
-                rawAsText, newSerialized, verified, note, null);
+                rawAsText, newSerialized, verified, reloaded, reloadNote, note, null);
+    }
+
+    /** Gateway reload report for the standalone reload endpoint. */
+    public record GatewayReloadReport(boolean success, String error, Instant at) {}
+
+    /**
+     * Restart the TB gateway so every connector re-reads its config from the
+     * shared attributes. Verified 2026-09-28: this gateway does not hot-reload
+     * attribute changes, and its per-connector connector_reboot RPC is broken
+     * ("connector not found" even for names listed in active_connectors) —
+     * gateway_restart is the only reliable reload path.
+     */
+    public GatewayReloadReport reloadGateway() {
+        String gwId = tbProperties.getGatewayDeviceId();
+        try {
+            tbClient.sendRpcTwoWay(gwId,
+                    Map.of("method", "gateway_restart", "params", Map.of()), 20_000L);
+            log.info("[MappingChange] gateway restarted via RPC ({})", gwId);
+            return new GatewayReloadReport(true, null, Instant.now());
+        } catch (Exception e) {
+            log.warn("[MappingChange] gateway restart RPC failed: {}", e.getMessage());
+            return new GatewayReloadReport(false, e.getMessage(), Instant.now());
+        }
     }
 
     private MappingChangeReport fail(int nsProjectId, boolean dryRun, String error) {
         log.warn("[MappingChange] apply project {} aborted: {}", nsProjectId, error);
         return new MappingChangeReport(dryRun, false, nsProjectId, List.of(), null, null,
-                null, null, null, null, error);
+                null, null, null, null, null, null, error);
     }
 
     private static boolean containsProject(String text, int nsProjectId) {

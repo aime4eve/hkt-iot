@@ -1482,25 +1482,29 @@ function ensureOperator() {
   });
 }
 
-/* ---- 网关映射自动修复（R-07 assist）：备份→追加→写入→回读校验 ---- */
+/* ---- 网关映射自动修复（R-07 assist）：备份→追加→写入→回读→网关重载 ---- */
 function confirmFixMapping(pid, onDone) {
   ensureOperator().then(() => {
     openModal(
       '<div>NS 项目 <b>' + pid + '</b>：向 TB 网关 OC 连接器追加该项目的 topic 映射。</div>' +
-      '<div style="margin-top:6px">流程：自动备份当前共享属性 → 复制现有条目结构追加 → 写入 → 回读校验。' +
-      '映射写错会影响<b>全部</b>项目的上行；服务端已内置先备份后写入与结构异常拒绝执行。</div>',
+      '<div style="margin-top:6px">流程：自动备份当前共享属性 → 复制现有条目结构追加 → 写入 → 回读校验 → <b>网关重载</b>。</div>' +
+      '<div style="margin-top:6px">注意：网关不会热重载配置，修复将触发 gateway_restart，<b>全部项目</b>的上行会中断数秒；映射写错同样影响全部项目。服务端已内置先备份后写入与结构异常拒绝执行。</div>',
       async () => {
         try {
           const r = await api('/gateway-mapping/' + pid + '/apply', { method:'POST' });
           if (r.error) { toast('修复失败：' + r.error, true); return; }
-          toast((r.changed ? '✓ 映射已写入（项目 ' + pid + '）：' : '无需变更：') + (r.note || ''));
+          if (r.reloaded === false) {
+            toast('映射已写入但网关重载失败，需按 runbook 手动重载：' + (r.reloadNote || ''), true);
+          } else {
+            toast((r.changed ? '✓ 映射已写入且网关已重载（项目 ' + pid + '）' : '无需变更：') + '；等设备下一真实上行到达 TB 即完成', r.changed ? false : true);
+          }
           if (r.changed && onDone) onDone();
         } catch (err) {
           toast('修复失败：' + err.message, true);
         }
       },
-      { title:'⚠ 网关映射自动修复（生产写入）',
-        desc:'此操作修改 ThingsBoard 网关设备共享属性（影响上行链路），并登记操作者审计：',
+      { title:'⚠ 网关映射自动修复（含网关重载）',
+        desc:'此操作修改 ThingsBoard 网关设备共享属性并重启网关（全部项目上行中断数秒），登记操作者审计：',
         confirmText:'确认修复' });
   });
 }

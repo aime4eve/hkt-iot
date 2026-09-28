@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -76,15 +77,19 @@ class MappingChangeServiceTest {
         String before = ocWithProjects(89, 148);
         String after = ocWithProjects(89, 148, 219);
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before), attrs(after));
+        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
+                .thenReturn(MAPPER.readTree("{\"success\":true}"));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, true);
 
         assertFalse(report.dryRun());
         assertTrue(report.changed());
         assertEquals(List.of("org/1/project/219/device/+/dat/up"), report.addedTopicFilters());
         assertEquals("1", report.orgId());
         assertEquals(Boolean.TRUE, report.verifiedAfterWrite());
+        assertEquals(Boolean.TRUE, report.reloaded());
         assertNotNull(report.backupPath());
+        assertTrue(report.note().contains("网关已重载"));
 
         ArgumentCaptor<JsonNode> captor = ArgumentCaptor.forClass(JsonNode.class);
         verify(tbClient).saveSharedAttribute(eq(GW), eq("OC"), captor.capture());
@@ -93,6 +98,35 @@ class MappingChangeServiceTest {
         assertTrue(written.asText().contains("project/219"));
         JsonNode parsed = MAPPER.readTree(written.asText());
         assertEquals(3, parsed.at("/configurationJson/mapping").size());
+        verify(tbClient).sendRpcTwoWay(eq(GW), eq(Map.of("method", "gateway_restart", "params", Map.of())), eq(20_000L));
+    }
+
+    @Test
+    void reloadFailureKeepsWriteResultAndSaysSo() throws Exception {
+        when(tbClient.fetchSharedAttributes(GW))
+                .thenReturn(attrs(ocWithProjects(148)), attrs(ocWithProjects(148, 219)));
+        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
+                .thenThrow(new IllegalStateException("RPC timeout"));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, true);
+
+        assertTrue(report.changed());
+        assertEquals(Boolean.FALSE, report.reloaded());
+        assertTrue(report.note().contains("网关重载失败"));
+        assertTrue(report.note().contains("RPC timeout"));
+        verify(tbClient).saveSharedAttribute(eq(GW), eq("OC"), any());
+    }
+
+    @Test
+    void applyWithoutReloadSkipsGatewayRpc() {
+        when(tbClient.fetchSharedAttributes(GW))
+                .thenReturn(attrs(ocWithProjects(148)), attrs(ocWithProjects(148, 219)));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
+
+        assertTrue(report.changed());
+        assertNull(report.reloaded());
+        verify(tbClient, never()).sendRpcTwoWay(anyString(), any(), anyLong());
     }
 
     @Test
@@ -100,7 +134,7 @@ class MappingChangeServiceTest {
         String before = ocWithProjects(148);
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before), attrs(ocWithProjects(148, 219)));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         JsonNode backup = MAPPER.readTree(Files.readString(Path.of(report.backupPath())));
         assertEquals(before, backup.path("previousValue").asText());
@@ -112,7 +146,7 @@ class MappingChangeServiceTest {
     void dryRunPlansChangeWithoutWriting() {
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(148)));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, true);
+        MappingChangeService.MappingChangeReport report = service.apply(219, true, true);
 
         assertTrue(report.dryRun());
         assertTrue(report.changed());
@@ -126,7 +160,7 @@ class MappingChangeServiceTest {
     void alreadyMappedProjectIsNoOpWithoutWrite() {
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(148, 219)));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertFalse(report.changed());
         assertEquals(Boolean.TRUE, report.verifiedAfterWrite());
@@ -137,7 +171,7 @@ class MappingChangeServiceTest {
     void missingAttrKeyFailsClosed() {
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(Map.of());
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertFalse(report.changed());
         assertTrue(report.error().contains("不存在 key"));
@@ -148,7 +182,7 @@ class MappingChangeServiceTest {
     void jsonWithoutMappingArrayFailsClosed() {
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs("{\"a\":1}"));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertFalse(report.changed());
         assertTrue(report.error().contains("mapping"));
@@ -160,7 +194,7 @@ class MappingChangeServiceTest {
         when(tbClient.fetchSharedAttributes(GW))
                 .thenReturn(attrs("{\"configurationJson\":{\"mapping\":[]}}"));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertFalse(report.changed());
         assertTrue(report.error().contains("人工工单"));
@@ -171,7 +205,7 @@ class MappingChangeServiceTest {
     void nonJsonAttrValueFailsClosed() {
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs("not json at all"));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertFalse(report.changed());
         assertTrue(report.error().contains("人工工单"));
@@ -185,7 +219,7 @@ class MappingChangeServiceTest {
                 Map.of("OC", uncheckedParse(oc)),
                 Map.of("OC", uncheckedParse(ocWithProjects(148, 219))));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertTrue(report.changed());
         assertEquals(Boolean.TRUE, report.verifiedAfterWrite());
@@ -201,7 +235,7 @@ class MappingChangeServiceTest {
                 + "\"replyFilter\":\"org/3/project/148/device/+/dat/down\"}]}}";
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before), attrs(before));
 
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
 
         assertEquals(List.of(
                 "org/3/project/219/device/+/dat/up",
@@ -220,7 +254,7 @@ class MappingChangeServiceTest {
     @Test
     void autoFixDisabledRefusesWithoutWrite() {
         properties.setMappingAutoFixEnabled(false);
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
         assertFalse(report.changed());
         assertTrue(report.error().contains("自动修复已关闭"));
         verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
@@ -229,7 +263,7 @@ class MappingChangeServiceTest {
     @Test
     void tbDisabledRefusesWithoutWrite() {
         properties.setEnabled(false);
-        MappingChangeService.MappingChangeReport report = service.apply(219, false);
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false);
         assertFalse(report.changed());
         assertTrue(report.error().contains("TB 集成未启用"));
         verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
@@ -241,5 +275,18 @@ class MappingChangeServiceTest {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Test
+    void reloadGatewayReportsSuccessAndFailure() throws Exception {
+        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
+                .thenReturn(MAPPER.readTree("{\"success\":true}"));
+        assertTrue(service.reloadGateway().success());
+
+        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
+                .thenThrow(new IllegalStateException("device offline"));
+        MappingChangeService.GatewayReloadReport failed = service.reloadGateway();
+        assertFalse(failed.success());
+        assertTrue(failed.error().contains("device offline"));
     }
 }

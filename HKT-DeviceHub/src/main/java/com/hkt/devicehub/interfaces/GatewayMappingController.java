@@ -29,9 +29,18 @@ public class GatewayMappingController {
 
     @PostMapping("/{nsProjectId}/apply")
     @Operation(summary = "Append the missing OC topic mapping for one NS project "
-            + "(backup → append → write → verify); dryRun=true plans only")
+            + "(backup → append → write → verify → gateway restart); dryRun=true plans only, "
+            + "reload=false skips the gateway restart")
     public MappingChangeReport apply(@PathVariable int nsProjectId,
-                                     @RequestParam(defaultValue = "false") boolean dryRun) {
-        return mappingChangeService.apply(nsProjectId, dryRun);
+                                     @RequestParam(defaultValue = "false") boolean dryRun,
+                                     @RequestParam(defaultValue = "true") boolean reload) {
+        return mappingChangeService.apply(nsProjectId, dryRun, reload);
+    }
+
+    @PostMapping("/reload")
+    @Operation(summary = "Restart the TB gateway via RPC so connectors re-read their configs "
+            + "(the gateway does not hot-reload shared-attribute changes)")
+    public MappingChangeService.GatewayReloadReport reloadGateway() {
+        return mappingChangeService.reloadGateway();
     }
 }
