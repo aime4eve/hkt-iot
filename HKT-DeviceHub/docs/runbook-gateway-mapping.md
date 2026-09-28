@@ -87,8 +87,24 @@ curl -s -X POST -H "X-Authorization: Bearer $TB_TOKEN" \
 
 ## 3. 重载
 
-让网关重新加载 OC 连接器配置（重启 OC connector / 网关服务），记录重载时间。
-重载期间全项目上行会短暂中断，选择业务低峰执行。
+让网关重新加载 OC 连接器配置，记录重载时间。重载期间全项目上行会短暂中断，选择业务低峰执行。
+
+**实测结论（2026-09-28）**：这台 TB 网关**不会**因共享属性变更热重载连接器——映射写入后（甚至同值重写）订阅集纹丝不动。必须真正重启：
+
+```bash
+# 首选：TB RPC 全网关重启（实测 2026-09-28 成功，秒级恢复）
+curl -sS -X POST -H "X-Authorization: Bearer $TB_TOKEN" -H "Content-Type: application/json" \
+  -d '{"method":"gateway_restart","params":{}}' \
+  "$TB_URL/api/rpc/twoway/$GW_ID"
+# 注意：connector_reboot 在此网关上不可用（active_connectors 里明明有 OC/oc-test1，
+# 但 RPC 一律报 "connector not found in available connectors"——注册表与共享属性已脱节），
+# 不要被它耗时间，直接 gateway_restart。
+```
+
+**重启生效的验证方法**（不必等目标设备）：
+1. 找任一**已映射项目**设备在重启后于 NS 的 `last_seen`（NS 设备列表 API 有此字段，注意 NS API 走 80 端口，`:8080` 是 404）；
+2. 查该设备 TB 遥测出现同时间戳的帧 → 连接器已按新配置重订全部 topic；
+3. 目标项目的设备下一帧自然落入 TB。
 
 ## 4. 验证（四项全过才算完成）
 
