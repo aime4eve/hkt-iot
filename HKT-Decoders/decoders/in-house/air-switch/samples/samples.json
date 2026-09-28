@@ -263,14 +263,20 @@
   {
     "name": "空开透传上行(cmd 0xEE)",
     "source": "firmware",
-    "payload": "aaee01030401f40000b84e0ae855",
+    "payload": "aaee01030401f40000ba3d4a6d55",
     "fPort": 10,
     "expectData": {
-      "cmd": 238,
-      "asDataHex": "01030401f40000b84e"
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 3,
+      "isError": false,
+      "remoteMode": false,
+      "byteCount": 4,
+      "values": [500, 0],
+      "note": "标准响应不含请求地址，无法安全映射寄存器名称"
     },
     "expectError": false,
-    "note": "fromASDataHandle: AA EE + AS 原始数据(9 字节) + CRC16 + 55；该帧类型没有 addr 与 len 字节（与其它帧不同，len 语义缺失为固件现状）"
+    "note": "fromASDataHandle: AA EE + AS 原始数据(9 字节) + CRC16 + 55；该帧类型没有 addr 与 len 字节。内层样例已修正为合法 Modbus CRC（3dba），v3 会继续按 V1.5 解码，v2 仍校验外层并原样输出 asDataHex"
   },
   {
     "name": "实时数据全零(addr=0x09 边界)",
@@ -351,6 +357,157 @@
     },
     "expectError": false,
     "note": "边界：version=0xFFFF → >>8=0xFF；item=0xFFFF → &0xFF=0xFF；20×u16 全 0xFFFF；验证 u16 大端与高低字节截断语义"
+  },
+  {
+    "name": "485 V1.5-标准实时数据响应(CMD 03)",
+    "source": "manual",
+    "payload": "0103041388138873cb",
+    "fPort": 10,
+    "expectData": {
+      "transport": "modbus-rtu",
+      "modbusAddr": 1,
+      "functionCode": 3,
+      "isError": false,
+      "remoteMode": false,
+      "byteCount": 4,
+      "values": [5000, 5000],
+      "note": "标准响应不含请求地址，无法安全映射寄存器名称"
+    },
+    "expectError": false,
+    "note": "手册示例的线路电流 0x1388=5000；CRC 按文档算法复核为 0x73cb。标准响应没有请求起始地址，只输出原始字数组，避免错误映射寄存器名"
+  },
+  {
+    "name": "485 V1.5-远程模式实时数据响应(CMD 03)",
+    "source": "firmware",
+    "payload": "aaee0103040104138813887b5cf68d55",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 3,
+      "isError": false,
+      "remoteMode": true,
+      "parameterAddress": 4,
+      "switchRequestAddress": 1,
+      "switchAddress": 2,
+      "byteCount": 4,
+      "values": [5000, 5000],
+      "target": "air-switch",
+      "registers": [
+        { "address": 4, "addressHex": "0x04", "raw": 5000, "name": "lineCurrent", "value": 50, "unit": "A" },
+        { "address": 5, "addressHex": "0x05", "raw": 5000, "name": "alarmBits", "value": 5000 }
+      ]
+    },
+    "expectError": false,
+    "note": "HKT AA EE 透传封装 + 手册远程模式示例；请求起始地址 0x0401 表示 0x04 寄存器、底层开关 2，随后连续两个 0x1388"
+  },
+  {
+    "name": "485 V1.5-合分闸状态响应(CMD 01)",
+    "source": "manual",
+    "payload": "aaee0101021300b4cc189355",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 1,
+      "isError": false,
+      "byteCount": 2,
+      "bitCount": 16,
+      "states": [1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "stateMaskHex": "1300",
+      "stateMeaning": "1=合闸，0=分闸"
+    },
+    "expectError": false,
+    "note": "HKT AA EE 透传封装 + 手册示例：字节 0x13 按低位在前表示开关 1/2/5 合闸"
+  },
+  {
+    "name": "485 V1.5-单点合闸控制回应(CMD 05)",
+    "source": "firmware",
+    "payload": "aaee01050004ff00cdfb930a55",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 5,
+      "isError": false,
+      "requestAddress": 4,
+      "switchAddress": 5,
+      "rawValue": 65280,
+      "action": "close",
+      "actionCode": 1
+    },
+    "expectError": false,
+    "note": "底层开关地址 5 合闸的镜像应答：0xFF00=合闸，0x0000=分闸"
+  },
+  {
+    "name": "485 V1.5-写参数回应(CMD 06)",
+    "source": "firmware",
+    "payload": "aaee020600041388c56e930a55",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 2,
+      "functionCode": 6,
+      "isError": false,
+      "parameterAddress": 0,
+      "switchRequestAddress": 4,
+      "switchAddress": 5,
+      "rawValue": 5000,
+      "target": "air-switch",
+      "parameter": { "address": 0, "addressHex": "0x00", "name": "maxVoltage", "value": 5000 }
+    },
+    "expectError": false,
+    "note": "底层开关 5 的 0x00 寄存器写入 0x1388，按 V1.5 参数表命名为线路电压门限"
+  },
+  {
+    "name": "485 V1.5-批量控制回应(CMD 0F)",
+    "source": "firmware",
+    "payload": "aaee010f0002000a740c930a55",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 15,
+      "isError": false,
+      "switchAddressStart": 3,
+      "switchCount": 10
+    },
+    "expectError": false,
+    "note": "从底层开关 3 开始连续控制 10 路的镜像应答"
+  },
+  {
+    "name": "485 V1.5-批量写参数回应(CMD 16)",
+    "source": "firmware",
+    "payload": "aaee0110000000038008930a55",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 16,
+      "isError": false,
+      "parameterAddress": 0,
+      "switchRequestAddress": 0,
+      "switchAddress": 1,
+      "wordCount": 3
+    },
+    "expectError": false,
+    "note": "从底层开关 1 开始写 3 个字的镜像应答"
+  },
+  {
+    "name": "485 V1.5-从机忙异常(CMD 03)",
+    "source": "manual",
+    "payload": "aaee018306c132224455",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 3,
+      "isError": true,
+      "exceptionCode": 6,
+      "exception": "slave device busy"
+    },
+    "expectError": false,
+    "note": "功能码高位置 1，异常码 0x06 表示命令缓存池满/从机忙"
   },
   {
     "name": "坏帧守卫-帧头非0xAA",

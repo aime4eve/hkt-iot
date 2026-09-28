@@ -38,6 +38,22 @@
       "basis": [],
       "verifiedAt": null,
       "changelog": "按固件协议全量重写：12 种上行 cmd 全覆盖（AA..CRC16(Modbus)..55 帧），坏帧/CRC 错误一律报错；v1.0.0 系误迁移的 DMS01 门磁解码器，协议不兼容"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "air-switch_chirpstack_v3.0.0.js",
+      "decoderVersion": "3.0.0",
+      "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
+      "current": false,
+      "status": "unverified",
+      "basis": [
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/Docs/485通讯协议 V1.5.pdf：CMD 01/02/03/04/05/06/0F/10 与寄存器附表",
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/communicate.c：0xEE 原始 Modbus 透传封装",
+        "samples/samples.json V1.5 与回归守卫用例"
+      ],
+      "verifiedAt": null,
+      "changelog": "按 485 协议 V1.5 新增内层 Modbus 响应解码：覆盖位状态、实时/参数寄存器、控制写回应、批量控制、异常帧；保留 v2 自研 AA..55 上报帧兼容；0xEE 从原始 hex 升级为结构化字段，属破坏性输出变更"
     }
   ],
   "deviations": [],
