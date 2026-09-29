@@ -68,6 +68,20 @@ devicehub:
   disposal:
     scan-interval-ms: ${DISPOSAL_SCAN_INTERVAL_MS:300000}
     scan-initial-delay-ms: ${DISPOSAL_SCAN_INITIAL_DELAY_MS:60000}
+  # NS→TB 备份遥测通道（docs/ns-direct-tb-backup-channel.md §8）：默认关。
+  # 凭据不进配置——连接时从 TB 网关设备共享属性 OC 的 broker.security 现取；
+  # 独立 clientId（现网桥接为 gw_ 前缀，同号互踢）。
+  backup-channel:
+    enabled: ${BACKUP_CHANNEL_ENABLED:false}
+    client-id: ${BACKUP_CHANNEL_CLIENT_ID:dhbk-backup-01}
+    broker-host: ${BACKUP_CHANNEL_BROKER_HOST:172.17.201.15}
+    broker-port: ${BACKUP_CHANNEL_BROKER_PORT:1883}
+    topic-filter: ${BACKUP_CHANNEL_TOPIC_FILTER:org/1/project/#}
+    qos: ${BACKUP_CHANNEL_QOS:1}
+    # 试点 NS 项目号白名单（逗号分隔）；空 = 只计数不写（COUNT_ONLY）
+    project-whitelist: ${BACKUP_CHANNEL_PROJECT_WHITELIST:}
+    # 写入队列容量；溢出丢弃必须计数（queueOverflow），不阻塞 MQTT 线程
+    max-queue: ${BACKUP_CHANNEL_MAX_QUEUE:2000}
 
 management:
   endpoints:

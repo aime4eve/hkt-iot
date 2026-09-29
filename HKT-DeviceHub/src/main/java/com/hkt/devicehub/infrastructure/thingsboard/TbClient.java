@@ -170,6 +170,25 @@ public class TbClient {
     }
 
     /**
+     * Write one explicit-ts timeseries point (backup telemetry channel). TB 3.8
+     * route is /timeseries/{scope} — the legacy uppercase /TIMESERIES path was
+     * removed and a POST there would land on the attribute-scope route (500).
+     * Explicit ts in the body is what kills the 1970-class bug: server time is
+     * never substituted. Known shared quirk: TB coerces numeric-looking
+     * strings ("00" → 0); real dataHex is hex text (contains letters), same on
+     * the bridge path, so this is not backup-channel-specific.
+     */
+    public void writeDeviceTelemetry(String tbDeviceId, long ts, String dataHex) {
+        ObjectNode point = objectMapper.createObjectNode();
+        point.put("ts", ts);
+        ObjectNode values = point.putObject("values");
+        values.put("dataHex", dataHex);
+        JsonNode body = objectMapper.createArrayNode().add(point);
+        exchangeForJson("/api/plugins/telemetry/DEVICE/" + tbDeviceId + "/timeseries/SERVER_SCOPE",
+                HttpMethod.POST, body);
+    }
+
+    /**
      * Recent frame summaries (DESC, null-artifact filtered) for the device
      * detail drawer. Values are truncated to keep the payload small.
      */
