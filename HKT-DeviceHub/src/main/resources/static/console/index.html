@@ -506,6 +506,36 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
         </div>
         <div id="gapPanelBody"></div>
       </div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <h3>备份遥测通道 <span class="count" id="bkMode"></span>
+          <span class="right dim">NS→TB 直连兜底 · 独立 clientId 与桥双跑 · docs/ns-direct-tb-backup-channel.md</span></h3>
+        <div class="grid dash">
+          <div class="card" style="border:none;padding:0;background:transparent">
+            <div class="kv"><span class="k"><i class="dot off" id="bkStateDot"></i> 运行状态</span><span class="v" id="bkStateV">—</span></div>
+            <div class="kv"><span class="k">订阅</span><span class="v mono" id="bkSubV">—</span></div>
+            <div class="kv"><span class="k">Broker / ClientId</span><span class="v mono" id="bkBrokerV">—</span></div>
+            <div class="kv"><span class="k">白名单（试点项目）</span><span class="v mono" id="bkWlV">—</span></div>
+          </div>
+          <div class="card" style="border:none;padding:0;background:transparent">
+            <div class="stat-row">
+              <div class="stat"><div class="lbl">今日帧数</div><div class="big" id="bkToday">—</div></div>
+              <div class="stat"><div class="lbl">累计写入 TB</div><div class="big" style="color:var(--ok)" id="bkWritten">—</div></div>
+              <div class="stat"><div class="lbl">总线收到</div><div class="big" id="bkReceived">—</div></div>
+            </div>
+            <div class="kv"><span class="k">未知设备（总线有、TB 无）</span><span class="v" id="bkUnknown">—</span></div>
+            <div class="kv"><span class="k">最近帧 / 最近写入</span><span class="v mono" id="bkLastV">—</span></div>
+          </div>
+          <div class="card" style="border:none;padding:0;background:transparent">
+            <div class="kv"><span class="k">丢弃合计（非白名单/解析失败/非活跃/歧义/写入失败/溢出）</span><span class="v" id="bkDiscard">—</span></div>
+            <div class="kv"><span class="k">连接尝试 / 断连次数</span><span class="v" id="bkConnV">—</span></div>
+            <div class="kv"><span class="k">最近错误</span><span class="v" id="bkErrV">—</span></div>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top:var(--space-3)">
+          <button class="btn sm" id="bkSwitch">开启备份通道</button>
+          <span class="count" id="bkHint"></span>
+        </div>
+      </div>
     </div>
     <div data-state-panel="dashboard" hidden></div>
   </section>
@@ -1167,13 +1197,73 @@ function renderGapPanel() {
   if (next) next.addEventListener('click', () => { gapPage = Math.min(pages - 1, gapPage + 1); renderGapPanel(); });
 }
 $('#gapFilter').addEventListener('input', () => { gapPage = 0; renderGapPanel(); });
+
+/* ---- 备份遥测通道卡（Phase 1）：运行状态/计数/开关。所有丢弃路径后端已计数，这里只读展示 ---- */
+let backupCache = null, backupBusy = false;
+const BK_STATE = {
+  CONNECTED:   { cls: 'ok',   label: '已连接' },
+  CONNECTING:  { cls: 'warn', label: '连接中…' },
+  DISCONNECTED:{ cls: 'warn', label: '断开（≤30s 重连，broker 排队不丢帧）' },
+  STOPPED:     { cls: 'off',  label: '未启用' },
+  FAILED:      { cls: 'warn', label: '连接失败（30s 自动重试）' }
+};
+function renderBackupCard() {
+  const st = backupCache;
+  if (!st) { $('#bkMode').textContent = ''; $('#bkHint').textContent = '状态不可用'; return; }
+  const s = BK_STATE[st.state] || { cls: 'off', label: st.state };
+  $('#bkStateDot').className = 'dot ' + s.cls;
+  $('#bkStateV').textContent = s.label;
+  $('#bkMode').textContent = st.enabled ? '运行中' : '已停用';
+  $('#bkSubV').textContent = st.connected ? (st.topicFilter + ' · QoS' + st.qos) : '—';
+  $('#bkBrokerV').textContent = (st.brokerHost ? st.brokerHost + ':' + st.brokerPort : '—') + ' · ' + st.clientId;
+  $('#bkWlV').textContent = (st.whitelist && st.whitelist.length) ? st.whitelist.join(', ') : '（空 = 只计数不写）';
+  const c = st.counters || {};
+  $('#bkToday').textContent = c.todayFrames ?? 0;
+  $('#bkWritten').textContent = c.written ?? 0;
+  $('#bkReceived').textContent = c.received ?? 0;
+  $('#bkUnknown').textContent = c.unknownDevice ?? 0;
+  const discard = ['parseFailed','otherIgnored','notWhitelisted','inactiveDevice','ambiguousMatch','writeFailed','queueOverflow']
+    .reduce((acc, k) => acc + (c[k] || 0), 0);
+  $('#bkDiscard').textContent = discard + (c.projectMismatch ? ' · 项目号不符 ' + c.projectMismatch : '');
+  $('#bkLastV').textContent =
+    (st.lastFrameAt ? '帧 ' + fmtAge(Date.now() - new Date(st.lastFrameAt).getTime()) + ' 前' : '—') +
+    ' / ' +
+    (st.lastWriteAt ? '写 ' + fmtAge(Date.now() - new Date(st.lastWriteAt).getTime()) + ' 前' : '—');
+  $('#bkConnV').textContent = (c.connectionAttempts ?? 0) + ' / ' + (c.connectionLosts ?? 0);
+  $('#bkErrV').textContent = st.lastError ? String(st.lastError).slice(0, 90) : '—';
+  const btn = $('#bkSwitch');
+  btn.disabled = backupBusy;
+  btn.textContent = st.enabled ? '关闭备份通道' : '开启备份通道';
+  btn.className = 'btn sm' + (st.enabled ? ' ghost' : '');
+  $('#bkHint').textContent = st.enabled
+    ? (st.mode === 'COUNT_ONLY'
+        ? '空白名单：只观测总线流量，不写入 TB'
+        : '双跑中：写入项目 ' + (st.whitelist || []).join(', ') + '（正常期与桥合并去重，断桥期自动兜底）')
+    : '开启后持续订阅 NS 总线（独立 clientId，不影响现网桥接）';
+}
+$('#bkSwitch').addEventListener('click', async () => {
+  if (backupBusy || !backupCache) return;
+  const enable = !backupCache.enabled;
+  if (enable && !confirm('开启备份通道？将持续订阅 NS 总线并把白名单项目直写 TB。\n独立 clientId，不影响现网桥接；空白名单时只计数不写。')) return;
+  if (!enable && !confirm('关闭备份通道？断连期间 broker 仍为持久会话排队，重新开启后自动补收。')) return;
+  backupBusy = true; renderBackupCard();
+  try {
+    backupCache = await api('/backup-channel/switch?enabled=' + enable, { method: 'POST' });
+    toast(enable ? '备份通道已开启' : '备份通道已关闭');
+  } catch (e) {
+    toast('切换失败：' + e.message, true);
+  }
+  backupBusy = false; renderBackupCard();
+});
+
 async function refreshDashboard(manual) {
   try {
-    const [h, t, g] = await Promise.all([
+    const [h, t, g, b] = await Promise.all([
       api('/channels/health'), api('/channels/topology'),
-      api('/channels/mapping-gaps').then(r => r, () => null)
+      api('/channels/mapping-gaps').then(r => r, () => null),
+      api('/backup-channel/status').then(r => r, () => null)
     ]);
-    healthCache = h; topoCache = t; gapCache = g; headerOffline = false;
+    healthCache = h; topoCache = t; gapCache = g; backupCache = b; headerOffline = false;
     renderHeader();
     renderHealthCard();
     renderTopology();
@@ -1181,6 +1271,7 @@ async function refreshDashboard(manual) {
     renderHeader();
     renderAttention();
     renderGapPanel();
+    renderBackupCard();
     $('#dashUpdated').textContent = '更新于 ' + fmtClock(new Date()) + '（探测缓存 ' + Math.round((t.cacheTtlMs || 30000) / 1000) + 's）';
     showState('dashboard', 'normal');
   } catch (e) {
