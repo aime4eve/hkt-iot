@@ -203,15 +203,17 @@ NS MQTT org/1/project/+/device/+/dat/up（QoS1，独立 clientId，备份专用�
 |---|---|---|---|
 | ① | 通配订阅长连 24h | **运行中**（09:46 CST 起）：clientId `dhbk_spike_*`（独立于桥 `gw_*`）、QoS1+cleanSession=false、订阅 `org/1/project/#`，全总线 ~26 msg/min、10+ 项目在流、预估 ~11MB/天。**离线补收 PASS**：停 240s 后重启，缺口期 110 条全部补收——broker 支持持久会话排队，「断桥零丢帧」前提成立 | 容器 `bks-spike-24h`（--restart unless-stopped）、`msgs.log`（`%U\|topic\|payload`） |
 | ② | TB REST 直写 + 规则链 | **PASS**：`POST /api/plugins/telemetry/DEVICE/{id}/timeseries/SERVER_SCOPE`（**TB 3.8 路径带 `{scope}` 段，旧版 `/TIMESERIES` 路由已 500**）写 `dataHex` 200；**显式 ts 毫秒精确落库**（1970 类 bug 从根上排除）；**规则链不触发解码**（读回无 `result`）→ 备份语义=保数不保解码，与 §3 设计一致 | 写入 ts=1790646684763 精确回读；试点=已退役 3588（devicehub-app 日志 0 触达，零业务影响） |
-| ③ | 双通道 ts 对齐（硬门槛 ≤2s） | **趋势 PASS（n=17）**：219 回测 1 帧 565ms + 通配日志 16 帧/12 设备；\|delta\| 中位 271.5ms、max 565ms、within-2s 17/17；TB ts 一致略晚于 NS 源 ts 200~600ms（桥的到达/处理时延口径）。备份路径写 `round(ts×1000)`，与桥路径天然同窗。**2h 自动采样持续累积，24h 满窗后终审** | `align3.log`（采样循环 pid 在 `sampler.pid`，`run_align3.sh` 每次现取 TB token） |
+| ③ | 双通道 ts 对齐（硬门槛 ≤2s） | **PASS（n=900，至 16:39 累积）**：\|delta\| 中位 291ms、p95 422ms、max 614ms、**within-2s 900/900**；TB ts 一致略晚于 NS 源 ts 200~600ms（桥的到达/处理时延口径）。备份路径写 `round(ts×1000)`，与桥路径天然同窗。设备类型覆盖：追踪器/胶囊 + **地磁 00956906000288cf（project 43，PARKING）355ms**——其总线 base64 与桥写 dataHex `686b74…` 逐字节一致，转换格式跨设备类型实证对齐。2h 自动采样持续累积，24h 满窗复核确认 | `align3.log`（采样循环 pid 在 `sampler.pid`，`run_align3.sh` 每次现取 TB token） |
 | ④ | NS 消息 ts 单位 | **定论：epoch 秒（浮点，含亚秒）**——bus219.log 47/47 + 24h 日志一致；归一化公式 `ts_ms = round(ts × 1000)`（Phase 1 单测锁定）；旧代际 1970 bug = 把秒当毫秒存的直接后果 | bus219.log、msgs.log |
 | ⑤ | 桥接宿主机 | 未动（非阻塞）；指纹在案（双 1883 连接 + clientId `gw_pLoh7THJzthWrYDLk2mE_2`），下次接触运维时补 | 项目记忆 gateway-mapping-gap-r07 |
 
-**顺带产出——DeviceHub 第一份「全总线视角」观测**：09:46–09:53 七分钟内总线 57 台唯一设备在流，其中 **44 台不在 TB**（未注册/历史设备）。备份通道落地后此计数常态化进控制台。
+**顺带产出——DeviceHub 第一份「全总线视角」观测**：09:46 起七分钟内 57 台唯一设备在流（44 台不在 TB）；至 16:39 累积 **198 台唯一设备 / 4,746 帧**，TB 已知 69 台、未知 129 台。备份通道落地后此计数常态化进控制台。地磁真机 00956906000288cf（PARKING，project 43，约 2.5h 一帧的事件型稀疏上报）已被通配探针与对齐采样器自动覆盖——稀疏设备无需专门探针，24h 窗口自然累积样本。
 
 **已知边缘（记录在案，不阻塞）**：TB 对 REST 写入的字符串做数值强转（`"00"`→`0`）；真实 dataHex 均为 `aGt0…` 开头的 base64 不会触发；桥路径同行为，非备份通道新增风险。
 
-**Go/No-Go 初判**：④ 口径已定、② 通过、③ 大概率达标——按方案推进 Phase 1 准备；**24h 满窗复核（① 存活 + ③ 终审）作为正式 Go 门槛**。
+**Go/No-Go 初判**：④ 口径已定、② 通过、**③ 已达标（n=900 全在窗内，max 614ms）**——Phase 1 MVP 代码已完成（见下）；**24h 满窗复核（① 存活）作为正式 Go 的最后一道门槛**。
+
+**Phase 1 MVP（2026-09-29 同日实现，未部署）**：后端 8f3f804（`BackupChannelService`：独立 clientId/看门狗重连/OC 属性现取凭据/有界写入队列/全丢弃计数；`GET /api/v1/backup-channel/status` + `POST /switch`；`devicehub.backup-channel.*` 默认 false，空白名单=COUNT_ONLY）+ 控制台卡 4740fd8（工作台备份通道卡，Playwright 双态实页验收）；测试 70→88。部署开启 = 明日满窗复核通过后：deploy 206 → 白名单填一个试点项目 → 控制台开卡。
 
 
 
