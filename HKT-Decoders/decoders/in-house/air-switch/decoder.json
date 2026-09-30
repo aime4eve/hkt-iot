@@ -10,7 +10,7 @@
   "category": "电气安全",
   "authority": {
     "type": "firmware",
-    "ref": "41ad0d9",
+    "ref": "b93634c",
     "path": "HKT-Firmwares/in-house/LoRaWAN_Air_Switch"
   },
   "fPortDefault": null,
@@ -61,7 +61,7 @@
       "file": "dms01_chirpstack_v3.1.0.js",
       "decoderVersion": "3.1.0",
       "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [
         "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/Docs/485通讯协议 V1.5.pdf：实时数据附表 0x16-0x1C",
@@ -71,12 +71,28 @@
       "changelog": "修正 V1.5 实时寄存器地址映射：0x16-0x18 为三相功率因数，0x19-0x1C 为端子温度；删除误加的 0x16 开关状态映射"
     },
     {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "dms01_chirpstack_v3.2.0.js",
+      "decoderVersion": "3.2.0",
+      "firmwareVersion": "LoRaWAN_Air_Switch V7.14（hw 0x07 / sw 0x0E，monorepo ref b93634c）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/communicate.c：AA..55 组帧、ACK_Server2、reportDeviceVersion",
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/an001.c：Modbus CRC 与串口解析",
+        "samples/samples.json 固件 V7.14 与 V1.5 回归用例"
+      ],
+      "verifiedAt": null,
+      "changelog": "对照固件 b93634c/V7.14 补齐 0x0C 电量清零结果与 0x0D 版本号上报；0x0D 按固件声明 len=0 但实际追加两字节版本的组包 quirk 解析"
+    },
+    {
       "platform": "ttn",
       "lang": null,
       "file": "dms01_ttn_v3.1.0.js",
       "decoderVersion": "3.1.0",
       "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [
         "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/Docs/485通讯协议 V1.5.pdf：CMD 01/02/03/04/05/06/0F/10 与寄存器附表",
@@ -85,6 +101,22 @@
       ],
       "verifiedAt": null,
       "changelog": "按 485 协议 V1.5 新增 TTN 解码器：与 ChirpStack v3.1 同源，支持 HKT AA..55/0xEE 封装与直接 Modbus RTU；实时表按 0x16-0x18 功率因数、0x19-0x1C 端子温度映射"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "dms01_ttn_v3.2.0.js",
+      "decoderVersion": "3.2.0",
+      "firmwareVersion": "LoRaWAN_Air_Switch V7.14（hw 0x07 / sw 0x0E，monorepo ref b93634c）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/communicate.c：AA..55 组帧、ACK_Server2、reportDeviceVersion",
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/an001.c：Modbus CRC 与串口解析",
+        "samples/samples.json 固件 V7.14 与 V1.5 回归用例"
+      ],
+      "verifiedAt": null,
+      "changelog": "TTN 版本与 ChirpStack v3.2 同源：对照固件 b93634c/V7.14 补齐 0x0C 电量清零结果与 0x0D 版本号上报；0x0D 按实际 9 字节 quirk 帧解析"
     }
   ],
   "deviations": [],

@@ -537,6 +537,52 @@
     "note": "功能码高位置 1，异常码 0x06 表示命令缓存池满/从机忙"
   },
   {
+    "name": "固件 V7.14-电量清零执行结果(cmd 0x0C, addr=0x03)",
+    "source": "firmware",
+    "payload": "aa0c03020001685455",
+    "fPort": 10,
+    "expectData": {
+      "cmd": 12,
+      "addr": 3,
+      "dataLen": 2,
+      "electricityClearFlag": 1
+    },
+    "expectError": false,
+    "note": "communicate.c case 0x0C：目标空开在线时逐条下发解锁/电量高/低清零，ACK_Server2 flag=1；addr=0xFF 时 flag 表示是否至少处理了一台"
+  },
+  {
+    "name": "固件 V7.14-电量清零无目标(cmd 0x0C, addr=0xFF)",
+    "source": "firmware",
+    "payload": "aa0cff02000099c455",
+    "fPort": 10,
+    "expectData": {
+      "cmd": 12,
+      "addr": 255,
+      "dataLen": 2,
+      "electricityClearFlag": 0
+    },
+    "expectError": false,
+    "note": "广播地址 0xFF：没有任何在线空开时 ACK_Server2 flag=0"
+  },
+  {
+    "name": "固件 V7.14-设备版本号上报(cmd 0x0D)",
+    "source": "firmware",
+    "payload": "aa0d0000070eb62455",
+    "fPort": 10,
+    "expectData": {
+      "cmd": 13,
+      "addr": 0,
+      "dataLen": 0,
+      "actualDataLen": 2,
+      "lengthQuirk": true,
+      "hardwareVersion": 7,
+      "softwareVersion": 14,
+      "versionText": "7.14"
+    },
+    "expectError": false,
+    "note": "reportDeviceVersion 组包 quirk：声明 dataLen=0，但固定追加 HARDWARE_VER/SOFTWARE_VER 两字节，实际总帧长 9 字节"
+  },
+  {
     "name": "坏帧守卫-帧头非0xAA",
     "source": "regression",
     "payload": "ab0800025800620155",
