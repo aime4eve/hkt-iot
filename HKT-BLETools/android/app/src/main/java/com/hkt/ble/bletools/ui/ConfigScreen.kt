@@ -71,19 +71,22 @@ import kotlinx.coroutines.launch
  * 三家族三套表单 + 前置校验（与固件同规则）+ 确认摘要 + 写入中 + 结果横幅。
  * 保存走真实 0x02：设备 ACK（含 0xFF 应答段的专用帧）驱动结果横幅。
  * 配置页期间停轮询：固件 RX 单缓冲 + 50ms 空闲判帧，写帧撞上轮询会被整段丢弃（FD-004）。
+ *
+ * 草稿字段全部用 snapshot state（mutableStateOf）承载：Compose 强跳过（Kotlin 2.0.20+ 默认）下
+ * 普通 var 类 + 手动 bump 的写法会让子表单因参数引用不变被整体跳过，点击/输入全无视觉反馈。
  */
 private class ConfigDraft {
-    var report = ""
-    var gps = ""
-    var low = ""
-    var high = ""
-    var modeIndex = 0        // dc 工作模式
-    var vol = 2              // svc 电压档 0/1/2
-    var port = 1             // svc 端口原始值 0x00-0x03 | 0x80
-    var stable = "5"
-    var smart = false
-    var tz = 0
-    var period = ""
+    var report by mutableStateOf("")
+    var gps by mutableStateOf("")
+    var low by mutableStateOf("")
+    var high by mutableStateOf("")
+    var modeIndex by mutableStateOf(0)        // dc 工作模式
+    var vol by mutableStateOf(2)              // svc 电压档 0/1/2
+    var port by mutableStateOf(1)             // svc 端口原始值 0x00-0x03 | 0x80
+    var stable by mutableStateOf("5")
+    var smart by mutableStateOf(false)
+    var tz by mutableStateOf(0)
+    var period by mutableStateOf("")
 }
 
 @Composable
@@ -99,10 +102,6 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
     var showConfirm by remember { mutableStateOf(false) }
     var showSaving by remember { mutableStateOf(false) }
     var tzHint by remember { mutableStateOf<String?>(null) }
-    var initialized by remember { mutableStateOf(false) }
-    var redraw by remember { mutableStateOf(0) }   // 草稿为可变类，字段变更时 bump 触发重组
-
-    fun bump() { redraw += 1 }
 
     val isUDS = session.family == DeviceFamily.UDS100
     val isSVC = session.family == DeviceFamily.SVC100
@@ -112,8 +111,6 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
         session.setPollingSuspended(true)
         onDispose { session.setPollingSuspended(false) }
     }
-    @Suppress("UNUSED_EXPRESSION")
-    redraw   // 草稿可变类字段变更经 bump() 触发重组
     // 草稿初值 = 轮询快照（cfgInit），初始化一次
     LaunchedEffect(Unit) {
         errors = emptyMap(); banner = null
@@ -137,7 +134,6 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
                 draft.period = (snapshot.reportPeriodMin ?: 60).toString()
             }
         }
-        bump()
     }
     BackHandler { onBack() }
 
@@ -251,9 +247,9 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
                     Modifier.weight(1f).verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp).padding(top = 12.dp),
                 ) {
-                    banner?.let { ResultBanner(it, zh, onDone = { initDraftFrom(session, draft); bump() }, onRetry = { banner = null }) }
+                    banner?.let { ResultBanner(it, zh, onDone = { initDraftFrom(session, draft) }, onRetry = { banner = null }) }
                     SvcForm(session, draft, errors, zh, snapshot, tzHint,
-                        onBump = { bump() }, onTzHint = { tzHint = it })
+                        onTzHint = { tzHint = it })
                 }
                 // 吸底保存栏（.savebar：bg、上边框 line 68%）
                 Column(
@@ -278,8 +274,8 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 24.dp),
             ) {
-                banner?.let { ResultBanner(it, zh, onDone = { initDraftFrom(session, draft); bump() }, onRetry = { banner = null }) }
-                FormBody(session, draft, errors, zh, onBump = { bump() })
+                banner?.let { ResultBanner(it, zh, onDone = { initDraftFrom(session, draft) }, onRetry = { banner = null }) }
+                FormBody(session, draft, errors, zh)
                 Spacer(Modifier.height(12.dp))
                 SaveButton { saveTapped({ errors = it }, { showConfirm = true }) }
                 Spacer(Modifier.height(8.dp))
@@ -364,7 +360,9 @@ private fun summaryText(session: DeviceSession, draft: ConfigDraft, zh: Boolean)
             val tzLabel = when (draft.tz) {
                 25 -> "UTC+03:30"
                 26 -> "UTC+05:30"
-                else -> if (draft.tz < 13) "UTC+$draft.tz" else "UTC\u2212${draft.tz - 12}"
+                // $draft.tz 会被插值成 draft.toString()+".tz" 字面量，属性访问必须加花括号
+                else -> if (draft.tz < 13) String.format(java.util.Locale.US, "UTC+%02d:00", draft.tz)
+                else String.format(java.util.Locale.US, "UTC\u2212%02d:00", draft.tz - 12)
             }
             "电压 ${listOf("12V", "9V", "5V")[draft.vol]}; 稳定 ${draft.stable}s; ${tzLabel}; ${draft.period}$minutes"
         }
@@ -404,18 +402,17 @@ private fun FormBody(
     draft: ConfigDraft,
     errors: Map<String, String>,
     zh: Boolean,
-    onBump: () -> Unit,
 ) {
     if (session.family == DeviceFamily.UDS100) {
         NumFieldCard(label = if (zh) "上报周期" else "Report period", text = draft.report,
-            onTextChange = { draft.report = it; onBump() }, unit = if (zh) "分钟" else "min", error = errors["report"])
+            onTextChange = { draft.report = it }, unit = if (zh) "分钟" else "min", error = errors["report"])
         NumFieldCard(label = if (zh) "GPS 周期" else "GPS period", text = draft.gps,
-            onTextChange = { draft.gps = it; onBump() }, unit = if (zh) "分钟" else "min",
+            onTextChange = { draft.gps = it }, unit = if (zh) "分钟" else "min",
             hint = if (zh) "0 = 关闭 GPS 定位" else "0 = GPS positioning off", error = errors["gps"])
         NumFieldCard(label = if (zh) "低阈值" else "Low threshold", text = draft.low,
-            onTextChange = { draft.low = it; onBump() }, unit = "mm", error = errors["low"])
+            onTextChange = { draft.low = it }, unit = "mm", error = errors["low"])
         NumFieldCard(label = if (zh) "高阈值" else "High threshold", text = draft.high,
-            onTextChange = { draft.high = it; onBump() }, unit = "mm",
+            onTextChange = { draft.high = it }, unit = "mm",
             hint = if (zh) "0 = 关闭高阈值告警" else "0 = high-threshold alarm off", error = errors["high"])
         Text(
             if (zh) "固件校验任一参数非法时整包静默拒绝（无 ACK），App 侧已前置同规则校验"
@@ -424,7 +421,7 @@ private fun FormBody(
         )
     } else if (session.family == DeviceFamily.DC200_FAMILY) {
         NumFieldCard(label = if (zh) "上报周期" else "Report period", text = draft.report,
-            onTextChange = { draft.report = it; onBump() }, unit = if (zh) "分钟" else "min",
+            onTextChange = { draft.report = it }, unit = if (zh) "分钟" else "min",
             hint = if (zh) "取值范围 0–1440，0=连续上报" else "Range 0–1440; 0 = report continuously", error = errors["report"])
         ChoiceChipRow(
             label = if (zh) "工作模式" else "Work mode",
@@ -433,7 +430,7 @@ private fun FormBody(
                 if (zh) "仅地磁" else "Mag only",
                 if (zh) "雷达优先" else "Radar first",
             ),
-            selection = draft.modeIndex, onSelect = { draft.modeIndex = it; onBump() },
+            selection = draft.modeIndex, onSelect = { draft.modeIndex = it },
         )
     }
 }
@@ -446,7 +443,6 @@ private fun SvcForm(
     zh: Boolean,
     snapshot: DeviceSnapshot,
     tzHint: String?,
-    onBump: () -> Unit,
     onTzHint: (String?) -> Unit,
 ) {
     val c = LocalHktColors.current
@@ -470,7 +466,7 @@ private fun SvcForm(
                     ChoiceCell(
                         text = label, selected = draft.vol == index,
                         modifier = Modifier.weight(1f),
-                        action = { draft.vol = index; onBump() },
+                        action = { draft.vol = index },
                     )
                 }
             }
@@ -483,7 +479,7 @@ private fun SvcForm(
                     offText = if (zh) "PWM 控制" else "PWM control",
                     isOn = draft.port and 0x01 != 0,
                     modifier = Modifier.weight(1f),
-                    setOn = { on -> draft.port = derivedPort(draft.port, 0x01, on); onBump() },
+                    setOn = { on -> draft.port = derivedPort(draft.port, 0x01, on) },
                 )
                 PortSet(
                     title = if (zh) "阀 2" else "Valve 2",
@@ -491,7 +487,7 @@ private fun SvcForm(
                     offText = if (zh) "PWM 控制" else "PWM control",
                     isOn = draft.port and 0x02 != 0,
                     modifier = Modifier.weight(1f),
-                    setOn = { on -> draft.port = derivedPort(draft.port, 0x02, on); onBump() },
+                    setOn = { on -> draft.port = derivedPort(draft.port, 0x02, on) },
                 )
             }
             ConfigCaption(
@@ -503,11 +499,11 @@ private fun SvcForm(
                         HktSwitch(isOn = stableOn)
                         // 0x80 位切换由点击整行触发
                     }
-                    Box(Modifier.matchParentSize().clickableBox { draft.port = draft.port xor 0x80; onBump() })
+                    Box(Modifier.matchParentSize().clickableBox { draft.port = draft.port xor 0x80 })
                 }
                 ConfigInputRow(
                     label = if (zh) "稳定时长" else "Stable time",
-                    text = draft.stable, onTextChange = { draft.stable = it; onBump() },
+                    text = draft.stable, onTextChange = { draft.stable = it },
                     unit = "s", disabled = !stableOn,
                 )
             }
@@ -522,7 +518,7 @@ private fun SvcForm(
                 ConfigControlRow(if (zh) "自动开关机" else "Auto power") {
                     HktSwitch(isOn = draft.smart)
                 }
-                Box(Modifier.matchParentSize().clickableBox { draft.smart = !draft.smart; onBump() })
+                Box(Modifier.matchParentSize().clickableBox { draft.smart = !draft.smart })
             }
             ConfigCaption(
                 if (zh) "开启后：阀插入自动开机，阀拔出自动关机" else "When on: the valve powers on when inserted and off when removed",
@@ -542,7 +538,7 @@ private fun SvcForm(
             state = tzLabel(draft.tz),
         ) {
             ConfigLabel(if (zh) "时区" else "Time zone")
-            TimeZonePicker(selected = draft.tz, onSelect = { draft.tz = it; onBump() })
+            TimeZonePicker(selected = draft.tz, onSelect = { draft.tz = it })
             snapshot.timezone?.let { deviceTz ->
                 ConfigCaption((if (zh) "设备当前: " else "Device current: ") + tzLabel(deviceTz), topSpacing = 6)
             }
@@ -567,7 +563,6 @@ private fun SvcForm(
                         draft.tz = 0
                         onTzHint(if (zh) "手机时区超出设备支持范围，已选 UTC+00:00" else "Phone timezone unsupported; set to UTC+00:00")
                     }
-                    onBump()
                 }
             }
             tzHint?.let {
@@ -576,7 +571,7 @@ private fun SvcForm(
             ConfigLabel(if (zh) "上报周期" else "Report period")
             ConfigInputRow(
                 label = if (zh) "上报周期" else "Report period",
-                text = draft.period, onTextChange = { draft.period = it; onBump() }, unit = if (zh) "分钟" else "min",
+                text = draft.period, onTextChange = { draft.period = it }, unit = if (zh) "分钟" else "min",
             )
             Text(
                 if (zh) "0=关闭周期上报，范围 10–1440" else "0 = periodic reporting off; range 10–1440",

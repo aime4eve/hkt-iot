@@ -529,7 +529,7 @@ private fun RtButton(
     }
 }
 
-/** 输入小卡（.field 内嵌：label 11/600 + input + hint）。 */
+/** 输入小卡（.field 内嵌：label 11/600 + input + hint 纵向堆叠；勿用 Box，否则 input 与 hint 同位叠加）。 */
 @Composable
 private fun FieldCard(label: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val c = LocalHktColors.current
@@ -540,7 +540,7 @@ private fun FieldCard(label: String, modifier: Modifier = Modifier, content: @Co
             .padding(10.dp),
     ) {
         Text(label, style = hkt(11f, FontWeight.SemiBold), color = c.text2)
-        Box(Modifier.padding(top = 4.dp)) { content() }
+        Column(Modifier.padding(top = 4.dp)) { content() }
     }
 }
 
