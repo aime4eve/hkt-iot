@@ -421,6 +421,33 @@
     "note": "HKT AA EE 透传封装 + 手册示例：字节 0x13 按低位在前表示开关 1/2/5 合闸"
   },
   {
+    "name": "485 V1.5-功率因数与端子温度地址边界(CMD 03)",
+    "source": "firmware",
+    "payload": "aaee010316000840007fff000000fab34ea3a355",
+    "fPort": 10,
+    "expectData": {
+      "transport": "hkt-0xee",
+      "modbusAddr": 1,
+      "functionCode": 3,
+      "isError": false,
+      "remoteMode": true,
+      "parameterAddress": 22,
+      "switchRequestAddress": 0,
+      "switchAddress": 1,
+      "byteCount": 8,
+      "values": [16384, 32767, 0, 250],
+      "target": "air-switch",
+      "registers": [
+        { "address": 22, "addressHex": "0x16", "raw": 16384, "name": "aPhasePowerFactor", "value": 0.500015259254738 },
+        { "address": 23, "addressHex": "0x17", "raw": 32767, "name": "bPhasePowerFactor", "value": 1 },
+        { "address": 24, "addressHex": "0x18", "raw": 0, "name": "cPhasePowerFactor", "value": 0 },
+        { "address": 25, "addressHex": "0x19", "raw": 250, "name": "terminalTemperatureA", "value": 25, "unit": "°C" }
+      ]
+    },
+    "expectError": false,
+    "note": "远程模式从 0x16 连续读 4 字：验证三相功率因数后紧接端子温度 A，防止地址表错位"
+  },
+  {
     "name": "485 V1.5-单点合闸控制回应(CMD 05)",
     "source": "firmware",
     "payload": "aaee01050004ff00cdfb930a55",

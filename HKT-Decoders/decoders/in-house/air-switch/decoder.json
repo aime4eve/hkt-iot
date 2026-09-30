@@ -33,7 +33,7 @@
       "file": "air-switch_chirpstack_v2.0.0.js",
       "decoderVersion": "2.0.0",
       "firmwareVersion": "LoRaWAN_Air_Switch / _CL（2026-09-18 对照固件核验）",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
@@ -54,6 +54,37 @@
       ],
       "verifiedAt": null,
       "changelog": "按 485 协议 V1.5 新增内层 Modbus 响应解码：覆盖位状态、实时/参数寄存器、控制写回应、批量控制、异常帧；保留 v2 自研 AA..55 上报帧兼容；0xEE 从原始 hex 升级为结构化字段，属破坏性输出变更"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "dms01_chirpstack_v3.1.0.js",
+      "decoderVersion": "3.1.0",
+      "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/Docs/485通讯协议 V1.5.pdf：实时数据附表 0x16-0x1C",
+        "samples/samples.json V1.5 与回归守卫用例"
+      ],
+      "verifiedAt": null,
+      "changelog": "修正 V1.5 实时寄存器地址映射：0x16-0x18 为三相功率因数，0x19-0x1C 为端子温度；删除误加的 0x16 开关状态映射"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "dms01_ttn_v3.1.0.js",
+      "decoderVersion": "3.1.0",
+      "firmwareVersion": "LoRaWAN_Air_Switch / 曼顿 485 协议 V1.5（monorepo ref 1284e8e）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/Docs/485通讯协议 V1.5.pdf：CMD 01/02/03/04/05/06/0F/10 与寄存器附表",
+        "HKT-Firmwares/in-house/LoRaWAN_Air_Switch/USER/Drive/communicate.c：0xEE 原始 Modbus 透传封装",
+        "samples/samples.json V1.5 与回归守卫用例"
+      ],
+      "verifiedAt": null,
+      "changelog": "按 485 协议 V1.5 新增 TTN 解码器：与 ChirpStack v3.1 同源，支持 HKT AA..55/0xEE 封装与直接 Modbus RTU；实时表按 0x16-0x18 功率因数、0x19-0x1C 端子温度映射"
     }
   ],
   "deviations": [],
