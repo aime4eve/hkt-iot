@@ -214,4 +214,20 @@ class BackupChannelServiceTest {
         assertFalse(st.connected());
         assertEquals("WRITE", st.mode());
     }
+
+    @Test
+    void startActuallyAttemptsConnection() throws Exception {
+        // 回归：start() 置 CONNECTING 后，attemptConnect 的旧守卫把它当"已在连"直接返回，
+        // 状态机永久卡死在 CONNECTING（2026-10-02 部署实测）——CAS 修复后必须真的发起尝试。
+        when(tbClient.fetchSharedAttributes(anyString())).thenReturn(java.util.Map.of());
+        BackupChannelService svc = serviceWithWhitelist(111L);
+        svc.start();
+        assertTrue(await(() -> svc.status().counters().connectionAttempts() >= 1),
+                "start() must trigger a real connection attempt");
+        assertTrue(await(() -> "CONNECTING".equals(svc.status().state()) == false),
+                "connect attempt must settle");
+        assertEquals("FAILED", svc.status().state()); // mock 无 OC 属性 → resolveBroker 抛错
+        svc.stop();
+        assertEquals("STOPPED", svc.status().state());
+    }
 }

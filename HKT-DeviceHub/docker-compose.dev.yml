@@ -22,6 +22,9 @@ services:
       NS_USERNAME: ${NS_USERNAME:-}
       NS_PASSWORD: ${NS_PASSWORD:-}
       NS_ORG_ID: ${NS_ORG_ID:-1}
+      # NS→TB backup telemetry channel pilot (docs/ns-direct-tb-backup-channel.md)
+      BACKUP_CHANNEL_ENABLED: ${BACKUP_CHANNEL_ENABLED:-false}
+      BACKUP_CHANNEL_PROJECT_WHITELIST: ${BACKUP_CHANNEL_PROJECT_WHITELIST:-}
       ROCKETMQ_NAME_SERVER: rmqnamesrv:9876
     volumes:
       # mapping auto-fix backups (devicehub.tb.mapping-backup-dir=data/oc-backups,

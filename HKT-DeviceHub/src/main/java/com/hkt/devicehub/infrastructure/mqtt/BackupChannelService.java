@@ -81,6 +81,9 @@ public class BackupChannelService implements MqttCallback {
     private volatile MqttClient client;
     /** Runtime switch, seeded from config at boot; the console toggle moves this. */
     private volatile boolean runtimeEnabled;
+    /** Connect gate: only one attemptConnect runs at a time (start() and the watchdog both queue it). */
+    private final java.util.concurrent.atomic.AtomicBoolean connecting =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private volatile State state = State.STOPPED;
     private volatile boolean subscribed;
     private volatile String brokerHost;
@@ -166,15 +169,26 @@ public class BackupChannelService implements MqttCallback {
     }
 
     private synchronized void attemptConnect() {
-        if (!runtimeEnabled || state == State.CONNECTED || state == State.CONNECTING) return;
+        // state==CONNECTING is NOT a reason to bail: start() sets it before
+        // queueing this task — the CAS is the single re-entry guard.
+        if (!runtimeEnabled || !connecting.compareAndSet(false, true)) return;
+        try {
+            doConnect();
+        } finally {
+            connecting.set(false);
+        }
+    }
+
+    private void doConnect() {
         closeQuietly();
         state = State.CONNECTING;
         stats.connectionAttempts.incrementAndGet();
+        MqttClient mqtt = null;
         try {
             String[] creds = resolveBroker();
             log.info("[backup-channel] connecting to {}:{} as clientId {}",
                     brokerHost, brokerPort, properties.getClientId());
-            MqttClient mqtt = new MqttClient(
+            mqtt = new MqttClient(
                     "tcp://" + brokerHost + ":" + brokerPort,
                     properties.getClientId(), new MemoryPersistence());
             mqtt.setCallback(this);
@@ -187,6 +201,17 @@ public class BackupChannelService implements MqttCallback {
             options.setConnectionTimeout((int) CONNECT_TIMEOUT_SECONDS);
             mqtt.connect(options);
             mqtt.subscribe(properties.getTopicFilter(), properties.getQos());
+            if (!runtimeEnabled) {
+                // stop() raced the connect — honour the switch-off
+                try {
+                    mqtt.disconnectForcibly(1_000);
+                    mqtt.close();
+                } catch (Exception ignored) {
+                    // already gone
+                }
+                state = State.STOPPED;
+                return;
+            }
             client = mqtt;
             subscribed = true;
             state = State.CONNECTED;
