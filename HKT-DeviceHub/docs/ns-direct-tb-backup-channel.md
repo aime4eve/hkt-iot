@@ -215,6 +215,12 @@ NS MQTT org/1/project/+/device/+/dat/up（QoS1，独立 clientId，备份专用�
 
 **Phase 1 MVP（2026-09-29 同日实现，未部署）**：后端 8f3f804（`BackupChannelService`：独立 clientId/看门狗重连/OC 属性现取凭据/有界写入队列/全丢弃计数；`GET /api/v1/backup-channel/status` + `POST /switch`；`devicehub.backup-channel.*` 默认 false，空白名单=COUNT_ONLY）+ 控制台卡 4740fd8（工作台备份通道卡，Playwright 双态实页验收）；测试 70→88。部署开启 = 明日满窗复核通过后：deploy 206 → 白名单填一个试点项目 → 控制台开卡。
 
+**Phase 1 部署记录（2026-10-02，试点项目 111=胶囊 001a0103ff0002e5）**：
+- **上线**：a412dcf 部署 206（compose 环境显式白名单补传 `BACKUP_CHANNEL_ENABLED/PROJECT_WHITELIST`——.env 变量不声明不进容器）；修复 `start()` 卡死 CONNECTING 的状态机死锁（attemptConnect 旧守卫把预置 CONNECTING 当"已在连"，CAS 闸门重写 + 回归测试，89 测试全绿）。上线即 CONNECTED，白名单 [111] WRITE 模式，线上控制台卡实页验收通过（真实数据、零 console error）。
+- **双跑首帧实证**：11:14 胶囊帧 → TB `result=1 + dataHex=2`（桥写 result+dataHex@桥 ts，备份补 dataHex@**精确 NS ts**），2s 窗口合并为一帧——正常期语义闭环。
+- **gateway_restart 演练（11:18 RPC success）**：备份通道全程 CONNECTED 零断连（独立于网关）；桥在 T0 后对 26 帧正常覆盖，但**两台未注册设备（8cf957200016bfca / 1111013099261899）各掉 1 帧**——219 失效模式现场复刻（RPC success≠生效、个别设备重启后静默掉帧，R3/R4）。两台均不在 DeviceHub 注册表，本就属备份通道保护范围之外（设计如此：只保注册设备）。
+- **待观察（被动）**：胶囊在桥受损窗口内落帧由备份兜底的"酸测"随其自然报数发生（15~30min 节律，监控计数器与 `drill_check.py` 取证）；两台掉帧设备的后续帧是否持续被桥丢弃（若持续=映射条目 R4 问题，需人工查 OC 条目）；观察期 ≥1 周后按 §5 验收口径复盘。
+
 
 
 | 判定 | 出处 |
