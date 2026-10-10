@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +57,7 @@ class MappingChangeServiceTest {
         properties.setEnabled(true);
         properties.setGatewayDeviceId(GW);
         properties.setMappingBackupDir(tempDir.resolve("backups").toString());
+        properties.setMappingReloadToggleMs(10);
         service = new MappingChangeService(tbClient, properties, gatewayMapping,
                 mappingGapService, MAPPER);
     }
@@ -72,7 +74,8 @@ class MappingChangeServiceTest {
     }
 
     private Map<String, JsonNode> attrs(String oc) {
-        return Map.of("OC", MAPPER.getNodeFactory().textNode(oc));
+        return Map.of("OC", MAPPER.getNodeFactory().textNode(oc),
+                "active_connectors", MAPPER.getNodeFactory().arrayNode().add("OC").add("oc-test1"));
     }
 
     @Test
@@ -80,8 +83,6 @@ class MappingChangeServiceTest {
         String before = ocWithProjects(89, 148);
         String after = ocWithProjects(89, 148, 219);
         when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before), attrs(after));
-        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
-                .thenReturn(MAPPER.readTree("{\"success\":true}"));
 
         MappingChangeService.MappingChangeReport report = service.apply(219, false, true);
 
@@ -101,7 +102,11 @@ class MappingChangeServiceTest {
         assertTrue(written.asText().contains("project/219"));
         JsonNode parsed = MAPPER.readTree(written.asText());
         assertEquals(3, parsed.at("/configurationJson/mapping").size());
-        verify(tbClient).sendRpcTwoWay(eq(GW), eq(Map.of("method", "gateway_restart", "params", Map.of())), eq(20_000L));
+        // reload path since 2026-10-09: connector removed then re-added via active_connectors
+        ArgumentCaptor<JsonNode> toggleCaptor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(tbClient, times(2)).saveSharedAttribute(eq(GW), eq("active_connectors"), toggleCaptor.capture());
+        assertEquals("[\"oc-test1\"]", toggleCaptor.getAllValues().get(0).toString());
+        assertEquals("[\"OC\",\"oc-test1\"]", toggleCaptor.getAllValues().get(1).toString());
         verify(mappingGapService).invalidate();
     }
 
@@ -120,20 +125,20 @@ class MappingChangeServiceTest {
     void reloadFailureKeepsWriteResultAndSaysSo() throws Exception {
         when(tbClient.fetchSharedAttributes(GW))
                 .thenReturn(attrs(ocWithProjects(148)), attrs(ocWithProjects(148, 219)));
-        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
-                .thenThrow(new IllegalStateException("RPC timeout"));
+        org.mockito.Mockito.doThrow(new IllegalStateException("TB 写入超时"))
+                .when(tbClient).saveSharedAttribute(eq(GW), eq("active_connectors"), any());
 
         MappingChangeService.MappingChangeReport report = service.apply(219, false, true);
 
         assertTrue(report.changed());
         assertEquals(Boolean.FALSE, report.reloaded());
         assertTrue(report.note().contains("网关重载失败"));
-        assertTrue(report.note().contains("RPC timeout"));
+        assertTrue(report.note().contains("TB 写入超时"));
         verify(tbClient).saveSharedAttribute(eq(GW), eq("OC"), any());
     }
 
     @Test
-    void applyWithoutReloadSkipsGatewayRpc() {
+    void applyWithoutReloadSkipsConnectorToggle() {
         when(tbClient.fetchSharedAttributes(GW))
                 .thenReturn(attrs(ocWithProjects(148)), attrs(ocWithProjects(148, 219)));
 
@@ -142,6 +147,7 @@ class MappingChangeServiceTest {
         assertTrue(report.changed());
         assertNull(report.reloaded());
         verify(tbClient, never()).sendRpcTwoWay(anyString(), any(), anyLong());
+        verify(tbClient, never()).saveSharedAttribute(eq(GW), eq("active_connectors"), any());
     }
 
     @Test
@@ -293,16 +299,40 @@ class MappingChangeServiceTest {
     }
 
     @Test
-    void reloadGatewayReportsSuccessAndFailure() throws Exception {
-        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
-                .thenReturn(MAPPER.readTree("{\"success\":true}"));
+    void reloadGatewayTogglesConnectorOutAndBackIn() {
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(148)));
+
         assertTrue(service.reloadGateway().success());
 
-        when(tbClient.sendRpcTwoWay(anyString(), any(), anyLong()))
-                .thenThrow(new IllegalStateException("device offline"));
+        ArgumentCaptor<JsonNode> captor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(tbClient, times(2)).saveSharedAttribute(eq(GW), eq("active_connectors"), captor.capture());
+        assertEquals("[\"oc-test1\"]", captor.getAllValues().get(0).toString());
+        assertEquals("[\"OC\",\"oc-test1\"]", captor.getAllValues().get(1).toString());
+    }
+
+    @Test
+    void reloadGatewayRefusesWhenConnectorMissingFromActiveConnectors() {
+        Map<String, JsonNode> withoutOc = Map.of("OC", MAPPER.getNodeFactory().textNode(ocWithProjects(148)),
+                "active_connectors", MAPPER.getNodeFactory().arrayNode().add("oc-test1"));
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(withoutOc);
+
         MappingChangeService.GatewayReloadReport failed = service.reloadGateway();
+
         assertFalse(failed.success());
-        assertTrue(failed.error().contains("device offline"));
+        assertTrue(failed.error().contains("active_connectors 不含 OC"));
+        verify(tbClient, never()).saveSharedAttribute(eq(GW), eq("active_connectors"), any());
+    }
+
+    @Test
+    void reloadGatewayRefusesWhenActiveConnectorsAttrMissing() {
+        when(tbClient.fetchSharedAttributes(GW))
+                .thenReturn(Map.of("OC", MAPPER.getNodeFactory().textNode(ocWithProjects(148))));
+
+        MappingChangeService.GatewayReloadReport failed = service.reloadGateway();
+
+        assertFalse(failed.success());
+        assertTrue(failed.error().contains("active_connectors"));
+        verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
     }
 
     @Test
@@ -323,5 +353,74 @@ class MappingChangeServiceTest {
         assertTrue(report.newValue().contains("deviceTypeJsonExpression"),
                 "the copied entry must carry the device type from the full template");
         assertTrue(report.newValue().contains("project/219"));
+    }
+
+    @Test
+    void profileOverrideReplacesTemplateDeviceType() {
+        // The first deviceTypeJsonExpression-bearing entry carries the meter
+        // profile; a capsule project must be able to override it.
+        String oc = "{\"configurationJson\":{\"mapping\":["
+                + "{\"topicFilter\":\"org/1/project/1/device/+/dat/up\"},"
+                + "{\"topicFilter\":\"org/1/project/217/device/+/dat/up\","
+                + "\"converter\":{\"deviceNameJsonExpression\":\"${devEUI}\","
+                + "\"deviceTypeJsonExpression\":\"中仪单项电表-OC-配置\"}}]}}";
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(oc), attrs(oc));
+
+        MappingChangeService.MappingChangeReport report =
+                service.apply(219, true, false, null, "瘤胃胶囊-OC-配置-v2");
+
+        assertTrue(report.changed());
+        assertTrue(report.newValue().contains("\"deviceTypeJsonExpression\":\"瘤胃胶囊-OC-配置-v2\""));
+        assertFalse(report.newValue().contains("project/219/device/+/dat/up\","
+                + "\"converter\":{\"deviceNameJsonExpression\":\"${devEUI}\","
+                + "\"deviceTypeJsonExpression\":\"中仪单项电表-OC-配置\""),
+                "the new entry must not keep the meter profile");
+    }
+
+    @Test
+    void blankProfileKeepsTemplateAsIs() {
+        String oc = ocWithProjects(148);
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(oc), attrs(oc));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, true, false, null, "  ");
+
+        assertTrue(report.changed());
+        assertTrue(report.newValue().contains("project/219"));
+    }
+
+    @Test
+    void attrKeyOverrideTargetsAnotherConnectorAttribute() throws Exception {
+        // 2026-10-09: OC stopped accepting new entries on the gateway (55 entries
+        // never subscribed after three restarts); oc-test1 applies cleanly.
+        String oc = ocWithProjects(89, 148);
+        String test1 = ocWithProjects(50, 86);
+        String test1After = ocWithProjects(50, 86, 219);
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(
+                Map.of("OC", MAPPER.getNodeFactory().textNode(oc),
+                        "oc-test1", MAPPER.getNodeFactory().textNode(test1)),
+                Map.of("OC", MAPPER.getNodeFactory().textNode(oc),
+                        "oc-test1", MAPPER.getNodeFactory().textNode(test1After)));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false, "oc-test1");
+
+        assertTrue(report.changed());
+        ArgumentCaptor<JsonNode> captor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(tbClient).saveSharedAttribute(eq(GW), eq("oc-test1"), captor.capture());
+        assertTrue(captor.getValue().asText().contains("project/219"));
+        JsonNode parsed = MAPPER.readTree(captor.getValue().asText());
+        assertEquals(3, parsed.at("/configurationJson/mapping").size());
+        // project 219 must NOT be written into OC
+        assertFalse(MAPPER.readTree(oc).toString().contains("project/219"));
+    }
+
+    @Test
+    void attrKeyOverrideMissingAttrFailsClosed() {
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(148)));
+
+        MappingChangeService.MappingChangeReport report = service.apply(219, false, false, "no-such-attr");
+
+        assertFalse(report.changed());
+        assertTrue(report.error().contains("no-such-attr"));
+        verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
     }
 }

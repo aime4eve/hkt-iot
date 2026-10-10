@@ -37,6 +37,10 @@ public class TbProperties {
     private String mappingAttrKey = "OC";
     /** Local directory where each auto-fix stores the pre-change shared-attribute backup. */
     private String mappingBackupDir = "data/oc-backups";
+    /** Pause between removing and re-adding the connector in active_connectors
+     * (the verified config-reload path since 2026-10-09; gateway_restart RPC no
+     * longer applies config on this gateway). */
+    private long mappingReloadToggleMs = 40_000;
 
     @PostConstruct
     void validateCredentials() {

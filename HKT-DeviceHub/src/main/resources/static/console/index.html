@@ -497,7 +497,7 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
       </div>
       <div class="card" style="margin-top:var(--space-4)">
         <h3>网关映射缺口巡检 <span class="count" id="gapCount"></span>
-          <span class="right dim">R-07 · 有设备但无 OC 映射的项目，上行不会到达 TB</span></h3>
+          <span class="right dim">R-07 · 活跃 = 近 7 天有上行但无 OC 映射（正在丢帧）；休眠 = 暂无上行（信息级）</span></h3>
         <div class="toolbar" style="margin-bottom:var(--space-3)">
           <span class="search-box">
             <input type="text" id="gapFilter" placeholder="按项目号或设备 EUI 过滤" autocomplete="off" spellcheck="false">
@@ -895,18 +895,22 @@ function topoSegState(id) {
       }
       const gaps = gapCache && gapCache.nsAvailable && gapCache.mappingReadable
         ? (gapCache.gaps || []) : null;
+      const dormant = gapCache && gapCache.nsAvailable && gapCache.mappingReadable
+        ? (gapCache.dormantGaps || []) : [];
       if (gaps == null) {
         return { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount,
             evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—'], ['缺口巡检', '不可用']] };
       }
       if (gaps.length) {
-        return { state:'is-warn', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 缺口 ' + gaps.length,
+        return { state:'is-warn', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 活跃缺口 ' + gaps.length,
             evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount],
-                      ['无映射项目', gaps.map(g => '项目 ' + g.nsProjectId + '（' + g.deviceCount + ' 台设备）').join('、')],
-                      ['影响', '这些项目上行到不了 TB，需走映射变更工单']] };
+                      ['活跃缺口项目', gaps.map(g => '项目 ' + g.nsProjectId + '（' + g.deviceCount + ' 台设备，最近上行 ' + relTime(g.lastSeenAt) + '）').join('、')],
+                      ['影响', '这些项目正在实时丢帧（上行到不了 TB），需走映射变更工单'],
+                      ['休眠缺口', dormant.length + ' 个项目近 7 天无上行，暂不构成丢帧（信息级）']] };
       }
-      return { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 无缺口',
-          evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—'], ['缺口巡检', '通过（R-07）']] };
+      return { state:'', label:'OC 映射 ' + t.gatewayMapping.mappedProjectCount + ' · 无活跃缺口',
+          evidence:[['已映射项目数', t.gatewayMapping.mappedProjectCount], ['项目 ID', (t.gatewayMapping.mappedProjectIds || []).join(', ') || '—'],
+                    ['缺口巡检', '活跃缺口 0（R-07）'], ['休眠缺口', dormant.length + ' 个项目（近 7 天无上行，信息级）']] };
     }
     case 'oc-tb':
       return t.tbAuth.authenticated
@@ -1100,9 +1104,13 @@ async function renderAttention() {
     if (gapCache) {
       if (gapCache.nsAvailable && gapCache.mappingReadable) {
         const n = (gapCache.gaps || []).length;
+        const dn = (gapCache.dormantGaps || []).length;
         if (n) items.push({ level:'danger', eui:'映射巡检',
-          text:'网关映射缺口：' + n + ' 个项目无 OC 映射，上行不会到达 TB（明细与修复见下方缺口巡检卡）',
+          text:'网关映射活跃缺口：' + n + ' 个项目近 7 天有上行但无 OC 映射，正在丢帧（明细与修复见下方缺口巡检卡）',
           action:() => { const el = $('#gapPanelBody'); if (el) el.scrollIntoView({ behavior:'smooth' }); }, actionText:'查看' });
+        else if (dn) items.push({ level:'ok', eui:'映射巡检',
+          text:'无活跃映射缺口；' + dn + ' 个休眠项目无映射（近 7 天无上行，信息级）',
+          action:null });
       } else {
         items.push({ level:'warn', eui:'映射巡检',
           text:'缺口巡检不可用：' + (gapCache.nsError || gapCache.mappingError || '探测失败'),
@@ -1141,24 +1149,30 @@ function renderGapPanel() {
     return;
   }
   const gaps = (gapCache.gaps || []).slice().sort((a, b) => b.deviceCount - a.deviceCount);
-  count.textContent = gaps.length ? '待修 ' + gaps.length + ' 个项目' : '无缺口';
+  const dormant = (gapCache.dormantGaps || []).slice().sort((a, b) => b.deviceCount - a.deviceCount);
+  count.textContent = gaps.length
+      ? '待修 ' + gaps.length + ' 个活跃项目' + (dormant.length ? ' · 休眠 ' + dormant.length : '')
+      : (dormant.length ? '无活跃缺口 · 休眠 ' + dormant.length + ' 个' : '无缺口');
   const kw = ($('#gapFilter').value || '').trim().toLowerCase();
-  const filtered = kw ? gaps.filter(g =>
-      String(g.nsProjectId).includes(kw) ||
-      (g.sampleDevEuis || []).some(e => e.toLowerCase().includes(kw))) : gaps;
+  const match = g => String(g.nsProjectId).includes(kw) ||
+      (g.sampleDevEuis || []).some(e => e.toLowerCase().includes(kw));
+  const filtered = (kw ? gaps.filter(match).concat(dormant.filter(match)) : gaps.concat(dormant));
   const pages = Math.max(1, Math.ceil(filtered.length / GAP_PAGE_SIZE));
   if (gapPage >= pages) gapPage = pages - 1;
   const rows = filtered.slice(gapPage * GAP_PAGE_SIZE, gapPage * GAP_PAGE_SIZE + GAP_PAGE_SIZE);
   let html = '<div class="table-wrap"><table class="gap-table"><thead><tr>' +
-    '<th>项目</th><th>设备数</th><th>样例 EUI</th><th style="width:130px">操作</th></tr></thead><tbody>';
+    '<th>项目</th><th>状态</th><th>设备数</th><th>最近上行</th><th>样例 EUI</th><th style="width:130px">操作</th></tr></thead><tbody>';
   if (!rows.length) {
-    html += '<tr><td colspan="4"><div class="empty-state small">' + (kw ? '无匹配项目' : '✓ 一切正常') + '</div></td></tr>';
+    html += '<tr><td colspan="6"><div class="empty-state small">' + (kw ? '无匹配项目' : '✓ 一切正常') + '</div></td></tr>';
   }
   rows.forEach(g => {
     const st = gapRowState[g.nsProjectId] || 'idle';
-    html += '<tr class="' + (st === 'done' ? 'done' : '') + '">' +
+    const isDormant = !g.lastSeenAt || dormant.some(d => d.nsProjectId === g.nsProjectId);
+    html += '<tr class="' + (st === 'done' ? 'done' : '') + (isDormant ? ' dim' : '') + '">' +
       '<td class="mono">' + g.nsProjectId + '</td>' +
+      '<td>' + (isDormant ? '<span class="badge">休眠</span>' : '<span class="badge warn">活跃</span>') + '</td>' +
       '<td>' + g.deviceCount + '</td>' +
+      '<td class="dim">' + relTime(g.lastSeenAt) + '</td>' +
       '<td class="mono dim" style="font-size:11px;word-break:break-all">' + esc((g.sampleDevEuis || []).join('、')) + '</td>' +
       '<td>' + (st === 'busy'
         ? '<button class="btn ghost sm" disabled>修复中…</button>'

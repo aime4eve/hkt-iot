@@ -52,7 +52,7 @@ class PreflightServiceTest {
     private void nsDevicePresent(int projectId, boolean online, int fCntUp) {
         when(nsClient.isEnabled()).thenReturn(true);
         when(nsClient.findDeviceByEui(EUI)).thenReturn(Optional.of(
-                new NsClient.NsDevice(EUI, projectId, 10, "瘤胃胶囊-644", online, fCntUp)));
+                new NsClient.NsDevice(EUI, projectId, 10, "瘤胃胶囊-644", online, fCntUp, null)));
     }
 
     // ① NS existence

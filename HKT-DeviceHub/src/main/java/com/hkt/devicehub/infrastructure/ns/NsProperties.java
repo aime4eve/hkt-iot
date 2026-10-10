@@ -21,7 +21,10 @@ public class NsProperties {
     private String username = "";
     private String password = "";
     private int orgId = 1;
-    private int pageSize = 100;
+    /** NS list page size — 2026-10-09 measured limit=500 OK (16s/page under
+     * load); 100 → 40 pages × minutes made cold gap inspections outlive the
+     * HTTP callers. */
+    private int pageSize = 500;
 
     @PostConstruct
     void validateCredentials() {

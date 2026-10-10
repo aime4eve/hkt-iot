@@ -116,7 +116,10 @@ public class TopologyService {
 
     private GatewayMappingProbe probeGatewayMapping() {
         try {
-            var ids = gatewayMapping.mappedProjectIds().stream().sorted().toList();
+            // refreshMappedProjectIds propagates TB read failures — mappedProjectIds()
+            // swallows them into an empty set, which would display "cannot read the
+            // mapping" as "0 mappings" (green-ish) instead of a red is-down
+            var ids = gatewayMapping.refreshMappedProjectIds().stream().sorted().toList();
             return new GatewayMappingProbe(true, ids.size(), ids, null);
         } catch (Exception e) {
             return new GatewayMappingProbe(false, 0, List.of(), e.getMessage());

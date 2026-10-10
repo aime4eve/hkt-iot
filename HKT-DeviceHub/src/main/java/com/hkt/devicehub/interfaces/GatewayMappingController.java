@@ -30,16 +30,20 @@ public class GatewayMappingController {
     @PostMapping("/{nsProjectId}/apply")
     @Operation(summary = "Append the missing OC topic mapping for one NS project "
             + "(backup → append → write → verify → gateway restart); dryRun=true plans only, "
-            + "reload=false skips the gateway restart")
+            + "reload=false skips the gateway restart; attrKey targets a different connector "
+            + "shared attribute (e.g. oc-test1 — the fallback while OC refuses new entries)")
     public MappingChangeReport apply(@PathVariable int nsProjectId,
                                      @RequestParam(defaultValue = "false") boolean dryRun,
-                                     @RequestParam(defaultValue = "true") boolean reload) {
-        return mappingChangeService.apply(nsProjectId, dryRun, reload);
+                                     @RequestParam(defaultValue = "true") boolean reload,
+                                     @RequestParam(required = false) String attrKey,
+                                     @RequestParam(required = false) String profile) {
+        return mappingChangeService.apply(nsProjectId, dryRun, reload, attrKey, profile);
     }
 
     @PostMapping("/reload")
-    @Operation(summary = "Restart the TB gateway via RPC so connectors re-read their configs "
-            + "(the gateway does not hot-reload shared-attribute changes)")
+    @Operation(summary = "Force the mapping connector to re-read its config by toggling it "
+            + "out and back into active_connectors (gateway_restart RPC no longer applies "
+            + "config on this gateway, verified 2026-10-09)")
     public MappingChangeService.GatewayReloadReport reloadGateway() {
         return mappingChangeService.reloadGateway();
     }

@@ -53,5 +53,12 @@ public class DeviceHubProperties {
         private int nsPort = 1883;
         /** Probe result cache TTL to avoid hammering TB/NS on every refresh. */
         private long probeCacheMs = 30_000;
+        /** Mapping-gap report TTL: the scan pages the whole NS inventory, so it
+         * is served stale-while-revalidate and recomputed at most this often. */
+        private long gapCacheMs = 120_000;
+        /** A mapping gap counts as active (alert-worthy) when some device of the
+         * project was heard by NS within this window; older/never-heard projects
+         * are dormant inventory, not live frame loss. */
+        private long gapActiveWindowMs = 7 * 24 * 3600 * 1000L;
     }
 }

@@ -77,6 +77,30 @@ public class MappingChangeService {
             String note, String error) {}
 
     public synchronized MappingChangeReport apply(int nsProjectId, boolean dryRun, boolean reloadGateway) {
+        return apply(nsProjectId, dryRun, reloadGateway, null, null);
+    }
+
+    public synchronized MappingChangeReport apply(int nsProjectId, boolean dryRun, boolean reloadGateway,
+                                                  String attrKeyOverride) {
+        return apply(nsProjectId, dryRun, reloadGateway, attrKeyOverride, null);
+    }
+
+    /**
+     * @param attrKeyOverride target connector shared-attribute key (default:
+     *                        devicehub.tb.mapping-attr-key = OC). 2026-10-09:
+     *                        the gateway stopped applying NEW entries appended
+     *                        to OC (55 entries, ~40KB — restart no longer picks
+     *                        them up, three restarts verified), while oc-test1
+     *                        (2 entries) applies cleanly; routing new mappings
+     *                        to a small connector attribute sidesteps whatever
+     *                        saturates OC inside that black-box gateway (R2).
+     * @param profileOverride deviceTypeJsonExpression for the copied entry
+     *                        (default: whatever the template carries — the first
+     *                        entry with that field, historically the meter
+     *                        profile, which mis-types every non-meter project).
+     */
+    public synchronized MappingChangeReport apply(int nsProjectId, boolean dryRun, boolean reloadGateway,
+                                                  String attrKeyOverride, String profileOverride) {
         if (!tbProperties.isEnabled()) {
             return fail(nsProjectId, dryRun, "TB 集成未启用（devicehub.tb.enabled=false）");
         }
@@ -84,7 +108,8 @@ public class MappingChangeService {
             return fail(nsProjectId, dryRun, "映射自动修复已关闭"
                     + "（devicehub.tb.mapping-auto-fix-enabled=false），请走人工工单");
         }
-        String attrKey = tbProperties.getMappingAttrKey();
+        String attrKey = (attrKeyOverride == null || attrKeyOverride.isBlank())
+                ? tbProperties.getMappingAttrKey() : attrKeyOverride.trim();
         String gwId = tbProperties.getGatewayDeviceId();
         Map<String, JsonNode> attrs;
         try {
@@ -145,6 +170,9 @@ public class MappingChangeService {
         }
 
         JsonNode entry = template.deepCopy();
+        if (profileOverride != null && !profileOverride.isBlank() && entry.path("converter").isObject()) {
+            ((ObjectNode) entry.path("converter")).put("deviceTypeJsonExpression", profileOverride.trim());
+        }
         List<String> added = new ArrayList<>();
         rewriteProjectIds(entry, nsProjectId, added);
         mapping.add(entry);
@@ -194,7 +222,7 @@ public class MappingChangeService {
             var reload = reloadGateway();
             reloaded = reload.success();
             reloadNote = reload.success()
-                    ? "网关已重载（gateway_restart 成功），等设备下一真实上行到达 TB 作最终验证"
+                    ? "网关已重载（active_connectors 摘除/挂回连接器成功），等设备下一真实上行到达 TB 作最终验证"
                     : "网关重载失败：" + (reload.error() == null ? "未知错误" : reload.error())
                             + "；映射已写入，需按 runbook 手动重载";
         }
@@ -214,23 +242,83 @@ public class MappingChangeService {
     public record GatewayReloadReport(boolean success, String error, Instant at) {}
 
     /**
-     * Restart the TB gateway so every connector re-reads its config from the
-     * shared attributes. Verified 2026-09-28: this gateway does not hot-reload
-     * attribute changes, and its per-connector connector_reboot RPC is broken
-     * ("connector not found" even for names listed in active_connectors) —
-     * gateway_restart is the only reliable reload path.
+     * Force the mapping connector to rebuild its config by removing it from
+     * active_connectors and adding it back. 2026-10-09 verified: the
+     * gateway_restart RPC no longer reloads connector configs on this gateway
+     * (three restarts, real MQTT reconnects, zero new subscriptions), while the
+     * active_connectors remove/add cycle applied the full 56-entry config within
+     * minutes (25 new devices). Connector traffic pauses for the toggle window —
+     * run off-peak. Fail-closed: unexpected active_connectors shape aborts before
+     * any write; the connector is always restored in a finally block.
      */
     public GatewayReloadReport reloadGateway() {
         String gwId = tbProperties.getGatewayDeviceId();
+        String connector = tbProperties.getMappingAttrKey();
+        List<String> connectors;
         try {
-            tbClient.sendRpcTwoWay(gwId,
-                    Map.of("method", "gateway_restart", "params", Map.of()), 20_000L);
-            log.info("[MappingChange] gateway restarted via RPC ({})", gwId);
-            return new GatewayReloadReport(true, null, Instant.now());
+            JsonNode active = tbClient.fetchSharedAttributes(gwId).get("active_connectors");
+            if (active == null || !active.isArray() || active.isEmpty()) {
+                return new GatewayReloadReport(false,
+                        "网关共享属性缺少 active_connectors 数组，拒绝 toggle", Instant.now());
+            }
+            connectors = new ArrayList<>();
+            active.forEach(n -> connectors.add(n.asText()));
+            if (!connectors.contains(connector)) {
+                return new GatewayReloadReport(false, "active_connectors 不含 " + connector
+                        + "（实际: " + String.join(", ", connectors) + "），拒绝 toggle", Instant.now());
+            }
         } catch (Exception e) {
-            log.warn("[MappingChange] gateway restart RPC failed: {}", e.getMessage());
+            log.warn("[MappingChange] active_connectors read failed: {}", e.getMessage());
             return new GatewayReloadReport(false, e.getMessage(), Instant.now());
         }
+
+        List<String> reduced = new ArrayList<>(connectors);
+        reduced.remove(connector);
+        boolean awaitingRestore = false;
+        try {
+            tbClient.saveSharedAttribute(gwId, "active_connectors", toTextArray(reduced));
+            awaitingRestore = true;
+            log.info("[MappingChange] connector {} removed from active_connectors, waiting {} ms before re-adding",
+                    connector, tbProperties.getMappingReloadToggleMs());
+            Thread.sleep(tbProperties.getMappingReloadToggleMs());
+            tbClient.saveSharedAttribute(gwId, "active_connectors", toTextArray(connectors));
+            awaitingRestore = false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new GatewayReloadReport(false, "toggle 被中断", Instant.now());
+        } catch (Exception e) {
+            log.warn("[MappingChange] connector toggle failed: {}", e.getMessage());
+            return new GatewayReloadReport(false, e.getMessage(), Instant.now());
+        } finally {
+            if (awaitingRestore) {
+                try {
+                    tbClient.saveSharedAttribute(gwId, "active_connectors", toTextArray(connectors));
+                    log.info("[MappingChange] connector {} restored in finally block", connector);
+                } catch (Exception restoreError) {
+                    log.error("[MappingChange] CRITICAL: 恢复 active_connectors 失败，连接器 {} 仍被摘除，"
+                            + "需立即人工写回 {}: {}", connector, connectors, restoreError.getMessage());
+                }
+            }
+        }
+        try {
+            JsonNode after = tbClient.fetchSharedAttributes(gwId).get("active_connectors");
+            boolean restored = after != null && after.toString().contains(connector);
+            if (!restored) {
+                return new GatewayReloadReport(false,
+                        "toggle 后回读 active_connectors 未见 " + connector + "，请立即人工核查", Instant.now());
+            }
+        } catch (Exception e) {
+            return new GatewayReloadReport(false, "toggle 后回读失败：" + e.getMessage(), Instant.now());
+        }
+        log.info("[MappingChange] connector {} toggled (remove → {} ms → re-add), config reloaded",
+                connector, tbProperties.getMappingReloadToggleMs());
+        return new GatewayReloadReport(true, null, Instant.now());
+    }
+
+    private static ArrayNode toTextArray(List<String> values) {
+        ArrayNode array = JsonNodeFactory.instance.arrayNode();
+        values.forEach(array::add);
+        return array;
     }
 
     private MappingChangeReport fail(int nsProjectId, boolean dryRun, String error) {

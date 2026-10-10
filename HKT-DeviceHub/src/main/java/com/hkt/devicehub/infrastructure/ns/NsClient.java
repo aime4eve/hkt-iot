@@ -15,6 +15,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +37,9 @@ public class NsClient {
 
     private static final String LOGIN_API_PREFIX = "/backend/api/";
     private static final String ORG_API_PREFIX = "/backend/org_api/";
+    /** NS list API renders last_seen in the NS host's local time (UTC+8). */
+    private static final ZoneId NS_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter SEEN_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final NsProperties properties;
     private final ObjectMapper objectMapper;
@@ -95,7 +101,8 @@ public class NsClient {
                         item.path("app").asInt(item.path("app_id").asInt(0)),
                         firstText(item, "name", "device_name"),
                         firstBool(item, "is_online", "online"),
-                        firstInt(item, "f_cnt_up", "frame_count_up")));
+                        firstInt(item, "f_cnt_up", "frame_count_up"),
+                        parseLastSeen(item.get("last_seen"))));
             }
             if (data.size() < properties.getPageSize()) break;
             page++;
@@ -182,6 +189,23 @@ public class NsClient {
         return null;
     }
 
+    /** last_seen arrives as "yyyy-MM-dd HH:mm:ss" (NS-local) or "" when never
+     * seen; a numeric epoch (s or ms) is tolerated for forward compatibility. */
+    static Instant parseLastSeen(JsonNode node) {
+        if (node == null || node.isNull()) return null;
+        if (node.isNumber()) {
+            long v = node.asLong();
+            return Instant.ofEpochMilli(v > 1_000_000_000_000L ? v : v * 1000);
+        }
+        String text = node.asText(null);
+        if (text == null || text.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(text.trim(), SEEN_FORMAT).atZone(NS_ZONE).toInstant();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private static String redact(String uri) {
         return uri.replaceAll("(?i)(token=)[^&]+", "$1***");
     }
@@ -190,9 +214,11 @@ public class NsClient {
      * @param online  NS-reported online flag; null when the API omits it
      * @param fCntUp  NS uplink frame counter; null when omitted. L6: may
      *                disagree with NS UI — evidence only.
+     * @param lastSeen NS-reported last uplink time; null when the device has
+     *                 never been heard. Same L6 evidence-only caveat.
      */
     public record NsDevice(String eui, int projectId, int appId, String name,
-                           Boolean online, Integer fCntUp) {}
+                           Boolean online, Integer fCntUp, Instant lastSeen) {}
 
     private record CachedToken(String token, Instant expiresAt) {}
 }
