@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hkt.devicehub.domain.model.AuditLog;
 import com.hkt.devicehub.domain.model.DeviceProject;
 import com.hkt.devicehub.domain.model.RegisteredDevice;
+import com.hkt.devicehub.domain.model.RegistrationStatus;
 import com.hkt.devicehub.domain.repository.AuditLogRepository;
 import com.hkt.devicehub.domain.repository.RegisteredDeviceRepository;
 import com.hkt.devicehub.infrastructure.thingsboard.TbClient;
@@ -45,6 +46,16 @@ public class GovernanceService {
     public record ConflictRow(String devEui, Long localDeviceId, String boundTbDeviceId,
                               List<ConflictCopy> candidates) {}
 
+    public record LocalConflictRegistration(Long id, String project, String deviceType,
+                                            String externalRef, String tbDeviceId,
+                                            Instant createdAt, Instant updatedAt,
+                                            Instant lastFrameAt, Instant lastEventAt,
+                                            Long telemetryCursorMs,
+                                            int expectedReportIntervalSeconds) {}
+
+    public record LocalConflictRow(String devEui, int activeCount, String risk,
+                                   List<LocalConflictRegistration> registrations) {}
+
     /** TB devices sharing one (case-insensitive) EUI name, per project. */
     @Transactional(readOnly = true)
     public List<ConflictRow> conflicts(DeviceProject project) {
@@ -72,6 +83,49 @@ public class GovernanceService {
                     views.stream().map(view -> toCopy(view, local, profileNames)).toList()));
         });
         return rows;
+    }
+
+    /**
+     * Same EUI active in more than one project. The DB allows this per-project
+     * uniqueness, but each physical LoRaWAN device belongs to one NS project at
+     * a time; duplicate ACTIVE rows create ambiguous routing and backup writes.
+     * Resolution is deliberately manual because the authoritative project is a
+     * business decision.
+     */
+    @Transactional(readOnly = true)
+    public List<LocalConflictRow> localActiveConflicts() {
+        Map<String, List<RegisteredDevice>> byEui = new LinkedHashMap<>();
+        deviceRepository.findAll().stream()
+                .filter(device -> device.getStatus() == RegistrationStatus.ACTIVE)
+                .filter(device -> device.getDevEui() != null && !device.getDevEui().isBlank())
+                .forEach(device -> byEui.computeIfAbsent(device.getDevEui(), k -> new ArrayList<>()).add(device));
+
+        List<LocalConflictRow> rows = new ArrayList<>();
+        byEui.forEach((eui, devices) -> {
+            if (devices.size() < 2) return;
+            List<LocalConflictRegistration> registrations = devices.stream()
+                    .sorted(java.util.Comparator.comparing(RegisteredDevice::getProject)
+                            .thenComparing(RegisteredDevice::getId))
+                    .map(this::toLocalConflictRegistration)
+                    .toList();
+            long distinctTbDevices = registrations.stream()
+                    .map(LocalConflictRegistration::tbDeviceId)
+                    .distinct().count();
+            String risk = distinctTbDevices == 1
+                    ? "DUPLICATE_ACTIVE_SAME_TB_DEVICE" : "DUPLICATE_ACTIVE";
+            rows.add(new LocalConflictRow(eui, registrations.size(), risk, registrations));
+        });
+        return rows;
+    }
+
+    private LocalConflictRegistration toLocalConflictRegistration(RegisteredDevice device) {
+        return new LocalConflictRegistration(
+                device.getId(), device.getProject().name(), device.getDeviceType(),
+                device.getExternalRef(), device.getTbDeviceId() == null
+                        ? null : device.getTbDeviceId().toString(),
+                device.getCreatedAt(), device.getUpdatedAt(), device.getLastFrameAt(),
+                device.getLastEventAt(), device.getTelemetryCursorMs(),
+                device.getExpectedReportIntervalSeconds());
     }
 
     private ConflictCopy toCopy(TbClient.TbDeviceView view, RegisteredDevice local,

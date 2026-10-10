@@ -2,6 +2,7 @@ package com.hkt.devicehub.interfaces;
 
 import com.hkt.devicehub.application.GovernanceService;
 import com.hkt.devicehub.application.GovernanceService.ConflictRow;
+import com.hkt.devicehub.application.GovernanceService.LocalConflictRow;
 import com.hkt.devicehub.domain.model.DeviceProject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,12 @@ public class GovernanceController {
     @Operation(summary = "TB duplicate-name conflicts with copy-by-copy evidence")
     public List<ConflictRow> conflicts(@RequestParam DeviceProject project) {
         return governanceService.conflicts(project);
+    }
+
+    @GetMapping("/local-conflicts")
+    @Operation(summary = "Same EUI active in multiple projects — evidence for manual governance")
+    public List<LocalConflictRow> localConflicts() {
+        return governanceService.localActiveConflicts();
     }
 
     @DeleteMapping("/tb/{tbDeviceId}")

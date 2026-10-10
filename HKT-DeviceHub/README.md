@@ -112,6 +112,7 @@ TB_ENABLED=false ./mvnw spring-boot:run
 | GET | `/api/v1/devices/{id}` | 详情 + 最近 10 帧摘要（TB REST，null 伪影已过滤） |
 | GET | `/api/v1/devices/preflight?devEui=&deviceType=` | 接入预检五项（R-01）：NS 归属 / 网关映射 / TB 唯一性 / profile 匹配 / 本地绑定，各 PASS/WARN/FAIL + 中文建议 + 依据字段 |
 | GET | `/api/v1/devices/conflicts?project=` | TB 重名冲突清单（R-04），每台候选副本附创建时间/最近遥测/近似遥测条数/绑定方/建议保留 |
+| GET | `/api/v1/devices/local-conflicts` | 同 EUI 多项目 ACTIVE 清单，附每条登记证据；治理中心展示并要求人工确认归属 |
 | DELETE | `/api/v1/devices/tb/{tbDeviceId}` | 删除 TB 空副本：服务端强制零遥测校验（含 null 伪影过滤）+ 本地未绑定校验，违反返回 422；成功与拒绝均写 audit_logs（operator 取请求头 X-Operator，默认 console） |
 | GET | `/api/v1/channels/health` | WS 连接状态、各项目追赶滞后、无数据设备数、失败计数 |
 | GET | `/api/v1/channels/topology` | 工作台拓扑聚合（R-10）：NS TCP 可达性、TB 认证、OC 映射项目清单、WS 订阅数 vs ACTIVE 一致性、MQ 24h 消息数（暂为 null+说明）、各项目追赶滞后/noDataDevices；探测缓存 30s |

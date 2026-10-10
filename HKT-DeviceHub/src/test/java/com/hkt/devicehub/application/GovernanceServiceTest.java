@@ -88,4 +88,44 @@ class GovernanceServiceTest {
         assertEquals("console", audit.getValue().getOperator());
         assertEquals(TB_ID, audit.getValue().getTarget());
     }
+
+    @Test
+    void duplicateActiveRegistrationsAreReportedForManualGovernance() {
+        RegisteredDevice livestock = local("001a0102ff000644", DeviceProject.LIVESTOCK,
+                RegistrationStatus.ACTIVE, TB_ID);
+        RegisteredDevice parking = local("001a0102ff000644", DeviceProject.PARKING,
+                RegistrationStatus.ACTIVE, TB_ID);
+        RegisteredDevice retired = local("001a0102ff000644", DeviceProject.LIVESTOCK,
+                RegistrationStatus.DECOMMISSIONED, TB_ID);
+        when(deviceRepository.findAll()).thenReturn(List.of(livestock, parking, retired));
+
+        var rows = service.localActiveConflicts();
+
+        assertEquals(1, rows.size());
+        assertEquals("001a0102ff000644", rows.get(0).devEui());
+        assertEquals(2, rows.get(0).activeCount());
+        assertEquals("DUPLICATE_ACTIVE_SAME_TB_DEVICE", rows.get(0).risk());
+        assertEquals(List.of("LIVESTOCK", "PARKING"),
+                rows.get(0).registrations().stream().map(r -> r.project()).toList());
+    }
+
+    @Test
+    void singleActiveRegistrationIsNotALocalConflict() {
+        when(deviceRepository.findAll()).thenReturn(List.of(
+                local("001a0102ff000644", DeviceProject.PARKING,
+                        RegistrationStatus.ACTIVE, TB_ID)));
+
+        assertEquals(List.of(), service.localActiveConflicts());
+    }
+
+    private static RegisteredDevice local(String eui, DeviceProject project,
+                                          RegistrationStatus status, String tbId) {
+        RegisteredDevice device = new RegisteredDevice();
+        device.setId(7L);
+        device.setProject(project);
+        device.setDevEui(eui);
+        device.setStatus(status);
+        device.setTbDeviceId(UUID.fromString(tbId));
+        return device;
+    }
 }

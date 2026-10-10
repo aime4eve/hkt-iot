@@ -635,6 +635,10 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
     </div>
     <div data-state-body="governance">
       <div class="gov-section">
+        <h3><i class="dot danger"></i> 跨项目双活登记 <span class="badge danger" id="localConflictCount">—</span></h3>
+        <div id="localConflictList"></div>
+      </div>
+      <div class="gov-section">
         <h3><i class="dot danger"></i> 重名冲突 <span class="badge danger" id="conflictCount">—</span></h3>
         <div id="conflictList"></div>
       </div>
@@ -788,7 +792,7 @@ const SKELETONS = {
   governance: '<div class="sk" style="height:140px;margin-bottom:var(--space-3)"></div><div class="sk" style="height:120px;margin-bottom:var(--space-3)"></div><div class="sk" style="height:100px"></div>',
   preflight: ''
 };
-const VIEW_API = { dashboard:'channels/health + channels/topology', devices:'devices', preflight:'devices/preflight', governance:'devices/conflicts + disposals' };
+const VIEW_API = { dashboard:'channels/health + channels/topology', devices:'devices', preflight:'devices/preflight', governance:'devices/local-conflicts + devices/conflicts + disposals' };
 function showState(view, kind) {
   const body = document.querySelector('[data-state-body="' + view + '"]');
   const panel = document.querySelector('[data-state-panel="' + view + '"]');
@@ -1087,9 +1091,10 @@ function renderHealthCard() {
 async function renderAttention() {
   const items = [];
   try {
-    const [devPage, conflicts] = await Promise.all([
+    const [devPage, conflicts, localConflicts] = await Promise.all([
       api('/devices?size=200'),
-      api('/devices/conflicts?project=PARKING').then(r => r, () => [])
+      api('/devices/conflicts?project=PARKING').then(r => r, () => []),
+      api('/devices/local-conflicts').then(r => r, () => [])
     ]);
     devPage.content.forEach(d => {
       const silent = d.lastFrameAt && d.secondsSinceLastFrame != null &&
@@ -1104,6 +1109,9 @@ async function renderAttention() {
     conflicts.forEach(c => items.push({ level:'danger', eui:c.devEui,
       text:'同名设备冲突待处理（' + c.candidates.length + ' 台候选副本）',
       action:() => { switchView('governance'); }, actionText:'处理' }));
+    localConflicts.forEach(c => items.push({ level:'danger', eui:c.devEui,
+      text:'同 EUI 跨项目双活（' + c.registrations.map(r => r.project).join(' / ') + '）',
+      action:() => { switchView('governance'); }, actionText:'人工处理' }));
     // R-07 mapping gaps: one summary entry here — the actionable per-project
     // list lives in the dedicated gap panel card below (search + pagination +
     // per-row state), so the attention list never drowns in 100+ legacy gaps.
@@ -1727,7 +1735,8 @@ function renderConflicts() {
   const pending = conflictRows.length;
   $('#conflictCount').textContent = pending ? pending + ' 待处理' : '暂无待处理';
   $('#conflictCount').className = 'badge ' + (pending ? 'danger' : 'ok');
-  $('#govDot').style.display = pending ? '' : 'none';
+  const totalPending = pending + localConflictRows.length;
+  $('#govDot').style.display = totalPending ? '' : 'none';
   const box = $('#conflictList');
   if (!pending) {
     box.innerHTML = '<div class="empty-state small"><span class="icon">✓</span>暂无冲突</div>';
@@ -1808,6 +1817,79 @@ $('#conflictList').addEventListener('click', async e => {
     card.classList.toggle('expanded');
     const key = conflictRows[+card.dataset.ci].devEui;
     if (card.classList.contains('expanded')) expandedConflicts.add(key); else expandedConflicts.delete(key);
+  }
+});
+
+/* ---- local duplicate governance: evidence only, resolution is manual ---- */
+const LOCAL_RISK_LABELS = {
+  DUPLICATE_ACTIVE: '多项目双活',
+  DUPLICATE_ACTIVE_SAME_TB_DEVICE: '多项目双活 · 同一 TB 设备'
+};
+let localConflictRows = [];
+const expandedLocalConflicts = new Set();
+
+async function refreshLocalConflicts() {
+  localConflictRows = await api('/devices/local-conflicts');
+  renderLocalConflicts();
+}
+
+function renderLocalConflicts() {
+  const pending = localConflictRows.length;
+  const count = $('#localConflictCount');
+  count.textContent = pending ? pending + ' 待处理' : '暂无待处理';
+  count.className = 'badge ' + (pending ? 'danger' : 'ok');
+
+  const box = $('#localConflictList');
+  if (!pending) {
+    box.innerHTML = '<div class="empty-state small"><span class="icon">✓</span>暂无跨项目双活登记</div>';
+    return;
+  }
+  box.innerHTML = localConflictRows.map((c, ci) =>
+    '<div class="conflict-card pending' + (expandedLocalConflicts.has(c.devEui) ? ' expanded' : '') + '" data-lci="' + ci + '">' +
+      '<div class="conflict-head">' +
+        '<span class="arrow">▶</span>' +
+        '<span class="eui mono" style="color:var(--accent)">' + c.devEui + '</span>' +
+        '<span class="badge danger" title="风险枚举：' + c.risk + '">' + (LOCAL_RISK_LABELS[c.risk] || c.risk) + '</span>' +
+        '<span class="dim" style="font-size:12.5px">' + c.activeCount + ' 条 ACTIVE · 需人工确认权威项目</span>' +
+        '<span class="badge warn" style="margin-left:auto">人工处理</span>' +
+      '</div>' +
+      '<div class="conflict-body">' +
+        '<div class="c-fix FAIL" style="margin-bottom:var(--space-3)">→ 请人工确认 NS 权威归属后，停用非权威项目记录。系统不会自动选择项目，也不提供一键处置。</div>' +
+        '<div class="table-wrap"><table class="cmp-table"><thead><tr><th>DeviceHub ID</th><th>项目</th><th>类型</th><th>状态</th><th>TB 绑定</th><th>最近帧</th><th>入库时间</th><th>登记时间</th><th>处理</th></tr></thead><tbody>' +
+        c.registrations.map(r =>
+          '<tr>' +
+          '<td class="mono">' + r.id + '</td>' +
+          '<td><span class="badge proj">' + esc(r.project) + '</span></td>' +
+          '<td class="dim">' + esc(r.deviceType || '—') + '</td>' +
+          '<td><span class="badge ok" title="状态枚举：ACTIVE">正常</span></td>' +
+          '<td class="mono">' + esc(r.tbDeviceId || '—') + '</td>' +
+          '<td class="mono">' + (r.lastFrameAt ? fmtAbs(r.lastFrameAt) : '—') + '</td>' +
+          '<td class="mono">' + (r.lastEventAt ? fmtAbs(r.lastEventAt) : '—') + '</td>' +
+          '<td class="mono">' + (r.createdAt ? fmtAbs(r.createdAt) : '—') + '</td>' +
+          '<td><button class="btn ghost sm" data-local-detail="' + r.id + '">详情</button></td>' +
+          '</tr>'
+        ).join('') +
+        '</tbody></table></div>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+
+$('#localConflictList').addEventListener('click', e => {
+  const detailBtn = e.target.closest('[data-local-detail]');
+  if (detailBtn) {
+    e.stopPropagation();
+    switchView('devices');
+    openDrawer(+detailBtn.dataset.localDetail);
+    return;
+  }
+  const head = e.target.closest('.conflict-head');
+  if (head) {
+    const card = head.parentElement;
+    card.classList.toggle('expanded');
+    const key = localConflictRows[+card.dataset.lci].devEui;
+    if (card.classList.contains('expanded')) expandedLocalConflicts.add(key);
+    else expandedLocalConflicts.delete(key);
   }
 });
 </script>
@@ -2018,6 +2100,7 @@ async function refreshGovernance(manual) {
       api('/disposals').then(r => { tickets = r; }),
       api('/channels/topology').then(r => { topoCache = r; }, () => null)
     ]);
+    await refreshLocalConflicts();
     await refreshConflicts();
     renderTickets();
     renderLag();
