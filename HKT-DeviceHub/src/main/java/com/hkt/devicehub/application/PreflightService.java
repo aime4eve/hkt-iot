@@ -172,7 +172,7 @@ public class PreflightService {
         try {
             Map<String, String> profiles = tbClient.fetchDeviceProfiles();
             String expectedId = profiles.entrySet().stream()
-                    .filter(entry -> entry.getValue().equals(expected.getName()))
+                    .filter(entry -> profileMatches(expected, entry.getValue()))
                     .map(Map.Entry::getKey).findFirst().orElse(null);
             if (expectedId == null) {
                 return new CheckResult("PROFILE_MATCH", Verdict.FAIL,
@@ -190,11 +190,18 @@ public class PreflightService {
                         .map(TbClient.TbDeviceView::profileId)
                         .findFirst().orElse(null);
                 evidence.put("actualProfileId", actualProfileId);
-                if (actualProfileId != null && !actualProfileId.equals(expectedId)) {
+                String actualProfileName = actualProfileId == null
+                        ? null : profiles.get(actualProfileId);
+                evidence.put("actualProfileName", actualProfileName);
+                if (actualProfileId != null && !profileMatches(expected, actualProfileName)) {
                     return new CheckResult("PROFILE_MATCH", Verdict.FAIL,
                             "TB 设备当前 profile 与类型不匹配，期望「" + expected.getName() + "」",
                             evidence);
                 }
+                String matchedProfileName = actualProfileName == null
+                        ? expected.getName() : actualProfileName;
+                return new CheckResult("PROFILE_MATCH", Verdict.PASS,
+                        "profile 映射正确：「" + matchedProfileName + "」", evidence);
             }
             return new CheckResult("PROFILE_MATCH", Verdict.PASS,
                     "profile 映射正确：「" + expected.getName() + "」", evidence);
@@ -221,10 +228,16 @@ public class PreflightService {
         if (actualProfileName == null) return null;
         List<String> matchingTypes = properties.getProfiles().entrySet().stream()
                 .filter(entry -> entry.getValue() != null
-                        && actualProfileName.equals(entry.getValue().getName()))
+                        && profileMatches(entry.getValue(), actualProfileName))
                 .map(Map.Entry::getKey)
                 .toList();
         return matchingTypes.size() == 1 ? matchingTypes.get(0) : null;
+    }
+
+    private boolean profileMatches(DeviceHubProperties.ProfileRef profile, String actualName) {
+        return actualName != null
+                && (actualName.equals(profile.getName())
+                || profile.getAliases().contains(actualName));
     }
 
     CheckResult checkLocalBinding(String eui) {

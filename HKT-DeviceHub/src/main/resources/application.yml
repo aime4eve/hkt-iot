@@ -56,6 +56,8 @@ devicehub:
       name: 牛羊追踪器-OC-配置-v2
     GEOMAGNETIC:
       name: 地磁-OC-配置-v2
+      aliases:
+        - 地磁-OC-规则链-v1
   # R-06: initial expected report intervals (seconds); self-learning TODO.
   report-intervals:
     CAPSULE: 14400

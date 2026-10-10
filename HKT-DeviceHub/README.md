@@ -70,7 +70,7 @@ LoRaWAN 设备 → NS → IoT Gateway (TB connector) → ThingsBoard
 | devicehub.ns.enabled | `NS_ENABLED` | false |
 | devicehub.ns.base-url | `NS_BASE_URL` | http://172.17.201.15:8080 |
 | devicehub.ns.username/password/org-id | `NS_USERNAME`/`NS_PASSWORD`/`NS_ORG_ID` | 空/空/1 |
-| devicehub.profiles.<TYPE>.name | （application.yml） | CAPSULE=瘤胃胶囊-OC-配置-v2 / TRACKER=牛羊追踪器-OC-配置-v2 / GEOMAGNETIC=地磁-OC-配置-v2；profile id 运行时按名称解析，未硬编码 |
+| devicehub.profiles.<TYPE>.name | （application.yml） | CAPSULE=瘤胃胶囊-OC-配置-v2 / TRACKER=牛羊追踪器-OC-配置-v2 / GEOMAGNETIC=地磁-OC-配置-v2（aliases=地磁-OC-规则链-v1）；profile id 运行时按名称解析，未硬编码 |
 | devicehub.report-intervals.<TYPE> | （application.yml） | CAPSULE=14400 / TRACKER=60 / GEOMAGNETIC=3600 秒（自学习 TODO） |
 | devicehub.topology.ns-host/ns-port | `NS_PROBE_HOST`/`NS_PROBE_PORT` | 172.17.201.15 / 1883 |
 | devicehub.topology.probe-cache-ms | `TOPOLOGY_PROBE_CACHE_MS` | 30000 |

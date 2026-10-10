@@ -191,6 +191,24 @@ class PreflightServiceTest {
         assertEquals(PreflightService.Verdict.PASS, check.verdict());
     }
 
+    @Test
+    void geomagneticLegacyProfileAliasYieldsPass() {
+        DeviceHubProperties.ProfileRef geomagnetic = new DeviceHubProperties.ProfileRef();
+        geomagnetic.setName("地磁-OC-配置-v2");
+        geomagnetic.setAliases(List.of("地磁-OC-规则链-v1"));
+        properties.getProfiles().put("GEOMAGNETIC", geomagnetic);
+        when(tbClient.findDevices(EUI)).thenReturn(
+                List.of(new TbClient.TbDeviceView(TB_ID, EUI, 0, PROFILE_ID)));
+        when(tbClient.fetchDeviceProfiles()).thenReturn(
+                Map.of(PROFILE_ID, "地磁-OC-规则链-v1"));
+
+        PreflightService.CheckResult check =
+                service.checkProfile(EUI, "GEOMAGNETIC", service.checkTbUniqueness(EUI));
+
+        assertEquals(PreflightService.Verdict.PASS, check.verdict());
+        assertEquals("地磁-OC-规则链-v1", check.evidence().get("actualProfileName"));
+    }
+
     // ⑤ local binding
 
     @Test

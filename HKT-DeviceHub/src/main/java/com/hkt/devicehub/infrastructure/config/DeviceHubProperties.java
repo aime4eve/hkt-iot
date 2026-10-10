@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.Map;
 
 /**
@@ -42,6 +43,8 @@ public class DeviceHubProperties {
     @Setter
     public static class ProfileRef {
         private String name;
+        /** Legacy/tenant-specific profile names accepted for this device type. */
+        private java.util.List<String> aliases = new ArrayList<>();
         private String id;
     }
 
