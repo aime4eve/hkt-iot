@@ -141,11 +141,21 @@ public class PreflightService {
 
     CheckResult checkProfile(String eui, String deviceType, CheckResult uniquenessCheck) {
         String type = deviceType;
+        boolean inferred = false;
         if (type == null || type.isBlank()) {
             type = deviceRepository.findByDevEui(eui).stream()
                     .map(RegisteredDevice::getDeviceType)
                     .filter(t -> t != null && !t.isBlank())
                     .findFirst().orElse(null);
+        }
+        if (type == null) {
+            try {
+                type = inferTypeFromTbProfile(eui, uniquenessCheck);
+                inferred = type != null;
+            } catch (Exception e) {
+                return new CheckResult("PROFILE_MATCH", Verdict.WARN,
+                        "profile 核对失败：" + e.getMessage(), Map.of());
+            }
         }
         if (type == null) {
             return new CheckResult("PROFILE_MATCH", Verdict.WARN,
@@ -171,6 +181,7 @@ public class PreflightService {
             }
             Map<String, Object> evidence = new LinkedHashMap<>();
             evidence.put("deviceType", type);
+            if (inferred) evidence.put("deviceTypeSource", "TB_PROFILE");
             evidence.put("expectedProfile", expected.getName());
             Object tbDeviceId = uniquenessCheck.evidence().get("tbDeviceId");
             if (tbDeviceId instanceof String id) {
@@ -191,6 +202,29 @@ public class PreflightService {
             return new CheckResult("PROFILE_MATCH", Verdict.WARN,
                     "profile 核对失败：" + e.getMessage(), Map.of("deviceType", type));
         }
+    }
+
+    /**
+     * Existing TB devices carry an authoritative profile. Use it as a read-only
+     * fallback when neither the request nor the local ledger has deviceType.
+     */
+    private String inferTypeFromTbProfile(String eui, CheckResult uniquenessCheck) {
+        Object tbDeviceId = uniquenessCheck.evidence().get("tbDeviceId");
+        if (!(tbDeviceId instanceof String id)) return null;
+        Map<String, String> profiles = tbClient.fetchDeviceProfiles();
+        String actualProfileId = tbClient.findDevices(eui).stream()
+                .filter(view -> view.id().equals(id))
+                .map(TbClient.TbDeviceView::profileId)
+                .findFirst().orElse(null);
+        if (actualProfileId == null) return null;
+        String actualProfileName = profiles.get(actualProfileId);
+        if (actualProfileName == null) return null;
+        List<String> matchingTypes = properties.getProfiles().entrySet().stream()
+                .filter(entry -> entry.getValue() != null
+                        && actualProfileName.equals(entry.getValue().getName()))
+                .map(Map.Entry::getKey)
+                .toList();
+        return matchingTypes.size() == 1 ? matchingTypes.get(0) : null;
     }
 
     CheckResult checkLocalBinding(String eui) {

@@ -143,6 +143,25 @@ class PreflightServiceTest {
     }
 
     @Test
+    void profileCheckInfersDeviceTypeFromExistingTbProfile() {
+        DeviceHubProperties.ProfileRef geomagnetic = new DeviceHubProperties.ProfileRef();
+        geomagnetic.setName("地磁-OC-配置-v2");
+        properties.getProfiles().put("GEOMAGNETIC", geomagnetic);
+        when(deviceRepository.findByDevEui(EUI)).thenReturn(List.of());
+        when(tbClient.findDevices(EUI)).thenReturn(
+                List.of(new TbClient.TbDeviceView(TB_ID, EUI, 0, PROFILE_ID)));
+        when(tbClient.fetchDeviceProfiles()).thenReturn(
+                Map.of(PROFILE_ID, "地磁-OC-配置-v2"));
+
+        PreflightService.CheckResult check =
+                service.checkProfile(EUI, null, service.checkTbUniqueness(EUI));
+
+        assertEquals(PreflightService.Verdict.PASS, check.verdict());
+        assertEquals("GEOMAGNETIC", check.evidence().get("deviceType"));
+        assertEquals("TB_PROFILE", check.evidence().get("deviceTypeSource"));
+    }
+
+    @Test
     void profileMissingInTbYieldsFail() {
         when(tbClient.findDevices(EUI)).thenReturn(List.of());
         when(tbClient.fetchDeviceProfiles()).thenReturn(Map.of("other-id", "别的profile"));
