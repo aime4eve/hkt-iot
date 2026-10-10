@@ -61,6 +61,13 @@ public class DeviceProvisioningService {
         RegisteredDevice device = deviceRepository.findByProjectAndDevEui(project, eui)
                 .orElse(null);
         if (device != null && device.getStatus() == RegistrationStatus.ACTIVE) {
+            if (command.deviceType() != null && !command.deviceType().isBlank()
+                    && !command.deviceType().toUpperCase(Locale.ROOT).equals(device.getDeviceType())) {
+                device.setDeviceType(command.deviceType().toUpperCase(Locale.ROOT));
+                device.setExpectedReportIntervalSeconds(
+                        deviceHubProperties.defaultIntervalSeconds(device.getDeviceType()));
+                deviceRepository.save(device);
+            }
             return new RegisterResult(device.getId(), eui, project.name(),
                     String.valueOf(device.getTbDeviceId()), device.getStatus().name(),
                     "ALREADY_REGISTERED");

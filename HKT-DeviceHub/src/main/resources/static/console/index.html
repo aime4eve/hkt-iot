@@ -612,9 +612,15 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
           <option value="LIVESTOCK">LIVESTOCK</option>
           <option value="PARKING">PARKING</option>
         </select>
+        <select id="pfDeviceType" class="pf-select" title="设备类型">
+          <option value="">未指定</option>
+          <option value="CAPSULE">CAPSULE</option>
+          <option value="TRACKER">TRACKER</option>
+          <option value="GEOMAGNETIC">GEOMAGNETIC</option>
+        </select>
         <button type="submit" class="btn" id="euiSubmit">开始体检</button>
       </form>
-      <div class="form-hint" id="euiHint">注册时按所选项目写入；设备类型由服务端按 NS 信息推断</div>
+      <div class="form-hint" id="euiHint">预检用所选设备类型核对 profile；注册时写入设备档案。未指定时不做 profile 核对</div>
       <div class="report" id="report"></div>
       <div class="report-actions" id="reportActions" hidden></div>
     </div>
@@ -1587,7 +1593,11 @@ function renderReport(eui, report) {
   if (reg) reg.addEventListener('click', async () => {
     reg.disabled = true; reg.textContent = '注册中…';
     try {
-      const r = await registerDevice({ devEui: eui, project: $('#pfProject').value });
+      const r = await registerDevice({
+        devEui: eui,
+        project: $('#pfProject').value,
+        deviceType: $('#pfDeviceType').value || undefined
+      });
       reg.textContent = '✓ ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册');
       toast('注册成功：' + eui + ' · ' + (r.result === 'ALREADY_REGISTERED' ? '已存在绑定' : '已注册') + ' · ' + (r.tbDeviceId || ''));
       regTrace[eui] = { at: new Date(), result: r.result, tbDeviceId: r.tbDeviceId };
@@ -1620,7 +1630,9 @@ $('#euiForm').addEventListener('submit', async e => {
   $('#report').innerHTML = '<div class="sk" style="height:76px"></div>'.repeat(5);
   history.replaceState(null, '', '#/preflight/' + eui);
   try {
-    const report = await api('/devices/preflight?devEui=' + eui);
+    const deviceType = $('#pfDeviceType').value;
+    const typeQuery = deviceType ? '&deviceType=' + encodeURIComponent(deviceType) : '';
+    const report = await api('/devices/preflight?devEui=' + eui + typeQuery);
     euiHint.textContent = '体检完成 · 总体判定：' + VERDICT_LABELS[report.overall];
     renderReport(eui, report);
   } catch (err) {
