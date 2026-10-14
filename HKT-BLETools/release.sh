@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # HKT-BLETools 双端发布打包一条龙：APK + IPA 版本号强制一致（用户裁决 2026-09-28）
 #
-# 唯一版本事实源 = 仓库根 VERSION 文件（内容如 V6.1.1b30）。APK/IPA 的
-# 文件名、系统版本号（Android versionName / iOS CFBundleShortVersionString）
+# 唯一版本事实源 = 仓库根 VERSION 文件（标准格式 v6.1.1-b30，用户裁决 2026-10-14：
+# <应用名称>v<主版本号>-b<第N次编译后发布>，应用名称只出现在产物文件名，VERSION 存版本串）。
+# APK/IPA 的文件名、系统版本号（Android versionName / iOS CFBundleShortVersionString）
 # 与 App 内关于页显示全部同源，不再存在双端各自计数。
 #
 # 用法:
 #   ./release.sh                 # 用当前 VERSION 双端打包（重打包/续签用，不改版本号）
 #   ./release.sh --bump          # 先把 VERSION 的 b<N> 尾数 +1，再双端打包（发新版用）
-#   ./release.sh V6.2.0b1        # 显式设定版本号（写入 VERSION），再双端打包
+#   ./release.sh v6.2.0-b1       # 显式设定版本号（写入 VERSION），再双端打包
 #
 # 产物:
 #   releases/android/HKTBLETools-<版本>-<日期>.apk
@@ -21,20 +22,20 @@ VERSION_FILE="$ROOT/VERSION"
 JBR17="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 say() { printf '\n==> %s\n' "$*"; }
 
-[[ -f "$VERSION_FILE" ]] || { echo "缺少版本文件: ${VERSION_FILE}（内容如 V6.1.1b30，双端同源）" >&2; exit 1; }
+[[ -f "$VERSION_FILE" ]] || { echo "缺少版本文件: ${VERSION_FILE}（内容如 v6.1.1-b30，双端同源）" >&2; exit 1; }
 current_version() { tr -d "[:space:]" < "$VERSION_FILE"; }
 
 case "${1:-}" in
   "") ;;
   --bump)
     V=$(current_version)
-    NUM=$(printf '%s' "$V" | sed -E 's/^.*b([0-9]+)$/\1/')
-    [[ "$NUM" =~ ^[0-9]+$ ]] || { echo "VERSION 末尾需为 b<数字>（如 V6.1.1b30），当前: $V" >&2; exit 1; }
+    NUM=$(printf '%s' "$V" | sed -E 's/^.*-b([0-9]+)$/\1/')
+    [[ "$NUM" =~ ^[0-9]+$ ]] || { echo "VERSION 末尾需为 -b<数字>（如 v6.1.1-b30），当前: $V" >&2; exit 1; }
     NEW=$((NUM + 1))
-    printf '%s\n' "${V%"b$NUM"}b$NEW" > "$VERSION_FILE"
+    printf '%s\n' "${V%"-b$NUM"}-b$NEW" > "$VERSION_FILE"
     say "版本升级：$V → $(current_version)"
     ;;
-  V*)
+  v*|V*)
     printf '%s\n' "$1" > "$VERSION_FILE"
     say "版本设定：$1"
     ;;
@@ -43,7 +44,7 @@ esac
 
 VERSION=$(current_version)
 DATE=$(date +%Y%m%d)
-[[ "$VERSION" =~ ^V[0-9.]+b[0-9]+$ ]] || { echo "版本号格式需为 V<主>.<次>.<修订>b<N>（如 V6.1.1b30），当前: $VERSION" >&2; exit 1; }
+[[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+$ ]] || { echo "版本号标准格式需为 v<主>.<次>.<修订>-b<N>（如 v6.1.1-b30，用户裁决 2026-10-14），当前: $VERSION" >&2; exit 1; }
 say "本次版本：${VERSION}（${DATE}）"
 
 # ---- Android：prod-debug（debug 签名可直接安装）----

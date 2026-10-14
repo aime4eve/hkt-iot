@@ -9,11 +9,12 @@ android {
     compileSdk = 34
 
     // 版本方案（用户裁决 2026-09-28）：双端版本号必须一致——唯一事实源 = 仓库根 VERSION 文件
-    //（内容如 V6.1.1b30），APK/IPA 文件名与 App 内显示全部同源。打包不再自动递增；
+    //（标准格式 v6.1.1-b30，用户裁决 2026-10-14：<应用名称>v<主版本号>-b<第N次编译后发布>），
+    // APK/IPA 文件名与 App 内显示全部同源。打包不再自动递增；
     // 版本升级用 ./release.sh --bump 或手工编辑 VERSION（旧 android/version.properties 独立计数已废）。
     val versionFile = rootProject.file("../VERSION")
     val versionFull = versionFile.takeIf { it.exists() }?.readText()?.trim()
-        ?: throw GradleException("缺少版本文件 $versionFile（内容如 V6.1.1b30，双端同源）")
+        ?: throw GradleException("缺少版本文件 $versionFile（内容如 v6.1.1-b30，双端同源）")
 
     buildFeatures {
         buildConfig = true

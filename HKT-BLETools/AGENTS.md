@@ -34,7 +34,8 @@ sdk.dir=D\:\\Android\\sdk
 
 | 事项 | 实测命令 / 结论 |
 |------|----------------|
-| 双端发布打包（2026-09-28 用户裁决） | `./release.sh` 双端一条龙（APK+IPA，不装机）；发新版用 `./release.sh --bump`（b 尾数+1）或 `./release.sh V6.2.0b1` 指定版本。**版本唯一事实源 = 仓库根 `VERSION` 文件**（如 V6.1.1b30）：APK/IPA 文件名、系统版本号、App 内关于页显示全部同源；打包不自动递增（旧 android/version.properties 与 ios/build-counter.txt 独立计数已废）；装机另跑 `ios/Tools/build_install.sh` |
+| 双端发布打包（2026-09-28 用户裁决；版本标准格式 2026-10-14 用户裁决） | `./release.sh` 双端一条龙（APK+IPA，不装机）；发新版用 `./release.sh --bump`（-b 尾数+1）或 `./release.sh v6.2.0-b1` 指定版本。**版本唯一事实源 = 仓库根 `VERSION` 文件，标准格式 = `<应用名称>v<主版本号>-b<第N次编译后发布>` 的版本串（如 `v6.1.1-b30`；应用名称只出现在产物文件名）**：APK/IPA 文件名（`HKTBLETools-<版本>-<日期>`）、系统版本号、App 内关于页显示全部同源；打包不自动递增；装机另跑 `ios/Tools/build_install.sh` |
+| iOS 签名（2026-10-14 起正式账号） | 团队 = **Hunan HKT Technology Co., Ltd.，Team ID `QQC56X32GR`**（Apple ID tech@hktchn.com，Xcode → Settings → Accounts 管理；pbxproj 四处 `DEVELOPMENT_TEAM` 已固化）。自动签名，开发 profile/证书有效期 **1 年**（免费团队 J62PU4Y357 时代 7 天续命已终结）。坑：①新团队首次出包报 "team has no devices" → generic 目标不触发设备注册，用 `-destination 'id=<UDID>'` 对真机跑一次或去 portal 手动加；②换团队后覆盖安装被拒（entitlement 前缀变了）→ 先 `xcrun devicectl device uninstall app` 再装（数据清空）；③新 iPhone 首次装机需 USB 插线构建期自动注册（网络 paired 不算） |
 | iOS 测试 | `cd ios && swift test`（83 个测试） |
 | iOS 模拟器构建 | `cd ios && xcodebuild -scheme HKTBLETools -destination 'generic/platform=iOS Simulator' build`；一键构建+装机用 `ios/Tools/build_install.sh` |
 | Mac 真电波运行 | Xcode 选 "My Mac (Designed for iPhone)" ⌘R；CLI 精确写法 `-destination 'platform=macOS,arch=arm64,variant=Designed for iPhone,id=<Mac-id>'`（showdestinations 打印的方括号串不能直接喂 CLI，会截断报错） |

@@ -119,13 +119,9 @@ struct SettingsView: View {
         }
     }
 
-    /// 版本号与安卓 versionName 一致（MARKETING_VERSION=3.21），不拼接 build 号
+    /// 版本号与安卓 versionName 同源（VERSION 文件，标准格式 v6.1.1-b30），ShortVersion 串尾自带 build 数
     private var versionText: String {
-        {
-            let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "V6.1.1b1"
-            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-            return "\(short)\(build)"
-        }()
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "v6.1.1-b1"
     }
 
     /// 原型 taps()：连点版本行 7 次开启调试模式。
