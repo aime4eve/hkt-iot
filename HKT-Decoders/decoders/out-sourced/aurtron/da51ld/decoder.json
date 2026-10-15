@@ -1,0 +1,33 @@
+{
+  "model": "DA51LD",
+  "modelKey": "da51ld",
+  "aliases": [],
+  "name": "欧创 Sub-G 分体空调执行器",
+  "origin": "out-sourced",
+  "vendor": "欧创（Aurtron）",
+  "category": "空调控制执行器",
+  "authority": {
+    "type": "protocol-doc",
+    "file": "docs/UM DA51LD Sub-G分体空调执行器 用户说明书.docx",
+    "section": "ModBus-LoRaPMAC协议说明",
+    "note": null
+  },
+  "fPortDefault": 8,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "da51ld_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "REV.B",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "手册 ModBus-LoRaPMAC 协议说明章节示例帧",
+        "黄金样例 samples/samples.json"
+      ],
+      "verifiedAt": null,
+      "changelog": "初版：0x41 主动上报（变长寄存器顺序解析）+ 0x10 写应答 + 0x03 读应答；CRC16 ModBus 校验（帧序不匹配报 warning 不报 error）。"
+    }
+  ]
+}

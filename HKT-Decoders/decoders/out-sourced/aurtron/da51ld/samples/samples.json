@@ -1,0 +1,136 @@
+[
+  {
+    "name": "手册示例：主动上报（26 寄存器，开机/制冷/26°C/高风）",
+    "source": "manual",
+    "payload": "014101003400010117FF000001627B235EFFAA001E0001000201040003000000000000242100001D0A000000000000000000000000000001078E76",
+    "fPort": 8,
+    "expectData": {
+      "frameType": "active_report",
+      "deviceAddr": 1,
+      "startRegister": "0x0100",
+      "devEui": "00010117FF000001",
+      "timestamp": "2022-05-11 10:45:50",
+      "rssi": -86,
+      "snr": 3,
+      "power": "on",
+      "mode": "cool",
+      "tempSetpoint": 26,
+      "fanSpeed": "high",
+      "verticalSwing": "off",
+      "horizontalSwing": "off",
+      "current": 9.249,
+      "energy": 74.34,
+      "controlMethod": "ir_remote",
+      "tempSensor1": 26.3
+    },
+    "expectError": false,
+    "note": "手册 ModBus-LoRaPMAC 协议说明示例帧原文。期望值按手册逐字段语义推导；手册标注电流 9.234A 与帧内 0x2421=9249→9.249A 不一致，以帧内数据为准。"
+  },
+  {
+    "name": "变长心跳：25 寄存器（少温度传感器 1）",
+    "source": "manual-derived",
+    "payload": "014101003200010117FF000001627B235EFFAA001E0001000201040003000000000000242100001D0A0000000000000000000000000000DADD",
+    "fPort": 8,
+    "expectData": {
+      "frameType": "active_report",
+      "deviceAddr": 1,
+      "startRegister": "0x0100",
+      "devEui": "00010117FF000001",
+      "timestamp": "2022-05-11 10:45:50",
+      "rssi": -86,
+      "snr": 3,
+      "power": "on",
+      "mode": "cool",
+      "tempSetpoint": 26,
+      "fanSpeed": "high",
+      "verticalSwing": "off",
+      "horizontalSwing": "off",
+      "current": 9.249,
+      "energy": 74.34,
+      "controlMethod": "ir_remote"
+    },
+    "expectError": false,
+    "note": "从手册示例帧截掉最后一项（温度传感器 1）并按 25 寄存器重算 CRC；验证变长解析不越界。设备可通过寄存器 0x2A16 配置上报寄存器个数。"
+  },
+  {
+    "name": "关机态心跳（自动/24°C/无线控制）",
+    "source": "manual-derived",
+    "payload": "014101003400010117FF000002670F2780FFC000140000000100F0000000000000000000000000138800000000000000000000000000010000D816",
+    "fPort": 8,
+    "expectData": {
+      "frameType": "active_report",
+      "deviceAddr": 1,
+      "startRegister": "0x0100",
+      "devEui": "00010117FF000002",
+      "timestamp": "2024-10-16 10:40:00",
+      "rssi": -64,
+      "snr": 2,
+      "power": "off",
+      "mode": "auto",
+      "tempSetpoint": 24,
+      "fanSpeed": "auto",
+      "verticalSwing": "off",
+      "horizontalSwing": "off",
+      "current": 0,
+      "energy": 50,
+      "controlMethod": "sub_g_wireless"
+    },
+    "expectError": false,
+    "note": "关机/自动模式变体，验证 power=off、mode=auto、controlMethod=sub_g_wireless 分支；tempSensor1=0 不输出。"
+  },
+  {
+    "name": "手册示例：ModBus 写应答（0x10）",
+    "source": "manual",
+    "payload": "01100108000441F4",
+    "fPort": 222,
+    "expectData": {
+      "frameType": "write_response",
+      "deviceAddr": 1,
+      "startRegister": "0x0108",
+      "numRegisters": 4
+    },
+    "expectError": false,
+    "note": "手册空调控制写入示例的设备应答帧原文；echo 地址 + 功能码 + 起始寄存器 + 寄存器数。"
+  },
+  {
+    "name": "手册示例：ModBus 读应答（0x03）",
+    "source": "manual",
+    "payload": "01030200017984",
+    "fPort": 222,
+    "expectData": {
+      "frameType": "read_response",
+      "deviceAddr": 1,
+      "byteCount": 2,
+      "registers": [1]
+    },
+    "expectError": false,
+    "note": "手册 ModBus-RTU 读多路寄存器从机响应示例原文（读 0x0108 返回 0x0001=开机）；0x03 应答不含起始地址，寄存器含义由下发查询方决定。"
+  },
+  {
+    "name": "坏帧守卫：截断主动上报",
+    "source": "manual-derived",
+    "payload": "014101003400010117FF000001627B235EFFAA001E0001000201040003000000000000242100001D0A00000000000000000000000000000107",
+    "fPort": 8,
+    "expectData": {},
+    "expectError": true,
+    "note": "CRC 字节被截断，应报 truncated 错误。"
+  },
+  {
+    "name": "坏帧守卫：未知功能码",
+    "source": "manual-derived",
+    "payload": "01FF",
+    "fPort": 8,
+    "expectData": {},
+    "expectError": true,
+    "note": "功能码 0xFF 不在 0x41/0x10/0x03 范围内，应报 unknown function code。"
+  },
+  {
+    "name": "坏帧守卫：空负载",
+    "source": "manual-derived",
+    "payload": "",
+    "fPort": 8,
+    "expectData": {},
+    "expectError": true,
+    "note": "空负载应报 empty payload。"
+  }
+]
