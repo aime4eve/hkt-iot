@@ -111,7 +111,7 @@
     "source": "manual-derived",
     "payload": "014101003400010117FF000001627B235EFFAA001E0001000201040003000000000000242100001D0A00000000000000000000000000000107",
     "fPort": 8,
-    "expectData": {},
+    "expectData": null,
     "expectError": true,
     "note": "CRC 字节被截断，应报 truncated 错误。"
   },
@@ -120,17 +120,17 @@
     "source": "manual-derived",
     "payload": "01FF",
     "fPort": 8,
-    "expectData": {},
+    "expectData": null,
     "expectError": true,
     "note": "功能码 0xFF 不在 0x41/0x10/0x03 范围内，应报 unknown function code。"
   },
   {
-    "name": "坏帧守卫：空负载",
+    "name": "坏帧守卫：过短负载",
     "source": "manual-derived",
-    "payload": "",
+    "payload": "01",
     "fPort": 8,
-    "expectData": {},
+    "expectData": null,
     "expectError": true,
-    "note": "空负载应报 empty payload。"
+    "note": "仅 1 字节，不足 2 字节帧头，应报 payload too short。"
   }
 ]
