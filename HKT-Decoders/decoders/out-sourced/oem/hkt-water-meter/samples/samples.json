@@ -92,6 +92,7 @@
       "meterType": "水表",
       "address": "12345678",
       "controlCode": "0x81",
+      "dataIdentifier": "0x921f",
       "serialNumber": 6,
       "forwardFlow": {
         "value": 0.025,
@@ -141,6 +142,7 @@
       "meterType": "水表",
       "address": "66778899",
       "controlCode": "0x81",
+      "dataIdentifier": "0x921f",
       "serialNumber": 0,
       "forwardFlow": {
         "value": 99999.999,
@@ -190,6 +192,7 @@
       "meterType": "水表",
       "address": "00001234",
       "controlCode": "0x81",
+      "dataIdentifier": "0x921f",
       "serialNumber": 1,
       "forwardFlow": {
         "value": 123.456,
@@ -239,6 +242,7 @@
       "meterType": "水表",
       "address": "07654321",
       "controlCode": "0x81",
+      "dataIdentifier": "0x921f",
       "serialNumber": 255,
       "forwardFlow": {
         "value": 10,
@@ -570,6 +574,7 @@
       "meterType": "水表",
       "address": "12345678",
       "controlCode": "0x81",
+      "dataIdentifier": "0x921f",
       "serialNumber": 6,
       "forwardFlow": {
         "value": 0.025,
@@ -703,5 +708,316 @@
     "expectError": false,
     "forFile": "hkt-water-meter_chirpstack_en_v1.1.0.js",
     "note": "同cn“Table 3.2 ST1=0x22”条目；差异仅文案：Normal close / Forced open / Abnormal open 等。"
+  },
+  {
+    "name": "真机 31 字节帧：L=1F/DI=93 1F，温度后多 1 字节 0x6C",
+    "source": "field",
+    "payload": "681094112620000000811F931FFB2C000000002C0000000035000000002024006C011617211026204000D216",
+    "fPort": null,
+    "expectData": {
+      "meterType": "水表",
+      "address": "20261194",
+      "controlCode": "0x81",
+      "dataIdentifier": "0x931f",
+      "serialNumber": 251,
+      "forwardFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "reverseFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "instantFlow": {
+        "value": 0,
+        "unit": "m³/h"
+      },
+      "temperature": {
+        "value": 24.2,
+        "unit": "℃"
+      },
+      "extraByte": "0x6c",
+      "datetime": "2026-10-21 17:16:01",
+      "status": {
+        "valve": "阀门开",
+        "battery": "正常",
+        "pipeBurst": "正常",
+        "pipeLeak": "正常",
+        "tempSensor": "正常",
+        "flowSensor": "正常",
+        "installDir": "反向",
+        "openValveMode": "异常开",
+        "closeValveMode": "异常关",
+        "externalPower": "异常",
+        "openValveError": "正常",
+        "closeValveError": "正常",
+        "forcedOpen": "非强制",
+        "forcedClose": "非强制",
+        "externalPowerSupply": "正常",
+        "rawHex": "0x4000"
+      }
+    },
+    "expectError": false,
+    "note": "用户报障帧（2026-10-21 表号 20261194）逐字节验算：CS=D2 吻合；L=0x1F=31（文档帧 30）；DI0=93（文档帧 92）；布局=文档 30B 帧在温度(3B)与实时时间(7B)之间多 1 字节 0x6C，语义未文档化→原样输出 extraByte 待厂家澄清；流量全 0（新表）；时间=当日 17:16:01；状态字 40 00→D6 反向安装（按 Table 3.1）。v1.2.0 及之前按 30B 布局把 6C 当秒字节报 BCD 非法——本条即该报障的回归钉。"
+  },
+  {
+    "name": "守卫：温度后剩余字节非 9/10（未知帧型）",
+    "source": "regression",
+    "payload": "6810941126200000008121931FFB2C000000002C0000000035000000002024006C01161721102620AABB40003916",
+    "fPort": null,
+    "expectData": null,
+    "expectError": true,
+    "note": "守卫样例(source=regression)：真机 31B 帧状态字前插 2 字节 AA BB，帧头 L 同步改 0x21（帧长校验通过）→温度后剩 12 字节非 9/10，命中未知帧型守卫；expectError=true、expectData=null，不校验具体错误文案（cn/en文案不同）。CS 按新帧重算（校验不匹配仅告警）。"
+  },
+  {
+    "name": "en绑定(v1.2.0)：真机 31 字节帧",
+    "source": "field",
+    "payload": "681094112620000000811F931FFB2C000000002C0000000035000000002024006C011617211026204000D216",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "20261194",
+      "controlCode": "0x81",
+      "dataIdentifier": "0x931f",
+      "serialNumber": 251,
+      "forwardFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "reverseFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "instantFlow": {
+        "value": 0,
+        "unit": "m³/h"
+      },
+      "temperature": {
+        "value": 24.2,
+        "unit": "℃"
+      },
+      "extraByte": "0x6c",
+      "datetime": "2026-10-21 17:16:01",
+      "status": {
+        "valve": "Open",
+        "battery": "Normal",
+        "pipeBurst": "Normal",
+        "pipeLeak": "Normal",
+        "tempSensor": "Normal",
+        "flowSensor": "Normal",
+        "installDir": "Reverse",
+        "openValveMode": "Abnormal open",
+        "closeValveMode": "Abnormal close",
+        "externalPower": "Abnormal",
+        "openValveError": "Normal",
+        "closeValveError": "Normal",
+        "forcedOpen": "Not forced",
+        "forcedClose": "Not forced",
+        "externalPowerSupply": "Normal",
+        "rawHex": "0x4000"
+      }
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+    "note": "同cn真机 31B 帧；差异仅文案（Water Meter/Reverse/Abnormal open 等）。"
+  },
+  {
+    "name": "en绑定(v1.2.0)：阀控应答帧原文",
+    "source": "manual",
+    "payload": "FEFEFE6810785634120000008405A017010000CD16",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "12345678",
+      "controlCode": "0x84",
+      "dataIdentifier": "0xa017",
+      "message": "Valve control ACK (normal)",
+      "serialNumber": 1,
+      "status": {
+        "valve": "Open",
+        "battery": "Normal",
+        "pipeBurst": "Normal",
+        "pipeLeak": "Normal",
+        "tempSensor": "Normal",
+        "flowSensor": "Normal",
+        "installDir": "Forward",
+        "openValveMode": "Abnormal open",
+        "closeValveMode": "Abnormal close",
+        "externalPower": "Abnormal",
+        "openValveError": "Normal",
+        "closeValveError": "Normal",
+        "forcedOpen": "Not forced",
+        "forcedClose": "Not forced",
+        "externalPowerSupply": "Normal",
+        "rawHex": "0x0000"
+      }
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+    "note": "同 cn ACK 条目，绑定 en v1.2.0（en v1.1.0 的同款绑定仍留 v1.1.0）。"
+  },
+  {
+    "name": "真机 31 字节帧：extra=0x6E 变体（10-14 19:58）",
+    "source": "field",
+    "payload": "681094112620000000811F931F3C2C000000002C0000000035000000006025006E0158191410262040008D16",
+    "fPort": null,
+    "expectData": {
+      "meterType": "水表",
+      "address": "20261194",
+      "controlCode": "0x81",
+      "dataIdentifier": "0x931f",
+      "serialNumber": 60,
+      "forwardFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "reverseFlow": {
+        "value": 0,
+        "unit": "m³"
+      },
+      "instantFlow": {
+        "value": 0,
+        "unit": "m³/h"
+      },
+      "temperature": {
+        "value": 25.6,
+        "unit": "℃"
+      },
+      "extraByte": "0x6e",
+      "datetime": "2026-10-14 19:58:01",
+      "status": {
+        "valve": "阀门开",
+        "battery": "正常",
+        "pipeBurst": "正常",
+        "pipeLeak": "正常",
+        "tempSensor": "正常",
+        "flowSensor": "正常",
+        "installDir": "反向",
+        "openValveMode": "异常开",
+        "closeValveMode": "异常关",
+        "externalPower": "异常",
+        "openValveError": "正常",
+        "closeValveError": "正常",
+        "forcedOpen": "非强制",
+        "forcedClose": "非强制",
+        "externalPowerSupply": "正常",
+        "rawHex": "0x4000"
+      }
+    },
+    "expectError": false,
+    "note": "用户抓包批（2026-10-21，表号 20261194）最旧一帧；与 17:16 帧（extra=0x6C）互证扩展字节随时间缓变（0x6C~0x6E），语义未文档化，原样输出。CS=8D 已验算。"
+  },
+  {
+    "name": "真机未知控制码帧：C=0x24 心跳/状态帧（数据域原样透传）",
+    "source": "field",
+    "payload": "681094112620000000240A16C0010000800A000000F216",
+    "fPort": null,
+    "expectData": {
+      "meterType": "水表",
+      "address": "20261194",
+      "controlCode": "0x24",
+      "dataIdentifier": "0x16c0",
+      "serialNumber": 1,
+      "rawData": "16 c0 01 00 00 80 0a 00 00 00"
+    },
+    "expectError": false,
+    "note": "用户抓包批中 3 次完全相同的上行帧（CS=F2 验算吻合），协议 PDF 无 C=0x24 定义；数据域原样输出 rawData 并附 warning，DI/SER 按 CJ/T 188 惯例提取仅供参考。观察（不进代码）：数据域含 0x0A=10，与同批 AT 配置的上报间隔 10 分钟数值吻合，疑似参数/心跳帧，待厂家澄清。"
+  },
+  {
+    "name": "真机阀控下行回显：强制开阀 55",
+    "source": "field",
+    "payload": "FEFEFE6810941126200000000404A01701557816",
+    "fPort": null,
+    "expectData": {
+      "meterType": "水表",
+      "address": "20261194",
+      "controlCode": "0x04",
+      "dataIdentifier": "0xa017",
+      "message": "阀控指令（下行回显）",
+      "serialNumber": 1,
+      "command": "forceOpen",
+      "commandName": "强制开阀"
+    },
+    "expectError": false,
+    "note": "用户抓包的真实下行指令帧（§3.1.7.1 格式，地址 20261194，CS=78 验算吻合）；encodeDownlink 以 address=20261194+forceOpen 生成的字节与该帧逐字节一致。"
+  },
+  {
+    "name": "真机阀控下行回显：强制关阀 99",
+    "source": "field",
+    "payload": "FEFEFE6810941126200000000404A0170199BC16",
+    "fPort": null,
+    "expectData": {
+      "meterType": "水表",
+      "address": "20261194",
+      "controlCode": "0x04",
+      "dataIdentifier": "0xa017",
+      "message": "阀控指令（下行回显）",
+      "serialNumber": 1,
+      "command": "forceClose",
+      "commandName": "强制关阀"
+    },
+    "expectError": false,
+    "note": "用户抓包的真实下行指令帧（§3.1.7.2 格式，CS=BC 验算吻合）；encodeDownlink 逐字节复现已验证。"
+  },
+  {
+    "name": "真机 AT 配置文本帧：SUPLDPA 上报间隔 10 分钟",
+    "source": "field",
+    "payload": "41542B41542B5355504C4450413A30303031302C30303031302C36302C30303031302C30303030305C725C6E454E44",
+    "fPort": null,
+    "expectData": {
+      "messageType": "AT 文本",
+      "text": "AT+AT+SUPLDPA:00010,00010,60,00010,00000\\r\\nEND"
+    },
+    "expectError": false,
+    "note": "用户抓包批中的 ASCII 帧（协议 §2 配置通道）：上报间隔/延迟 10 分钟、延迟秒 60、主动抄表周期 10 分钟（尾接工具自有 END 框架与字面 \\r\\n 文本）。以 AT 开头的帧原样透传 text 并附 warning。"
+  },
+  {
+    "name": "en绑定(v1.2.0)：真机未知控制码帧 C=0x24",
+    "source": "field",
+    "payload": "681094112620000000240A16C0010000800A000000F216",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "20261194",
+      "controlCode": "0x24",
+      "dataIdentifier": "0x16c0",
+      "serialNumber": 1,
+      "rawData": "16 c0 01 00 00 80 0a 00 00 00"
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+    "note": "同cn真机样例；差异仅文案。"
+  },
+  {
+    "name": "en绑定(v1.2.0)：真机阀控下行回显 强制开阀",
+    "source": "field",
+    "payload": "FEFEFE6810941126200000000404A01701557816",
+    "fPort": null,
+    "expectData": {
+      "meterType": "Water Meter",
+      "address": "20261194",
+      "controlCode": "0x04",
+      "dataIdentifier": "0xa017",
+      "message": "Valve control command (downlink echo)",
+      "serialNumber": 1,
+      "command": "forceOpen",
+      "commandName": "Force open"
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+    "note": "同cn真机样例；差异仅文案。"
+  },
+  {
+    "name": "en绑定(v1.2.0)：真机 AT 配置文本帧",
+    "source": "field",
+    "payload": "41542B41542B5355504C4450413A30303031302C30303031302C36302C30303031302C30303030305C725C6E454E44",
+    "fPort": null,
+    "expectData": {
+      "messageType": "AT text",
+      "text": "AT+AT+SUPLDPA:00010,00010,60,00010,00000\\r\\nEND"
+    },
+    "expectError": false,
+    "forFile": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+    "note": "同cn真机样例；差异仅文案。"
   }
 ]

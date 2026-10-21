@@ -60,7 +60,7 @@
       "file": "hkt-water-meter_chirpstack_cn_v1.2.0.js",
       "decoderVersion": "1.2.0",
       "firmwareVersion": "214C/213E 协议 0X1E_V101_20211231（2026-10-21 对照核验）",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [
         "协议 PDF V101（2021-12-31）Table 3.1/3.2",
@@ -84,12 +84,47 @@
       ],
       "verifiedAt": null,
       "changelog": "同 cn v1.2.0 的协议刷新（Table 3.2 八字段 + C=84 应答帧 + FE FE FE 前导 + encodeDownlink），英文文案。"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "hkt-water-meter_chirpstack_cn_v1.3.0.js",
+      "decoderVersion": "1.3.0",
+      "firmwareVersion": "214C/213E 协议 0X1E_V101_20211231 + 31 字节扩展帧（2026-10-21 真机实证）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "协议 PDF V101（2021-12-31）Table 3.1/3.2 + §3.1.7 阀控",
+        "黄金样例 samples/samples.json",
+        "真机抓包批 2026-10-21（表号 20261194）：31 字节数据帧×7、C=0x24 帧×3、阀控下行×3、AT 文本×1，全部 CS 验算吻合"
+      ],
+      "verifiedAt": null,
+      "changelog": "真机抓包批驱动的刷新：①修复 31 字节数据帧（L=1F/DI=93 1F）解码失败——温度与实时时间之间多 1 个未文档化字节（实证 0x6C/0x6E），按剩余长度分流、原样输出 extraByte；②81 帧新增输出 dataIdentifier（与 84 应答帧对齐）；③未知控制码（实证 C=0x24）不再报错，数据域原样输出 rawData 并附 warning；④新增 C=04 阀控指令（下行回显）解析，command/commandName；⑤以 AT 开头的 ASCII 文本帧透传 text 并附 warning；⑥无法识别的 81 帧布局显式报错。encodeDownlink 经抓包的强开/强关两帧逐字节复现验证。"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "hkt-water-meter_chirpstack_en_v1.2.0.js",
+      "decoderVersion": "1.2.0",
+      "firmwareVersion": "214C/213E 协议 0X1E_V101_20211231 + 31 字节扩展帧（2026-10-21 真机实证）",
+      "current": false,
+      "status": "unverified",
+      "basis": [
+        "协议 PDF V101（2021-12-31）Table 3.1/3.2 + §3.1.7 阀控",
+        "黄金样例 samples/samples.json",
+        "真机抓包批 2026-10-21（同 cn v1.3.0）"
+      ],
+      "verifiedAt": null,
+      "changelog": "同 cn v1.3.0（31 字节帧修复 + dataIdentifier + 未知控制码透传 + C=04 下行回显 + AT 文本透传），英文文案。"
     }
   ],
   "deviations": [
     "PDF §1 状态字示例说明句（40 00 = 电池欠压+流量传感器故障）与 Table 3.1 矛盾：0x40 仅 D6 反向安装，欠压+流量传感器故障应为 0x22；按表格实现，示例帧 40 00 解码为反向安装。",
     "Table 3.2（V101 新增）D0/D1/D2 的 0 值描述为 unnormal/异常，正常帧 ST1=0x00 时将显示 异常开/异常关/外接电源异常；语义按表格原文直译保留，待厂家澄清。",
-    "PDF §3.1.7.3 强制撤销指令帧示例 CS 写 4C，按协议自身累加规则（同帧其余四条指令与上行帧均吻合）应为 4B；encodeDownlink 按规则计算输出 4B。"
+    "PDF §3.1.7.3 强制撤销指令帧示例 CS 写 4C，按协议自身累加规则（同帧其余四条指令与上行帧均吻合）应为 4B；encodeDownlink 按规则计算输出 4B。",
+    "协议 PDF 只定义 30 字节数据域（DI=92 1F）；真机为 31 字节帧（DI=93 1F，2026-10-21 表号 20261194 共 7 帧）：温度与实时时间之间多 1 字节（实证 0x6C/0x6E 缓变），文档无此字段——原样输出 extraByte，语义待厂家澄清。",
+    "真机出现 PDF 未定义的控制码 C=0x24 上行帧（数据域 16 C0 01 00 00 80 0A 00 00 00，3 次完全相同），疑似心跳/参数帧（含 0x0A=10 与 AT 配置的 10 分钟间隔数值吻合，仅为观察）；解码器原样透传 rawData 并附 warning。",
+    "真机 7 帧状态字恒为 40 00（Table 3.1 D6=1 管道安装方向反向），零流量新表是否真反装无法判定；按表格直译输出，建议结合现场核实 D6 语义。"
   ],
   "notes": "型号 214C/213E 来自新协议 PDF 标题；“中配”目录名沿用，厂商待补。下行阀控平台侧暂不执行（立项时留口子），encodeDownlink 随 codec 携带。"
 }
