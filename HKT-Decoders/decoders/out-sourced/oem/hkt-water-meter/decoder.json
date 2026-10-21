@@ -2,17 +2,19 @@
   "model": "HKT-WM",
   "modelKey": "hkt-water-meter",
   "aliases": [
-    "中配水表"
+    "中配水表",
+    "214C",
+    "213E"
   ],
-  "name": "LoRaWAN 智能水表（中配目录）",
+  "name": "LoRaWAN 智能水表（214C/213E）",
   "origin": "out-sourced",
   "vendor": "OEM（待补）",
   "category": "表计",
   "authority": {
     "type": "protocol-doc",
-    "file": "docs/HKT_LoRaWAN_水表协议_中文.md",
-    "section": "1. LoRaWAN 水表上报协议详细解析",
-    "note": null
+    "file": "docs/214C and 213E water meter lorawan协议_0X1E_V101_20211231.pdf",
+    "section": "1 上报协议 / 3.1.7 阀控指令",
+    "note": "V101（2021-12-31）；仓库 docs/HKT_LoRaWAN_水表协议_中文.md 为其结构化整理"
   },
   "fPortDefault": null,
   "codecs": [
@@ -46,13 +48,48 @@
       "file": "hkt-water-meter_chirpstack_cn_v1.1.0.js",
       "decoderVersion": "1.1.0",
       "firmwareVersion": "HKT_LoRaWAN_水表协议_中文.md（2026-09-18 对照核验）",
-      "current": true,
+      "current": false,
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
       "changelog": "输出键名 Address→address，与 en 变体及平台既有契约（camelCase）对齐；其余逻辑不变"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "cn",
+      "file": "hkt-water-meter_chirpstack_cn_v1.2.0.js",
+      "decoderVersion": "1.2.0",
+      "firmwareVersion": "214C/213E 协议 0X1E_V101_20211231（2026-10-21 对照核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "协议 PDF V101（2021-12-31）Table 3.1/3.2",
+        "黄金样例 samples/samples.json",
+        "真机历史帧 HKT-Firmwares/out-sourced/水表/中配/test-result.txt（2 帧 C=81）"
+      ],
+      "verifiedAt": null,
+      "changelog": "按 214C/213E 新协议刷新：状态字第二字节按 Table 3.2 完整解码（新增 8 字段，输出契约变更）；新增阀控应答帧 C=84 解析（DI=A0 17，系统状态复用状态字两表）并容忍 FE FE FE 前导（≤3 字节）；附 encodeDownlink 阀控下行编码（55/99/FF/66/77 五指令，平台侧暂不执行、供 ChirpStack 侧使用）。"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": "en",
+      "file": "hkt-water-meter_chirpstack_en_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "214C/213E 协议 0X1E_V101_20211231（2026-10-21 对照核验）",
+      "current": false,
+      "status": "unverified",
+      "basis": [
+        "协议 PDF V101（2021-12-31）Table 3.1/3.2",
+        "黄金样例 samples/samples.json"
+      ],
+      "verifiedAt": null,
+      "changelog": "同 cn v1.2.0 的协议刷新（Table 3.2 八字段 + C=84 应答帧 + FE FE FE 前导 + encodeDownlink），英文文案。"
     }
   ],
-  "deviations": [],
-  "notes": "协议文档为仓库内 MD（含示例帧与字段表）；“中配”目录名含义待确认，厂商待补。"
+  "deviations": [
+    "PDF §1 状态字示例说明句（40 00 = 电池欠压+流量传感器故障）与 Table 3.1 矛盾：0x40 仅 D6 反向安装，欠压+流量传感器故障应为 0x22；按表格实现，示例帧 40 00 解码为反向安装。",
+    "Table 3.2（V101 新增）D0/D1/D2 的 0 值描述为 unnormal/异常，正常帧 ST1=0x00 时将显示 异常开/异常关/外接电源异常；语义按表格原文直译保留，待厂家澄清。",
+    "PDF §3.1.7.3 强制撤销指令帧示例 CS 写 4C，按协议自身累加规则（同帧其余四条指令与上行帧均吻合）应为 4B；encodeDownlink 按规则计算输出 4B。"
+  ],
+  "notes": "型号 214C/213E 来自新协议 PDF 标题；“中配”目录名沿用，厂商待补。下行阀控平台侧暂不执行（立项时留口子），encodeDownlink 随 codec 携带。"
 }
