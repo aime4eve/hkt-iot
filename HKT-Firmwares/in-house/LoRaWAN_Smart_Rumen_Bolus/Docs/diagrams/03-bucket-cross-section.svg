@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="560" viewBox="0 0 720 560" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+  <rect width="720" height="560" fill="#ffffff"/>
+  <text x="360" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#111827">浸泡测试桶剖面示意</text>
+  <text x="360" y="48" text-anchor="middle" font-size="11" fill="#6b7280">200 L 塑料桶 · Ø≈0.6 m · 高≈0.9 m（示意，非等比）</text>
+
+  <defs>
+    <marker id="dim3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <!-- 吊杆 -->
+  <rect x="170" y="128" width="380" height="8" rx="2" fill="#d1d5db" stroke="#6b7280" stroke-width="1"/>
+  <text x="360" y="120" text-anchor="middle" font-size="11" fill="#374151">非金属吊杆（横跨桶口）</text>
+
+  <!-- 桶体 -->
+  <rect x="200" y="150" width="320" height="350" fill="#fffbeb" stroke="#92400e" stroke-width="3"/>
+
+  <!-- 液体 -->
+  <rect x="212" y="190" width="296" height="298" fill="#a5f3fc" opacity="0.6"/>
+  <path d="M 212 190 Q 244 184 276 190 T 340 190 T 404 190 T 468 190 T 508 190" fill="none" stroke="#0891b2" stroke-width="1.5"/>
+  <text x="360" y="230" text-anchor="middle" font-size="11" fill="#0e7490" paint-order="stroke" stroke="#ffffff" stroke-width="3">介质：屠宰场瘤胃液（首选）/ 0.9% 盐水 · 39 °C 恒温</text>
+
+  <!-- 悬绳与胶囊 -->
+  <line x1="360" y1="136" x2="360" y2="286" stroke="#6b7280" stroke-width="1.5"/>
+  <text x="368" y="162" font-size="10" fill="#6b7280">尼龙 / PP 绳</text>
+  <rect x="342" y="286" width="36" height="14" rx="7" fill="#1d4ed8"/>
+  <text x="326" y="277" text-anchor="end" font-size="11" font-weight="bold" fill="#1e3a8a">胶囊 DUT</text>
+  <line x1="330" y1="280" x2="342" y2="292" stroke="#1e3a8a" stroke-width="1"/>
+
+  <!-- 桶壁距离标注（核心变量） -->
+  <line x1="380" y1="293" x2="506" y2="293" stroke="#b45309" stroke-width="1.2" marker-start="url(#dim3)" marker-end="url(#dim3)"/>
+  <text x="444" y="312" text-anchor="middle" font-size="11" font-weight="bold" fill="#b45309">d = 10 / 20 / 30 cm（三档）</text>
+  <line x1="216" y1="293" x2="340" y2="293" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="278" y="312" text-anchor="middle" font-size="10" fill="#94a3b8">对侧为富余深度</text>
+
+  <!-- 加热棒 -->
+  <rect x="232" y="255" width="8" height="225" rx="3" fill="#ef4444" opacity="0.9"/>
+  <text x="224" y="352" text-anchor="end" font-size="10.5" fill="#b91c1c">加热棒</text>
+  <text x="224" y="366" text-anchor="end" font-size="9.5" fill="#9ca3af">（漏电保护）</text>
+
+  <!-- 温度计 -->
+  <line x1="492" y1="238" x2="492" y2="298" stroke="#111827" stroke-width="2"/>
+  <circle cx="492" cy="304" r="5" fill="#ef4444"/>
+  <text x="484" y="252" text-anchor="end" font-size="10.5" fill="#111827">温度计</text>
+  <text x="484" y="266" text-anchor="end" font-size="9.5" fill="#6b7280">39 ±1 °C 监控</text>
+
+  <!-- 朝向小图 -->
+  <rect x="552" y="150" width="148" height="118" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="626" y="170" text-anchor="middle" font-size="11" font-weight="bold" fill="#111827">朝向 ×3（每点轮换）</text>
+  <rect x="576" y="182" width="9" height="24" rx="4" fill="#1d4ed8"/>
+  <text x="596" y="198" font-size="10.5" fill="#374151">轴向朝网关</text>
+  <rect x="574" y="216" width="24" height="9" rx="4" fill="#1d4ed8"/>
+  <text x="610" y="224" font-size="10.5" fill="#374151">垂直</text>
+  <rect x="574" y="242" width="24" height="9" rx="4" fill="#1d4ed8" transform="rotate(40 586 246)"/>
+  <text x="610" y="250" font-size="10.5" fill="#374151">水平 90°</text>
+
+  <!-- 地面 -->
+  <line x1="120" y1="500" x2="640" y2="500" stroke="#374151" stroke-width="2"/>
+
+  <text x="360" y="530" text-anchor="middle" font-size="11" fill="#6b7280">严禁金属容器 / 金属件 · 悬挂与支架全非金属 · 换介质后先补测同距离空气对照点</text>
+  <text x="360" y="548" text-anchor="middle" font-size="11" fill="#6b7280">桶置于空气基线相同点位 · 网关与馈线全程不动</text>
+</svg>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="700" viewBox="0 0 960 700" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+  <rect width="960" height="700" fill="#ffffff"/>
+  <text x="480" y="34" text-anchor="middle" font-size="18" font-weight="bold" fill="#111827">瘤胃胶囊 LoRaWAN 通信距离测试 —— 方案总览</text>
+  <text x="480" y="58" text-anchor="middle" font-size="12.5" fill="#6b7280">核心目标：量化瘤胃环境额外衰减与各频段可用通信距离（470 对照 / EU868 / US915·AU915）</text>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- 前置条件 -->
+  <rect x="140" y="84" width="500" height="46" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="1.5"/>
+  <text x="390" y="112" text-anchor="middle" font-size="13" fill="#92400e">前置条件：P1 模组对账 · 样品≥2/频段 · 场地/网关 · 介质准备</text>
+
+  <!-- 测试一 -->
+  <rect x="140" y="160" width="500" height="54" rx="8" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="390" y="183" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">测试一 · 已部署数据挖掘（先行 · 零成本）</text>
+  <text x="390" y="202" text-anchor="middle" font-size="12" fill="#374151">NS 帧级 RSSI/SNR 分布 → 普遍性 / 时段（趴卧）结论</text>
+
+  <!-- 测试二 空气基线 -->
+  <rect x="140" y="236" width="500" height="54" rx="8" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="390" y="259" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">测试二 · 空气基线（各频段各一轮）</text>
+  <text x="390" y="278" text-anchor="middle" font-size="12" fill="#374151">10–500 m 距离梯度 · 每点 ≥10 帧 · 记录 RSSI/SNR/PER/DR/TX power</text>
+
+  <!-- 测试二 介质浸泡（核心） -->
+  <rect x="140" y="312" width="500" height="58" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.5"/>
+  <text x="390" y="336" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e3a8a">测试二 · 介质浸泡 A/B（核心）</text>
+  <text x="390" y="356" text-anchor="middle" font-size="12" fill="#374151">39 °C 瘤胃液（首选）/ 0.9% 盐水 · 桶壁距离 10/20/30 cm × 朝向 ×3</text>
+
+  <!-- 核心输出 -->
+  <rect x="140" y="394" width="500" height="54" rx="8" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+  <text x="390" y="417" text-anchor="middle" font-size="13" font-weight="bold" fill="#065f46">核心输出：介质额外衰减（dB）＋ 各频段液体可用距离（PER ≤10%）</text>
+  <text x="390" y="436" text-anchor="middle" font-size="12" fill="#065f46">→ 更新链路预算，触发下方决策树</text>
+
+  <!-- 决策树：欧洲 -->
+  <rect x="140" y="470" width="242" height="96" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.2"/>
+  <text x="261" y="490" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#111827">欧洲 EU868</text>
+  <text x="261" y="505" text-anchor="middle" font-size="10.5" fill="#6b7280">（含趴卧姿态余量 5–10 dB）</text>
+  <text x="261" y="524" text-anchor="middle" font-size="11" fill="#374151">≥150 m：直连，按覆盖半径布网关</text>
+  <text x="261" y="541" text-anchor="middle" font-size="11" fill="#374151">50–150 m：869 子带＋网关加密＋中继 POC</text>
+  <text x="261" y="558" text-anchor="middle" font-size="11" fill="#374151">＜50 m：项圈中继为主（EU433 兜底）</text>
+
+  <!-- 决策树：美洲 -->
+  <rect x="398" y="470" width="242" height="96" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.2"/>
+  <text x="519" y="490" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#111827">美洲 US915 / AU915</text>
+  <text x="519" y="505" text-anchor="middle" font-size="10.5" fill="#6b7280">（功率余量 +11~13 dB）</text>
+  <text x="519" y="524" text-anchor="middle" font-size="11" fill="#374151">≥100 m：直连 ＋ 网关规划</text>
+  <text x="519" y="541" text-anchor="middle" font-size="11" fill="#374151">＜100 m：网关加密 / 中继评估</text>
+  <text x="519" y="558" text-anchor="middle" font-size="11" fill="#374151">预期不劣于国内 CN470 基线</text>
+
+  <!-- 改善优先级 -->
+  <rect x="140" y="590" width="500" height="40" rx="8" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1"/>
+  <text x="390" y="614" text-anchor="middle" font-size="11.5" fill="#374151">改善优先级：网关端增益 → 参数（关 ADR / 最大合规功率）→ 天线匹配改版 → 项圈中继</text>
+
+  <!-- 主线箭头 -->
+  <line x1="390" y1="130" x2="390" y2="158" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="390" y1="214" x2="390" y2="234" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="390" y1="290" x2="390" y2="310" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="390" y1="370" x2="390" y2="392" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="261" y1="448" x2="261" y2="468" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="519" y1="448" x2="519" y2="468" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="390" y1="566" x2="390" y2="588" stroke="#475569" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- 右侧支撑/并行泳道 -->
+  <text x="805" y="100" text-anchor="middle" font-size="13" font-weight="bold" fill="#374151">支撑 / 并行测试</text>
+
+  <rect x="680" y="160" width="250" height="58" rx="8" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="805" y="183" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4c1d95">测试三 · 天线特性（VNA，可选）</text>
+  <text x="805" y="202" text-anchor="middle" font-size="11" fill="#374151">S11 空气 vs 介质；失谐 ＞20 MHz 改版</text>
+
+  <rect x="680" y="236" width="250" height="58" rx="8" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="805" y="259" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#4c1d95">测试四 · 频段适配功能</text>
+  <text x="805" y="278" text-anchor="middle" font-size="11" fill="#374151">region / OTAA / 子带 / 占空比 / ADR / 功率</text>
+
+  <rect x="680" y="312" width="250" height="58" rx="8" fill="#f9fafb" stroke="#6b7280" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <text x="805" y="335" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#374151">测试五 · 非射频台架（并行辅助）</text>
+  <text x="805" y="354" text-anchor="middle" font-size="11" fill="#6b7280">温度 · 密封 · 电池 · 密度（非距离范畴）</text>
+
+  <rect x="680" y="388" width="250" height="58" rx="8" fill="#f9fafb" stroke="#6b7280" stroke-width="1.2" stroke-dasharray="5 3"/>
+  <text x="805" y="411" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#374151">测试六 · 认证预摸底（并行辅助）</text>
+  <text x="805" y="430" text-anchor="middle" font-size="11" fill="#6b7280">CE(RED) / FCC 关键项，送证前对齐</text>
+
+  <!-- 支撑连线 -->
+  <path d="M 680 265 L 644 265 L 644 341 L 640 341" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text x="662" y="258" text-anchor="middle" font-size="10" fill="#94a3b8">支撑</text>
+
+  <text x="390" y="656" text-anchor="middle" font-size="11" fill="#6b7280">判读红线：活体 ±10 dB 波动——桶实验测“介质额外衰减”物理量，不预测单头牛的实际距离</text>
+</svg>

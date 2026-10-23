@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif">
+  <rect width="1000" height="600" fill="#ffffff"/>
+  <text x="500" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#111827">500 m × 500 m 牧场全覆盖组网方案（868 MHz · 覆盖圈均含 15 dB 设计裕度）</text>
+  <text x="500" y="50" text-anchor="middle" font-size="12" fill="#6b7280">核心权衡：速率换半径（SF9→110 m / SF11→≈220 m / SF12→≈310 m），台数 16 → 4 → 2 · 摆位为场地内米制示意</text>
+
+  <defs>
+    <g id="gw5">
+      <line x1="0" y1="14" x2="0" y2="-10" stroke="#111827" stroke-width="2"/>
+      <line x1="0" y1="-10" x2="0" y2="-18" stroke="#1d4ed8" stroke-width="2.5"/>
+      <ellipse cx="0" cy="-21" rx="2.5" ry="4" fill="#1d4ed8"/>
+    </g>
+    <g id="cow5">
+      <ellipse cx="0" cy="0" rx="10" ry="6" fill="#ffffff" stroke="#374151" stroke-width="1.1"/>
+      <ellipse cx="-3" cy="-1" rx="4" ry="2.6" fill="#374151"/>
+      <circle cx="10" cy="-4" r="3.5" fill="#ffffff" stroke="#374151" stroke-width="1.1"/>
+    </g>
+    <clipPath id="cp1"><rect x="40" y="158" width="270" height="267"/></clipPath>
+    <clipPath id="cp2"><rect x="365" y="158" width="270" height="267"/></clipPath>
+    <clipPath id="cp3"><rect x="690" y="158" width="270" height="267"/></clipPath>
+  </defs>
+
+  <!-- ============ 方案 C：SF9 4×4 ============ -->
+  <text x="175" y="152" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#374151">方案 C · 保持 SF9（DR3）</text>
+  <rect x="50" y="165" width="250" height="250" fill="#f0fdf4" stroke="#374151" stroke-width="2"/>
+  <g clip-path="url(#cp1)">
+    <circle cx="81.25" cy="196.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="143.75" cy="196.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="206.25" cy="196.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="268.75" cy="196.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="81.25" cy="258.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="143.75" cy="258.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="206.25" cy="258.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="268.75" cy="258.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="81.25" cy="321.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="143.75" cy="321.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="206.25" cy="321.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="268.75" cy="321.25" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="81.25" cy="383.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="143.75" cy="383.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="206.25" cy="383.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <circle cx="268.75" cy="383.75" r="55" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.4" stroke-dasharray="5 4"/>
+  </g>
+  <use href="#gw5" x="81.25" y="196.25"/><use href="#gw5" x="143.75" y="196.25"/>
+  <use href="#gw5" x="206.25" y="196.25"/><use href="#gw5" x="268.75" y="196.25"/>
+  <use href="#gw5" x="81.25" y="258.75"/><use href="#gw5" x="143.75" y="258.75"/>
+  <use href="#gw5" x="206.25" y="258.75"/><use href="#gw5" x="268.75" y="258.75"/>
+  <use href="#gw5" x="81.25" y="321.25"/><use href="#gw5" x="143.75" y="321.25"/>
+  <use href="#gw5" x="206.25" y="321.25"/><use href="#gw5" x="268.75" y="321.25"/>
+  <use href="#gw5" x="81.25" y="383.75"/><use href="#gw5" x="143.75" y="383.75"/>
+  <use href="#gw5" x="206.25" y="383.75"/><use href="#gw5" x="268.75" y="383.75"/>
+  <text x="175" y="182" text-anchor="middle" font-size="10" fill="#1e3a8a">半径 110 m</text>
+  <use href="#cow5" x="130" y="240"/><use href="#cow5" x="230" y="350"/>
+  <text x="175" y="440" text-anchor="middle" font-size="11" fill="#374151">16 台 · 网格间距 125 m · 电池最优，网关成本最高</text>
+
+  <!-- ============ 方案 B：SF11 2×2（推荐） ============ -->
+  <text x="500" y="152" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#047857">方案 B · 降速 SF11（DR1）✓ 推荐</text>
+  <rect x="375" y="165" width="250" height="250" fill="#f0fdf4" stroke="#374151" stroke-width="2"/>
+  <g clip-path="url(#cp2)">
+    <circle cx="437.5" cy="227.5" r="110" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <circle cx="562.5" cy="227.5" r="110" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <circle cx="437.5" cy="352.5" r="110" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <circle cx="562.5" cy="352.5" r="110" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+  </g>
+  <use href="#gw5" x="437.5" y="227.5"/><use href="#gw5" x="562.5" y="227.5"/>
+  <use href="#gw5" x="437.5" y="352.5"/><use href="#gw5" x="562.5" y="352.5"/>
+  <text x="437.5" y="205" text-anchor="middle" font-size="10" fill="#1e3a8a">半径 ≈220 m</text>
+  <circle cx="375" cy="415" r="3.5" fill="#dc2626"/>
+  <text x="392" y="419" font-size="10" fill="#b91c1c">最远点 ≈177 m ✓</text>
+  <use href="#cow5" x="470" y="290"/><use href="#cow5" x="540" y="330"/>
+  <text x="500" y="440" text-anchor="middle" font-size="11" fill="#374151">4 台（2×2 四象限中心，间距 250 m）· 空口 ×4，电池影响中等</text>
+
+  <!-- ============ 方案 A：SF12 两台 ============ -->
+  <text x="825" y="152" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#374151">方案 A · 降速 SF12（DR0）</text>
+  <rect x="700" y="165" width="250" height="250" fill="#f0fdf4" stroke="#374151" stroke-width="2"/>
+  <g clip-path="url(#cp3)">
+    <circle cx="825" cy="227.5" r="155" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+    <circle cx="825" cy="352.5" r="155" fill="#3b82f6" fill-opacity="0.10" stroke="#1d4ed8" stroke-width="1.6" stroke-dasharray="6 4"/>
+  </g>
+  <use href="#gw5" x="825" y="227.5"/><use href="#gw5" x="825" y="352.5"/>
+  <text x="825" y="205" text-anchor="middle" font-size="10" fill="#1e3a8a">半径 ≈310 m</text>
+  <circle cx="700" cy="415" r="3.5" fill="#dc2626"/>
+  <text x="712" y="419" font-size="10" fill="#b91c1c">最远点 ≈280 m ✓</text>
+  <use href="#cow5" x="780" y="290"/><use href="#cow5" x="870" y="320"/>
+  <text x="825" y="440" text-anchor="middle" font-size="11" fill="#374151">2 台（中线对称，相距 250 m）· 空口 ×10，电池寿命需复核</text>
+
+  <!-- ============ 合规清单 ============ -->
+  <rect x="40" y="455" width="920" height="112" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="60" y="477" font-size="12" font-weight="bold" fill="#374151">LoRaWAN 规范符合性（三种组网通用）</text>
+  <text x="60" y="499" font-size="10.5" fill="#374151">• 多网关同频同收是 LoRaWAN 标准星型架构：NS 按 DevEUI+FCnt+MIC 去重，一帧只计一次，覆盖交叠零冲突</text>
+  <text x="60" y="519" font-size="10.5" fill="#374151">• Class A 下行仅在 RX1/RX2 两窗发送，且 NS 每帧只选单台最优网关下发——不存在多网关同时下行冲突</text>
+  <text x="60" y="539" font-size="10.5" fill="#374151">• 网关数量规范无上限，增加网关不要求改动设备侧任何参数；10 台设备对任一网关均为轻负载</text>
+  <text x="520" y="499" font-size="10.5" fill="#374151">• 上行占空比 0.02%（SF9）~0.24%（SF12），远低于 EU868 1% 限额</text>
+  <text x="520" y="519" font-size="10.5" fill="#374151">• SF7~SF12 均为 EU868 规定速率（DR5~DR0）：固定速率 + 关闭 ADR 是规范允许的配置</text>
+  <text x="520" y="539" font-size="10.5" fill="#374151">• 全部网关统一 EU868 信道计划（NS 同步配置），RX2 = 869.525 MHz</text>
+  <text x="500" y="585" text-anchor="middle" font-size="10.5" fill="#6b7280">半径按链路预算计算（有效 EIRP −46 dBm、GW 5 dBi、6 m 高），现场以 AN-106 按健康线标定为准 · 覆盖圈超出面板部分已截断显示</text>
+</svg>
