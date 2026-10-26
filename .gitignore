@@ -5,3 +5,8 @@ build/
 DerivedData/
 *.ipa
 .mimosa/
+
+# 工具缓存与会话产物
+HKT-DeviceHub/.playwright-cli/
+HKT-DeviceHub/.zcode/
+HKT-DeviceHub/output/
