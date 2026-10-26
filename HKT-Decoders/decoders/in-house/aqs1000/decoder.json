@@ -2,7 +2,6 @@
   "model": "AQS1000",
   "modelKey": "aqs1000",
   "aliases": [
-    "IAQ300",
     "IAQ600",
     "IAQ900"
   ],
@@ -43,5 +42,5 @@
     }
   ],
   "deviations": [],
-  "notes": "官方索引：IAQ300/IAQ600/IAQ900 三型号共用 AQS1000 解码协议。"
+  "notes": "官方索引：IAQ600/IAQ900 与 AQS1000 共用解码协议。2026-10-26 移除别名 IAQ300：其固件独立分仓（LoRaWAN_IAQ300）且上行有差异——IAQ300 setDataPackage 携带 0x5C 传感器任务配置(8B)/0x5D PIR 任务配置(3B) 回读，本条目 TLV 表无此二类型，IAQ300 配置同步帧（其手册§6.4 实帧）在本解码器会报 unknown type；IAQ300 已拆分为独立条目 in-house/iaq300/（v1.0.0，按其固件核验）。IAQ600/IAQ900 与本条目固件的同源性尚未核验，待对应固件入库后复核。"
 }

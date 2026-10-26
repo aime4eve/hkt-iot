@@ -1,0 +1,53 @@
+{
+  "model": "IAQ300",
+  "modelKey": "iaq300",
+  "aliases": [
+    "HKT-IAQ300",
+    "IAQ-300",
+    "三合一室内环境监测传感器"
+  ],
+  "name": "三合一室内环境监测传感器（温湿度 / NDIR CO2 / PIR，墨水屏）",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "空气质量",
+  "authority": {
+    "type": "firmware",
+    "ref": "89d58fd",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_IAQ300"
+  },
+  "fPortDefault": 10,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "iaq300_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_IAQ300（2026-10-26 对照固件核验：communicate.c setDataPackage/fromLoRaWANDataHandle + communicate.h enum DataType + gpio.c 供电极性 + SHT40X.c 温度倍率）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "新建条目（非迁移件）：按 LoRaWAN_IAQ300 固件源码全量编写并核验。TLV 定长表 + 越界/未知类型显式报错；温度按 24 位补码（手册§6.3 负温示例 80 62 8E 与固件不符，固件实际发 FF 9D 72）；投影 0x5C/0x5D 配置回读（结构化扁平字段）与 0x58/0x5B/0xFF 命令应答（供应商 Bench 的命令确认回报验证需要读取）。"
+    },
+    {
+      "platform": "ttn",
+      "lang": null,
+      "file": "iaq300_ttn_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": "LoRaWAN_IAQ300（2026-10-26 对照固件核验，同 chirpstack 版）",
+      "current": true,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "与 iaq300_chirpstack_v1.0.0.js 同源同投影（差异仅平台头注释）。"
+    }
+  ],
+  "deviations": [
+    "手册 V1.2 §6.3 负温示例帧 09 80 62 8E 为'符号位+幅值'编码；固件组帧为 int 补码截断，-25.23℃ 实际发送 09 FF 9D 72。解码器以固件为准。",
+    "手册 V1.2 §6.3 0x81 供电方式 0/1 语义写反：固件 gpio.c readDCPowerInputStatus 生效分支为 DC 插入→powerIn=1，即 1=外部供电、0=电池。",
+    "手册未列 0x05 传感器上报周期(2B) 与 0x86 设备同步周期(2B) 两个上行类型；二者下行配置分支在固件中已注释禁用（communicate.c），运行周期配置唯一通道为 0x5C/0x5D 下行。",
+    "0x85 恢复出厂：固件仅实现 value=1（FLASH_Reset_Param+重启）；枚举注释中的 value=2 分支未实现，勿在下行中承诺。",
+    "0x80 时间同步：下行体为 6 字节（年+2000/月/日/时/分/秒）；手册§6.3 示例仅 5 字节，缺秒。"
+  ],
+  "notes": "2026-10-26 从 aqs1000 条目 aliases 拆分独立：IAQ300 与 IAQ1000 虽同族协议（68 6B 74 TLV），但固件分仓且上行有差异——IAQ300 setDataPackage 携带 0x5C 传感器任务配置(8B)/0x5D PIR 任务配置(3B) 回读，aqs1000 条目解码器 TLV 表无此二类型，IAQ300 配置同步帧（手册§6.4 实帧）会报 unknown type。与 aqs1000 的投影差异：本条目不静默消费 05/29~2D/58/5B/80/86/FF，全部投影为业务/诊断字段（供应商 Bench 命令确认回报测试与远程排障需要）。用户手册副本见 docs/（固件仓 LoRaWAN_IAQ300/ 同名 docx 的权威副本）。"
+}
