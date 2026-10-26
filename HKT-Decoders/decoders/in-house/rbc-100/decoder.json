@@ -39,6 +39,20 @@
       "basis": [],
       "verifiedAt": null,
       "changelog": "新增 0xFF 下行应答 ACK 帧型（原判 unknown_type）；全部定长 TLV 截断即报错，含 0x4D 温度组声明数>实际数据（原静默输出部分数据）"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "rbc-100_chirpstack_v1.1.0.js",
+      "decoderVersion": "1.1.0",
+      "firmwareVersion": "LoRaWAN_Smart_Rumen_Bolus（2026-09-18 对照固件核验）",
+      "current": true,
+      "status": "unverified",
+      "basis": [
+        "黄金样例 samples/samples.json 全量通过（2026-10-06 本地回归）"
+      ],
+      "verifiedAt": null,
+      "changelog": "ChirpStack v4 变体首版：解码逻辑与 ttn v1.1.0 完全一致（decodeUplink 统一契约），补齐欧洲客户自建 ChirpStack 场景缺口"
     }
   ],
   "deviations": [],
