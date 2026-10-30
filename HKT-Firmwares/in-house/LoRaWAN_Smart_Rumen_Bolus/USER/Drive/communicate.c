@@ -693,7 +693,7 @@ void Device_PeriodicReport(void)
 
     dataLen = setDataPackage(DATATYPE_DEVICE_TEMPERATURE_GROUP_INFO, dataHex);
     dataHex += dataLen;
-    sendNum += dataLen;
+    sendNum += dataLen; 
 
     dataLen = setDataPackage(DATATYPE_DEVICE_BATTERY_VOLTAGE, dataHex);
     dataHex += dataLen;

@@ -305,6 +305,7 @@ void LoRaWAN_Init(void)
 #endif
 
     // AT_LoRaWAN_setDebug(0);
+    AT_LoRaWAN_setDataRate(3);
 #if FUNC_LoRaWAN_CN470_0
     AT_LoRaWAN_setBAND(6);
     AT_LoRaWAN_setFREQ(1, 8, 470300000);
@@ -348,6 +349,7 @@ void LoRaWAN_Init(void)
 
 #if FUNC_LoRaWAN_EU868_TO_US915
     AT_LoRaWAN_setBAND(90);
+    AT_LoRaWAN_setADR(0);
 #endif
 
 #if FUNC_LoRaWAN_EU868_TO_AU915
