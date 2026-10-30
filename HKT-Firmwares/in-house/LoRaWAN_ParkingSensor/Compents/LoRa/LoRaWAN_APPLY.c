@@ -395,8 +395,8 @@ void LoRaWAN_Init(void)
     snprintf(sfre, sizeof(sfre), "US915");
 #elif FUNC_LoRaWAN_AU915
     snprintf(sfre, sizeof(sfre), "AU915");
-#elif FUNC_LoRaWAN_AU915A
-    snprintf(sfre, sizeof(sfre), "AU915A");
+#elif FUNC_LoRaWAN_AU915_0
+    snprintf(sfre, sizeof(sfre), "AU915_0");
 #elif FUNC_LoRaWAN_AS923_AS1
     snprintf(sfre, sizeof(sfre), "AS923_AS1");
 #elif FUNC_LoRaWAN_AS923_AS2
