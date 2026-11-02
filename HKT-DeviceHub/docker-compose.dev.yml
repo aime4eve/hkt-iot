@@ -90,3 +90,18 @@ services:
     ports:
       - "18080:8080"
     restart: unless-stopped
+
+  # host metrics for sp-monitoring cross-subnet scrape (172.22.1.123 prometheus
+  # job devicehub-host -> 172.17.10.206:9100); pid/host + rootfs mount are
+  # required for real host-level disk/memory figures, not container-scoped ones
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: devicehub-node-exporter
+    pid: host
+    volumes:
+      - /:/host:ro
+    command:
+      - --path.rootfs=/host
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
