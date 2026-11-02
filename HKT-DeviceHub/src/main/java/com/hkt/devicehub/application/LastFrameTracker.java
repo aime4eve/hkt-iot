@@ -15,10 +15,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Batched last_frame_at maintenance for the WS channel: frames arrive
- * per-message, but last_frame_at only feeds health computation, so updates
- * are accumulated in memory (max ts per device wins) and flushed on a fixed
- * delay instead of one DB write per frame.
+ * Batched last_frame_at/last_event_at maintenance for the WS channel: frames
+ * arrive per-message, but the timestamps only feed health computation and
+ * console display, so updates are accumulated in memory (max ts per device
+ * wins) and flushed on a fixed delay instead of one DB write per frame. The
+ * flush always reads a fresh entity (findById) and persists only these two
+ * timestamp fields on it — the REST backfill cursor is never touched here.
  */
 @Component
 @RequiredArgsConstructor
@@ -47,8 +49,19 @@ public class LastFrameTracker {
                 if (device == null) continue;
                 Instant frameAt = Instant.ofEpochMilli(entry.getValue());
                 if (device.getLastFrameAt() == null || device.getLastFrameAt().isBefore(frameAt)) {
+                    Instant previousFrameAt = device.getLastFrameAt();
+                    Instant previousEventAt = device.getLastEventAt();
                     device.setLastFrameAt(frameAt);
-                    deviceRepository.save(device);
+                    device.setLastEventAt(frameAt);
+                    try {
+                        deviceRepository.save(device);
+                    } catch (Exception e) {
+                        // Undo the in-memory mutation, or the re-queued entry
+                        // would no-op on retry (timestamps already "newer").
+                        device.setLastFrameAt(previousFrameAt);
+                        device.setLastEventAt(previousEventAt);
+                        throw e;
+                    }
                 }
             } catch (Exception e) {
                 // Re-queue so one bad row never drops the observation.
