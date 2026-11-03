@@ -13,8 +13,8 @@
 | 旧路径 | 新路径/文件 | 版本判定 | 备注 |
 | --- | --- | --- | --- |
 | LoRaWAN_People_Counter/…_Recv/Compents/Decode/people_couter.js | in-house/irc01/irc01_chirpstack_v1.0.1.js | 沿用修复后状态 1.0.1 | 含 2026-09-04 八项修复；固件权威 communicate.c（USER/Drive/）；**verified** |
-| LoRaWAN_Air_Switch/Compents/Decode/door_sensor.js | in-house/air-switch/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 头注释 DMS01 vs 官方索引 SCB100，待定名。2026-11-03 定谳：系门磁脚本误挂，真主条目见下行 wireless-door-sensor |
-| LoRaWAN_Air_Switch_CL/Compents/Decode/door_sensor.js | in-house/air-switch-cl/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 与 air-switch 逐字节相同；CL100 硬件运行空开软件。同上 2026-11-03 定谳 |
+| LoRaWAN_Air_Switch/Compents/Decode/door_sensor.js | in-house/air-switch/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 头注释 DMS01 vs 官方索引 SCB100，待定名。2026-11-03 定谳：系门磁脚本误挂（空开固件无门磁概念），该误挂件已从 air-switch 删除归户下行 wireless-door-sensor |
+| LoRaWAN_Air_Switch_CL/Compents/Decode/door_sensor.js | in-house/air-switch-cl/dms01_chirpstack_v1.0.0.js | 基线 1.0.0 | 与 air-switch 逐字节相同；CL100 硬件运行空开软件。同上定谳，误挂件已从 air-switch-cl 删除归户 |
 | LoRaWAN_Wireless_Door_Sensor/Compents/Decode/door_sensor.js | in-house/wireless-door-sensor/wireless-door-sensor_chirpstack_v1.0.0.js | 基线 1.0.0 | 2026-11-03 补录归户（固件工程 2026-10-30 eaa1d9d2 才入库，晚于本次迁移）；@product HKT-DMS01 即真主；另按固件重写 v2.0.0（修 0x24 两字节缺陷，255 基还原）**verified** |
 | LoRaWAN_Animals_Track/Compents/Decode/cattle_sheep_track.js | in-house/gat-100/（归一） | 基线 1.0.0 | 2026-09-18 裁决 CT02/GAT-100/AT100 归一为 gat-100 条目，ct02 条目移除 |
 | LoRaWAN_IAQ1000/Compents/Decode/Air_Sensor.js | in-house/aqs1000/aqs1000_chirpstack_v1.0.0.js | 基线 1.0.0 | 官方索引：IAQ300/600/900 共用 AQS1000 协议 |
