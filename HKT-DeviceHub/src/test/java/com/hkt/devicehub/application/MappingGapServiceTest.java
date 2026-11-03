@@ -5,6 +5,7 @@ import com.hkt.devicehub.infrastructure.ns.NsClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +29,16 @@ import static org.mockito.Mockito.when;
 class MappingGapServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-09T00:00:00Z");
-    private static final Instant RECENT = Instant.parse("2026-10-08T20:00:00Z");
+
+    /**
+     * Relative to the real clock on purpose: the report()-path tests classify
+     * against now − gapActiveWindowMs (7d), so a pinned instant goes stale as
+     * wall time passes and flips its gap to dormant — the pinned 2026-10-08
+     * value started failing on 2026-10-15. now − 4h stays active forever; the
+     * derive()-path tests inject NOW and only need lastSeen ≥ NOW − 7d, which
+     * now − 4h always satisfies. STALE stays pinned: it only ever gets staler.
+     */
+    private static final Instant RECENT = Instant.now().minus(Duration.ofHours(4));
     private static final Instant STALE = Instant.parse("2026-09-01T00:00:00Z");
 
     private NsClient nsClient;
