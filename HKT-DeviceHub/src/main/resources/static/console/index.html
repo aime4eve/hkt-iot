@@ -895,8 +895,8 @@ const TOPO_TIPS = {
   'oc-tb': { t:'链路 · OC → ThingsBoard', tips:['认证失效 401 → 网关重发 token 后观察恢复'] },
   'tb-hub': { t:'链路 · TB → DeviceHub（tb-ws / tb-rest）', tips:['tb-ws 断开：查 DeviceHub 日志 ws reconnect 记录', 'rest 兜底接管时订阅数应保持不变'] },
   'hub-mq': { t:'链路 · DeviceHub → RocketMQ', tips:['写入延迟升高 → 查 MQ broker 负载与 DeviceHub 批量配置'] },
-  'mq-ls': { t:'链路 · MQ → smart-livestock（消费组）', tips:['积压排查 → 看单体 consumer 日志', '滞后持续增长 → 消费端卡死或业务库慢', '重启 consumer 前先记录当前游标'] },
-  'mq-pk': { t:'链路 · MQ → smart-parking（消费组）', tips:['积压排查 → 看单体 consumer 日志', '滞后持续增长 → 消费端卡死或业务库慢'] },
+  'mq-ls': { t:'接入侧补拉游标 · smart-livestock（LIVESTOCK 项目）', tips:['滞后 = max(最新帧 − 补拉游标, 0)，非消费组积压', '游标冻结不前进 → 查 app 日志 [TbRest] cursor advanced 与 DB 游标是否一致（防第二写者脏回写）', '低频设备首帧后首轮补拉前有瞬时大滞后，≤1 个 5 分钟补拉周期自清'] },
+  'mq-pk': { t:'接入侧补拉游标 · smart-parking（PARKING 项目）', tips:['滞后 = max(最新帧 − 补拉游标, 0)，非消费组积压', '游标冻结不前进 → 查 app 日志 [TbRest] cursor advanced 与 DB 游标是否一致（防第二写者脏回写）', '低频设备首帧后首轮补拉前有瞬时大滞后，≤1 个 5 分钟补拉周期自清'] },
   'ls-db': { t:'链路 · 业务后端 → 业务库（livestock）', tips:['入库停滞 → 查写库日志、连接池、磁盘空间'] },
   'pk-db': { t:'链路 · 业务后端 → 业务库（parking）', tips:['入库停滞 → 查写库日志、连接池、磁盘空间'] }
 };
@@ -957,8 +957,8 @@ function topoSegState(id) {
       const p = proj(id === 'mq-ls' ? 'LIVESTOCK' : 'PARKING');
       const lag = p.maxCatchupLagMs || 0;
       return lag > 0
-        ? { state:'is-warn', label:'滞后 ' + fmtLag(lag), evidence:[['maxCatchupLagMs', lag], ['无数据设备', p.noDataDevices]] }
-        : { state:'', label:'滞后 0', evidence:[['maxCatchupLagMs', 0], ['无数据设备', p.noDataDevices]] };
+        ? { state:'is-warn', label:'补拉滞后 ' + fmtLag(lag), evidence:[['补拉游标滞后(ms)', lag], ['无数据设备', p.noDataDevices]] }
+        : { state:'', label:'补拉滞后 0', evidence:[['补拉游标滞后(ms)', 0], ['无数据设备', p.noDataDevices]] };
     }
     case 'ls-db': case 'pk-db': {
       const p = proj(id === 'ls-db' ? 'LIVESTOCK' : 'PARKING');
