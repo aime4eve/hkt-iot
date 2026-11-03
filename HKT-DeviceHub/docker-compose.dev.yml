@@ -102,6 +102,9 @@ services:
       - /:/host:ro
     command:
       - --path.rootfs=/host
+      # backup success metrics (scripts/backup-with-metrics.sh, cron 19:30 UTC)
+      # -> DeviceHubBackupFailed / DeviceHubBackupStale alerts on sp-monitoring
+      - --collector.textfile.directory=/host/home/hkt/devicehub/backups/metrics
     ports:
       - "9100:9100"
     restart: unless-stopped
