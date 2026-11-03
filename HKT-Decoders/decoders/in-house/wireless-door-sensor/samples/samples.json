@@ -86,7 +86,7 @@
   },
   {
     "name": "flags bit0=1（服务器要求应答位如实解码） · v2",
-    "source": "firmware",
+    "source": "regression",
     "payload": "686b74012d0800",
     "fPort": 10,
     "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
@@ -96,7 +96,7 @@
   },
   {
     "name": "仅头帧（无 TLV） · v2",
-    "source": "firmware",
+    "source": "regression",
     "payload": "686b740021",
     "fPort": 10,
     "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
@@ -106,7 +106,7 @@
   },
   {
     "name": "守卫：坏同步头 · v1 存档",
-    "source": "firmware",
+    "source": "regression",
     "payload": "0000000000",
     "fPort": null,
     "forFile": "wireless-door-sensor_chirpstack_v1.0.0.js",
@@ -115,7 +115,7 @@
   },
   {
     "name": "守卫：坏同步头 · v2",
-    "source": "firmware",
+    "source": "regression",
     "payload": "0000000000",
     "fPort": null,
     "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
@@ -124,7 +124,7 @@
   },
   {
     "name": "守卫：0x26 值截断（需 12 字节仅 2 字节） · v2",
-    "source": "firmware",
+    "source": "regression",
     "payload": "686b740001260033",
     "fPort": null,
     "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
@@ -133,7 +133,7 @@
   },
   {
     "name": "守卫：未知类型 0x99 · v2",
-    "source": "firmware",
+    "source": "regression",
     "payload": "686b7400019900",
     "fPort": null,
     "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",

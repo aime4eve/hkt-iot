@@ -23,7 +23,7 @@
       "status": "unverified",
       "basis": [],
       "verifiedAt": null,
-      "changelog": "迁移存档件：固件自带 Compents/Decode/door_sensor.js（2022 历史脚本，头注释 @product HKT-DMS01）+ 2026-09-17 规范化迁移平台适配层，原样保留不做改动。已知缺陷见 deviations：0x24 只读 1 字节（固件写 2 字节）→ 周期帧含 0x24 时后续全部错位。"
+      "changelog": "迁移存档件：固件自带 Compents/Decode/door_sensor.js（2022 历史脚本，头注释 @product HKT-DMS01）+ 2026-09-17 规范化迁移平台适配层，原样保留不做改动。已知缺陷见 deviations：0x24 只读 1 字节（固件写 2 字节），多出的低字节被当类型字节吞读、撞上已知类型码时连锁错位。"
     },
     {
       "platform": "chirpstack",
@@ -42,8 +42,8 @@
     }
   ],
   "deviations": [
-    "v1.0.0 缺陷（2026-11-03 对照固件 communicate.c:95-98 发现）：0x24 计数间隔固件写 2 字节（值=255×高+低），脚本只读 1 字节 → 周期上报帧含 0x24 时后续 TLV 全部错位；v2.0.0 已修复。",
-    "v1.0.0 实现瑕疵：循环计数 dataLen 把 TLV 类型字节计入数据长度，帧尾会多读一次越界 undefined（无害但不严格）；v2.0.0 重写为长度表前置检查。"
+    "v1.0.0 缺陷（2026-11-03 对照固件 communicate.c:95-98 发现）：0x24 计数间隔固件写 2 字节（值=255×高+低），脚本只读 1 字节 → 本字段错值，且多出的低字节被当作类型字节吞读——与已知类型码撞车时连锁错位后续 TLV（2026-11-03 评审实证：错位与否取决于低字节取值，非无条件）；v2.0.0 已修复。",
+    "v1.0.0 守卫缺失（2026-11-03 评审确认）：截断 TLV 与未知类型均静默错值/跳过不报错（0x26 值不足 12 字节照读、0xFF ACK 帧解出空对象）；v2.0.0 长度表前置检查已覆盖。"
   ],
   "notes": "2026-11-03 立户：脚本自 2026-09-17 迁移起误挂在 air-switch/air-switch-cl 名下（其归属的固件工程 2026-10-30 才入 monorepo，eaa1d9d2），本条目为 DMS01 真主（脚本头注释 @product HKT-DMS01、手册《HKT_LoRaWAN无线门磁用户手册》）。modelKey 另起新键 wireless-door-sensor，不改动 air-switch/_CL 持有的 dms01 键与 DMS01 别名（与 air-switch 别名存在归一化型号撞名，已拍板接受，随服务器漂移回捞任务一并理顺）。fPort=10 来自固件 config.h LoRaWAN_DEFAULT_PORT（LoRaWAN_Init 唯一一次 AT+PORT 设置）。真机黄金帧未采集，verified 依据为固件源码+推导样例；固件协议变更后按 README 条款重新核验。"
 }
