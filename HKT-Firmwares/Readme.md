@@ -2,7 +2,7 @@
 
 华宽通 LoRaWAN 设备固件与配套资料。目录按来源分为两部分：
 
-- [in-house](in-house/): 自研固件工程，共 13 个产品目录，其中 12 个有可构建应用工程。
+- [in-house](in-house/): 自研固件工程，共 15 个产品目录，其中 14 个有可构建应用工程。
 - [out-sourced](out-sourced/): 外协产品资料，当前为 PIR100 人存感应器的用户手册与上行解码脚本。
 - [docs/固件缺陷台账](docs/固件缺陷台账.md): in-house 全部固件工程发现的缺陷统一记录（ID/状态/根因行号/修复版本），是缺陷状态的唯一权威来源。
 
@@ -24,6 +24,7 @@
 | 红外人流量计数器 | PC100（接收端）；发射端文件未标明独立型号 | [接收端](in-house/LoRaWAN_People_Counter/LoRaWAN_People_Counter_Recv/)、[发射端](in-house/LoRaWAN_People_Counter/LoRaWAN_People_Counter_Tx/) | 接收端 STM32L051C8Tx；发射端 STM8L101F2P | 接收端 Keil 应用工程齐全；发射端 IAR EWARM 应用工程与调试产物齐全 |
 | 智能门锁 | SDL100、SDL200 | [LoRaWAN_SmartDoorLock](in-house/LoRaWAN_SmartDoorLock/) | FM33A06XEV | 应用与 Bootloader 工程齐全 |
 | 烟感探测器 | SD300 | [LoRaWAN_SmokeAlarm_KWX](in-house/LoRaWAN_SmokeAlarm_KWX/) | HT32F52241_48LQFP | 应用工程与历史固件齐全 |
+| 无线门磁 | DMS01 | [LoRaWAN_Wireless_Door_Sensor](in-house/LoRaWAN_Wireless_Door_Sensor/) | STM32L051C8Tx | 应用工程齐全 |
 
 ## 构建方式
 
