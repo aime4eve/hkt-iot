@@ -1,0 +1,143 @@
+[
+  {
+    "name": "事件上报帧 · v1 存档（门磁+防拆+电量）",
+    "source": "firmware",
+    "payload": "686b74002d08008400035d",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v1.0.0.js",
+    "expectData": { "doorStatus": 0, "tamperStatus": 0, "battery": 93 },
+    "expectError": false,
+    "note": "脚本内置 info_report 向量 = 固件 touchEvent 事件 3 TLV（communicate.c:528-531）；byte[4]=0x2D 是包序号 45 而非长度"
+  },
+  {
+    "name": "事件上报帧 · v2 重写（含 ackRequested/seqNo）",
+    "source": "firmware",
+    "payload": "686b74002d08008400035d",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": false, "seqNo": 45, "doorStatus": 0, "tamperStatus": 0, "battery": 93 },
+    "expectError": false,
+    "note": "同一事件帧，v2 额外透出 ackRequested/seqNo"
+  },
+  {
+    "name": "门磁计数上报帧 · v1 存档",
+    "source": "firmware",
+    "payload": "686b74005926003300220000122200002222",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v1.0.0.js",
+    "expectData": { "counterA": 51, "counterB": 34, "totalCounterA": 4642, "totalCounterB": 8738 },
+    "expectError": false,
+    "note": "脚本内置 data_report 向量 = Device_DoorCountReport 单 0x26 TLV（payload 13 字节整帧 18 字节）"
+  },
+  {
+    "name": "门磁计数上报帧 · v2 重写",
+    "source": "firmware",
+    "payload": "686b74005926003300220000122200002222",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": false, "seqNo": 89, "counterA": 51, "counterB": 34, "totalCounterA": 4642, "totalCounterB": 8738 },
+    "expectError": false,
+    "note": "计数值小于 255 时 255 基与大端读数一致（00 33 → 51）"
+  },
+  {
+    "name": "周期上报组合帧（固件 8 TLV 定序） · v2",
+    "source": "firmware",
+    "payload": "686b74002d01020703640800220123080018002405a525008400",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": {
+      "ackRequested": false,
+      "seqNo": 45,
+      "hard_ver": 2,
+      "soft_ver": 7,
+      "battery": 100,
+      "doorStatus": 0,
+      "runMode": 1,
+      "startHours": 8,
+      "startMins": 0,
+      "endHours": 24,
+      "endMins": 0,
+      "counterIntervel": 1440,
+      "hearterIntervel": 0,
+      "tamperStatus": 0
+    },
+    "expectError": false,
+    "note": "Device_PeriodicReport 固定顺序 8 TLV（communicate.c:369-408，payload 21 字节整帧 26 字节）；HARDWARE_VER=0x02/SOFTWARE_VER=0x07（config.h:68-69）；0x24=05 A5：固件 1440/255=5、1440%255=165(0xA5)，255×5+165=1440——朴素大端读将得 1445"
+  },
+  {
+    "name": "0x26 间隔 255 基怪例帧（510/511） · v2",
+    "source": "firmware",
+    "payload": "686b74005a26020002010000000a00002710",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": false, "seqNo": 90, "counterA": 510, "counterB": 511, "totalCounterA": 10, "totalCounterB": 10000 },
+    "expectError": false,
+    "note": "0x26 前 4 字节与 0x24 同用 x/255、x%255 拆包：02 00→510、02 01→511（朴素大端将得 512/513）；累计计数为标准大端"
+  },
+  {
+    "name": "设备 ACK 应答帧（0xFF 零值长度） · v2",
+    "source": "firmware",
+    "payload": "686b740007ff",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": false, "seqNo": 7, "deviceAck": true },
+    "expectError": false,
+    "note": "setDataPackage(0xFF) 只写类型字节 dataLen=1（communicate.c:238）；解码输出 deviceAck=true"
+  },
+  {
+    "name": "flags bit0=1（服务器要求应答位如实解码） · v2",
+    "source": "firmware",
+    "payload": "686b74012d0800",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": true, "seqNo": 45, "doorStatus": 0 },
+    "expectError": false,
+    "note": "byte[3] bit0 在下行方向语义为\"服务器需要应答\"（communicate.c:233）；上行帧固件固定写 0（sendLoRaWANData），此处按 irc01 ackRequested 先例如实解码"
+  },
+  {
+    "name": "仅头帧（无 TLV） · v2",
+    "source": "firmware",
+    "payload": "686b740021",
+    "fPort": 10,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectData": { "ackRequested": false, "seqNo": 33 },
+    "expectError": false,
+    "note": "5 字节头合法，无数据段，只输出 ackRequested/seqNo"
+  },
+  {
+    "name": "守卫：坏同步头 · v1 存档",
+    "source": "firmware",
+    "payload": "0000000000",
+    "fPort": null,
+    "forFile": "wireless-door-sensor_chirpstack_v1.0.0.js",
+    "expectError": true,
+    "note": "checkReportSync 为假 → 原脚本裸 return undefined → 平台适配层报 decoder returned nothing"
+  },
+  {
+    "name": "守卫：坏同步头 · v2",
+    "source": "firmware",
+    "payload": "0000000000",
+    "fPort": null,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectError": true,
+    "note": "同步头非 68 6B 74 直接报错"
+  },
+  {
+    "name": "守卫：0x26 值截断（需 12 字节仅 2 字节） · v2",
+    "source": "firmware",
+    "payload": "686b740001260033",
+    "fPort": null,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectError": true,
+    "note": "v1.0.0 对此静默错位解析，v2.0.0 长度表前置检查报错停止"
+  },
+  {
+    "name": "守卫：未知类型 0x99 · v2",
+    "source": "firmware",
+    "payload": "686b7400019900",
+    "fPort": null,
+    "forFile": "wireless-door-sensor_chirpstack_v2.0.0.js",
+    "expectError": true,
+    "note": "TLV 无长度字段，未知类型无法跳过，按 irc01 同口径记录 error 并停止解析"
+  }
+]

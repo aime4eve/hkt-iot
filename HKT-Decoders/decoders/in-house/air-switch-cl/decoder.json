@@ -41,5 +41,5 @@
     }
   ],
   "deviations": [],
-  "notes": "v1.0.0 系迁移时误挂的 DMS01 门磁解码器（协议不兼容，保留存档非 current）；v2.0.0 按 LoRaWAN_Air_Switch_CL 固件重写（与 Air_Switch 上行帧逐字节一致）。官方索引 CL100。"
+  "notes": "v1.0.0 系迁移时误挂的 DMS01 门磁解码器（协议不兼容，保留存档非 current）；v2.0.0 按 LoRaWAN_Air_Switch_CL 固件重写（与 Air_Switch 上行帧逐字节一致）。官方索引 CL100。2026-11-03 核实：v1.0.0 内容与正式立户的 in-house/wireless-door-sensor（DMS01 无线门磁）v1.0.0 逐字节相同，DMS01 型号归属以 wireless-door-sensor 条目为准。"
 }

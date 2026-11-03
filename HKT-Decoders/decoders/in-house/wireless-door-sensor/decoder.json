@@ -1,0 +1,49 @@
+{
+  "model": "DMS01",
+  "modelKey": "wireless-door-sensor",
+  "aliases": [],
+  "name": "无线门磁",
+  "origin": "in-house",
+  "vendor": "HKT",
+  "category": "安防门磁",
+  "authority": {
+    "type": "firmware",
+    "path": "HKT-Firmwares/in-house/LoRaWAN_Wireless_Door_Sensor",
+    "ref": "eaa1d9d2"
+  },
+  "fPortDefault": 10,
+  "codecs": [
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "wireless-door-sensor_chirpstack_v1.0.0.js",
+      "decoderVersion": "1.0.0",
+      "firmwareVersion": null,
+      "current": false,
+      "status": "unverified",
+      "basis": [],
+      "verifiedAt": null,
+      "changelog": "迁移存档件：固件自带 Compents/Decode/door_sensor.js（2022 历史脚本，头注释 @product HKT-DMS01）+ 2026-09-17 规范化迁移平台适配层，原样保留不做改动。已知缺陷见 deviations：0x24 只读 1 字节（固件写 2 字节）→ 周期帧含 0x24 时后续全部错位。"
+    },
+    {
+      "platform": "chirpstack",
+      "lang": null,
+      "file": "wireless-door-sensor_chirpstack_v2.0.0.js",
+      "decoderVersion": "2.0.0",
+      "firmwareVersion": "LoRaWAN_Wireless_Door_Sensor（2026-11-03 对照固件核验，ref eaa1d9d2）",
+      "current": true,
+      "status": "verified",
+      "basis": [
+        "固件 communicate.c sendLoRaWANData/setDataPackage 与 communicate.h DataType 枚举（LoRaWAN_Wireless_Door_Sensor，ref eaa1d9d2）",
+        "黄金样例 samples/samples.json：脚本内置两向量 + 固件推导周期/计数/ACK/事件帧 + 坏帧守卫，全库回归双时区全过"
+      ],
+      "verifiedAt": "2026-11-03",
+      "changelog": "按固件全量重写（irc01 式防御性）：修复 0x24 两字节缺陷，0x24/0x26 间隔字段按固件拆包算术 255 基还原（值=255×高+低），累计计数大端 uint32（>>>0 防溢出）；坏同步头/未知类型/截断 TLV 报错停止，不静默错位不死循环；新增 ackRequested/seqNo/deviceAck；0x80/0xFF 识别为零值长度类型；字段名沿用 v1 原拼写。"
+    }
+  ],
+  "deviations": [
+    "v1.0.0 缺陷（2026-11-03 对照固件 communicate.c:95-98 发现）：0x24 计数间隔固件写 2 字节（值=255×高+低），脚本只读 1 字节 → 周期上报帧含 0x24 时后续 TLV 全部错位；v2.0.0 已修复。",
+    "v1.0.0 实现瑕疵：循环计数 dataLen 把 TLV 类型字节计入数据长度，帧尾会多读一次越界 undefined（无害但不严格）；v2.0.0 重写为长度表前置检查。"
+  ],
+  "notes": "2026-11-03 立户：脚本自 2026-09-17 迁移起误挂在 air-switch/air-switch-cl 名下（其归属的固件工程 2026-10-30 才入 monorepo，eaa1d9d2），本条目为 DMS01 真主（脚本头注释 @product HKT-DMS01、手册《HKT_LoRaWAN无线门磁用户手册》）。modelKey 另起新键 wireless-door-sensor，不改动 air-switch/_CL 持有的 dms01 键与 DMS01 别名（与 air-switch 别名存在归一化型号撞名，已拍板接受，随服务器漂移回捞任务一并理顺）。fPort=10 来自固件 config.h LoRaWAN_DEFAULT_PORT（LoRaWAN_Init 唯一一次 AT+PORT 设置）。真机黄金帧未采集，verified 依据为固件源码+推导样例；固件协议变更后按 README 条款重新核验。"
+}
