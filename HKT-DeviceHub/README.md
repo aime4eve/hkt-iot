@@ -75,6 +75,13 @@ LoRaWAN 设备 → NS → IoT Gateway (TB connector) → ThingsBoard
 | devicehub.topology.ns-host/ns-port | `NS_PROBE_HOST`/`NS_PROBE_PORT` | 172.17.201.15 / 1883 |
 | devicehub.topology.probe-cache-ms | `TOPOLOGY_PROBE_CACHE_MS` | 30000 |
 | devicehub.disposal.scan-interval-ms | `DISPOSAL_SCAN_INTERVAL_MS` | 300000 |
+| devicehub.quality.frame-retention-enabled | `DEVICEHUB_QUALITY_RETENTION_ENABLED` | true（通讯质量 MVP：逐帧留存主开关） |
+| devicehub.quality.flush-interval-ms | `DEVICEHUB_QUALITY_FLUSH_MS` | 5000（留存批量刷盘周期） |
+| devicehub.quality.ns-poll-interval-ms | `DEVICEHUB_QUALITY_NS_POLL_MS` | 900000（NS device/detail 计数器轮询周期，15 分钟） |
+| devicehub.quality.ns-poll-initial-delay-ms | `DEVICEHUB_QUALITY_NS_POLL_INITIAL_MS` | 30000 |
+| devicehub.quality.summary-cache-ms | `DEVICEHUB_QUALITY_SUMMARY_CACHE_MS` | 60000（summary 接口缓存 TTL） |
+| devicehub.quality.summary-window-hours | `DEVICEHUB_QUALITY_SUMMARY_WINDOW_HOURS` | 48（指标计算窗口） |
+| devicehub.quality.gap-threshold-ms | `DEVICEHUB_QUALITY_GAP_MS` | 1200000（>20 分钟连续无帧记中断） |
 | spring.cloud.stream.rocketmq.binder.name-server | `ROCKETMQ_NAME_SERVER` | 172.17.10.206:9876 |
 | telemetryFrame-out-0 destination | `DEVICEHUB_TELEMETRY_TOPIC` | DEVICEHUB_TELEMETRY_FRAME |
 

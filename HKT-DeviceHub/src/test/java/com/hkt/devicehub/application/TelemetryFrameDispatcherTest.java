@@ -38,6 +38,7 @@ class TelemetryFrameDispatcherTest {
     private TelemetryEventPublisher publisher;
     private TelemetryChannelMetrics metrics;
     private DisposalService disposalService;
+    private FrameRetentionRecorder frameRetentionRecorder;
     private TelemetryFrameDispatcher dispatcher;
     private RegisteredDevice device;
     private TelemetryFrame frame;
@@ -47,7 +48,8 @@ class TelemetryFrameDispatcherTest {
         publisher = mock(TelemetryEventPublisher.class);
         metrics = mock(TelemetryChannelMetrics.class);
         disposalService = mock(DisposalService.class);
-        dispatcher = new TelemetryFrameDispatcher(publisher, metrics, disposalService);
+        frameRetentionRecorder = mock(FrameRetentionRecorder.class);
+        dispatcher = new TelemetryFrameDispatcher(publisher, metrics, disposalService, frameRetentionRecorder);
 
         device = new RegisteredDevice();
         device.setDevEui("00956906001264ef");
@@ -63,6 +65,7 @@ class TelemetryFrameDispatcherTest {
         boolean sent = dispatcher.dispatch(device, frame, TelemetryChannelMetrics.CHANNEL_WS);
 
         assertTrue(sent);
+        verify(frameRetentionRecorder).offer("LIVESTOCK", frame);
         verify(publisher).publish(frame, "LIVESTOCK");
         ArgumentCaptor<Instant> ts = ArgumentCaptor.forClass(Instant.class);
         verify(disposalService).onFrameArrived(eq(device.getDevEui()), ts.capture());
@@ -78,6 +81,8 @@ class TelemetryFrameDispatcherTest {
         boolean sent = dispatcher.dispatch(device, frame, TelemetryChannelMetrics.CHANNEL_REST);
 
         assertFalse(sent);
+        // Retention happens regardless of publish outcome — evidence first.
+        verify(frameRetentionRecorder).offer("LIVESTOCK", frame);
         verify(disposalService, never()).onFrameArrived(anyString(), any(Instant.class));
         verify(metrics).recordFrame(TelemetryChannelMetrics.CHANNEL_REST, "LIVESTOCK", "mq_failed");
     }

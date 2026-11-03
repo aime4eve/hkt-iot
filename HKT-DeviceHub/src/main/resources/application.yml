@@ -84,6 +84,16 @@ devicehub:
     project-whitelist: ${BACKUP_CHANNEL_PROJECT_WHITELIST:}
     # 写入队列容量；溢出丢弃必须计数（queueOverflow），不阻塞 MQTT 线程
     max-queue: ${BACKUP_CHANNEL_MAX_QUEUE:2000}
+  # 通讯质量 MVP（2026-11-03 调研笔记）：逐帧留存 + NS 计数器 15min 轮询
+  # + 查询时指标。轮询复用 devicehub.ns.* 凭据；本组全部有默认值，Nacos 不动。
+  quality:
+    frame-retention-enabled: ${DEVICEHUB_QUALITY_RETENTION_ENABLED:true}
+    flush-interval-ms: ${DEVICEHUB_QUALITY_FLUSH_MS:5000}
+    ns-poll-interval-ms: ${DEVICEHUB_QUALITY_NS_POLL_MS:900000}
+    ns-poll-initial-delay-ms: ${DEVICEHUB_QUALITY_NS_POLL_INITIAL_MS:30000}
+    summary-cache-ms: ${DEVICEHUB_QUALITY_SUMMARY_CACHE_MS:60000}
+    summary-window-hours: ${DEVICEHUB_QUALITY_SUMMARY_WINDOW_HOURS:48}
+    gap-threshold-ms: ${DEVICEHUB_QUALITY_GAP_MS:1200000}
 
 management:
   endpoints:

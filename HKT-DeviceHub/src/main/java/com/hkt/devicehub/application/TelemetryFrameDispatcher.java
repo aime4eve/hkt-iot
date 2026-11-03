@@ -31,12 +31,16 @@ public class TelemetryFrameDispatcher {
     private final TelemetryEventPublisher publisher;
     private final TelemetryChannelMetrics metrics;
     private final DisposalService disposalService;
+    private final FrameRetentionRecorder frameRetentionRecorder;
 
     /**
      * @return true when the frame was handed to the broker; false means the
      *         caller (backfill) must not advance the cursor past this frame.
      */
     public boolean dispatch(RegisteredDevice device, TelemetryFrame frame, String channel) {
+        // Retention for quality metrics — offer() never throws and does not
+        // touch any entity; publish semantics below are unchanged.
+        frameRetentionRecorder.offer(device.getProject().name(), frame);
         boolean sent = publisher.publish(frame, device.getProject().name());
         metrics.recordFrame(channel, device.getProject().name(), sent ? "published" : "mq_failed");
         metrics.recordPushLatency(channel, frame.ts());

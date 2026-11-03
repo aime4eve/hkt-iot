@@ -110,6 +110,33 @@ public class NsClient {
         return devices;
     }
 
+    /**
+     * device/detail counters — the authoritative per-device frame counters.
+     * The list endpoint's f_cnt_up has been observed to render as 0 for whole
+     * fleets (2026-11-02 p43 check), so loss-rate differential polling must
+     * use this call, not the list.
+     */
+    public NsDeviceDetail fetchDeviceDetail(String eui) {
+        requireEnabled();
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(properties.getBaseUrl() + ORG_API_PREFIX + "lora_wan/device/detail/")
+                .queryParam("org", properties.getOrgId())
+                .queryParam("dev_eui", eui);
+        JsonNode response = exchangeForJson(builder.build().toUriString());
+        requireSuccess(response, "NS device detail");
+        JsonNode data = response.path("data");
+        if (data.isArray()) {
+            data = data.size() > 0 ? data.get(0) : objectMapper.createObjectNode();
+        }
+        return new NsDeviceDetail(
+                firstLong(data, "f_cnt_up", "frame_count_up"),
+                firstLong(data, "n_f_cnt_down", "nf_cnt_down"),
+                firstLong(data, "a_f_cnt_down", "af_cnt_down"),
+                firstText(data, "latest_gateway", "downlink_gateway", "gateway"),
+                parseLastSeenIn(data.get("last_seen"), ZoneId.of("UTC")),
+                firstBool(data, "skip_f_cnt_check"));
+    }
+
     private void requireEnabled() {
         if (!properties.isEnabled()) {
             throw new IllegalStateException("NS client is disabled");
@@ -189,9 +216,25 @@ public class NsClient {
         return null;
     }
 
-    /** last_seen arrives as "yyyy-MM-dd HH:mm:ss" (NS-local) or "" when never
-     * seen; a numeric epoch (s or ms) is tolerated for forward compatibility. */
+    private static Long firstLong(JsonNode node, String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.path(field);
+            if (value.isNumber()) return value.asLong();
+        }
+        return null;
+    }
+
+    /** last_seen arrives as "yyyy-MM-dd HH:mm:ss" or "" when never seen; a
+     * numeric epoch (s or ms) is tolerated for forward compatibility. */
     static Instant parseLastSeen(JsonNode node) {
+        return parseLastSeenIn(node, NS_ZONE);
+    }
+
+    /** Zone-parameterized variant: the list endpoint renders NS-host local
+     * time (UTC+8) while device/detail was measured returning UTC (2026-11-03,
+     * capsule 000319: last_seen 02:33:28 ≈ 30 min prior). Same vendor, two
+     * timezones — pass the zone explicitly per endpoint. */
+    static Instant parseLastSeenIn(JsonNode node, ZoneId zone) {
         if (node == null || node.isNull()) return null;
         if (node.isNumber()) {
             long v = node.asLong();
@@ -200,7 +243,7 @@ public class NsClient {
         String text = node.asText(null);
         if (text == null || text.isBlank()) return null;
         try {
-            return LocalDateTime.parse(text.trim(), SEEN_FORMAT).atZone(NS_ZONE).toInstant();
+            return LocalDateTime.parse(text.trim(), SEEN_FORMAT).atZone(zone).toInstant();
         } catch (Exception e) {
             return null;
         }
@@ -219,6 +262,14 @@ public class NsClient {
      */
     public record NsDevice(String eui, int projectId, int appId, String name,
                            Boolean online, Integer fCntUp, Instant lastSeen) {}
+
+    /**
+     * @param fCntUp    authoritative uplink frame counter (device/detail);
+     *                  null when the NS omits it
+     * @param lastSeen  NS-reported last uplink time, null when never heard
+     */
+    public record NsDeviceDetail(Long fCntUp, Long nFCntDown, Long aFCntDown,
+                                 String latestGateway, Instant lastSeen, Boolean skipFCntCheck) {}
 
     private record CachedToken(String token, Instant expiresAt) {}
 }

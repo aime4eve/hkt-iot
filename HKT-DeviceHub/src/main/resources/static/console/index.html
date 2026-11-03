@@ -202,6 +202,8 @@ td .eui { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
 .timeline .t-item .t-time { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
 .frames-table { width: 100%; min-width: 0; font-size: 12px; }
 .gap-table { width: 100%; min-width: 0; font-size: 12.5px; }
+.quality-table { width: 100%; min-width: 0; font-size: 12.5px; }
+.quality-table td, .quality-table th { padding: 4px 8px; }
 .gap-table td, .gap-table th { white-space: normal; }
 .gap-table tr.done td { color: var(--text-dim); }
 .frames-table td, .frames-table th { padding: var(--space-1) var(--space-2); white-space: nowrap; }
@@ -535,6 +537,18 @@ tbody tr.flash-fail { animation: flashFail 1.5s ease-out; }
           <button class="btn sm" id="bkSwitch">开启备份通道</button>
           <span class="count" id="bkHint"></span>
         </div>
+      </div>
+      <div class="card" style="margin-top:var(--space-4)">
+        <h3>通讯质量 <span class="count" id="qWin"></span>
+          <span class="right dim">丢包率 = Δf_cnt_up（NS 差分）vs 实收帧数 · 掉线 = 超过 3×预期上报周期无帧</span></h3>
+        <div class="stat-row" style="margin-bottom:var(--space-2)">
+          <div class="stat"><div class="lbl">在线 / 总数</div><div class="big" id="qOnline">—</div></div>
+          <div class="stat"><div class="lbl">平均丢包率</div><div class="big" id="qMeanLoss">—</div></div>
+          <div class="stat"><div class="lbl">最差丢包率</div><div class="big" id="qWorstLoss">—</div></div>
+          <div class="stat"><div class="lbl">帧留存（已入库 / 待写）</div><div class="big" id="qRetention">—</div></div>
+        </div>
+        <div id="qualityPanelBody"></div>
+        <div class="count" id="qHint"></div>
       </div>
     </div>
     <div data-state-panel="dashboard" hidden></div>
@@ -1284,14 +1298,65 @@ $('#bkSwitch').addEventListener('click', async () => {
   backupBusy = false; renderBackupCard();
 });
 
+/* ---- 通讯质量卡（MVP 先解决有无）：丢包率/信号分布/中断/在线，后端缓存 60s ---- */
+let qualityCache = null;
+function lossCell(pct) {
+  if (pct == null) return '<span class="dim">—</span>';
+  const cls = pct > 5 ? 'danger' : (pct > 2 ? 'warn' : 'ok');
+  return '<span class="badge ' + cls + '">' + pct + '%</span>';
+}
+function renderQualityCard() {
+  const q = qualityCache;
+  if (!q) { $('#qHint').textContent = '通讯质量数据不可用'; return; }
+  $('#qWin').textContent = '窗口 ' + q.windowHours + 'h';
+  $('#qOnline').textContent = q.totals.onlineDevices + ' / ' + q.totals.totalDevices;
+  $('#qMeanLoss').textContent = q.totals.meanLossPercent == null ? '—' : q.totals.meanLossPercent + '%';
+  $('#qWorstLoss').textContent = q.totals.worstLossPercent == null
+    ? '—'
+    : q.totals.worstLossPercent + '%' + (q.totals.worstDevEui ? ' · …' + q.totals.worstDevEui.slice(-6) : '');
+  const r = q.retention || {};
+  $('#qRetention').textContent = r.enabled
+    ? (r.insertedFrames ?? 0) + ' / ' + (r.pending ?? 0) + (r.droppedFrames ? '（丢' + r.droppedFrames + '）' : '')
+    : '已关闭';
+  const rows = (q.devices || []).slice()
+    .sort((a, b) => (b.lossRatePercent ?? -1) - (a.lossRatePercent ?? -1))
+    .slice(0, 10);
+  $('#qualityPanelBody').innerHTML = rows.length === 0
+    ? '<div class="dim">窗口内暂无数据（等待帧留存与轮询积累）</div>'
+    : '<div class="table-wrap"><table class="quality-table"><thead><tr>' +
+      '<th>设备 EUI</th><th>项目</th><th>在线</th><th>丢包率</th>' +
+      '<th title="窗口内实收帧的 RSSI 中位数">RSSI 中位</th>' +
+      '<th title="实收帧中 SNR&lt;0 的占比">SNR&lt;0 占比</th>' +
+      '<th title="相邻帧间隔超 20 分钟的次数 / 最长一次">中断（次/最长）</th>' +
+      '<th title="fCnt 复位事件（ABP 重启），不计丢包">复位</th><th>最后帧</th></tr></thead><tbody>' +
+      rows.map(d =>
+        '<tr>' +
+        '<td class="mono" title="' + esc(d.devEui) + '">…' + esc(String(d.devEui).slice(-8)) + '</td>' +
+        '<td><span class="badge proj">' + esc(d.project) + '</span></td>' +
+        '<td><i class="dot ' + (d.online ? 'ok' : 'off') + '" title="' + (d.online ? '在线' : '超过 3×预期周期无帧') + '"></i></td>' +
+        '<td>' + lossCell(d.lossRatePercent) +
+          (d.lossRatePercent != null ? '<span class="dim"> (' + d.expectedFrames + '→' + d.receivedFrames + ')</span>' : '') + '</td>' +
+        '<td>' + (d.rssiMedian != null ? d.rssiMedian + ' dBm' : '<span class="dim">—</span>') + '</td>' +
+        '<td>' + (d.snrNegativePercent != null ? d.snrNegativePercent + '%' : '<span class="dim">—</span>') + '</td>' +
+        '<td>' + d.gapCount + ' / ' + (d.longestGapMinutes != null ? d.longestGapMinutes + 'min' : '—') + '</td>' +
+        '<td>' + (d.resetEvents || '0') + '</td>' +
+        '<td title="' + fmtAbs(d.lastFrameAt) + '">' + relTime(d.lastFrameAt) + '</td>' +
+        '</tr>').join('') +
+      '</tbody></table></div>';
+  $('#qHint').textContent = (q.nsPollDegraded ? '⚠ NS 轮询有失败（快照 ns_ok=false，unknown≠healthy）· ' : '') +
+    '下行动量语义：n_f_cnt_down≈ACK 到达 · 丢包率为端到端口径（含平台段）· ' +
+    '留存写入 ' + ((r.insertedFrames ?? 0)) + ' 帧' + (r.lastError ? ' · 最近错误：' + String(r.lastError).slice(0, 80) : '');
+}
+
 async function refreshDashboard(manual) {
   try {
-    const [h, t, g, b] = await Promise.all([
+    const [h, t, g, b, q] = await Promise.all([
       api('/channels/health'), api('/channels/topology'),
       api('/channels/mapping-gaps').then(r => r, () => null),
-      api('/backup-channel/status').then(r => r, () => null)
+      api('/backup-channel/status').then(r => r, () => null),
+      api('/comms-quality/summary').then(r => r, () => null)
     ]);
-    healthCache = h; topoCache = t; gapCache = g; backupCache = b; headerOffline = false;
+    healthCache = h; topoCache = t; gapCache = g; backupCache = b; qualityCache = q; headerOffline = false;
     renderHeader();
     renderHealthCard();
     renderTopology();
@@ -1300,6 +1365,7 @@ async function refreshDashboard(manual) {
     renderAttention();
     renderGapPanel();
     renderBackupCard();
+    renderQualityCard();
     $('#dashUpdated').textContent = '更新于 ' + fmtClock(new Date()) + '（探测缓存 ' + Math.round((t.cacheTtlMs || 30000) / 1000) + 's）';
     showState('dashboard', 'normal');
   } catch (e) {
