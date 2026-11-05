@@ -46,6 +46,10 @@ public class MappingChangeService {
 
     static final Pattern TOPIC_PATTERN = Pattern.compile("org/(\\d+)/project/(\\d+)/");
 
+    /** Static mapper for the shared string-encoded-JSON parser below (the
+     * instance mapper is unavailable in static context). */
+    private static final ObjectMapper STATIC_MAPPER = new ObjectMapper();
+
     private final TbClient tbClient;
     private final TbProperties tbProperties;
     private final GatewayMappingService gatewayMapping;
@@ -315,6 +319,191 @@ public class MappingChangeService {
         return new GatewayReloadReport(true, null, Instant.now());
     }
 
+    /**
+     * Duplicate-mapping removal report (NIX-382). {@code removedEntries}
+     * carries the JSON of every dropped copy so the console can show exactly
+     * what will be / was removed before writing.
+     */
+    public record MappingDedupReport(
+            boolean dryRun, boolean changed, String attrKey, String topicFilter,
+            int removedCount, List<String> removedEntries, int remainingMappings,
+            String backupPath, String previousValue, String newValue,
+            Boolean verifiedAfterWrite, Boolean reloaded, String reloadNote,
+            String note, String error) {}
+
+    /**
+     * Remove duplicate mapping entries for one topic filter, keeping the
+     * first. Mirrors the apply() runbook (guards → parse → backup → write →
+     * verify → optional reload); fails closed on any structural surprise, and
+     * refuses to run when the topic is not duplicated (idempotence guard — a
+     * stale button press must never rewrite the connector config).
+     */
+    public synchronized MappingDedupReport removeDuplicateMapping(String topicFilter,
+                                                                  boolean dryRun, boolean reloadGateway) {
+        return removeDuplicateMapping(topicFilter, dryRun, reloadGateway, null);
+    }
+
+    public synchronized MappingDedupReport removeDuplicateMapping(String topicFilter,
+                                                                  boolean dryRun, boolean reloadGateway,
+                                                                  String attrKeyOverride) {
+        if (topicFilter == null || topicFilter.isBlank()
+                || !TOPIC_PATTERN.matcher(topicFilter).find()) {
+            return dedupFail(dryRun, topicFilter, "topicFilter 缺失或不是合法的 org/{org}/project/{id}/ 形式");
+        }
+        if (!tbProperties.isEnabled()) {
+            return dedupFail(dryRun, topicFilter, "TB 集成未启用（devicehub.tb.enabled=false）");
+        }
+        if (!tbProperties.isMappingAutoFixEnabled()) {
+            return dedupFail(dryRun, topicFilter, "映射自动修复已关闭"
+                    + "（devicehub.tb.mapping-auto-fix-enabled=false），请走人工工单");
+        }
+        String attrKey = (attrKeyOverride == null || attrKeyOverride.isBlank())
+                ? tbProperties.getMappingAttrKey() : attrKeyOverride.trim();
+        String gwId = tbProperties.getGatewayDeviceId();
+        Map<String, JsonNode> attrs;
+        try {
+            attrs = tbClient.fetchSharedAttributes(gwId);
+        } catch (Exception e) {
+            return dedupFail(dryRun, topicFilter, "网关共享属性读取失败：" + e.getMessage());
+        }
+        JsonNode raw = attrs.get(attrKey);
+        if (raw == null) {
+            return dedupFail(dryRun, topicFilter, "网关共享属性中不存在 key '" + attrKey
+                    + "'（现有 keys: " + String.join(", ", attrs.keySet()) + "）");
+        }
+        JsonNode content;
+        boolean stringEncoded;
+        try {
+            if (raw.isTextual()) {
+                content = objectMapper.readTree(raw.asText());
+                stringEncoded = true;
+            } else {
+                content = raw;
+                stringEncoded = false;
+            }
+        } catch (Exception e) {
+            return dedupFail(dryRun, topicFilter, attrKey + " 值不是合法 JSON，拒绝自动修改，请走人工工单");
+        }
+        ArrayNode mapping = findMappingArray(content);
+        if (mapping == null) {
+            return dedupFail(dryRun, topicFilter, "未找到 mapping 数组（configurationJson.mapping），请走人工工单");
+        }
+
+        List<Integer> hitIndices = new ArrayList<>();
+        for (int i = 0; i < mapping.size(); i++) {
+            if (topicFilter.equals(mapping.get(i).path("topicFilter").asText(null))) {
+                hitIndices.add(i);
+            }
+        }
+        if (hitIndices.size() <= 1) {
+            return new MappingDedupReport(dryRun, false, attrKey, topicFilter, 0, List.of(),
+                    mapping.size(), null, null, null, true, null, null,
+                    "该 topic 当前 " + Math.max(hitIndices.size(), 0) + " 条，无重复，无需变更", null);
+        }
+
+        // Keep the first copy, drop the rest (verified identical in the
+        // 2026-11-06 incident; per-entry diffs remain visible in the report).
+        // Mutate the array IN PLACE — findMappingArray returns the nested
+        // node (content.configurationJson.mapping), so replacing a "mapping"
+        // key at the root would silently no-op the removal.
+        List<String> removedEntries = new ArrayList<>();
+        List<Integer> toRemove = new ArrayList<>(hitIndices.subList(1, hitIndices.size()));
+        for (int idx : toRemove) {
+            removedEntries.add(mapping.get(idx).toString());
+        }
+        for (int i = toRemove.size() - 1; i >= 0; i--) {
+            mapping.remove(toRemove.get(i));
+        }
+        int remaining = mapping.size();
+
+        String newSerialized = content.toString();
+        JsonNode newValue = stringEncoded
+                ? JsonNodeFactory.instance.textNode(newSerialized)
+                : content;
+        String previousValue = raw.isTextual() ? raw.asText() : raw.toString();
+
+        if (dryRun) {
+            return new MappingDedupReport(true, true, attrKey, topicFilter,
+                    removedEntries.size(), removedEntries, remaining,
+                    null, previousValue, newSerialized, null, null, null,
+                    "试运行：将删除 " + removedEntries.size() + " 条重复，保留 1 条，剩余 "
+                            + remaining + " 条；未写入", null);
+        }
+
+        String backupPath;
+        try {
+            backupPath = writeDedupBackup(attrKey, gwId, topicFilter, raw);
+        } catch (Exception e) {
+            return dedupFail(dryRun, topicFilter, "备份失败，未写入任何变更：" + e.getMessage());
+        }
+
+        try {
+            tbClient.saveSharedAttribute(gwId, attrKey, newValue);
+        } catch (Exception e) {
+            return dedupFail(dryRun, topicFilter,
+                    "共享属性写入失败（备份在 " + backupPath + "）：" + e.getMessage());
+        }
+
+        Boolean verified;
+        try {
+            JsonNode fresh = tbClient.fetchSharedAttributes(gwId).get(attrKey);
+            ArrayNode after = fresh == null ? null : findMappingArray(fresh);
+            int count = 0;
+            if (after != null) {
+                for (JsonNode entry : after) {
+                    if (topicFilter.equals(entry.path("topicFilter").asText(null))) count++;
+                }
+            }
+            verified = count == 1;
+            gatewayMapping.refreshMappedProjectIds(); // preflight reads this 30s cache
+            mappingGapService.invalidate();
+        } catch (Exception e) {
+            verified = null;
+        }
+        Boolean reloaded = null;
+        String reloadNote = null;
+        if (reloadGateway) {
+            var reload = reloadGateway();
+            reloaded = reload.success();
+            reloadNote = reload.success()
+                    ? "网关已重载（active_connectors 摘除/挂回成功），重复投递即停止"
+                    : "网关重载失败：" + (reload.error() == null ? "未知错误" : reload.error())
+                            + "；去重已写入，需按 runbook 手动重载";
+        }
+        String note = (verified == null ? "写入已执行，回读校验失败"
+                : Boolean.TRUE.equals(verified) ? "去重已写入并回读确认（该 topic 恢复 1 条）"
+                : "写入已执行，但回读仍见多条，请人工核查")
+                + (reloadNote == null ? "" : "；" + reloadNote);
+        log.info("[MappingChange] duplicate {} removed x{} from {}, backup {}, verified {}, reloaded {}",
+                topicFilter, removedEntries.size(), attrKey, backupPath, verified, reloaded);
+        return new MappingDedupReport(false, true, attrKey, topicFilter,
+                removedEntries.size(), removedEntries, remaining,
+                backupPath, previousValue, newSerialized, verified, reloaded, reloadNote, note, null);
+    }
+
+    private MappingDedupReport dedupFail(boolean dryRun, String topicFilter, String error) {
+        log.warn("[MappingChange] dedup {} aborted: {}", topicFilter, error);
+        return new MappingDedupReport(dryRun, false, null, topicFilter, 0, List.of(), 0,
+                null, null, null, null, null, null, null, error);
+    }
+
+    private String writeDedupBackup(String attrKey, String gwId, String topicFilter, JsonNode raw)
+            throws IOException {
+        Path dir = Path.of(tbProperties.getMappingBackupDir());
+        Files.createDirectories(dir);
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(ZonedDateTime.now());
+        Path file = dir.resolve(attrKey + "-" + stamp + "-dedup.json");
+        Map<String, Object> backup = new LinkedHashMap<>();
+        backup.put("deviceId", gwId);
+        backup.put("attrKey", attrKey);
+        backup.put("savedAt", Instant.now().toString());
+        backup.put("reason", "duplicate mapping removal for " + topicFilter);
+        backup.put("previousValue", raw.isTextual() ? raw.asText() : raw.toString());
+        Files.writeString(file, objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(backup), StandardCharsets.UTF_8);
+        return file.toString();
+    }
+
     private static ArrayNode toTextArray(List<String> values) {
         ArrayNode array = JsonNodeFactory.instance.arrayNode();
         values.forEach(array::add);
@@ -336,8 +525,9 @@ public class MappingChangeService {
     }
 
     /** First array named "mapping" anywhere in the tree, descending into
-     * string-encoded JSON as needed. */
-    private ArrayNode findMappingArray(JsonNode node) {
+     * string-encoded JSON as needed. Package-visible: the duplicate-mapping
+     * detector (NIX-382) reuses this parser instead of forking it. */
+    static ArrayNode findMappingArray(JsonNode node) {
         if (node == null) return null;
         if (node.isObject()) {
             var fields = node.fields();
@@ -361,7 +551,7 @@ public class MappingChangeService {
             String text = node.asText().trim();
             if (text.startsWith("{")) {
                 try {
-                    return findMappingArray(objectMapper.readTree(text));
+                    return findMappingArray(STATIC_MAPPER.readTree(text));
                 } catch (Exception ignored) {
                     // not JSON after all
                 }

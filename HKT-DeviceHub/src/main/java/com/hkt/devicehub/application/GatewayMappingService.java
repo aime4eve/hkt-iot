@@ -1,6 +1,7 @@
 package com.hkt.devicehub.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.hkt.devicehub.infrastructure.config.DeviceHubProperties;
 import com.hkt.devicehub.infrastructure.thingsboard.TbClient;
 import com.hkt.devicehub.infrastructure.thingsboard.TbProperties;
@@ -8,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -58,11 +60,97 @@ public class GatewayMappingService {
     public synchronized Set<Integer> refreshMappedProjectIds() {
         Map<String, JsonNode> attrs =
                 tbClient.fetchSharedAttributes(tbProperties.getGatewayDeviceId());
+        refreshCacheFrom(attrs);
+        return cached;
+    }
+
+    private void refreshCacheFrom(Map<String, JsonNode> attrs) {
         Set<Integer> ids = new LinkedHashSet<>();
         attrs.forEach((key, value) -> extractProjectIds(key, value, ids));
         cached = Set.copyOf(ids);
         cachedAtMs = System.currentTimeMillis();
-        return cached;
+    }
+
+    /** One duplicated topic filter: count includes every copy across all
+     * active connectors (the 2026-11-06 incident was a single connector
+     * holding the same entry twice, doubling every uplink). */
+    public record DuplicateGroup(String topicFilter, int count, List<String> projects) {}
+
+    /**
+     * Duplicate-mapping scan result (NIX-382). {@code error} non-null means
+     * the TB read failed and the lists are not authoritative.
+     */
+    public record MappingDuplicateInfo(List<DuplicateGroup> duplicates, int totalMappings,
+                                       List<String> connectors, String error) {}
+
+    /**
+     * Read the gateway shared attributes and report duplicated topic filters
+     * across all active connectors. Also refreshes the project-id cache —
+     * callers get both from one TB round-trip.
+     */
+    public synchronized MappingDuplicateInfo detectDuplicateMappings() {
+        Map<String, JsonNode> attrs;
+        try {
+            attrs = tbClient.fetchSharedAttributes(tbProperties.getGatewayDeviceId());
+        } catch (Exception e) {
+            log.warn("[GatewayMapping] duplicate scan read failed: {}", e.getMessage());
+            return new MappingDuplicateInfo(List.of(), 0, List.of(), e.getMessage());
+        }
+        refreshCacheFrom(attrs);
+        return analyzeDuplicates(attrs);
+    }
+
+    /**
+     * Pure analyzer over the shared-attribute map: aggregate every active
+     * connector's mapping entries by topicFilter. Tolerates the two stored
+     * shapes of configurationJson (object and JSON-encoded string) and
+     * entries without a topicFilter (skipped, counted via totalMappings).
+     */
+    static MappingDuplicateInfo analyzeDuplicates(Map<String, JsonNode> attrs) {
+        JsonNode active = attrs.get("active_connectors");
+        List<String> connectors = new java.util.ArrayList<>();
+        if (active != null && active.isArray()) {
+            active.forEach(n -> connectors.add(n.asText()));
+        }
+        // A connector config may exist without being listed in
+        // active_connectors (e.g. left disabled); scan those too — a disabled
+        // connector cannot double-deliver, but its stale duplicates resurface
+        // the moment it is re-enabled (observed: oc-test1).
+        List<String> scanKeys = new java.util.ArrayList<>(connectors);
+        attrs.keySet().stream()
+                .filter(k -> !"active_connectors".equals(k))
+                .filter(k -> !scanKeys.contains(k))
+                .forEach(scanKeys::add);
+
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        int total = 0;
+        for (String key : scanKeys) {
+            JsonNode value = attrs.get(key);
+            if (value == null) continue;
+            ArrayNode mapping = MappingChangeService.findMappingArray(value);
+            if (mapping == null) continue;
+            for (JsonNode entry : mapping) {
+                total++;
+                String topic = entry.path("topicFilter").asText(null);
+                if (topic == null || topic.isBlank()) continue;
+                counts.merge(topic, 1, Integer::sum);
+            }
+        }
+        List<DuplicateGroup> duplicates = counts.entrySet().stream()
+                .filter(e -> e.getValue() > 1)
+                .map(e -> new DuplicateGroup(e.getKey(), e.getValue(), projectsOf(e.getKey())))
+                .sorted(java.util.Comparator.comparing(DuplicateGroup::topicFilter))
+                .toList();
+        return new MappingDuplicateInfo(duplicates, total, connectors, null);
+    }
+
+    private static List<String> projectsOf(String topicFilter) {
+        Set<String> projects = new LinkedHashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("org/\\d+/project/(\\d+)/")
+                .matcher(topicFilter);
+        while (m.find()) projects.add(m.group(1));
+        return List.copyOf(projects);
     }
 
     public boolean isMapped(Integer nsProjectId) {

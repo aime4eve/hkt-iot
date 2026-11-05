@@ -107,9 +107,37 @@ public class PreflightService {
         }
         try {
             if (gatewayMapping.isMapped(nsProjectId)) {
-                return new CheckResult("GATEWAY_MAPPING", Verdict.PASS,
-                        "NS 项目 " + nsProjectId + " 已有网关 OC topic 映射",
+                // NIX-382: a mapped project can still carry duplicated topic
+                // filters — the gateway then reports every uplink twice (the
+                // 2026-11-06 same-frame double-row incident). Surface as WARN
+                // with a fix pointer; global duplicates on other projects ride
+                // along in the evidence for visibility.
+                var dup = gatewayMapping.detectDuplicateMappings();
+                var mine = dup.duplicates().stream()
+                        .filter(d -> d.projects().stream()
+                                .anyMatch(p -> p.equals(String.valueOf(nsProjectId))))
+                        .toList();
+                if (!mine.isEmpty()) {
+                    return new CheckResult("GATEWAY_MAPPING", Verdict.WARN,
+                            "项目 " + nsProjectId + " 的映射存在重复条目（"
+                                    + mine.stream().map(d -> d.topicFilter() + " ×" + d.count())
+                                            .reduce((a, b) -> a + "；" + b).orElse("")
+                                    + "），同一上行会被网关重复上报（同帧双行）；"
+                                    + "可在工作台异常关注列表一键去重",
+                            Map.of("nsProjectId", nsProjectId,
+                                    "duplicateTopic", mine.get(0).topicFilter(),
+                                    "duplicateCount", mine.get(0).count()));
+                }
+                Map<String, Object> evidence = new java.util.LinkedHashMap<>(
                         Map.of("nsProjectId", nsProjectId));
+                if (!dup.duplicates().isEmpty()) {
+                    evidence.put("其他项目重复映射",
+                            dup.duplicates().stream()
+                                    .map(d -> d.topicFilter() + " ×" + d.count())
+                                    .reduce((a, b) -> a + "；" + b).orElse(""));
+                }
+                return new CheckResult("GATEWAY_MAPPING", Verdict.PASS,
+                        "NS 项目 " + nsProjectId + " 已有网关 OC topic 映射", evidence);
             }
             return new CheckResult("GATEWAY_MAPPING", Verdict.FAIL,
                     "项目 " + nsProjectId + " 无网关映射，上行不会到达 TB；"

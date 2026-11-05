@@ -61,8 +61,13 @@ public class TopologyService {
 
     public record TbAuthProbe(boolean authenticated, String error) {}
 
+    /** One duplicated topic filter for console rendering (NIX-382). */
+    public record MappingDuplicate(String topic, int count, List<String> projects) {}
+
     public record GatewayMappingProbe(boolean readable, int mappedProjectCount,
-                                      List<Integer> mappedProjectIds, String error) {}
+                                      List<Integer> mappedProjectIds, String error,
+                                      List<MappingDuplicate> duplicates,
+                                      List<String> connectors, Integer totalMappings) {}
 
     public record WsConsistency(int subscriptions, long activeDevices, boolean consistent) {}
 
@@ -120,9 +125,17 @@ public class TopologyService {
             // swallows them into an empty set, which would display "cannot read the
             // mapping" as "0 mappings" (green-ish) instead of a red is-down
             var ids = gatewayMapping.refreshMappedProjectIds().stream().sorted().toList();
-            return new GatewayMappingProbe(true, ids.size(), ids, null);
+            // Duplicate scan shares the same TB read (cache refreshed inside),
+            // so the console gets gap + duplicate views from one round-trip.
+            var dup = gatewayMapping.detectDuplicateMappings();
+            return new GatewayMappingProbe(true, ids.size(), ids, null,
+                    dup.duplicates().stream()
+                            .map(d -> new MappingDuplicate(d.topicFilter(), d.count(), d.projects()))
+                            .toList(),
+                    dup.connectors(), dup.totalMappings());
         } catch (Exception e) {
-            return new GatewayMappingProbe(false, 0, List.of(), e.getMessage());
+            return new GatewayMappingProbe(false, 0, List.of(), e.getMessage(),
+                    List.of(), List.of(), null);
         }
     }
 

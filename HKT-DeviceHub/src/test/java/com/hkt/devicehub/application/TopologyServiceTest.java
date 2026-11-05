@@ -66,9 +66,28 @@ class TopologyServiceTest {
     @Test
     void successfulReadReportsMappedProjects() {
         when(gatewayMapping.refreshMappedProjectIds()).thenReturn(Set.of(148, 219));
+        // NIX-382: the probe now also carries the duplicate scan
+        when(gatewayMapping.detectDuplicateMappings()).thenReturn(
+                new GatewayMappingService.MappingDuplicateInfo(List.of(), 0, List.of(), null));
         TopologyService.TopologyResponse t = service.topology();
         assertTrue(t.gatewayMapping().readable());
         assertEquals(2, t.gatewayMapping().mappedProjectCount());
         assertEquals(List.of(148, 219), t.gatewayMapping().mappedProjectIds());
+        assertTrue(t.gatewayMapping().duplicates().isEmpty());
+    }
+
+    @Test
+    void duplicatedMappingSurfacesInProbe() {
+        when(gatewayMapping.refreshMappedProjectIds()).thenReturn(Set.of(175));
+        when(gatewayMapping.detectDuplicateMappings()).thenReturn(
+                new GatewayMappingService.MappingDuplicateInfo(
+                        List.of(new GatewayMappingService.DuplicateGroup(
+                                "org/1/project/175/device/+/dat/up", 2, List.of("175"))),
+                        3, List.of("OC"), null));
+        TopologyService.TopologyResponse t = service.topology();
+        assertTrue(t.gatewayMapping().readable());
+        assertEquals(1, t.gatewayMapping().duplicates().size());
+        assertEquals(2, t.gatewayMapping().duplicates().get(0).count());
+        assertEquals(List.of("OC"), t.gatewayMapping().connectors());
     }
 }

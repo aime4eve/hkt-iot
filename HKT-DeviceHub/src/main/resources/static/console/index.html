@@ -1649,6 +1649,8 @@ function renderReport(eui, report) {
         '<span class="c-src">数据源：' + meta.src + '</span></div>' +
         '<div class="c-detail">' + esc(c.advice || '') + '</div>' +
         evidenceHtml(c.evidence) +
+        (c.verdict === 'WARN' && c.key === 'GATEWAY_MAPPING' && c.evidence && c.evidence.duplicateTopic
+          ? '<div class="c-fix WARN" style="margin-top:6px"><button class="btn sm" data-fix-dup-topic="' + esc(c.evidence.duplicateTopic) + '">一键去重</button></div>' : '') +
         (c.verdict === 'FAIL' ? '<div class="c-fix FAIL">→ 请按上方建议处理后重试；重名冲突请 <a href="#/governance" data-goto-gov>前往治理中心</a>' +
           (c.key === 'GATEWAY_MAPPING' && c.evidence && c.evidence.nsProjectId != null
             ? ' <button class="btn sm" data-fix-mapping="' + c.evidence.nsProjectId + '">一键自动修复映射</button>' : '') +
@@ -1658,6 +1660,8 @@ function renderReport(eui, report) {
   box.querySelectorAll('[data-goto-gov]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchView('governance'); }));
   box.querySelectorAll('[data-fix-mapping]').forEach(b => b.addEventListener('click', () =>
     confirmFixMapping(+b.dataset.fixMapping, () => $('#euiForm').dispatchEvent(new Event('submit')))));
+  box.querySelectorAll('[data-fix-dup-topic]').forEach(b => b.addEventListener('click', () =>
+    confirmFixDuplicate(b.dataset.fixDupTopic, () => $('#euiForm').dispatchEvent(new Event('submit')))));
   const actions = $('#reportActions');
   actions.hidden = false;
   actions.innerHTML =
@@ -1757,6 +1761,30 @@ function ensureOperator() {
 
 /* ---- 网关映射自动修复（R-07 assist）：备份→追加→写入→回读→网关重载 ---- */
 /* events: {start(pid), success(pid, r), error(pid, msg)} —— 缺口巡检卡用它做行内状态机 */
+function confirmFixDuplicate(topic, onDone) {
+  ensureOperator().then(async () => {
+    let planText;
+    try {
+      const plan = await api('/gateway-mapping/duplicates/apply?topicFilter=' + encodeURIComponent(topic) + '&dryRun=true', { method: 'POST' });
+      if (plan.error) { toast('获取修复计划失败：' + plan.error, true); return; }
+      planText = '将删除 ' + plan.removedCount + ' 条重复条目，保留 1 条；其余 ' + plan.remainingMappings + ' 条映射不受影响。';
+    } catch (e) { toast('获取修复计划失败：' + e.message, true); return; }
+    openModal(
+      '<div>网关映射去重（NIX-382）：<span class="mono">' + esc(topic) + '</span></div>' +
+      '<div style="margin-top:6px">' + planText + '</div>' +
+      '<div style="margin-top:6px">流程：自动备份 → 删除重复 → 写入 → 回读校验 → 连接器重载。</div>' +
+      '<div style="margin-top:6px">注意：连接器重载期间<b>全部项目</b>的上行会中断数秒。</div>',
+      async () => {
+        try {
+          const r = await api('/gateway-mapping/duplicates/apply?topicFilter=' + encodeURIComponent(topic) + '&dryRun=false&reload=true', { method: 'POST' });
+          if (r.error) { toast('去重失败：' + r.error, true); return; }
+          toast('去重完成：' + (r.note || '已写入'), false);
+          if (onDone) onDone();
+        } catch (e) { toast('去重失败：' + e.message, true); }
+      });
+  });
+}
+
 function confirmFixMapping(pid, onDone, events) {
   events = events || {};
   ensureOperator().then(() => {
@@ -2144,16 +2172,31 @@ async function ticketAction(t, act) {
 function renderLag() {
   const box = $('#lagList');
   const rows = [];
+  if (topoCache && topoCache.gatewayMapping && Array.isArray(topoCache.gatewayMapping.duplicates)) {
+    topoCache.gatewayMapping.duplicates.forEach(d =>
+      rows.push({ kind: 'dup', topic: d.topic, count: d.count, projects: d.projects || [] }));
+    const conns = topoCache.gatewayMapping.connectors || [];
+    if (conns.length > 1) rows.push({ kind: 'conns', connectors: conns });
+  }
   if (topoCache && topoCache.projects) {
     Object.entries(topoCache.projects).forEach(([k, p]) => {
-      if (p.maxCatchupLagMs && p.maxCatchupLagMs > 0) rows.push({ project: k, lag: p.maxCatchupLagMs, noData: p.noDataDevices });
+      if (p.maxCatchupLagMs && p.maxCatchupLagMs > 0) rows.push({ kind: 'lag', project: k, lag: p.maxCatchupLagMs, noData: p.noDataDevices });
     });
   }
   box.innerHTML = rows.length
-    ? rows.map(r => '<div class="attn-item"><i class="dot warn"></i><span class="grow">' + r.project +
-        ' · 最大追赶滞后 ' + fmtLag(r.lag) + '（有新数据未追平）</span>' +
-        '<button class="btn ghost sm" data-goto-devices="' + r.project + '">看台账</button></div>').join('')
+    ? rows.map(r => {
+        if (r.kind === 'dup') return '<div class="attn-item"><i class="dot warn"></i><span class="grow">网关映射重复 · <span class="mono">' + esc(r.topic) +
+          '</span> ×' + r.count + '（涉及项目 ' + (esc(r.projects.join('、')) || '—') + '，一帧双报）</span>' +
+          '<button class="btn sm" data-fix-dup="' + esc(r.topic) + '">一键去重</button></div>';
+        if (r.kind === 'conns') return '<div class="attn-item"><i class="dot warn"></i><span class="grow">网关存在多个连接器：' + esc(r.connectors.join('、')) +
+          '（请人工核查测试连接器残留）</span></div>';
+        return '<div class="attn-item"><i class="dot warn"></i><span class="grow">' + r.project +
+          ' · 最大追赶滞后 ' + fmtLag(r.lag) + '（有新数据未追平）</span>' +
+          '<button class="btn ghost sm" data-goto-devices="' + r.project + '">看台账</button></div>';
+      }).join('')
     : '<div class="empty-state"><span class="icon">✓</span>一切正常 · 所有设备追赶滞后 cursorLag = 0</div>';
+  box.querySelectorAll('[data-fix-dup]').forEach(b => b.addEventListener('click', () =>
+    confirmFixDuplicate(b.dataset.fixDup, () => setTimeout(() => location.reload(), 1200))));
   box.querySelectorAll('[data-goto-devices]').forEach(b => b.addEventListener('click', () => {
     $('#fltProject').value = b.dataset.gotoDevices;
     devPage = 0;

@@ -94,8 +94,26 @@ class PreflightServiceTest {
     void mappedNsProjectYieldsPass() {
         nsDevicePresent(217, true, 5);
         when(gatewayMapping.isMapped(217)).thenReturn(true);
+        // NIX-382: the PASS branch also runs a duplicate scan
+        when(gatewayMapping.detectDuplicateMappings()).thenReturn(
+                new GatewayMappingService.MappingDuplicateInfo(List.of(), 0, List.of(), null));
         PreflightService.CheckResult check = service.checkGatewayMapping(service.checkNs(EUI));
         assertEquals(PreflightService.Verdict.PASS, check.verdict());
+    }
+
+    @Test
+    void duplicatedMappingForProjectYieldsWarnWithFixPointer() {
+        nsDevicePresent(175, true, 5);
+        when(gatewayMapping.isMapped(175)).thenReturn(true);
+        when(gatewayMapping.detectDuplicateMappings()).thenReturn(
+                new GatewayMappingService.MappingDuplicateInfo(
+                        List.of(new GatewayMappingService.DuplicateGroup(
+                                "org/1/project/175/device/+/dat/up", 2, List.of("175"))),
+                        3, List.of("OC"), null));
+        PreflightService.CheckResult check = service.checkGatewayMapping(service.checkNs(EUI));
+        assertEquals(PreflightService.Verdict.WARN, check.verdict());
+        assertTrue(check.advice().contains("重复"));
+        assertEquals("org/1/project/175/device/+/dat/up", check.evidence().get("duplicateTopic"));
     }
 
     @Test

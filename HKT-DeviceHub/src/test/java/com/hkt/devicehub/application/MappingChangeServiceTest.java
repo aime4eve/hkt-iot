@@ -423,4 +423,90 @@ class MappingChangeServiceTest {
         assertTrue(report.error().contains("no-such-attr"));
         verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
     }
+
+    // ---- NIX-382 duplicate-mapping removal ----
+
+    private static final String DUP_TOPIC = "org/1/project/175/device/+/dat/up";
+
+    @Test
+    void dedupRemovesExtraCopiesKeepingFirstAndVerifiesByReadBack() throws Exception {
+        // The 2026-11-06 incident shape: 175 held three times plus a bystander.
+        String before = "{\"configurationJson\":{\"mapping\":["
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"},"
+                + "{\"topicFilter\":\"org/1/project/89/device/+/dat/up\"},"
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"},"
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"}"
+                + "]}}";
+        String after = "{\"configurationJson\":{\"mapping\":["
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"},"
+                + "{\"topicFilter\":\"org/1/project/89/device/+/dat/up\"}"
+                + "]}}";
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before), attrs(after));
+
+        MappingChangeService.MappingDedupReport report =
+                service.removeDuplicateMapping(DUP_TOPIC, false, false);
+
+        assertTrue(report.changed());
+        assertEquals(2, report.removedCount());
+        assertEquals(2, report.removedEntries().size());
+        assertEquals(2, report.remainingMappings());
+        assertEquals(Boolean.TRUE, report.verifiedAfterWrite());
+        assertNull(report.reloaded());
+        assertNotNull(report.backupPath());
+        verify(mappingGapService).invalidate();
+
+        ArgumentCaptor<JsonNode> captor = ArgumentCaptor.forClass(JsonNode.class);
+        verify(tbClient).saveSharedAttribute(eq(GW), eq("OC"), captor.capture());
+        JsonNode parsed = MAPPER.readTree(captor.getValue().asText());
+        assertEquals(2, parsed.at("/configurationJson/mapping").size());
+        long dupAfter = 0;
+        for (JsonNode e : parsed.at("/configurationJson/mapping")) {
+            if (DUP_TOPIC.equals(e.path("topicFilter").asText())) dupAfter++;
+        }
+        assertEquals(1, dupAfter, "exactly one copy must survive");
+    }
+
+    @Test
+    void dedupDryRunPlansWithoutWriting() {
+        String before = "{\"configurationJson\":{\"mapping\":["
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"},"
+                + "{\"topicFilter\":\"org/1/project/89/device/+/dat/up\"},"
+                + "{\"topicFilter\":\"" + DUP_TOPIC + "\"}"
+                + "]}}";
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(before));
+
+        MappingChangeService.MappingDedupReport report =
+                service.removeDuplicateMapping(DUP_TOPIC, true, false);
+
+        assertTrue(report.dryRun());
+        assertTrue(report.changed());
+        assertEquals(1, report.removedCount());
+        assertEquals(2, report.remainingMappings());
+        assertNull(report.backupPath());
+        verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
+    }
+
+    @Test
+    void dedupRefusesWhenTopicNotDuplicated() {
+        when(tbClient.fetchSharedAttributes(GW)).thenReturn(attrs(ocWithProjects(89, 175)));
+
+        MappingChangeService.MappingDedupReport report =
+                service.removeDuplicateMapping("org/1/project/175/device/+/dat/up", false, false);
+
+        assertFalse(report.changed());
+        assertEquals(0, report.removedCount());
+        assertTrue(report.note().contains("无重复"));
+        verify(tbClient, never()).saveSharedAttribute(anyString(), anyString(), any());
+        verify(mappingGapService, never()).invalidate();
+    }
+
+    @Test
+    void dedupRejectsInvalidTopicFilterBeforeAnyRead() {
+        MappingChangeService.MappingDedupReport report =
+                service.removeDuplicateMapping("../../etc/passwd", false, false);
+
+        assertFalse(report.changed());
+        assertNotNull(report.error());
+        verify(tbClient, never()).fetchSharedAttributes(anyString());
+    }
 }

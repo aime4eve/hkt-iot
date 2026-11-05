@@ -47,4 +47,17 @@ public class GatewayMappingController {
     public MappingChangeService.GatewayReloadReport reloadGateway() {
         return mappingChangeService.reloadGateway();
     }
+
+    @PostMapping("/duplicates/apply")
+    @Operation(summary = "Remove duplicated OC mapping entries for one topic filter, keeping "
+            + "the first (NIX-382): backup → drop extras → write → read-back verify; "
+            + "dryRun=true returns the plan (removed entries, remaining count) without writing; "
+            + "reload=false skips the connector toggle")
+    public MappingChangeService.MappingDedupReport applyDuplicateFix(
+            @RequestParam String topicFilter,
+            @RequestParam(defaultValue = "false") boolean dryRun,
+            @RequestParam(defaultValue = "true") boolean reload,
+            @RequestParam(required = false) String attrKey) {
+        return mappingChangeService.removeDuplicateMapping(topicFilter, dryRun, reload, attrKey);
+    }
 }
