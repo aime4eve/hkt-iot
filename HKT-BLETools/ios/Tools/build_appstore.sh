@@ -11,12 +11,14 @@
 #       -s/--skip-archive 复用已有 xcarchive 只重跑导出（改签名/证书后重试用）
 #   ./Tools/build_appstore.sh --upload
 #       同上，但导出目的地=upload：签名后直接上传 App Store Connect（进 TestFlight）。
-#       认证走 Xcode 已登录账号会话（Settings→Accounts 的 tech@hktchn.com），
-#       无需 API key；分发证书用 Cloud Managed Apple Distribution（自动创建/复用）。
-#       【CI/无 GUI 会话场景的备选】altool + ASC API key：
-#         xcrun altool --upload-app --type ios -f <ipa> \
-#           --apiKey <KeyID> --apiIssuer <IssuerID>
-#         （.p8 放 ~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8）
+#       认证两条路（二选一）：
+#       ① Xcode 已登录账号会话（Settings→Accounts 的 tech@hktchn.com）——会话每隔
+#          几天~几周会过期（智慧畜牧 b763/b766/b767 连续三次被卡），过期须 GUI 重登；
+#       ② ASC API 密钥（推荐，永不过期，免 GUI）：设环境变量 ASC_KEY_ID + ASC_KEY_ISSUER
+#          （可选 ASC_KEY_PATH，缺省 ~/.private_keys/AuthKey_<KeyID>.p8），导出/上传
+#          走 xcodebuild -authenticationKey* 原生参数。密钥角色需 App 管理者或管理员；
+#          QQC56X32GR 团队一把密钥 HKT 全家 App 通用。
+#       分发证书用 Cloud Managed Apple Distribution（自动创建/复用）。
 #
 # 前提:
 #   - ASC 后台已建 App 记录（Bundle ID com.hkt.ble.bletools.ios），否则上传被拒
@@ -45,6 +47,19 @@ for arg in "$@"; do
 done
 
 say() { printf '\n==> %s\n' "$*"; }
+
+# ---- 可选：ASC API 密钥认证参数（未设 ASC_KEY_ID 时为空数组，行为与旧版一致）----
+# 用 "${arr[@]+...}" 惯用法展开（macOS bash 3.2 + set -u 下空数组安全）；
+# -authenticationKeyIssuerID 须带 ID 后缀（Xcode 27 实证，不带后缀的拼法被拒）。
+AUTH_ARGS=()
+if [[ -n "${ASC_KEY_ID:-}" ]]; then
+  ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8}"
+  [[ -n "${ASC_KEY_ISSUER:-}" && -f "$ASC_KEY_PATH" ]] || {
+    echo "已设 ASC_KEY_ID，但缺少 ASC_KEY_ISSUER 或找不到密钥文件: ${ASC_KEY_PATH}" >&2
+    exit 1
+  }
+  AUTH_ARGS=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_KEY_ISSUER")
+fi
 
 # ---- 版本解析：v6.2.1-b1 → SHORT=6.2.1 / BUILD=1 ----
 VERSION_FILE="$IOS_DIR/../VERSION"
@@ -108,12 +123,14 @@ cat > "$PLIST" <<EOF
 EOF
 
 say "xcodebuild -exportArchive（app-store-connect 签名，destination=${EXPORT_DESTINATION} ）"
+[[ -n "${ASC_KEY_ID:-}" ]] && say "认证方式：ASC API 密钥 ${ASC_KEY_ID}"
 if ! xcodebuild -exportArchive \
       -archivePath "$ARCHIVE_PATH" \
       -exportPath "$EXPORT_DIR" \
       -exportOptionsPlist "$PLIST" \
+      ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} \
       -allowProvisioningUpdates 2>&1 | tee -a "$LOG"; then
-  echo "导出/上传失败（upload 模式常见原因：ASC 未建 App 记录），完整日志: $LOG" >&2
+  echo "导出/上传失败（常见原因：ASC 未建 App 记录；Xcode 登录会话过期——设 ASC_KEY_ID/ASC_KEY_ISSUER 走密钥认证或在 Xcode 重登），完整日志: $LOG" >&2
   exit 1
 fi
 
