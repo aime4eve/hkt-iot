@@ -22,7 +22,9 @@ extern "C" {
     INFO(fmt, ##__VA_ARGS__);
 #endif
 
-#define uart_recv_max_len 128
+/* BLE upgrade frames carry up to 256B packet payloads (F1 total 269B + head);
+ * 576 leaves headroom for the 50ms-idle framing of the DA14531 bridge. */
+#define uart_recv_max_len 576
 #define uart_send_max_len 128
 
 typedef struct uart {

@@ -102,7 +102,7 @@ static uint8_t I2C_WaitForFlag(I2C_TypeDef *I2Cx, uint32_t Flag, FlagStatus Stat
     return 0; // 成功
 }
 
-void I2C1_WriteMemAddr(uint16_t mem_address, uint16_t mem_size)
+static u8 I2C1_WriteMemAddr(uint16_t mem_address, uint16_t mem_size)
 {
     uint8_t MemAddrLSB = I2C_MEM_ADD_LSB(mem_address);
     uint8_t MemAddrMSB = I2C_MEM_ADD_MSB(mem_address);
@@ -113,43 +113,49 @@ void I2C1_WriteMemAddr(uint16_t mem_address, uint16_t mem_size)
     } else {
         LL_I2C_TransmitData8(I2C1, MemAddrMSB);
         // 等待发送完成
-        // while (!LL_I2C_IsActiveFlag_TXIS(I2C1))
-        //     ;
-        I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500);
+        if (I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500))
+            return ERROR;
         LL_I2C_TransmitData8(I2C1, MemAddrLSB);
     }
+    return SUCCESS;
 }
 
-void I2C1_WriteMultipleData(uint8_t *pdata, uint8_t length)
+static u8 I2C1_WriteMultipleData(uint8_t *pdata, uint8_t length)
 {
     uint8_t count;
     for (count = 0; count < length; count++) {
         // 等待发送完成
-        // while (!LL_I2C_IsActiveFlag_TXIS(I2C1))
-        //     ;
-        I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500);
+        if (I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500))
+            return ERROR;
         LL_I2C_TransmitData8(I2C1, *(pdata + count));
     }
+    return SUCCESS;
 }
 
-void I2C1_ReadMultipleData(uint8_t *pdata, uint8_t length)
+static u8 I2C1_ReadMultipleData(uint8_t *pdata, uint8_t length)
 {
     uint8_t count;
     for (count = 0; count < length; count++) {
-        // 等待接收非空
-        while (!LL_I2C_IsActiveFlag_RXNE(I2C1))
-            ;
-        I2C_WaitForFlag(I2C1, I2C_ISR_RXNE, SET, 500);
+        // 等待接收非空（原裸 while 排在超时保护前，真异常会先死循环——已移除）
+        if (I2C_WaitForFlag(I2C1, I2C_ISR_RXNE, SET, 500))
+            return ERROR;
         *(pdata + count) = LL_I2C_ReceiveData8(I2C1);
     }
+    return SUCCESS;
 }
 
-void I2C1_MasterWrite(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
+/* 总线恢复：复位 I2C1 外设 + 引脚级总线恢复（原 I2C1_DeInit 为死代码，2026-11-15 楔死修复启用） */
+static void i2c_bus_recover(void)
+{
+    I2C1_DeInit();
+    I2C1_Init();
+}
+
+static u8 I2C1_MasterWriteOnce(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
 {
     // 等待iic空闲
-    // while (LL_I2C_IsActiveFlag_BUSY(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_BUSY, RESET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_BUSY, RESET, 500))
+        return ERROR;
 
     // 确认iic是否使能
     if (!LL_I2C_IsEnabled(I2C1)) {
@@ -159,73 +165,82 @@ void I2C1_MasterWrite(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t me
     // 重新配置为自动停止模式
     LL_I2C_HandleTransfer(I2C1, device_7BitAddr << 1, LL_I2C_ADDRSLAVE_7BIT, (length + mem_size), I2C_AUTOEND_MODE, I2C_GENERATE_START_WRITE);
 
-    // while (!LL_I2C_IsActiveFlag_TXIS(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500))
+        return ERROR; /* 地址NACK/总线异常：立即失败（原仅打印继续盲写，失败后无恢复） */
     // 写入从设备寄存器地址
-    I2C1_WriteMemAddr(mem_address, mem_size);
+    if (I2C1_WriteMemAddr(mem_address, mem_size) != SUCCESS)
+        return ERROR;
 
     // 写数据
-    I2C1_WriteMultipleData(pdata, length);
+    if (I2C1_WriteMultipleData(pdata, length) != SUCCESS)
+        return ERROR;
 
     // 等待停止完成
-    // while (!LL_I2C_IsActiveFlag_STOP(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_STOPF, SET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_STOPF, SET, 500))
+        return ERROR;
     LL_I2C_ClearFlag_STOP(I2C1);
+    return SUCCESS;
 }
 
-void I2C1_MasterRead(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
+u8 I2C1_MasterWrite(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
+{
+    if (I2C1_MasterWriteOnce(device_7BitAddr, mem_address, mem_size, pdata, length) == SUCCESS)
+        return SUCCESS;
+    i2c_bus_recover(); /* 失败先恢复总线，再重试一次 */
+    return I2C1_MasterWriteOnce(device_7BitAddr, mem_address, mem_size, pdata, length);
+}
+
+static u8 I2C1_MasterReadOnce(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
 {
     // 等待iic空闲
-    // while (LL_I2C_IsActiveFlag_BUSY(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_BUSY, RESET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_BUSY, RESET, 500))
+        return ERROR;
     // 确认iic是否使能
     if (!LL_I2C_IsEnabled(I2C1)) {
         LL_I2C_Enable(I2C1);
     }
     // 配置
     LL_I2C_HandleTransfer(I2C1, device_7BitAddr << 1, LL_I2C_ADDRSLAVE_7BIT, mem_size, I2C_SOFTEND_MODE, I2C_GENERATE_START_WRITE);
-    // while (!LL_I2C_IsActiveFlag_TXIS(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_TXIS, SET, 500))
+        return ERROR;
 
     // 写入从设备寄存器地址
-    I2C1_WriteMemAddr(mem_address, mem_size);
-    // while (!LL_I2C_IsActiveFlag_TCR(I2C1))
-    //     ;
+    if (I2C1_WriteMemAddr(mem_address, mem_size) != SUCCESS)
+        return ERROR;
 
-    // while (!LL_I2C_IsActiveFlag_TC(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_TC, SET, 500);
-
-    // while (!LL_I2C_IsActiveFlag_TXIS(I2C1))
-    //     ;
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_TC, SET, 500))
+        return ERROR;
 
     // 配置
     LL_I2C_HandleTransfer(I2C1, (device_7BitAddr << 1) | 1, LL_I2C_ADDRSLAVE_7BIT, length, I2C_AUTOEND_MODE, I2C_GENERATE_START_READ);
 
     // 读取数据
-    I2C1_ReadMultipleData(pdata, length);
+    if (I2C1_ReadMultipleData(pdata, length) != SUCCESS)
+        return ERROR;
 
     // 等待停止完成
-    // while (!LL_I2C_IsActiveFlag_STOP(I2C1))
-    //     ;
-    I2C_WaitForFlag(I2C1, I2C_ISR_STOPF, SET, 500);
+    if (I2C_WaitForFlag(I2C1, I2C_ISR_STOPF, SET, 500))
+        return ERROR;
     LL_I2C_ClearFlag_STOP(I2C1);
+    return SUCCESS;
+}
+
+u8 I2C1_MasterRead(uint8_t device_7BitAddr, uint16_t mem_address, uint16_t mem_size, uint8_t *pdata, uint8_t length)
+{
+    if (I2C1_MasterReadOnce(device_7BitAddr, mem_address, mem_size, pdata, length) == SUCCESS)
+        return SUCCESS;
+    i2c_bus_recover(); /* 失败先恢复总线，再重试一次 */
+    return I2C1_MasterReadOnce(device_7BitAddr, mem_address, mem_size, pdata, length);
 }
 
 u8 i2c_slave_read(u8 addr, u8 reg, u8 *data, int len)
 {
-    I2C1_MasterRead(addr, reg, 1, data, len);
-    return 0;
+    return I2C1_MasterRead(addr, reg, 1, data, len); /* 透传实际状态（原恒返回 0） */
 }
 
 u8 i2c_slave_write(u8 addr, u8 reg, u8 *data, int len)
 {
-    I2C1_MasterWrite(addr, reg, 1, data, len);
-    return 0;
+    return I2C1_MasterWrite(addr, reg, 1, data, len);
 }
 
 int8_t i2c_hal_read(uint8_t address, uint8_t *data, uint16_t count)

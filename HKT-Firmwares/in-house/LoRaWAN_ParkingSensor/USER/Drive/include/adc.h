@@ -17,6 +17,7 @@ extern "C"
     extern u8 batteryLevel;
     extern bool batteryStatus;
 		extern u32 batteryInitialCapacity;
+		extern u32 batterySavedCapacity; /* 上次落盘的计数（0xFFFFFFFF=本次上电尚未落盘），判脏用 */
     extern u32 convertedValue;
 
     void ADC_BatterySglConvert(void);

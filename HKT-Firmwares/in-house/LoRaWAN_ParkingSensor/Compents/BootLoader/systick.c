@@ -57,6 +57,14 @@ void SystemClock_Config(void)
     LL_SetSystemCoreClock(16000000);
 
     LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSI);
+		
+//		HAL_DBGMCU_EnableDBGStandbyMode();
+//    HAL_DBGMCU_EnableDBGStopMode();
+//		
+//    LL_DBGMCU_APB1_GRP1_FreezePeriph(LL_DBGMCU_APB1_GRP1_I2C1_STOP);
+//    LL_DBGMCU_APB1_GRP1_FreezePeriph(LL_DBGMCU_APB1_GRP1_LPTIM1_STOP);
+//    LL_DBGMCU_APB1_GRP1_FreezePeriph(LL_DBGMCU_APB1_GRP1_IWDG_STOP);
+//    LL_DBGMCU_APB2_GRP1_FreezePeriph(LL_DBGMCU_APB2_GRP1_TIM16_STOP);
 }
 
 /**
@@ -262,10 +270,6 @@ void Systick_1ms_Handler(void)
 
     if (uartInfo.recvTimeout)
         uartInfo.recvTimeout--;
-    if (uartBle.recvTimeout)
-        uartBle.recvTimeout--;
-    if (uartBle.sendDelay)
-        uartBle.sendDelay--;
     if (sys_OPTime_ms >= SEC_DELAY) {
         sys_OPTime_ms = 0;
         sys_OPTime_ss++;

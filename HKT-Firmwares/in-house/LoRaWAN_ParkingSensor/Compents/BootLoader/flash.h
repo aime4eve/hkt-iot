@@ -9,17 +9,28 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include <config.h>
 
-#define FLASH_ONE_PAGE_SIZE ((u32)0x00000800)   /* FLASH Page Size */
-#define FLASH_APP_START_ADDR ((u32)0x08004000) /* Start @ of user Flash area */
-#define FLASH_USER_END_ADDR ((u32)0x08040000)   /* End @ of user Flash area */  //256KB
+#include "upgrade_common.h"
 
+/* Raw double-word program / read (no erase, no address gate - internal use) */
 ErrorStatus FLASH_Write_NDoubleWord(u32 Address, uint64_t *Data, int Len);
 void FLASH_Read_NDoubleWord(u32 Address, uint64_t *Data, int Len);
-ErrorStatus FLASH_Write_OTA_Data(u32 Address, uint64_t *Data, int Len);
-void AppProgramRun(void);
-ErrorStatus FLASH_Write_Update_Flag(void);
-void FLASH_Read_Update_Flag(void);
-ErrorStatus FLASH_Clear_Update_Flag(void);
+
+/*
+ * Erase the 2KB page containing page_addr and program dw_len double-words.
+ * GATED (protocol doc req.8/9): target must be inside the APP image region
+ * [UPG_APP_BASE, UPG_APP_END). The VAR page has its own dedicated writer.
+ */
+ErrorStatus BL_FLASH_WriteAppPage(u32 page_addr, uint64_t *data, int dw_len);
+
+/* Upgrade flag struct on the VAR page (upg_crc16 integrity field kept valid). */
+void BL_FLASH_ReadFlag(upg_flag_t *flag);
+ErrorStatus BL_FLASH_WriteFlag(const upg_flag_t *flag);
+
+/*
+ * Validate the APP stack pointer, de-init BootLoader peripherals and jump to
+ * UPG_APP_BASE. Only returns (-1) when the APP image looks invalid.
+ */
+int BL_JumpToApp(void);
 
 #ifdef __cplusplus
 }

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hkt.ble.bletools.core.ble.DeviceSession
+import com.hkt.ble.bletools.core.device.DeviceCapability
 import com.hkt.ble.bletools.core.device.DeviceRegistry
 import com.hkt.ble.bletools.core.protocol.CommandCode
 import com.hkt.ble.bletools.core.protocol.DeviceFamily
@@ -100,9 +101,15 @@ fun DeviceDetailScreen(
 
     var showCalibration by remember { mutableStateOf(false) }
     var showConfig by remember { mutableStateOf(false) }
+    var showLoRaWAN by remember { mutableStateOf(false) }
     var showTasks by remember { mutableStateOf(false) }
     var showOta by remember { mutableStateOf(false) }
+    var showUpgrade by remember { mutableStateOf(false) }
     var showTech by remember { mutableStateOf(false) }
+    var showBleDebug by remember { mutableStateOf(false) }
+    // 隐藏入口手势态：固件版本 meta 连点 10 次（相邻间隔 >2s 重新计数）
+    var metaTaps by remember { mutableStateOf(0) }
+    var lastMetaTapAt by remember { mutableStateOf(0L) }
     var confirmDisconnect by remember { mutableStateOf(false) }
     var confirmPowerOff by remember { mutableStateOf(false) }
     var powerSending by remember { mutableStateOf(false) }
@@ -158,6 +165,10 @@ fun DeviceDetailScreen(
         ConfigScreen(session = session, onBack = { showConfig = false })
         return
     }
+    if (showLoRaWAN) {
+        LoRaWANConfigScreen(session = session, onBack = { showLoRaWAN = false })
+        return
+    }
     if (showTasks) {
         TasksScreen(session = session, onBack = { showTasks = false })
         return
@@ -166,12 +177,26 @@ fun DeviceDetailScreen(
         OtaScreen(session = session, onBack = { showOta = false })
         return
     }
+    if (showBleDebug) {
+        BleDebugScreen(session = session, onBack = { showBleDebug = false })
+        return
+    }
+    if (showUpgrade) {
+        UpgradeScreen(session = session, onBack = { showUpgrade = false })
+        return
+    }
     if (showTech) {
         TechScreen(session = session, onBack = { showTech = false })
         return
     }
 
     val isPowerOff = snapshot.power == 0
+
+    // 0xA0/0xA1 仅 LoRaWAN_ParkingSensor 固件（广播名 EPS100/MPS100）实现
+    val loRaWanReady = remember(session.deviceName) {
+        DeviceRegistry.matchBroadcast(session.deviceName)
+            ?.capabilities?.contains(DeviceCapability.LORAWAN_CONFIG) == true
+    }
 
     // ===== 早退：关机（原型 !powerOn）=====
     if (isPowerOff) {
@@ -202,16 +227,35 @@ fun DeviceDetailScreen(
                 deviceName = headIdentity,
                 nameSizeSp = 17f,
                 meta = metaText(session, snapshot, zh),
+                // 蓝牙调试模式隐藏入口（2026-11-15）：固件 meta 连点 10 次进入；硬件版本 ≥ 0x3C(60)
+                // 才放行（0xA2 仅 ≥60.X 固件实现，旧固件误进只会一直无 ACK）
+                onMetaTap = {
+                    val now = System.currentTimeMillis()
+                    metaTaps = if (now - lastMetaTapAt > 2_000) 1 else metaTaps + 1
+                    lastMetaTapAt = now
+                    if (metaTaps >= 10) {
+                        metaTaps = 0
+                        if (snapshot.hardwareVersion >= 0x3C) {
+                            showBleDebug = true
+                        } else {
+                            notice = if (zh) "需要固件 ≥ 60.X" else "Requires firmware ≥ 60.X"
+                        }
+                    }
+                },
                 badge = {
                     // 首页/返回当前单层导航等效（多层导航接入时需分化，评审 P3）
                     headBadge(session, unknownTail, secondsSince, zh)()
                 },
-                actions = listOf(
-                    { SessionButton(if (zh) "返回" else "Back") { onBack() } },
-                    { SessionButton(if (zh) "首页" else "Home") { onBack() } },
-                    { SessionButton(if (zh) "固件升级" else "Firmware Update") { showOta = true } },
-                    { SessionButton(if (zh) "断开连接" else "Disconnect", danger = true) { confirmDisconnect = true } },
-                ),
+                // 地磁线升级入口已合并进设备操作区的上下两张卡（DC200 块）；头部按钮只留给
+                // 未做入口合并的其他产品线（UDS/SVC 等，继续走旧 OTA 通道）
+                actions = buildList {
+                    add { SessionButton(if (zh) "返回" else "Back") { onBack() } }
+                    add { SessionButton(if (zh) "首页" else "Home") { onBack() } }
+                    if (session.family != DeviceFamily.DC200_FAMILY) {
+                        add { SessionButton(if (zh) "固件升级" else "Firmware Update") { showOta = true } }
+                    }
+                    add { SessionButton(if (zh) "断开连接" else "Disconnect", danger = true) { confirmDisconnect = true } }
+                },
             )
             if (linkLost) {
                 // 原型 disconnected 分支：居中断线视图替换全部 body
@@ -266,6 +310,21 @@ fun DeviceDetailScreen(
                                 desc = if (zh) "三轴曲线 · 雷达频谱" else "3-axis curves · radar spectrum",
                             ) { showTech = true }
                         }
+                        // 卡序（2026-11-14 用户裁决）：参数配置在 LoRaWAN 配置之上，固件升级两卡置底
+                        OpCard(
+                            badge = "CFG",
+                            title = if (zh) "参数配置" else "Configuration",
+                            desc = if (zh) "上报 / 端口 / 时区" else "Reporting / port / timezone",
+                        ) { showConfig = true }
+                        // 0xA0/0xA1 仅 LoRaWAN_ParkingSensor 固件（广播名 EPS100/MPS100）实现
+                        if (loRaWanReady) {
+                            OpCard(
+                                badge = "LRW",
+                                badgeKind = BadgeKind.WARN,
+                                title = if (zh) "LoRaWAN 配置" else "LoRaWAN Config",
+                                desc = if (zh) "区域/信道/速率参数" else "region/channels/DR",
+                            ) { showLoRaWAN = true }
+                        }
                         if (session.family == DeviceFamily.SVC100) {
                             OpCard(
                                 badge = "TSK",
@@ -273,11 +332,6 @@ fun DeviceDetailScreen(
                                 desc = if (zh) "实时任务 · 定时任务表" else "Realtime task · schedule table",
                             ) { showTasks = true }
                         }
-                        OpCard(
-                            badge = "CFG",
-                            title = if (zh) "参数配置" else "Configuration",
-                            desc = if (zh) "上报 / 端口 / 时区" else "Reporting / port / timezone",
-                        ) { showConfig = true }
                         if (session.family != DeviceFamily.DC200_FAMILY) {
                             // DC200 家族隐藏对时入口（用户裁决 2026-09-20：FD-002/FD-003 固件缺陷期）
                             val outcome = timeSyncOutcome
@@ -299,6 +353,41 @@ fun DeviceDetailScreen(
                             ) {
                                 scope.launch { session.sendTimeSync() }
                             }
+                        }
+                        if (session.family == DeviceFamily.DC200_FAMILY) {
+                            // 升级入口合并为上下两卡：上=新升级协议（差分/全量，设备拉包），下=旧
+                            // 引导层通道。新方案判据 = 硬件版本 ≥ 0x3C（=60 十进制，固件 config.h
+                            // HARDWARE_VER 0x3C，2026-11 用户裁决）：低硬件版本设备不回 0xFE 应答
+                            // 走旧通道；0x3C+ 固件停用旧通道。版本未知（0）两卡都放开，避免误伤
+                            // 尚未读到版本信息的连接。
+                            val devHw = snapshot.hardwareVersion
+                            val verKnown = devHw > 0
+                            val newReady = !verKnown || devHw >= 0x3C
+                            val legacyReady = !verKnown || devHw < 0x3C
+                            OpCard(
+                                badge = "FW",
+                                badgeKind = BadgeKind.OK,
+                                title = if (zh) "固件升级（差分/全量）" else "Firmware Update (Diff/Full)",
+                                desc = if (newReady) {
+                                    if (zh) "新升级协议 · 需版本 ≥ 60.X" else "New protocol · version ≥ 60.X"
+                                } else {
+                                    if (zh) "当前 v${snapshot.hardwareVersion}.${snapshot.softwareVersion} 需版本 ≥ 60.X · 请用下方旧通道"
+                                    else "Current v${snapshot.hardwareVersion}.${snapshot.softwareVersion} needs ≥ 60.X — use the legacy entry below"
+                                },
+                                disabled = !newReady,
+                            ) { showUpgrade = true }
+                            OpCard(
+                                badge = "FW",
+                                badgeKind = BadgeKind.INFO,
+                                title = if (zh) "固件升级（旧版）" else "Firmware Update (Legacy)",
+                                desc = if (legacyReady) {
+                                    if (zh) "旧升级协议 · 引导层回环" else "Legacy protocol · boot-loop"
+                                } else {
+                                    if (zh) "本机固件已停用旧通道 · 请用上方新方式"
+                                    else "Retired on this firmware — use the new entry above"
+                                },
+                                disabled = !legacyReady,
+                            ) { showOta = true }
                         }
                     }
                 }

@@ -77,6 +77,8 @@
 #define SYSTEM_TIMER_BASE 1
 #define SEC_DELAY         (1000 / SYSTEM_TIMER_BASE) // u16 不能超过65秒
 
+#define PROCT_NAME "SCB200" // 空开车位锁硬件
+
 #define HARDWARE_VER 0x07
 #define SOFTWARE_VER 0x0E
 

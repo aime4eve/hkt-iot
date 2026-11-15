@@ -1,0 +1,79 @@
+[
+ {
+  "id": "UPG-NOTIFY-001",
+  "device": "DC200",
+  "purpose": "APP 0xF0 new-version notify (hw 0x11, sw 0x28, totalPackets 2, packetLen 4, FULL, file CRC32 0x12345678); special=0x0B (BIT0 ack + BIT1 checksum + BIT3 upgrade)",
+  "request": "686B740B01F0112800020004001234567896",
+  "expected": {
+   "deviceAction": "reply 0xFE(F0) then pull packets via 0xF2"
+  },
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ①",
+  "note": "checksum = byte sum from frame head mod 256 (0x96)"
+ },
+ {
+  "id": "UPG-ACK-NOTIFY-001",
+  "device": "DC200",
+  "purpose": "device 0xFE generic ACK for the 0xF0 notify (special=0x02 checksum-only, no ack-required bit)",
+  "response": "686B740205FEF03C",
+  "expected": {
+   "ackedType": "0xF0"
+  },
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ②"
+ },
+ {
+  "id": "UPG-REQUEST-001",
+  "device": "DC200",
+  "purpose": "device 0xF2 requests packet 0 (2-byte BE seq)",
+  "response": "686B740B03F2000047",
+  "expected": {
+   "packetIndex": 0
+  },
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ③"
+ },
+ {
+  "id": "UPG-DATA-001",
+  "device": "DC200",
+  "purpose": "APP 0xF1 packet 0 (seq BE + packet CRC16/CCITT BE + len BE + data); DOC EXAMPLE USES PLACEHOLDER CRC16 0x1234 - live build computes real CRC16 over chunk, only structure+checksum are golden",
+  "request": "686B740B04F1000012340004010203049B",
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ④"
+ },
+ {
+  "id": "UPG-REQUEST-002",
+  "device": "DC200",
+  "purpose": "device 0xF2 requests packet 1",
+  "response": "686B740B05F200014A",
+  "expected": {
+   "packetIndex": 1
+  },
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ⑤"
+ },
+ {
+  "id": "UPG-DATA-002",
+  "device": "DC200",
+  "purpose": "APP 0xF1 packet 1 (PLACEHOLDER CRC16 0x5678, see UPG-DATA-001)",
+  "request": "686B740B06F10001567800040506070836",
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ⑥"
+ },
+ {
+  "id": "UPG-RESULT-OK",
+  "device": "DC200",
+  "purpose": "device 0xF3 result report: success (code 0x00, extra 0x00, special=0x02); device then synthesizes/resets on its own - BLE may drop",
+  "response": "686B740208F3000044",
+  "expected": {
+   "code": 0,
+   "extra": 0
+  },
+  "firmwareReference": "蓝牙升级协议.docx 完整升级示例 ⑦"
+ },
+ {
+  "id": "UPG-RESULT-CRC-FAIL",
+  "device": "DC200",
+  "purpose": "device 0xF3 result report: verification failed (code 0x01) - DERIVED vector (checksum recomputed), not in doc examples",
+  "response": "686B740208F3010045",
+  "expected": {
+   "code": 1,
+   "extra": 0
+  },
+  "firmwareReference": "蓝牙升级协议.docx 数据类型表 0xF3 结果码 0x01 校验失败"
+ }
+]

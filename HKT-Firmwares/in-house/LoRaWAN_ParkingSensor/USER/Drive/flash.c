@@ -16,6 +16,12 @@
 #include "systick.h"
 #include "tim.h"
 #include "uart.h"
+#include "upgrade_crc.h"
+
+/* Compile-time layout pin: the sizeof(struct)-2 CRC idiom in
+ * FLASH_Write/Read_LoRaWAN_Cfg requires crc16 to end the struct with no
+ * tail padding (4 double words = 32 bytes). */
+typedef char lorawan_cfg_size_check[(sizeof(struct LoRaWANLinkCfg) == 32) ? 1 : -1];
 
 /**
  * @brief  FLASH 字节写入
@@ -146,10 +152,182 @@ void FLASH_Read_Park_Power(void)
 }
 
 /**
+ * @brief  写入LoRaWAN链路配置（0xA0协议持久化，KERMIT CRC随结构体末字段）
+ * @param
+ * @retval 写入状态 1：成功 0：失败
+ */
+ErrorStatus FLASH_Write_LoRaWAN_Cfg(void)
+{
+    ErrorStatus status;
+    u32 Address = FLASH_LORAWAN_CFG_ADDR;
+    u32 PAGEError;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
+    uint64_t buffer[4] = {0}; /* 32B struct = 4 double words exactly */
+
+    lorawanCfg.crc16 = upg_crc16((const u8 *)&lorawanCfg, sizeof(lorawanCfg) - 2U);
+    memcpy(buffer, &lorawanCfg, sizeof(lorawanCfg));
+
+    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+    EraseInitStruct.Banks = FLASH_BANK_1;
+    EraseInitStruct.Page = (Address - 0x08000000) / (2 * 1024);
+    EraseInitStruct.NbPages = 1;
+    HAL_FLASH_Unlock();
+    while (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+        ;
+    status = FLASH_Write_NDoubleWord(Address, buffer, 4);
+    HAL_FLASH_Lock();
+    return status;
+}
+
+/**
+ * @brief  读取LoRaWAN链路配置，页面空白/校验失败/字段非法时回落编译期默认值（不回写）
+ * @param
+ * @retval
+ */
+void FLASH_Read_LoRaWAN_Cfg(void)
+{
+    struct LoRaWANLinkCfg tmp;
+    uint64_t buffer[4] = {0};
+
+    FLASH_Read_NDoubleWord(FLASH_LORAWAN_CFG_ADDR, buffer, 4);
+    memcpy(&tmp, buffer, sizeof(tmp));
+
+    if (tmp.magic != LORAWAN_CFG_MAGIC || upg_crc16((const u8 *)&tmp, sizeof(tmp) - 2U) != tmp.crc16 || !LoRaWAN_CfgValidate(&tmp)) {
+        LoRaWAN_CfgSetDefaults();
+        DEBUG_TRACE(FLASH_TAG, "LoRaWAN Cfg: use defaults band[%d] rx2[%d,%d]", lorawanCfg.band, lorawanCfg.rx2_dr, lorawanCfg.rx2_freq);
+    } else {
+        memcpy(&lorawanCfg, &tmp, sizeof(lorawanCfg));
+        DEBUG_TRACE(FLASH_TAG, "LoRaWAN Cfg: band[%d] dr[%d] power[%d] port[%d] class[%d] %s", lorawanCfg.band, lorawanCfg.dr,
+                    lorawanCfg.power, lorawanCfg.port, lorawanCfg.class, lorawanCfg.activation ? "ABP" : "OTAA");
+    }
+}
+
+/**
  * @brief  写入上报周期（分钟）
  * @param
  * @retval 写入状态 1：成功 0：失败
  */
+/* ---- 电量计数环形槽（与上报周期同页，2026-11-14 用户裁决） ----
+ * 槽 8B（一个 L4 双字）：byte0=magic(0xB1) byte1=seq(u8 环绕) byte2..5=capacity(u32 LE)
+ * byte6..7=sum(u16，前 6 字节累加和)。读=扫全槽取 seq 环绕最新且校验通过者；写=找空槽
+ * （0xFF 双字）直接编程，槽满才擦页（页重灌：周期+槽0）。读写异常一律回退默认 100%。 */
+#define BATTERY_SLOT_MAGIC 0xB1
+
+static uint64_t battery_slot_pack(u8 seq, u32 cap)
+{
+    u16 sum = BATTERY_SLOT_MAGIC + seq + (cap & 0xFF) + ((cap >> 8) & 0xFF) + ((cap >> 16) & 0xFF) + ((cap >> 24) & 0xFF);
+    return (uint64_t)BATTERY_SLOT_MAGIC | ((uint64_t)seq << 8) | ((uint64_t)cap << 16) | ((uint64_t)sum << 48);
+}
+
+/* 解包并校验；OK 返回 1 */
+static u8 battery_slot_unpack(uint64_t dw, u8 *seq, u32 *cap)
+{
+    u8 s = (dw >> 8) & 0xFF;
+    u32 c = (u32)(dw >> 16);
+    u16 sum = (dw >> 48) & 0xFFFF;
+    if ((dw & 0xFF) != BATTERY_SLOT_MAGIC)
+        return 0;
+    if (battery_slot_pack(s, c) != dw)
+        return 0; /* sum 复算不符（含掉电写坏） */
+    *seq = s;
+    *cap = c;
+    return 1;
+}
+
+/* 擦电量/周期共用页并重灌：页首周期 + 槽0=当前电量计数（seq 从 bestSeq+1 续） */
+static ErrorStatus battery_page_rewrite(u8 nextSeq)
+{
+    ErrorStatus status;
+    uint64_t buffer = device_t.report_interval;
+    uint64_t slot = battery_slot_pack(nextSeq, batteryInitialCapacity);
+    u32 PAGEError;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
+    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+    EraseInitStruct.Banks = FLASH_BANK_1;
+    EraseInitStruct.Page = (FLASH_REPORT_INTERVAL_ADDR - 0x08000000) / (2 * 1024);
+    EraseInitStruct.NbPages = 1;
+    HAL_FLASH_Unlock();
+    while (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+        ;
+    status = FLASH_Write_NDoubleWord(FLASH_REPORT_INTERVAL_ADDR, &buffer, 1);
+    FLASH_Write_NDoubleWord(FLASH_BATTERY_SLOT_ADDR, &slot, 1);
+    HAL_FLASH_Lock();
+    batterySavedCapacity = batteryInitialCapacity;
+    return status;
+}
+
+/**
+ * @brief  落盘电量计数（环形槽推进；判脏由调用方负责）
+ * @param
+ * @retval 写入状态
+ */
+ErrorStatus FLASH_Write_Battery(void)
+{
+    u32 addr = 0, slotAddr, cap;
+    uint64_t dw;
+    u8 seq, bestSeq = 0, haveValid = 0;
+    int i;
+
+    for (i = 0; i < FLASH_BATTERY_SLOT_NUM; i++) {
+        slotAddr = FLASH_BATTERY_SLOT_ADDR + (u32)i * 8;
+        FLASH_Read_NDoubleWord(slotAddr, &dw, 1);
+        if (dw == 0xFFFFFFFFFFFFFFFFULL) { /* 空槽 */
+            if (addr == 0)
+                addr = slotAddr;
+            continue;
+        }
+        if (battery_slot_unpack(dw, &seq, &cap) && (!haveValid || (u8)(seq - bestSeq) < 0x80)) {
+            bestSeq = seq;
+            haveValid = 1;
+        } else if (addr == 0) { /* 坏槽视作空位复用 */
+            addr = slotAddr;
+        }
+    }
+    if (addr == 0) /* 槽满：擦页重灌（周期+槽0，seq 续号） */
+        return battery_page_rewrite(bestSeq + 1);
+
+    dw = battery_slot_pack(bestSeq + 1, batteryInitialCapacity);
+    HAL_FLASH_Unlock();
+    FLASH_Write_NDoubleWord(addr, &dw, 1);
+    HAL_FLASH_Lock();
+    batterySavedCapacity = batteryInitialCapacity;
+    return SUCCESS;
+}
+
+/**
+ * @brief  上电恢复电量计数；槽区全无效（全新设备/读取异常）回退默认 100%（计数 0）
+ * @param
+ * @retval
+ */
+void FLASH_Read_Battery(void)
+{
+    uint64_t dw;
+    u8 seq, bestSeq = 0;
+    u32 cap, bestCap = 0;
+    u8 haveValid = 0;
+    int i;
+
+    for (i = 0; i < FLASH_BATTERY_SLOT_NUM; i++) {
+        FLASH_Read_NDoubleWord(FLASH_BATTERY_SLOT_ADDR + (u32)i * 8, &dw, 1);
+        if (dw == 0xFFFFFFFFFFFFFFFFULL)
+            continue;
+        if (battery_slot_unpack(dw, &seq, &cap) && (!haveValid || (u8)(seq - bestSeq) < 0x80)) {
+            bestSeq = seq;
+            bestCap = cap;
+            haveValid = 1;
+        }
+    }
+    if (haveValid) {
+        batteryInitialCapacity = bestCap;
+        batterySavedCapacity = bestCap;
+        DEBUG_TRACE(FLASH_TAG, "Battery Restored: used %u, seq %d", bestCap, bestSeq);
+    } else {
+        batteryInitialCapacity = 0;                 /* 默认 100% */
+        batterySavedCapacity = 0xFFFFFFFF;          /* 本次上电尚未落盘 */
+        DEBUG_TRACE(FLASH_TAG, "Battery Slots Invalid, Default 100%%");
+    }
+}
+
 ErrorStatus FLASH_Write_Report_Interval(void)
 {
     ErrorStatus status = SUCCESS;
@@ -166,6 +344,8 @@ ErrorStatus FLASH_Write_Report_Interval(void)
         ;
     status = FLASH_Write_NDoubleWord(Address, &buffer, 1);
     HAL_FLASH_Lock();
+    /* 共用页被擦，电量槽需重灌当前值，否则周期写入会抹掉电量历史 */
+    FLASH_Write_Battery();
     return status;
 }
 
@@ -444,6 +624,7 @@ void FLASH_Read_Param(void)
     FLASH_Read_Park_Power();
     FLASH_Read_Mag_Param();
     FLASH_Read_Rkb_Param();
+    FLASH_Read_LoRaWAN_Cfg();
     FLASH_Clear_Update_Flag();
 
     memcpy(LoRaWAN.AppKEY, appKey, sizeof(LoRaWAN.AppKEY));
@@ -453,7 +634,9 @@ void FLASH_Read_Param(void)
     memcpy(LoRaWAN.AppSKEY, appSKey, sizeof(LoRaWAN.AppSKEY));
     memcpy(LoRaWAN.NwkSKEY, nwkSKey, sizeof(LoRaWAN.NwkSKEY));
 
-    batteryLevel = 100; // 电池电量初始值100%
+    /* 电量计数从环形槽恢复（槽区全无效/读取异常回退默认 100%），再按恢复值重算百分比 */
+    FLASH_Read_Battery();
+    ADC_BatterySglConvert();
     if (device_t.power_on) {
         LPTIM1_Init();
         LoRaWAN.joinEvent = LoRaWAN_JOINEVENT_INIT; // 初始化LoRa

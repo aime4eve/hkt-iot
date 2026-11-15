@@ -2,19 +2,21 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stdio.h"
 #include "string.h"
-#include <stdlib.h>
 
 #include "flash.h"
 #include "gpio.h"
 #include "systick.h"
+#include "tim.h"
 #include "uart.h"
 
+#include "upgrade_crc.h"
+
 /**
- * @brief  FLASH 字节写入
- * @param   Address：待写入FLASH首地址
- * @param   Data：待写入源数据
- * @param   Len：待写入数据长度
- * @retval  写入状态 1：成功 0：失败
+ * @brief  FLASH double-word program
+ * @param   Address: flash address (double-word aligned)
+ * @param   Data:   source buffer
+ * @param   Len:    number of double-words
+ * @retval  SUCCESS / ERROR
  */
 ErrorStatus FLASH_Write_NDoubleWord(u32 Address, uint64_t *Data, int Len)
 {
@@ -30,11 +32,7 @@ ErrorStatus FLASH_Write_NDoubleWord(u32 Address, uint64_t *Data, int Len)
 }
 
 /**
- * @brief  FLASH 字节读取
- * @param   Address：待读取FLASH首地址
- * @param   Data：待读取源数据
- * @param   Len：待读取数据长度
- * @retval
+ * @brief  FLASH double-word read (memory-mapped)
  */
 void FLASH_Read_NDoubleWord(u32 Address, uint64_t *Data, int Len)
 {
@@ -45,105 +43,97 @@ void FLASH_Read_NDoubleWord(u32 Address, uint64_t *Data, int Len)
     }
 }
 
-ErrorStatus FLASH_Write_OTA_Data(u32 Address, uint64_t *Data, int Len)
+/*==============================================================================
+ * Page erase helper
+ *============================================================================*/
+static ErrorStatus flash_erase_page(u32 page_addr)
 {
-    ErrorStatus status = SUCCESS;
     u32 PAGEError;
-    FLASH_EraseInitTypeDef EraseInitStruct;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
+
     EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
     EraseInitStruct.Banks = FLASH_BANK_1;
-    EraseInitStruct.Page = (Address - 0x08000000) / (2 * 1024);
+    EraseInitStruct.Page = (page_addr - 0x08000000) / UPG_INT_PAGE_SIZE;
     EraseInitStruct.NbPages = 1;
-    HAL_FLASH_Unlock();
-    while (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
-        ;
-    status = FLASH_Write_NDoubleWord(Address, Data, Len);
-    HAL_FLASH_Lock();
-    return status;
-}
-
-__IO uint32_t AppSpInitVal;
-__IO uint32_t AppJumpAddr;
-void (*pAppFun)(void); // 定义一个函数指针.用于指向APP程序入口.
-
-/* 跳转到应用程序位置 */
-void AppProgramRun(void)
-{
-    AppSpInitVal = *(__IO uint32_t *)(FLASH_APP_START_ADDR);    // 取APP的SP初值.
-    AppJumpAddr = *(__IO uint32_t *)(FLASH_APP_START_ADDR + 4); // 取程序入口.
-    if ((AppSpInitVal & 0x2FFE0000) == 0x20000000)              // 检查栈顶地址是否合法.
-    {
-        FLASH_Clear_Update_Flag();
-        __set_MSP(AppSpInitVal);               // 设置SP.
-        pAppFun = (void (*)(void))AppJumpAddr; // 生成跳转函数.
-        (*pAppFun)();                          // 跳转.不再返回.
-    } else {
-        DEBUG_TRACE(ERROR_TAG, "Load Bin File Err");
-        NVIC_SystemReset(); // 复位
+    if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK) {
+        return ERROR;
     }
+    return SUCCESS;
 }
 
 /**
- * @brief  写入更新状态
- * @param
- * @retval 写入状态 1：成功 0：失败
+ * @brief  Erase the APP-region page and program dw_len double-words into it.
+ *         Address gate: refuses anything outside [UPG_APP_BASE, UPG_APP_END).
  */
-ErrorStatus FLASH_Write_Update_Flag(void)
+ErrorStatus BL_FLASH_WriteAppPage(u32 page_addr, uint64_t *data, int dw_len)
 {
-    ErrorStatus status = SUCCESS;
-    u32 Address = FLASH_USER_END_ADDR;
-    uint64_t buffer = 0x12345678;
-    u32 PAGEError;
-    FLASH_EraseInitTypeDef EraseInitStruct = {0};
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Banks = FLASH_BANK_1;
-    EraseInitStruct.Page = (Address - 0x08000000) / (2 * 1024);
-    EraseInitStruct.NbPages = 1;
-    HAL_FLASH_Unlock();
-    while (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
-        ;
-    status = FLASH_Write_NDoubleWord(Address, &buffer, 1);
-    HAL_FLASH_Lock();
+    ErrorStatus status;
 
-    return status;
-}
-
-/**
- * @brief  读取更新状态
- * @param
- * @retval
- */
-void FLASH_Read_Update_Flag(void)
-{
-    uint64_t buffer;
-    u32 Address = FLASH_USER_END_ADDR - FLASH_ONE_PAGE_SIZE;
-
-    FLASH_Read_NDoubleWord(Address, &buffer, 1);
-    if (buffer != 0x12345678) {
-        App_Uart3_Deinit();
-        App_LpUart1DeInit();
-        LL_TIM_DeInit(TIM16);
-
-        __disable_irq(); // 关闭全局中断使能
-        /* 跳转到应用程序位置 */
-        AppProgramRun();
+    if ((page_addr < UPG_APP_BASE) || (page_addr >= UPG_APP_END) ||
+        (page_addr % UPG_INT_PAGE_SIZE) != 0) {
+        DEBUG_TRACE(ERROR_TAG, "BL write gated: 0x%08lX", page_addr);
+        return ERROR;
     }
-    __enable_irq(); // 关闭全局中断使能
-}
 
-ErrorStatus FLASH_Clear_Update_Flag(void)
-{
-    ErrorStatus status = SUCCESS;
-    u32 Address = FLASH_USER_END_ADDR - FLASH_ONE_PAGE_SIZE;
-    u32 PAGEError;
-    FLASH_EraseInitTypeDef EraseInitStruct = {0};
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Banks = FLASH_BANK_1;
-    EraseInitStruct.Page = (Address - 0x08000000) / (2 * 1024);
-    EraseInitStruct.NbPages = 1;
     HAL_FLASH_Unlock();
-    while (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
-        ;
+    status = flash_erase_page(page_addr);
+    if (status == SUCCESS) {
+        status = FLASH_Write_NDoubleWord(page_addr, data, dw_len);
+    }
     HAL_FLASH_Lock();
     return status;
+}
+
+/*==============================================================================
+ * Upgrade flag (VAR page)
+ *============================================================================*/
+void BL_FLASH_ReadFlag(upg_flag_t *flag)
+{
+    memcpy(flag, (const void *)UPG_VAR_PAGE, sizeof(*flag));
+}
+
+ErrorStatus BL_FLASH_WriteFlag(const upg_flag_t *flag)
+{
+    upg_flag_t tmp;
+    ErrorStatus status;
+
+    memcpy(&tmp, flag, sizeof(tmp));
+    tmp.crc16 = upg_crc16((const uint8_t *)&tmp, sizeof(tmp) - 2U);
+
+    HAL_FLASH_Unlock();
+    status = flash_erase_page(UPG_VAR_PAGE);
+    if (status == SUCCESS) {
+        /* VAR struct is 16 bytes = 2 double-words */
+        status = FLASH_Write_NDoubleWord(UPG_VAR_PAGE, (uint64_t *)&tmp,
+                                         (int)(sizeof(tmp) / 8U));
+    }
+    HAL_FLASH_Lock();
+    return status;
+}
+
+/*==============================================================================
+ * Jump to application
+ *============================================================================*/
+int BL_JumpToApp(void)
+{
+    u32 sp = *(__IO u32 *)UPG_APP_BASE;
+    u32 pc = *(__IO u32 *)(UPG_APP_BASE + 4U);
+    void (*appEntry)(void);
+
+    if ((sp & 0x2FFE0000UL) != 0x20000000UL) {
+        DEBUG_TRACE(ERROR_TAG, "invalid APP SP 0x%08lX", sp);
+        return -1;
+    }
+
+    /* De-init everything the BootLoader touched so the APP starts clean */
+    App_Uart3_Deinit();
+    LL_TIM_DeInit(TIM16);
+    NVIC_DisableIRQ(TIM1_UP_TIM16_IRQn);
+
+    __disable_irq();
+    __set_MSP(sp);
+    appEntry = (void (*)(void))pc;
+    appEntry();                 /* does not return */
+
+    return -1;
 }

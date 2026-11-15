@@ -95,6 +95,12 @@ extern "C"
 /* other mathematical constants */
 #define GPS_LN2 0.693147180559945309417232121458176568
 
+/* convergence filter tunables */
+#define GPS_DRIFT_THRESHOLD_M 50.0 /* drift gate: fixes farther than this (m) are rejected */
+#define GPS_CONV_MIN_ACCEPT 3      /* consistent fixes (incl. anchor) required to report */
+#define GPS_CONV_MAX_REJECT 5      /* consecutive rejected fixes before re-anchor to latest */
+#define GPS_LOCATE_TIMEOUT_S 180   /* locate window timeout, seconds */
+
     //#define NAN (0.0f / 0.0f)
 
     enum GALAXY_CONFIG

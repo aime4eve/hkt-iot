@@ -35,21 +35,14 @@ typedef struct uart {
     u16 recvTimeout;
 } uart_t;
 
-extern struct uart uartBle;
 extern struct uart uartInfo;
 
-void App_LpUart1Cfg(void);
 void App_Uart3Cfg(void);
-
-void App_LpUart1DeInit(void);
 void App_Uart3_Deinit(void);
 
-void BLE_SendData(uint8_t *buffer, u16 buffer_size);
-void BLE_SendCMD(const char *cmd);
 void INFO_SendData(uint8_t *buffer, u16 buffer_size);
 void INFO(const char *str, ...);
 void DebugHexInfo(char *tag, u8 *data, int len);
-void fromBleDataHandle(u8 *data, u16 len);
 void fromInfoDataHandle(u8 *data, u16 len);
 void fromUartDataHandle(void);
 

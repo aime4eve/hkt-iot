@@ -6,6 +6,8 @@ import com.hkt.ble.bletools.core.protocol.DeviceSnapshot
 import com.hkt.ble.bletools.core.protocol.DeviceSnapshotDecoder
 import com.hkt.ble.bletools.core.protocol.HKTFrameEncoder
 import com.hkt.ble.bletools.core.protocol.HKTResponseParser
+import com.hkt.ble.bletools.core.protocol.LoRaWANInbound
+import com.hkt.ble.bletools.core.protocol.UpgradeInbound
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -61,6 +63,10 @@ class DeviceSession(
 
     /** 引导层 ACK 帧旁路：返回 true 表示该帧已被 OTA 消费，不再走 TLV 解析。 */
     var rawFrameHandler: ((ByteArray) -> Boolean)? = null
+
+    /** 非 hkt 前缀裸文本旁路（0xA1 SR0 模组状态透传等）：返回 true 表示已消费。
+     *  仅对不以同步头开头的数据生效；未挂载时按旧样静默丢弃（TLV parse 坏前缀路径）。 */
+    var rawTextHandler: ((ByteArray) -> Boolean)? = null
 
     private var packNum = 0
     private var stopped = false
@@ -260,6 +266,19 @@ class DeviceSession(
             if (rawFrameHandler?.invoke(data) == true) return
             return   // 无 handler（OTA 已收尾）：静默丢弃
         }
+        // 新升级协议入站帧（0xF2/0xF3/0xFE，严格定长+尾累加校验识别）：与引导层帧同一分流
+        // 纪律——识别即旁路 rawFrameHandler，无 handler 时静默丢弃，不得落入 TLV 解析
+        //（否则详情页误报「响应数据异常」，与上方 2026-09-11 迟到 ACK 同类事故）
+        if (UpgradeInbound.parse(data) != null) {
+            if (rawFrameHandler?.invoke(data) == true) return
+            return
+        }
+        // LoRaWAN 配置协议入站帧（0xA0 配置应答，40B，特殊类型 0x00 + 定长 + 尾校验严格识别）：
+        // 同一分流纪律——0xA0 不在三家族 TLV 表内，落入 TLV 解析必然触发 unknownTail 误报
+        if (LoRaWANInbound.parse(data) != null) {
+            if (rawFrameHandler?.invoke(data) == true) return
+            return
+        }
         // 校准完成上报是纯 ASCII 文本（非 hkt 帧），parse 会当坏前缀丢弃，须先查
         if (calibrationDeferred != null) {
             val text = data.decodeToString(0, minOf(data.size, 64))
@@ -267,6 +286,14 @@ class DeviceSession(
                 finishCalibration(CalibrationOutcome.DONE)
                 return
             }
+        }
+        // 非 hkt 前缀的裸文本（0xA1 SR0 模组状态透传等）：挂了 handler 交给它；没挂按旧样
+        // 丢弃——等价于原先 parse 坏前缀被 catch 后 return 的路径，不改变既有行为
+        if (data.size < 3 || data[0] != HKTResponseParser.prefix[0] ||
+            data[1] != HKTResponseParser.prefix[1] || data[2] != HKTResponseParser.prefix[2]
+        ) {
+            rawTextHandler?.invoke(data)
+            return
         }
         val parsed = try {
             HKTResponseParser.parse(data, family)

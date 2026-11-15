@@ -86,7 +86,9 @@ extern "C"
   bool AT_LoRaWAN_syncTime(void);
   bool AT_LoRaWAN_getRTC(void);
   bool AT_LoRaWAN_setCHMASK(int chmask);
+  bool AT_LoRaWAN_setCHMASKBitmap(const u8 *chmask);
   bool AT_LoRaWAN_getCHMASK(void);
+  bool AT_LoRaWAN_getSR0(void);
 
 #ifdef __cplusplus
 }

@@ -27,6 +27,164 @@ u8 nwkSKey[16] = {0x2D, 0x35, 0xC7, 0x96, 0x32, 0x75, 0xD7, 0x43, 0xB4, 0xE7, 0x
 u8 jion_fail_cnt;
 time_t reconnect_stamp;
 struct LoRaParam LoRaWAN;
+struct LoRaWANLinkCfg lorawanCfg;
+
+/* ---- Runtime region table (band code = module AT+BAND value) ----
+ * Defaults/ranges per the 0xA0 protocol spec. Power index is region
+ * relative: the module maps it to its own dBm table for the active band. */
+static const struct LoRaWANRegionInfo LoRaWANRegionTable[] = {
+    /* band dr_max dr_def rx2 pw_max ch_bits chmask rx2_freq freq_min freq_max name
+     * ch_bits = 位图内合法信道位数（协议'-'约定）：CN470全72位、US915/AU915上行64位、
+     * 其余区域仅byte0共8位；越界位在0xA0写入时直接拒绝 */
+    {6, 6, 3, 3, 7, 72, 0x00FF, 505300000U, 470000000U, 510000000U, "CN470"},    /* CN470 same-freq */
+    {7, 6, 3, 3, 7, 72, 0x00FF, 505300000U, 470000000U, 510000000U, "CN470B"},   /* CN470 diff-freq */
+    {84, 6, 5, 0, 7, 8, 0x0003, 869100000U, 860000000U, 930000000U, "RU864"},   /* 16/14/12/10/8/6/4/2 dBm */
+    {85, 5, 5, 0, 10, 8, 0x0007, 866550000U, 860000000U, 930000000U, "IN865"},  /* 22..10 dBm, 11 steps */
+    {86, 6, 5, 0, 7, 8, 0x0007, 869525000U, 860000000U, 930000000U, "EU868"},   /* 16/14/12/10/8/6/4/2 dBm */
+    {90, 4, 3, 8, 14, 64, 0x00FF, 923300000U, 860000000U, 930000000U, "US915"}, /* 22..2 dBm, 15 steps */
+    {91, 6, 4, 8, 14, 64, 0x00FF, 923300000U, 860000000U, 930000000U, "AU915"}, /* 22..2 dBm, 15 steps */
+    {92, 5, 5, 0, 7, 8, 0x0007, 921900000U, 860000000U, 930000000U, "KR920"},   /* 14/12/10/8/6/4/2/0 dBm */
+    {93, 6, 5, 2, 7, 8, 0x0003, 923200000U, 860000000U, 930000000U, "AS923-1"}, /* 16/14/12/10/8/6/4/2 dBm */
+    {94, 6, 5, 2, 7, 8, 0x0003, 921400000U, 860000000U, 930000000U, "AS923-2"},
+    {95, 6, 5, 2, 7, 8, 0x0003, 916600000U, 860000000U, 930000000U, "AS923-3"},
+    {96, 6, 5, 2, 7, 8, 0x0003, 917300000U, 860000000U, 930000000U, "AS923-4"},
+};
+
+const struct LoRaWANRegionInfo *LoRaWAN_RegionLookup(u8 band)
+{
+    u8 i;
+    for (i = 0; i < sizeof(LoRaWANRegionTable) / sizeof(LoRaWANRegionTable[0]); i++) {
+        if (LoRaWANRegionTable[i].band == band)
+            return &LoRaWANRegionTable[i];
+    }
+    return NULL;
+}
+
+/**
+ * @brief  填充LoRaWAN链路配置默认值（空白flash/出厂状态）
+ * @param
+ * @retval
+ */
+void LoRaWAN_CfgSetDefaults(void)
+{
+    const struct LoRaWANRegionInfo *region = LoRaWAN_RegionLookup(LoRaWAN_DEFAULT_BAND);
+
+    memset(&lorawanCfg, 0, sizeof(lorawanCfg));
+    lorawanCfg.magic = LORAWAN_CFG_MAGIC;
+    lorawanCfg.band = region->band;
+    lorawanCfg.rx2_dr = region->rx2_dr_default;
+    lorawanCfg.rx2_freq = region->rx2_freq_default;
+    lorawanCfg.chmask[0] = (u8)(region->chmask_default & 0xFF);
+    lorawanCfg.chmask[1] = (u8)(region->chmask_default >> 8);
+    lorawanCfg.adr = 1;
+    lorawanCfg.confirm = 1;
+    lorawanCfg.confirm_cnt = 3;
+    lorawanCfg.power = 0;
+    lorawanCfg.dr = region->dr_default;
+    lorawanCfg.activation = 0; /* OTAA */
+    lorawanCfg.class = LoRaWAN_DEFAULT_CLASS;
+    lorawanCfg.port = LoRaWAN_DEFAULT_PORT;
+}
+
+/**
+ * @brief  校验候选配置是否落在当前区域限制内（0xA0写入与flash读取共用）
+ * @param  cfg：待校验配置（magic/crc不参与）
+ * @retval TRUE 合法  FALSE 非法（已打印非法字段）
+ */
+bool LoRaWAN_CfgValidate(const struct LoRaWANLinkCfg *cfg)
+{
+    const struct LoRaWANRegionInfo *region = LoRaWAN_RegionLookup(cfg->band);
+    u8 i;
+    bool anyChannel = FALSE;
+
+    if (region == NULL) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: band %u unsupported", cfg->band);
+        return FALSE;
+    }
+    /* RX2 DR is the downlink rate of the RX2 receive window: NOT bound by the
+     * uplink dr_max (US915/AU915 default RX2 DR8 while uplink dr_max=4).
+     * Region-wide hard cap = 13 (LoRaWAN regional params max downlink DR);
+     * whether a specific band accepts it is ultimately decided by the module. */
+    if (cfg->rx2_dr > 13) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: rx2_dr %u invalid", cfg->rx2_dr);
+        return FALSE;
+    }
+    if (cfg->rx2_freq < region->freq_min || cfg->rx2_freq > region->freq_max) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: rx2_freq %u out of range", cfg->rx2_freq);
+        return FALSE;
+    }
+    if (cfg->adr > 1 || cfg->confirm > 1 || cfg->confirm_cnt < 1 || cfg->confirm_cnt > 9) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: adr/confirm/cnt invalid %u %u %u", cfg->adr, cfg->confirm, cfg->confirm_cnt);
+        return FALSE;
+    }
+    if (cfg->power > region->power_max) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: power %u > %u", cfg->power, region->power_max);
+        return FALSE;
+    }
+    if (cfg->dr > region->dr_max) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: dr %u > %u", cfg->dr, region->dr_max);
+        return FALSE;
+    }
+    if (cfg->activation > 1) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: activation %u invalid", cfg->activation);
+        return FALSE;
+    }
+    if (cfg->class != 0 && cfg->class != 2) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: class %u invalid", cfg->class);
+        return FALSE;
+    }
+    if (cfg->port < 1 || cfg->port > 223) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: port %u invalid", cfg->port);
+        return FALSE;
+    }
+    /* Channel bitmap: bits beyond the region's channels must be clear and
+     * at least one valid channel must stay enabled. */
+    for (i = 0; i < 72; i++) {
+        bool bitSet = (cfg->chmask[i / 8] & (1 << (i % 8))) != 0;
+        if (i < region->ch_valid_bits) {
+            if (bitSet)
+                anyChannel = TRUE;
+        } else if (bitSet) {
+            DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: channel %u not defined in region", i);
+            return FALSE;
+        }
+    }
+    if (!anyChannel) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg: all channels masked off");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+#if LORAWAN_CUSTOM_FREQ_ENABLE
+/**
+ * @brief  定制固件可选：写入非标准频率表（标准固件不调用，走模组区域默认值）
+ * @param
+ * @retval
+ */
+static void lorawan_custom_freq_apply(void)
+{
+    switch (lorawanCfg.band) {
+    case 6: /* CN470 custom 8-channel block */
+        AT_LoRaWAN_setFREQ(1, 8, 470300000);
+        AT_LoRaWAN_setFREQ(3, 8, 500300000);
+        break;
+    case 84:
+        AT_LoRaWAN_setFREQ_RU864();
+        break;
+    case 85:
+        AT_LoRaWAN_setFREQ_IN865();
+        break;
+    case 93:
+        AT_LoRaWAN_setFREQ(1, 2, 923200000);
+        break;
+    default:
+        break;
+    }
+}
+#else
+static void lorawan_custom_freq_apply(void) {}
+#endif
 
 #define MDK_YEAR ((((__DATE__[7] - '0') * 10 + __DATE__[8] - '0') * 10 + (__DATE__[9] - '0')) * 10 + (__DATE__[10] - '0'))
 #define MDK_DAY  ((__DATE__[4] == ' ' ? 0 : __DATE__[4] - '0') * 10 + (__DATE__[5] - '0'))
@@ -243,8 +401,9 @@ void LoRaWAN_CreatAPPKEY(void)
  */
 void LoRaWAN_Init(void)
 {
-    char sfre[] = "AS923_AS2";
-    char smode[] = "OTAA";
+    const struct LoRaWANRegionInfo *region = LoRaWAN_RegionLookup(lorawanCfg.band);
+    char sfre[12];
+    char smode[6];
     setLoRaWANStatus(LoRaWAN_WAKE_STATUS); // 唤醒模块
     setLoRaWANMode(LoRaWAN_CMD_MODE); // 配置进入命令模式
     rstLoRaWANModule(); // 复位模组
@@ -264,62 +423,31 @@ void LoRaWAN_Init(void)
     memcpy(LoRaWAN.NwkSKEY, nwkSKey, sizeof(LoRaWAN.NwkSKEY));
 #endif
 
-    /* 配置LoRaWAN 模块参数 */
-#if FUNC_LoRaWAN_ABP
-    AT_LoRaWAN_setABP();
-    AT_LoRaWAN_setAPPKEY();
-    AT_LoRaWAN_setDEVADDR();
-    AT_LoRaWAN_setAPPSKEY();
-    AT_LoRaWAN_setNwkSKEY();
+    /* 激活方式与密钥：0xA0配置运行时决定（默认OTAA） */
+    if (lorawanCfg.activation) {
+        AT_LoRaWAN_setABP();
+        AT_LoRaWAN_setDEVADDR();
+        AT_LoRaWAN_setAPPSKEY();
+        AT_LoRaWAN_setNwkSKEY();
+    } else {
+        AT_LoRaWAN_setOTAA();
+        AT_LoRaWAN_setAPPEUI();
+        AT_LoRaWAN_setAPPKEY();
+    }
 
-#else
-    AT_LoRaWAN_setOTAA();
-    AT_LoRaWAN_setAPPEUI();
-    AT_LoRaWAN_setAPPKEY();
-#endif
-
-    // AT_LoRaWAN_setDebug(1);
-#if FUNC_LoRaWAN_CN470_0
-    AT_LoRaWAN_setBAND(6);
-    AT_LoRaWAN_setFREQ(1, 8, 470300000);
-    AT_LoRaWAN_setFREQ(3, 8, 500300000);
-    AT_LoRaWAN_setRX2(3, 505300000);
-#elif FUNC_LoRaWAN_CN470_8
-    AT_LoRaWAN_setBAND(6);
-    AT_LoRaWAN_setFREQ(1, 8, 471900000);
-    AT_LoRaWAN_setFREQ(3, 8, 501900000);
-    AT_LoRaWAN_setRX2(3, 501900000);
-#elif FUNC_LoRaWAN_CN470A
-    AT_LoRaWAN_setBAND(6);
-    AT_LoRaWAN_setFREQ(1, 8, 475300000);
-    AT_LoRaWAN_setFREQ(3, 8, 505300000);
-    AT_LoRaWAN_setRX2(3, 505300000);
-#elif FUNC_LoRaWAN_IN865
-    AT_LoRaWAN_setFREQ_IN865();
-    AT_LoRaWAN_setRX2(2, 866550000);
-#elif FUNC_LoRaWAN_RU864
-    AT_LoRaWAN_setBAND(84);
-    AT_LoRaWAN_setFREQ_RU864();
-    AT_LoRaWAN_setRX2(0, 869100000);
-#elif FUNC_LoRaWAN_EU868
-    AT_LoRaWAN_setFREQ(1, 3, 868100000);
-    AT_LoRaWAN_setRX2(0, 869525000);
-#elif FUNC_LoRaWAN_AS923_AS1
-    AT_LoRaWAN_setBAND(93);
-    // AT_LoRaWAN_setFREQBW(1, 8, 922000000, 200); // 上下同频
-    // AT_LoRaWAN_setRX2(2, 923200000);
-#elif FUNC_LoRaWAN_AS923_AS2
-    AT_LoRaWAN_setBAND(93);
-    // AT_LoRaWAN_setFREQBW(1, 8, 923200000, 200); // 上下同频
-    // AT_LoRaWAN_setRX2(2, 923200000);
-#endif
-    AT_LoRaWAN_setClass(LoRaWAN_DEFAULT_CLASS);
-    AT_LoRaWAN_setPORT(LoRaWAN_DEFAULT_PORT);
-    AT_LoRaWAN_setConfirm(1, 3);
-		
-		// AT_LoRaWAN_setADR(0);
-		// AT_LoRaWAN_setDataRate(0);
-    // AT_LoRaWAN_setConfirm(0, 3);
+    /* 区域模板：先切BAND，信道相关参数随后；标准固件不再手写FREQ表
+     * （定制固件见 LORAWAN_CUSTOM_FREQ_ENABLE） */
+    AT_LoRaWAN_setBAND(lorawanCfg.band);
+    lorawan_custom_freq_apply();
+    AT_LoRaWAN_setRX2(lorawanCfg.rx2_dr, (int)lorawanCfg.rx2_freq);
+    /* 完整72位信道位图按0xA0输入原样透传（不截断为16位），宽掩码合法性由模组裁决 */
+    AT_LoRaWAN_setCHMASKBitmap(lorawanCfg.chmask);
+    AT_LoRaWAN_setADR(lorawanCfg.adr);
+    AT_LoRaWAN_setDataRate(lorawanCfg.dr);
+    AT_LoRaWAN_setPower(lorawanCfg.power);
+    AT_LoRaWAN_setConfirm(lorawanCfg.confirm, lorawanCfg.confirm_cnt);
+    AT_LoRaWAN_setClass(lorawanCfg.class);
+    AT_LoRaWAN_setPORT(lorawanCfg.port);
 
     AT_LoRaWAN_setJOIN();
     // AT_LoRaWAN_setCSMA();
@@ -327,38 +455,20 @@ void LoRaWAN_Init(void)
     // AT_LoRaWAN_getBaudTimeout();
     // AT_LoRaWAN_getCSMA();
 
-#if FUNC_LoRaWAN_EU868_TO_US915
-    AT_LoRaWAN_setBAND(90);
-#endif
-
-#if FUNC_LoRaWAN_EU868_TO_AU915
-    AT_LoRaWAN_setBAND(91);
-#endif
-
-#if FUNC_LoRaWAN_AU915 || FUNC_LoRaWAN_US915
-#if FUNC_LoRaWAN_AU915_0
-		AT_LoRaWAN_setCHMASK(0xFF00);
-#else
-    AT_LoRaWAN_setCHMASK(0x00FF);
-#endif
-#endif
-
     AT_LoRaWAN_saveEEPROM(); // 保存配置参数
     LoRa_DelayMs(20);
 
     rstLoRaWANModule(); // 复位模组
     LoRa_DelayMs(20);
 
-#if FUNC_LoRaWAN_AU915 || FUNC_LoRaWAN_US915
     AT_LoRaWAN_getCHMASK();
-#endif
 
-    AT_LoRaWAN_getAPPKEY();
+    // AT_LoRaWAN_getAPPKEY();
     AT_LoRaWAN_getAPPEUI();
 
     AT_LoRaWAN_getDEVADDR();
-    AT_LoRaWAN_getAPPSKEY();
-    AT_LoRaWAN_getNwkSKEY();
+    // AT_LoRaWAN_getAPPSKEY();
+    // AT_LoRaWAN_getNwkSKEY();
 
     AT_LoRaWAN_getClass();
     AT_LoRaWAN_getPORT();
@@ -379,39 +489,12 @@ void LoRaWAN_Init(void)
 
     setLoRaWANStatus(LoRaWAN_SLEEP_STATUS);
 
-#if FUNC_LoRaWAN_CN470_0
-    snprintf(sfre, sizeof(sfre), "CN470_0");
-#elif FUNC_LoRaWAN_CN470_8
-    snprintf(sfre, sizeof(sfre), "CN470_8");
-#elif FUNC_LoRaWAN_CN470A
-    snprintf(sfre, sizeof(sfre), "CN470A");
-#elif FUNC_LoRaWAN_IN865
-    snprintf(sfre, sizeof(sfre), "IN865");
-#elif FUNC_LoRaWAN_RU864
-    snprintf(sfre, sizeof(sfre), "RU864");
-#elif FUNC_LoRaWAN_EU868
-    snprintf(sfre, sizeof(sfre), "EU868");
-#elif FUNC_LoRaWAN_US915
-    snprintf(sfre, sizeof(sfre), "US915");
-#elif FUNC_LoRaWAN_AU915
-    snprintf(sfre, sizeof(sfre), "AU915");
-#elif FUNC_LoRaWAN_AU915_0
-    snprintf(sfre, sizeof(sfre), "AU915_0");
-#elif FUNC_LoRaWAN_AS923_AS1
-    snprintf(sfre, sizeof(sfre), "AS923_AS1");
-#elif FUNC_LoRaWAN_AS923_AS2
-    snprintf(sfre, sizeof(sfre), "AS923_AS2");
-#else
-    snprintf(sfre, sizeof(sfre), "ERR");
-#endif
-#if FUNC_LoRaWAN_ABP
-    snprintf(smode, sizeof(smode), "ABP");
-#else
-    snprintf(smode, sizeof(smode), "OTAA");
-#endif
+    /* 运行时区域名/激活方式（原编译期宏横幅） */
+    snprintf(sfre, sizeof(sfre), "%s", region ? region->name : "ERR");
+    snprintf(smode, sizeof(smode), "%s", lorawanCfg.activation ? "ABP" : "OTAA");
     INFO("\r\n****************************************\r\n");
-    INFO("\r\nSoftVer:V%d.%d_%s_%s_Class%s_LIR_%d.%d.%d_%d:%d:%d\r\n", HARDWARE_VER, SOFTWARE_VER, sfre, smode, LoRaWAN_DEFAULT_CLASS ? "C" : "A",
-         MDK_YEAR, MDK_MONTH(), MDK_DAY, MDK_HOUR, MDK_MIN, MDK_SEC);
+    INFO("\r\nSoftVer:V%d.%d_%s_%s_Class%s_LIR_%d.%d.%d_%d:%d:%d\r\n", HARDWARE_VER, SOFTWARE_VER, sfre, smode,
+         lorawanCfg.class ? "C" : "A", MDK_YEAR, MDK_MONTH(), MDK_DAY, MDK_HOUR, MDK_MIN, MDK_SEC);
     INFO("\r\nDevEui:%02x%02x%02x%02x%02x%02x%02x%02x\r\n", LoRaWAN.DevEUI[0], LoRaWAN.DevEUI[1], LoRaWAN.DevEUI[2], LoRaWAN.DevEUI[3],
          LoRaWAN.DevEUI[4], LoRaWAN.DevEUI[5], LoRaWAN.DevEUI[6], LoRaWAN.DevEUI[7]);
     INFO("\r\nAppKey:%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\r\n", LoRaWAN.AppKEY[0], LoRaWAN.AppKEY[1], LoRaWAN.AppKEY[2],
@@ -460,7 +543,7 @@ void LoRaWAN_JoinInit(void)
         } else {
             waitRegisterTick++;
             DEBUG_TRACE(LOG_TAG, "LoRaWAN Wait Enter In Net %d", waitRegisterTick);
-            if (waitRegisterTick >= 240) { // 120秒
+            if (waitRegisterTick >= 600) { // 300秒
                 waitRegisterTick = 0; // 入网失败
 
                 /* 入网超时 */

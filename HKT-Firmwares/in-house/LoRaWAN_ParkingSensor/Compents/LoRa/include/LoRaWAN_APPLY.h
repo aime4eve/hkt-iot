@@ -77,6 +77,49 @@ struct LoRaParam {
     FreqStruct FrequencyValue;
 };
 
+/* ---- Runtime LoRaWAN link configuration (BLE 0xA0 protocol, flash-backed) ---- */
+
+#define LORAWAN_CFG_MAGIC 0x484BU /* "KH": valid cfg page marker */
+
+/* Per-region limits/defaults, one entry per supported AT+BAND code.
+ * The AT+POWER index is region-relative (its dBm table lives inside the
+ * module and changes with the band), so firmware only bounds the index. */
+struct LoRaWANRegionInfo {
+    u8 band;           /* AT+BAND code */
+    u8 dr_max;         /* max DATARATE index */
+    u8 dr_default;     /* default DATARATE index */
+    u8 rx2_dr_default; /* default RX2 datarate */
+    u8 power_max;      /* max AT+POWER index */
+    u8 ch_valid_bits;  /* valid channels in the 72-bit bitmap, rest is '-' */
+    u16 chmask_default; /* default for the low 16 bits (AT+CHMASK) */
+    u32 rx2_freq_default; /* default RX2 frequency, Hz */
+    u32 freq_min;      /* allowed frequency range, Hz (module band group) */
+    u32 freq_max;
+    const char *name;  /* short name for banner/log */
+};
+
+/* Persisted link configuration. Field order keeps natural alignment and
+ * crc16 MUST stay the last field: integrity is upg_crc16() over the
+ * sizeof(struct)-2 bytes preceding it. */
+struct LoRaWANLinkCfg {
+    u16 magic;      /* LORAWAN_CFG_MAGIC */
+    u8 band;        /* region code, see LoRaWANRegionInfo */
+    u8 rx2_dr;      /* RX2 receive datarate */
+    u32 rx2_freq;   /* RX2 frequency, Hz */
+    u8 chmask[9];   /* 72-bit channel bitmap, bit0 of byte0 = channel0 */
+    u8 adr;         /* 0/1 */
+    u8 confirm;     /* 0/1 confirmed uplink */
+    u8 confirm_cnt; /* confirm retry count 1-9 */
+    u16 power;      /* region-relative AT+POWER index */
+    u16 dr;         /* region-relative DATARATE index */
+    u8 activation;  /* 0 = OTAA, 1 = ABP */
+    u8 class;       /* 0 = ClassA, 2 = ClassC */
+    u8 port;        /* app port 1-223 */
+    u16 rfu;        /* reserved: pads the struct to 32B so crc16 ends it with
+                     * no tail padding - keeps the sizeof(struct)-2 CRC idiom exact */
+    u16 crc16;      /* KERMIT CRC over the preceding bytes - LAST field */
+};
+
 extern u8 appEui[];
 extern u8 appKey[];
 extern u8 appSKey[];
@@ -85,6 +128,7 @@ extern u8 devAddr[];
 extern u8 jion_fail_cnt;
 extern time_t reconnect_stamp;
 extern struct LoRaParam LoRaWAN;
+extern struct LoRaWANLinkCfg lorawanCfg;
 
 void LoRa_DelayMs(u32 delay_time);
 void rstLoRaWANModule(void);
@@ -98,6 +142,10 @@ int getLoRaWANStatIOLevel(void);
 int getLoRaWANSendStat(void);
 int getLoRaWANBusyStat(void);
 void LoRaWAN_CreatAPPKEY(void);
+
+const struct LoRaWANRegionInfo *LoRaWAN_RegionLookup(u8 band);
+void LoRaWAN_CfgSetDefaults(void);
+bool LoRaWAN_CfgValidate(const struct LoRaWANLinkCfg *cfg);
 
 void LoRaWAN_Init(void);
 void LoRaWAN_JoinInit(void);

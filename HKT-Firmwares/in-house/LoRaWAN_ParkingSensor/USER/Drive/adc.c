@@ -2,6 +2,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "adc.h"
 #include "control_center.h"
+#include "flash.h"
 #include "gpio.h"
 #include "p25q40.h"
 #include "systick.h"
@@ -14,6 +15,7 @@ u16 batteryVoltageConvertInterval; // 电量检测转换间隔
 u32 convertedValue;
 
 u32 batteryInitialCapacity; // 电池上报次数
+u32 batterySavedCapacity;  // 上次落盘的上报次数（0xFFFFFFFF=本次上电尚未落盘）
 
 static u8 valid_cnt, invalid_cnt;
 
@@ -133,6 +135,7 @@ void ADC_BatterySglConvert(void)
 
 /**
  * @brief  转换电池电量，计算电量信息（以前期预估上报次数来计算剩余容量）
+ *         纯计算无副作用（计数递增在 LoRa_SendData）；电量每降 1% 自动落盘环形槽
  * @param  None
  * @retval None
  */
@@ -140,7 +143,8 @@ void ADC_BatterySglConvert(void)
 {
     static u8 tempBattery = 100;
     if (batteryInitialCapacity <= BATTERY_MAX_PUSH_CNT) {
-        batteryLevel = (BATTERY_MAX_PUSH_CNT - batteryInitialCapacity) * 100 / BATTERY_MAX_PUSH_CNT;
+        /* 四舍五入：+半除数再整除，剩余 ≥99.5% 显示 100%（避免刚校准就掉 99） */
+        batteryLevel = ((BATTERY_MAX_PUSH_CNT - batteryInitialCapacity) * 100 + BATTERY_MAX_PUSH_CNT / 2) / BATTERY_MAX_PUSH_CNT;
         if (batteryLevel != tempBattery) {
             tempBattery = batteryLevel; // 电量信息更新
             device_t.sync_battery = 1;
@@ -148,6 +152,11 @@ void ADC_BatterySglConvert(void)
     } else {
         device_t.sync_battery = 1;
         batteryLevel = 0;
+    }
+    /* 电量每降 1%（= 每消耗 1% 容量次数）落盘一次；首次上电（哨兵）只记录不写 */
+    if (batterySavedCapacity != 0xFFFFFFFF &&
+        batteryInitialCapacity - batterySavedCapacity >= BATTERY_MAX_PUSH_CNT / 100) {
+        FLASH_Write_Battery();
     }
 }
 #endif
@@ -222,9 +231,9 @@ void ADC1_Init(void)
     if (invalid_cnt < 1)
         Delay_Ms(1);
     else if (invalid_cnt < 2)
-        mDelay(100);
+        mDelay(50);
     else
-        mDelay(1000);
+        mDelay(100);
 
     LL_ADC_REG_StartConversion(ADC1);
     // 等待转换完成

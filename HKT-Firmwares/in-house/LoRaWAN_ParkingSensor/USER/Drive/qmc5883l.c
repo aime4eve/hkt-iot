@@ -27,9 +27,9 @@ void magnetometer_reset(void)
     u8 buffer[2];
     buffer[0] = QMC5883L_CONFIG2_RESET;
     // buffer[0] = QMC5883L_CONFIG2_RESET | 0X01; // 关闭转换中断
-    mDelay(1);
+    // mDelay(1);
     i2c_slave_write(QMC5883L_ADDR, QMC5883L_CONFIG2, buffer, 1);
-    mDelay(2);
+    mDelay(5);
 }
 
 /**
@@ -54,6 +54,7 @@ void magnetometer_set_mode(u8 mode, u8 odr, u8 rng, u8 osr)
     u8 buffer[2];
     buffer[0] = QMC5883L_CONFIG_CONT;
     i2c_slave_write(QMC5883L_ADDR, QMC5883L_RESET, buffer, 1);
+    // mDelay(5);
 
     buffer[0] = mode | odr | rng | osr;
     i2c_slave_write(QMC5883L_ADDR, QMC5883L_CONFIG, buffer, 1);
@@ -617,7 +618,18 @@ void magnetometer_calculate(void)
 #endif
 
 /**
- * @brief  磁力计初始化
+ * @brief  芯片应答校验：ID 寄存器（0x0D）应回读 0xFF
+ * @param
+ * @retval true 芯片在总线上且应答正常
+ */
+static bool magnetometer_check_id(void)
+{
+    u8 id = 0;
+    return i2c_slave_read(QMC5883L_ADDR, QMC5883L_CHIP_ID, &id, 1) == SUCCESS && id == 0xFF;
+}
+
+/**
+ * @brief  磁力计初始化（失败自动重试一轮；底层 I2C 异常时已先恢复总线重试过一次）
  * @param
  * @retval
  */
@@ -625,6 +637,14 @@ void magnetometer_init(void)
 {
     magnetometer_reset();
     magnetometer_init_mode();
+    if (magnetometer_check_id())
+        return;
+    DEBUG_TRACE(ERROR_TAG, "Magnetometer Init No ACK, Retry");
+    magnetometer_reset();
+    magnetometer_init_mode();
+    if (magnetometer_check_id())
+        return;
+    DEBUG_TRACE(ERROR_TAG, "Magnetometer Init Failed");
 }
 
 /**

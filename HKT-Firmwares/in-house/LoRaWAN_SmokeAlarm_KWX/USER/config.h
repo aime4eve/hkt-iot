@@ -62,15 +62,15 @@
 #define FUNC_LoRaWAN_IN865 0
 #define FUNC_LoRaWAN_EU868 0
 #define FUNC_LoRaWAN_US915 0
-#define FUNC_LoRaWAN_AU915          1
-#define FUNC_LoRaWAN_AU915_0          1
+#define FUNC_LoRaWAN_AU915          0
+#define FUNC_LoRaWAN_AU915_0          0
 #define FUNC_LoRaWAN_KR920 0
 #define FUNC_LoRaWAN_AS923_AS1 0
 #define FUNC_LoRaWAN_AS923_AS2 0
-#define FUNC_LoRaWAN_AS923_3 0
+#define FUNC_LoRaWAN_AS923_3 1
 #define FUNC_LoRaWAN_AS923_2 0
 #define FUNC_LoRaWAN_EU868_TO_US915 0
-#define FUNC_LoRaWAN_EU868_TO_AU915 1
+#define FUNC_LoRaWAN_EU868_TO_AU915 0
 #define FUNC_LoRaWAN_EU868_TO_KR920 0
 
 #define LoRaWAN_DEFAULT_PORT 10

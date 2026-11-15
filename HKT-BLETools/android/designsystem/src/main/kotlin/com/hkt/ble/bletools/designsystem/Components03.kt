@@ -50,15 +50,16 @@ fun tnum(style: androidx.compose.ui.text.TextStyle): androidx.compose.ui.text.Te
 
 /** 会话动作按钮（.session-actions：高 34、line 描边、card2 底、12px/650；danger=err 变体）。 */
 @Composable
-fun SessionButton(title: String, danger: Boolean = false, action: () -> Unit) {
+fun SessionButton(title: String, danger: Boolean = false, disabled: Boolean = false, action: () -> Unit) {
     val c = hktColors()
     val shape = RoundedCornerShape(HktRadius.control.dp)
     Box(
         Modifier
             .height(34.dp)
+            .alpha(if (disabled) 0.45f else 1f)
             .background(if (danger) c.err.copy(alpha = 0.08f) else c.card2, shape)
             .border(1.dp, if (danger) c.err.copy(alpha = 0.24f) else c.line, shape)
-            .clickableBox(action)
+            .clickableBox(enabled = !disabled, action = action)
             .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -84,6 +85,7 @@ fun SessionControlCard(
     meta: String,
     badge: (@Composable () -> Unit)? = null,
     nameSizeSp: Float = 23f,
+    onMetaTap: (() -> Unit)? = null,   // meta 行点击（隐藏入口手势用，默认不可点）
     actions: List<@Composable () -> Unit>,
 ) {
     val c = hktColors()
@@ -112,7 +114,10 @@ fun SessionControlCard(
             meta,
             style = tnum(hkt(12f)),
             color = c.text2,
-            modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 5.dp, bottom = 12.dp)
+                .then(if (onMetaTap != null) Modifier.clickableBox(onMetaTap) else Modifier),
             textAlign = TextAlign.Right,
         )
         // session-actions 单行：左组（返回/首页）+ 弹性空隙 + 右组（固件升级/断开连接）；
@@ -427,6 +432,7 @@ fun OpCard(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp)
+            .alpha(if (disabled) 0.45f else 1f)
             .background(c.card, shape)
             .border(1.dp, c.line.copy(alpha = 0.82f), shape)
             .clickable(enabled = !disabled, onClick = action)

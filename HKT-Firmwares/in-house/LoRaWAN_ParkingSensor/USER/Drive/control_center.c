@@ -3,6 +3,7 @@
 #include "LoRaWAN_APPLY.h"
 #include "LoRaWAN_ATCMD.h"
 #include "adc.h"
+#include "ble_upgrade.h"
 #include "communicate.h"
 #include "gpio.h"
 #include "iic.h"
@@ -72,6 +73,9 @@ void Led_Blink_Process(void)
 void systemLowPowerMode_Process(void)
 {
     static uint16_t sleep_cnt;
+
+    if (upg_ble_active()) // 升级会话期间不进睡眠（BLE/外部flash必须保持可用）
+        return;
 
     if (device_t.ble_connected && !device_t.ble_sleep_mode)
         return;
@@ -519,12 +523,14 @@ static void process_radar_data(void)
         INFO("\r\n[M2] power[");
         for (uint8_t i = 0; i < 10; i++) {
             INFO("%d", rkb1145d_t.power[i]);
-            if (i < 9) INFO(" ");
+            if (i < 9)
+                INFO(" ");
         }
         INFO("] adj[");
         for (uint8_t i = 0; i < 10; i++) {
             INFO("%d", rkb1145d_t.adjust_power[i]);
-            if (i < 9) INFO(" ");
+            if (i < 9)
+                INFO(" ");
         }
         INFO("] max=%d dist=%dcm covered=%d vehicle=%d",
              max_power, max_num * 10, device_t.radar_covered_flag, device_t.radar_detected);
@@ -729,33 +735,33 @@ static void update_parking_state(void)
 static void update_fusion_mode_parking_state(void)
 {
     if (!qmc5883l_t.is_changed) {
-//         if (device_t.park_state != 0xFF && rkb1145d_t.is_changed == 0xFF) {
-//             device_t.park_state = 0xFF;
-//             device_t.sync_state = 1;
-//             device_t.park_delay = 5 * SEC_DELAY;
-//             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
-//                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
-//             DEBUG_TRACE(WARN_TAG, "******** Cover !!! ********");
-//             if (device_t.ble_connected) {
-//                 BLE_SendCMD("Cover !!!");
-//             }
-// #if NOR_FLASH_ENABLE
-//             nor_flash_write(&tsdb);
-// #endif
-//         } else if (rkb1145d_t.is_changed != 0xFF && device_t.park_state == 0xFF) {
-//             device_t.park_state = 0;
-//             device_t.sync_state = 1;
-//             device_t.park_delay = 5 * SEC_DELAY;
-//             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
-//                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
-//             DEBUG_TRACE(LOG_TAG, "******** Not Park !!! ********");
-//             if (device_t.ble_connected) {
-//                 BLE_SendCMD("Not Park !!!");
-//             }
-// #if NOR_FLASH_ENABLE
-//             nor_flash_write(&tsdb);
-// #endif
-//         }
+        //         if (device_t.park_state != 0xFF && rkb1145d_t.is_changed == 0xFF) {
+        //             device_t.park_state = 0xFF;
+        //             device_t.sync_state = 1;
+        //             device_t.park_delay = 5 * SEC_DELAY;
+        //             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
+        //                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
+        //             DEBUG_TRACE(WARN_TAG, "******** Cover !!! ********");
+        //             if (device_t.ble_connected) {
+        //                 BLE_SendCMD("Cover !!!");
+        //             }
+        // #if NOR_FLASH_ENABLE
+        //             nor_flash_write(&tsdb);
+        // #endif
+        //         } else if (rkb1145d_t.is_changed != 0xFF && device_t.park_state == 0xFF) {
+        //             device_t.park_state = 0;
+        //             device_t.sync_state = 1;
+        //             device_t.park_delay = 5 * SEC_DELAY;
+        //             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
+        //                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
+        //             DEBUG_TRACE(LOG_TAG, "******** Not Park !!! ********");
+        //             if (device_t.ble_connected) {
+        //                 BLE_SendCMD("Not Park !!!");
+        //             }
+        // #if NOR_FLASH_ENABLE
+        //             nor_flash_write(&tsdb);
+        // #endif
+        //         }
         if (device_t.park_state == 1) {
             device_t.park_state = 0;
             device_t.sync_state = 1;
@@ -825,7 +831,8 @@ static void update_radar_priority_parking_state(void)
                 if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
                     device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
                 DEBUG_TRACE(LOG_TAG, "******** [RadarPriority+Covered] Parking (Mag) !!! ********");
-                if (device_t.ble_connected) BLE_SendCMD("Parking !!!");
+                if (device_t.ble_connected)
+                    BLE_SendCMD("Parking !!!");
 #if NOR_FLASH_ENABLE
                 nor_flash_write(&tsdb);
 #endif
@@ -838,7 +845,8 @@ static void update_radar_priority_parking_state(void)
             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
             DEBUG_TRACE(LOG_TAG, "******** [RadarPriority+Covered] Not Park (Mag) !!! ********");
-            if (device_t.ble_connected) BLE_SendCMD("Not Park !!!");
+            if (device_t.ble_connected)
+                BLE_SendCMD("Not Park !!!");
 #if NOR_FLASH_ENABLE
             nor_flash_write(&tsdb);
 #endif
@@ -850,7 +858,8 @@ static void update_radar_priority_parking_state(void)
             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
             DEBUG_TRACE(WARN_TAG, "******** [RadarPriority+Covered] Abnormal (0xFF) !!! ********");
-            if (device_t.ble_connected) BLE_SendCMD("Cover !!!");
+            if (device_t.ble_connected)
+                BLE_SendCMD("Cover !!!");
 #if NOR_FLASH_ENABLE
             nor_flash_write(&tsdb);
 #endif
@@ -869,7 +878,8 @@ static void update_radar_priority_parking_state(void)
             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
             DEBUG_TRACE(LOG_TAG, "******** [RadarPriority] Parking (Radar) !!! ********");
-            if (device_t.ble_connected) BLE_SendCMD("Parking !!!");
+            if (device_t.ble_connected)
+                BLE_SendCMD("Parking !!!");
 #if NOR_FLASH_ENABLE
             nor_flash_write(&tsdb);
 #endif
@@ -881,7 +891,8 @@ static void update_radar_priority_parking_state(void)
             if (device_t.sleep_delay < WAIT_SLEEP_TIME_DELAY)
                 device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
             DEBUG_TRACE(LOG_TAG, "******** [RadarPriority] Recover From 0xFF !!! ********");
-            if (device_t.ble_connected) BLE_SendCMD("Not Cover !!!");
+            if (device_t.ble_connected)
+                BLE_SendCMD("Not Cover !!!");
 #if NOR_FLASH_ENABLE
             nor_flash_write(&tsdb);
 #endif
@@ -969,7 +980,7 @@ static void update_single_mode_parking_state(void)
 void system_debug(void)
 {
     static u32 covert_time;
-    char output[200];
+    char output[256];
 
     if (!BLEDebugMode)
         return;
@@ -987,15 +998,16 @@ void system_debug(void)
 
     convert_light_sensor();
     memset(output, 0, sizeof(output));
+    /* 行首时间戳对齐事件时序，行尾电量便于观察计数模型（2026-11-15 日志优化项1+2） */
     snprintf(output, sizeof(output),
-             "mag diff[%d %d %d],mag base[%d %d %d],mag cur[%d %d %d],rkb power[%d %d %d %d %d %d %d %d %d %d],light[%d],mag state[%d],rkb "
-             "state[%d],park state[%d],park mode[%d]",
+             "mag: diff[%d %d %d] base[%d %d %d] cur[%d %d %d] state[%d]\nrkb power[%d %d %d %d %d %d %d %d %d "
+             "%d] state[%d]\npark state[%d] mode[%d] light[%d]\n",
              qmc5883l_t.offset.x - qmc5883l_t.xyz.x, qmc5883l_t.offset.y - qmc5883l_t.xyz.y, qmc5883l_t.offset.z - qmc5883l_t.xyz.z,
-             qmc5883l_t.offset.x, qmc5883l_t.offset.y, qmc5883l_t.offset.z, qmc5883l_t.xyz.x, qmc5883l_t.xyz.y, qmc5883l_t.xyz.z,
+             qmc5883l_t.offset.x, qmc5883l_t.offset.y, qmc5883l_t.offset.z, qmc5883l_t.xyz.x, qmc5883l_t.xyz.y, qmc5883l_t.xyz.z, qmc5883l_t.is_changed,
              rkb1145d_t.adjust_power[0], rkb1145d_t.adjust_power[1], rkb1145d_t.adjust_power[2], rkb1145d_t.adjust_power[3],
              rkb1145d_t.adjust_power[4], rkb1145d_t.adjust_power[5], rkb1145d_t.adjust_power[6], rkb1145d_t.adjust_power[7],
-             rkb1145d_t.adjust_power[8], rkb1145d_t.adjust_power[9], convertedValue, qmc5883l_t.is_changed, rkb1145d_t.is_changed,
-             device_t.park_state, device_t.park_mode);
+             rkb1145d_t.adjust_power[8], rkb1145d_t.adjust_power[9], rkb1145d_t.is_changed,
+             device_t.park_state, device_t.park_mode, convertedValue);
     BLE_SendCMD(output);
     DEBUG_TRACE(LOG_TAG, "%s", output);
 }

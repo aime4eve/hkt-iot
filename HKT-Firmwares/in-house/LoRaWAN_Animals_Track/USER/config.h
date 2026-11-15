@@ -70,8 +70,8 @@
 #define FUNC_LoRaWAN_CN470_0 0 // 通道0-7
 #define FUNC_LoRaWAN_CN470_8 0 // 通道8-15
 #define FUNC_LoRaWAN_CN470A 0  // 通道25-32
-#define FUNC_LoRaWAN_IN865 1
-#define FUNC_LoRaWAN_EU868 0
+#define FUNC_LoRaWAN_IN865 0
+#define FUNC_LoRaWAN_EU868 1
 #define FUNC_LoRaWAN_US915 0
 #define FUNC_LoRaWAN_AU915 0
 #define FUNC_LoRaWAN_AS923_AS1 0
@@ -88,7 +88,7 @@
 #define FUNC_TAMPER_ENABLE 0
 
 #define HARDWARE_VER 0x04
-#define SOFTWARE_VER 0x04
+#define SOFTWARE_VER 0x05
 
 // 全局类型定义
 typedef enum

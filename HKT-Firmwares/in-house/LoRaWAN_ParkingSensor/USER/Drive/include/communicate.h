@@ -23,6 +23,7 @@ enum DataType {
     DATATYPE_DEVICE_REST_FACTORY = 0x85, // 恢复默认出厂设置   1LoRaWAN模块恢复出厂设置 2设备恢复出厂设置（包括LoRaWAN模块）
     DATATYPE_DEVICE_SYNC_PERIOD, // 设备数据同步周期 取值范围：10- 1440 （10分钟到24小时），默认20分钟。
     DATATYPE_DEVICE_POWER = 0x8D, // 开关机状态
+    DATATYPE_DEVICE_BATTERY_CALIB = 0x8E, // 电量校准（1字节百分比0-100，BLE hkt帧/LoRa下行同码值；100=换新电池归零校准）
     DATATYPE_DEVICE_MAG_X = 0x5D, // X轴磁场值 (2 bytes, int16, 仅上行)
     DATATYPE_DEVICE_MAG_Y = 0x5E, // Y轴磁场值 (2 bytes, int16, 仅上行)
     DATATYPE_DEVICE_MAG_Z = 0x5F, // Z轴磁场值 (2 bytes, int16, 仅上行)

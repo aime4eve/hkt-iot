@@ -22,6 +22,7 @@ enum class DeviceCapability {
     TIME_SYNC,          // 0x06
     TARGETED_SCAN,      // 定位/扫码
     VALVE_CONTROL,      // firmware-only 0xF9, never exposed (Q1)
+    LORAWAN_CONFIG,     // 0xA0/0xA1 — LoRaWAN_ParkingSensor only (advertised EPS100/MPS100)
 }
 
 object DeviceRegistry {
@@ -47,6 +48,11 @@ object DeviceRegistry {
         if (family == DeviceFamily.SVC100) {
             capabilities.add(DeviceCapability.SVC_TASKS)
             capabilities.add(DeviceCapability.VALVE_CONTROL) // registered, never surfaced (Q1)
+        }
+        // 0xA0/0xA1 仅 LoRaWAN_ParkingSensor 固件实现（config.h PROCT_NAME = EPS100 地埋式 /
+        // MPS100 表贴式，两种形态同一工程）；DC200 产品线已下线
+        if (advertisedName == "MPS100" || advertisedName == "EPS100") {
+            capabilities.add(DeviceCapability.LORAWAN_CONFIG)
         }
         return DeviceProfile(family, advertisedName, capabilities)
     }

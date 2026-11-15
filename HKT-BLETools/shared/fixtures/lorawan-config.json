@@ -1,0 +1,87 @@
+[
+ {
+  "id": "LW-QUERY-001",
+  "device": "MPS100",
+  "purpose": "APP 0xA0 query current config (data 1B=0x01, 8B frame, special=0x00); device replies with the 40B config response frame",
+  "request": "686B740001A001E9",
+  "expected": {
+   "deviceAction": "reply 40B 0xA0 frame with 33B cached config"
+  },
+  "firmwareReference": "communicate.c ble_handle_lorawan_frame len==8 && data[6]==0x01 branch; checksum = byte sum mod 256 (0xE9)",
+  "note": "special byte is fixed 0x00 (firmware does not check BIT flags)"
+ },
+ {
+  "id": "LW-SR0-001",
+  "device": "MPS100",
+  "purpose": "APP 0xA1 module status passthrough request (AT+SR0?, data 1B=0x01); device replies with RAW ASCII text, NOT an hkt frame",
+  "request": "686B740001A101EA",
+  "expected": {
+   "deviceAction": "wake module -> AT+SR0? -> forward raw text over BLE"
+  },
+  "firmwareReference": "communicate.c ble_forward_module_sr; checksum 0xEA"
+ },
+ {
+  "id": "LW-BATCAL-001",
+  "device": "MPS100",
+  "purpose": "APP 0x8E battery calibration (data 1B = percent 0-100; 100 = fresh-battery reset). Firmware derives used-push-count = (100-pct)*1500, persists to the ring-slot page (shared with report interval at FLASH_REPORT_INTERVAL_ADDR+0x400), then replies 0xFF ACK",
+  "request": "686B7400018E643A",
+  "expected": {
+   "deviceAction": "batteryInitialCapacity = 1500*(100-pct) -> FLASH_Write_Battery -> ACK 0xFF"
+  },
+  "firmwareReference": "communicate.c ble_apply_battery_calib + DATATYPE_DEVICE_BATTERY_CALIB=0x8E (LoRa downlink TLV, same code); checksum 0x3A"
+ },
+ {
+  "id": "LW-BLEDBG-001",
+  "device": "MPS100",
+  "purpose": "APP 0xA2 BLE debug mode (10B fixed payload, BLE-only): byte0 device type 0=parking sensor, byte1 debug switch, byte2 sleep-when-connected switch, byte3-9 reserved. Firmware applies both switches and replies 0xFF ACK; on BLE disconnect firmware auto-clears both",
+  "request": "686B740001A200010100000000000000EC",
+  "expected": {
+   "deviceAction": "BLEDebugMode=1, ble_sleep_mode=1 -> ACK 0xFF"
+  },
+  "firmwareReference": "communicate.c BLE_FR_BLE_DEBUG branch (replaces legacy switchBLEDebug/Sleep string commands); checksum 0xEC"
+ },
+ {
+  "id": "LW-CONFIG-001",
+  "device": "MPS100",
+  "purpose": "APP 0xA0 write config (33B payload, 40B frame): EU868 / chmask 0007 / rx2 DR1 869.525MHz / ADR on / confirmed cnt3 / power 0 / DR5 / OTAA / class A / port 10 / DevEUI 1122334455667788 (read-only field, ignored by firmware)",
+  "request": "686B740001A0560700000000000000000133D3E6080101030000000500000A1122334455667788B2",
+  "expected": {
+   "deviceAction": "validate -> write flash 0x08033000 -> legacy TLV 0xFF ACK -> reboot 500ms later (link drop is expected)"
+  },
+  "firmwareReference": "communicate.c ble_apply_lorawan_cfg; checksum 0xB2 (869525000Hz = 33D3E608, 2026-11-14 user decision)"
+ },
+ {
+  "id": "LW-RSP-CONFIG-001",
+  "device": "MPS100",
+  "purpose": "device 40B 0xA0 config response (query reply, device seq=2, same 33B payload as LW-CONFIG-001)",
+  "response": "686B740002A0560700000000000000000133D3E6080101030000000500000A1122334455667788B3",
+  "expected": {
+   "seq": 2,
+   "band": 86,
+   "region": "EU868",
+   "chmaskDisplay": "0700",
+   "rx2Dr": 1,
+   "rx2FreqHz": 869525000,
+   "adr": 1,
+   "confirm": 1,
+   "confirmCnt": 3,
+   "power": 0,
+   "dr": 5,
+   "activation": 0,
+   "deviceClass": 0,
+   "port": 10,
+   "deveui": "1122334455667788"
+  },
+  "firmwareReference": "communicate.c callback_BLELoRaWANCfg; checksum 0xB3"
+ },
+ {
+  "id": "LW-RSP-BADSUM",
+  "device": "MPS100",
+  "purpose": "corrupted 0xA0 response (last byte tampered) must NOT parse (strict tail checksum)",
+  "response": "686B740002A0560700000000000000000133D3E6080101030000000500000A1122334455667788B2",
+  "expected": {
+   "parse": null
+  },
+  "firmwareReference": "LoRaWANInbound.parse checksum guard"
+ }
+]

@@ -276,7 +276,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8004000</StartAddress>
-                <Size>0x40000</Size>
+                <Size>0x2a000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32L431xx,USE_FULL_LL_DRIVER,USER_VECT_TAB_ADDRESS</Define>
               <Undefine></Undefine>
-              <IncludePath>..\Compents\Lib\STM32L4xx_HAL_Driver\Inc;..\Compents\Lib\CMSIS\Include;..\Compents\Lib\CMSIS\Device\ST\STM32L4xx\Include;..\Compents\LoRa\include;..\Compents\Modules\lwrb;..\Compents\Modules;..\Compents\System;.\Drive\include;..\USER;..\Compents\Modules\FlashDB-1.1.2\inc;..\Compents\Modules\FlashDB-1.1.2\port\fal\inc;..\Compents\Modules\FlashDB-1.1.2\sfud\inc;..\Compents\Modules\FlashDB-1.1.2\src;..\Compents\CmBacktrace\cm_backtrace</IncludePath>
+              <IncludePath>..\Compents\Lib\STM32L4xx_HAL_Driver\Inc;..\Compents\Lib\CMSIS\Include;..\Compents\Lib\CMSIS\Device\ST\STM32L4xx\Include;..\Compents\LoRa\include;..\Compents\Modules\lwrb;..\Compents\Modules;..\Compents\System;.\Drive\include;..\USER;..\Compents\Modules\FlashDB-1.1.2\inc;..\Compents\Modules\FlashDB-1.1.2\port\fal\inc;..\Compents\Modules\FlashDB-1.1.2\sfud\inc;..\Compents\Modules\FlashDB-1.1.2\src;..\Compents\CmBacktrace\cm_backtrace;..\Compents\Upgrade</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -472,6 +472,41 @@
               <FileName>p25q40.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Drive\p25q40.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_upgrade.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Drive\ble_upgrade.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Upgrade</GroupName>
+          <Files>
+            <File>
+              <FileName>upgrade_crc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\upgrade_crc.c</FilePath>
+            </File>
+            <File>
+              <FileName>upgrade_frame.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\upgrade_frame.c</FilePath>
+            </File>
+            <File>
+              <FileName>upgrade_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\upgrade_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_bspatch.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\app_bspatch.c</FilePath>
+            </File>
+            <File>
+              <FileName>minilzo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\minilzo\minilzo.c</FilePath>
             </File>
           </Files>
         </Group>

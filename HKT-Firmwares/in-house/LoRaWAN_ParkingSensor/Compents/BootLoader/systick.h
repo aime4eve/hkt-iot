@@ -30,6 +30,7 @@ void PeriphCommonClock_Config(void);
 void Systick_Init(void);
 void Systick_1ms_Handler(void);
 int whatday(int year, int mon, int day);
+void getTimestamp(void);
 void stamp_to_date(time_t stampTime, struct tm *stm);
 void systemTime_Init(void);
 void Delay_Us(__IO u16 myUs);

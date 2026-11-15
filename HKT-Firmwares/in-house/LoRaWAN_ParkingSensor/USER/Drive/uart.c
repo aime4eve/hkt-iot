@@ -452,7 +452,8 @@ void LoRa_SendData(uint8_t *buffer, u16 buffer_size)
         while (!LL_USART_IsActiveFlag_TC(USART1))
             ;
     }
-    ADC_BatterySglConvert(); // 每发射一次，电池容量减一
+    batteryInitialCapacity++; /* 每次 LoRa 发包计一次：电池容量模型 = 剩余可上报次数 */
+    ADC_BatterySglConvert();
     // device_t.sleep_delay = WAIT_SLEEP_TIME_DELAY;
 }
 

@@ -4,6 +4,7 @@
 #include "LoRaWAN_APPLY.h"
 #include "LoRaWAN_ATCMD.h"
 #include "adc.h"
+#include "ble_upgrade.h"
 #include "control_center.h"
 #include "flash.h"
 #include "gpio.h"
@@ -289,6 +290,21 @@ void fromLoRaWANDataHandle(u8 *data, u16 len)
             dataLen -= 2;
             srcHex += 2;
             break;
+        case DATATYPE_DEVICE_BATTERY_CALIB: // 电量校准（0-100%，与BLE 0x8E同码值）
+            if (srcHex[1] <= 100) {
+                batteryInitialCapacity = (u32)(BATTERY_MAX_PUSH_CNT / 100) * (100 - srcHex[1]);
+                if (FLASH_Write_Battery() == SUCCESS) {
+                    ADC_BatterySglConvert(); /* 重算百分比并触发上报 */
+                    DEBUG_TRACE(LOG_TAG, "LoRa Battery Calibrated To %d%%", srcHex[1]);
+                } else {
+                    DEBUG_TRACE(ERROR_TAG, "Battery Calib Flash Write FAIL");
+                }
+            } else {
+                DEBUG_TRACE(ERROR_TAG, "Update Battery Calib Error: %d", srcHex[1]);
+            }
+            dataLen -= 2;
+            srcHex += 2;
+            break;
         case DATATYPE_DEVICE_SYNC_PERIOD: {
             u16 report_interval = srcHex[1] << 8 | srcHex[2];
             dataLen -= 3;
@@ -356,6 +372,7 @@ void Device_PeriodicReport(void)
         lwrb_write(&lwrbBuff_t, &sendLen, 1); // 写入数据长度
         lwrb_write(&lwrbBuff_t, buffer, sendLen);
         lwrb_write_count++;
+        upg_ble_confirm(); // 版本上报成功即确认新固件（升级确认机制）
     } else {
         DEBUG_TRACE(ERROR_TAG, "Lwrb Already Full");
     }
@@ -419,6 +436,11 @@ void DeviceEvent_Process(void)
                 if (device_t.ble_connected) {
                     PWR_CTRL_H;
                     mDelay(500);
+                } else if (BLEDebugMode || device_t.ble_sleep_mode) {
+                    /* 断开蓝牙：0xA2 调试态自动全关（RAM态不留存到下次连接/复位） */
+                    BLEDebugMode = 0;
+                    device_t.ble_sleep_mode = 0;
+                    DEBUG_TRACE(LOG_TAG, "BLE Disconnected: Debug Mode Auto Off");
                 }
                 DEBUG_TRACE(LOG_TAG, "BLE Connect State Change To %d", device_t.ble_connected);
             }
@@ -532,6 +554,8 @@ void callback_BLEQuery(void)
 
     BLE_SendData(uartBle.sendData, uartBle.sendLen); // 发送数据
     DebugHexInfo("BLESend", uartBle.sendData, uartBle.sendLen);
+
+    upg_ble_confirm(); // 版本上报成功即确认新固件（升级确认机制）
 }
 
 void callback_BLEAck(void)
@@ -706,6 +730,242 @@ void callback_BLEJoinData(void)
     DebugHexInfo("BLESend", uartBle.sendData, uartBle.sendLen);
 }
 
+/* ---- 0xA0/0xA1/0x8E/0xA2 LoRaWAN配置与调试协议（BLE） ----
+ * 帧形：hkt(3) 特殊类型(1)=0x00 包序号(1) 数据类型(1)=0xA0/0xA1 数据(n) 累加校验(1)
+ * 校验=自帧头逐字节求和 mod 256（与升级帧同族），上下行都带校验。
+ * 0xA0 查询：data=01（8字节帧）；0xA0 配置：data=33字节（40字节帧）
+ * 0xA1 SR0：data=01（8字节帧），应答为模组原始文本透传
+ * 0x8E 电量校准：data=百分比(1字节0-100)（8字节帧，68 6B 74 00 01 8E 64 3A=校准100%）。
+ *   反算计数落盘环形槽后回 0xFF ACK；LoRa 下行同码值 TLV（dataType 0x8E+1字节百分比）
+ * 0xA2 BLE调试模式：data=10字节定长（17字节帧，仅蓝牙无LoRa下行）——
+ *   data[0]设备类型(0=地磁,非0拒绝) data[1]调试开关(0/1) data[2]连接时允许睡眠(0/1)
+ *   data[3..9]预留忽略；生效回 0xFF ACK；断开蓝牙自动全关（见 ble_wake_event 处理）。
+ *   代替旧字符串命令 switchBLEDebugON/OFF、switchBLESleepON/OFF
+ * 33字节配置载荷（大端多字节）：
+ *   band(1) chmask位图(9) rx2_dr(1) rx2_freq(4) adr(1) confirm(1) confirm_cnt(1)
+ *   power(2) dr(2) activation(1) class(1) port(1) deveui(8只读) */
+#define BLE_FR_LORAWAN_CFG 0xA0
+#define BLE_FR_LORAWAN_SR 0xA1
+#define BLE_FR_BATTERY_CALIB 0x8E
+#define BLE_FR_BLE_DEBUG 0xA2
+#define BLE_CFG_PAYLOAD_LEN 33
+
+/**
+ * @brief  组包0xA0配置载荷（33字节，查询应答复用）
+ * @param  payload：输出缓冲（33字节）
+ * @retval
+ */
+static void lorawan_cfg_to_payload(u8 *payload)
+{
+    payload[0] = lorawanCfg.band;
+    memcpy(payload + 1, lorawanCfg.chmask, 9);
+    payload[10] = lorawanCfg.rx2_dr;
+    payload[11] = (lorawanCfg.rx2_freq >> 24) & 0xFF;
+    payload[12] = (lorawanCfg.rx2_freq >> 16) & 0xFF;
+    payload[13] = (lorawanCfg.rx2_freq >> 8) & 0xFF;
+    payload[14] = lorawanCfg.rx2_freq & 0xFF;
+    payload[15] = lorawanCfg.adr;
+    payload[16] = lorawanCfg.confirm;
+    payload[17] = lorawanCfg.confirm_cnt;
+    payload[18] = (lorawanCfg.power >> 8) & 0xFF;
+    payload[19] = lorawanCfg.power & 0xFF;
+    payload[20] = (lorawanCfg.dr >> 8) & 0xFF;
+    payload[21] = lorawanCfg.dr & 0xFF;
+    payload[22] = lorawanCfg.activation;
+    payload[23] = lorawanCfg.class;
+    payload[24] = lorawanCfg.port;
+    memcpy(payload + 25, LoRaWAN.DevEUI, 8); /* DevEUI只读，回读上报 */
+}
+
+/**
+ * @brief  0xA0查询应答：hkt 00 seq A0 <33B配置> sum，共40字节（缓存值）
+ * @param
+ * @retval
+ */
+static void callback_BLELoRaWANCfg(void)
+{
+    u8 sum = 0;
+    u8 i;
+
+    memset(uartBle.sendData, 0, 40);
+    memcpy(uartBle.sendData, SYNC_HEAD, 3);
+    uartBle.sendData[3] = 0;
+    uartBle.sendData[4] = packSyncNumber++;
+    uartBle.sendData[5] = BLE_FR_LORAWAN_CFG;
+    lorawan_cfg_to_payload(uartBle.sendData + 6);
+
+    for (i = 0; i < 39; i++)
+        sum += uartBle.sendData[i];
+    uartBle.sendData[39] = sum;
+
+    uartBle.sendLen = 40;
+    BLE_SendData(uartBle.sendData, uartBle.sendLen);
+    DebugHexInfo("BLESend", uartBle.sendData, uartBle.sendLen);
+}
+
+/**
+ * @brief  应用0xA0配置：校验→写flash→ACK→复位重启（重启后LoRaWAN_Init按新配置下发并重新入网）
+ * @param  payload：33字节配置载荷
+ * @retval
+ */
+static void ble_apply_lorawan_cfg(u8 *payload)
+{
+    struct LoRaWANLinkCfg tmp;
+
+    memcpy(&tmp, &lorawanCfg, sizeof(tmp));
+    tmp.band = payload[0];
+    memcpy(tmp.chmask, payload + 1, 9);
+    tmp.rx2_dr = payload[10];
+    tmp.rx2_freq = ((u32)payload[11] << 24) | ((u32)payload[12] << 16) | ((u32)payload[13] << 8) | payload[14];
+    tmp.adr = payload[15];
+    tmp.confirm = payload[16];
+    tmp.confirm_cnt = payload[17];
+    tmp.power = ((u16)payload[18] << 8) | payload[19];
+    tmp.dr = ((u16)payload[20] << 8) | payload[21];
+    tmp.activation = payload[22];
+    tmp.class = payload[23];
+    tmp.port = payload[24];
+    /* payload[25..32] DevEUI只读，写配置时忽略 */
+
+    if (!LoRaWAN_CfgValidate(&tmp)) {
+        return; /* 校验失败：不应答，APP超时保持旧配置 */
+    }
+
+    tmp.magic = LORAWAN_CFG_MAGIC;
+    memcpy(&lorawanCfg, &tmp, sizeof(lorawanCfg));
+    if (FLASH_Write_LoRaWAN_Cfg() != SUCCESS) {
+        DEBUG_TRACE(ERROR_TAG, "LoRaWAN Cfg Flash Write FAIL");
+        return;
+    }
+
+    DEBUG_TRACE(LOG_TAG, "LoRaWAN Cfg Updated band[%d], Reboot...", lorawanCfg.band);
+    callback_BLEAck();
+    if (batterySavedCapacity != batteryInitialCapacity) /* 复位前补落盘未存的电量消耗 */
+        FLASH_Write_Battery();
+    mDelay(500); /* 等ACK发完再复位 */
+    NVIC_SystemReset();
+}
+
+/**
+ * @brief  0xA1模组状态透传：AT+SR0?应答裸文本原样转发蓝牙（用完恢复模组原模式）
+ * @param
+ * @retval
+ */
+static void ble_forward_module_sr(void)
+{
+    int prev_mode = getLoRaWANMode();
+    int prev_status = getLoRaWANStatus();
+
+    setLoRaWANStatus(LoRaWAN_WAKE_STATUS); // 唤醒模块
+    setLoRaWANMode(LoRaWAN_CMD_MODE); // 配置进入命令模式
+
+    if (AT_LoRaWAN_getSR0()) {
+        if (uartLoRa.recvLen < sizeof(uartLoRa.recvData))
+            uartLoRa.recvData[uartLoRa.recvLen] = '\0'; /* 补字符串结束符 */
+        else
+            uartLoRa.recvData[sizeof(uartLoRa.recvData) - 1] = '\0';
+        BLE_SendCMD((const char *)uartLoRa.recvData);
+    } else {
+        BLE_SendCMD("AT+SR0? no response");
+    }
+
+    setLoRaWANMode(prev_mode); // 恢复模组原工作模式
+    setLoRaWANStatus(prev_status);
+}
+
+/**
+ * @brief  0x8E电量校准：按百分比反算计数→立即落盘→ACK（100%即换新电池归零校准）
+ * @param  percent：目标百分比 0-100
+ * @retval
+ */
+static void ble_apply_battery_calib(u8 percent)
+{
+    if (percent > 100) {
+        DEBUG_TRACE(ERROR_TAG, "Battery Calib Range Error: %d", percent);
+        return; /* 非法值不应答，APP 超时 */
+    }
+    batteryInitialCapacity = (u32)(BATTERY_MAX_PUSH_CNT / 100) * (100 - percent);
+    if (FLASH_Write_Battery() != SUCCESS) {
+        DEBUG_TRACE(ERROR_TAG, "Battery Calib Flash Write FAIL");
+        return;
+    }
+    ADC_BatterySglConvert(); /* 落盘判脏差=0 不重复写；重算百分比并触发上报 */
+    DEBUG_TRACE(LOG_TAG, "Battery Calibrated To %d%% (used %u)", percent, batteryInitialCapacity);
+    callback_BLEAck();
+}
+
+/**
+ * @brief  0xA0/0xA1/0x8E帧入口（校验+分发）
+ * @param  data：完整帧（含帧头与校验）
+ * @param  len：帧长度
+ * @retval
+ */
+static void ble_handle_lorawan_frame(u8 *data, u16 len)
+{
+    u16 i;
+    u8 sum = 0;
+
+    for (i = 0; i < len - 1; i++)
+        sum += data[i];
+    if (sum != data[len - 1]) {
+        DEBUG_TRACE(ERROR_TAG, "BLE LoRaWAN Frame Checksum ERROR");
+        return;
+    }
+    DebugHexInfo("RevBLE", data, len);
+
+    if (data[5] == BLE_FR_LORAWAN_CFG) {
+        if (len == 8 && data[6] == 0x01) {
+            callback_BLELoRaWANCfg(); /* 查询：上报缓存配置 */
+        } else if (len == 6 + BLE_CFG_PAYLOAD_LEN + 1) {
+            if (upg_ble_active()) {
+                DEBUG_TRACE(ERROR_TAG, "BLE Cfg Rejected: Upgrade In Progress");
+                return; /* 升级会话期间禁止复位类操作 */
+            }
+            ble_apply_lorawan_cfg(data + 6);
+        } else {
+            DEBUG_TRACE(ERROR_TAG, "BLE Cfg Frame Length ERROR [%d]", len);
+        }
+    } else if (data[5] == BLE_FR_BATTERY_CALIB) {
+        if (len == 8) {
+            ble_apply_battery_calib(data[6]);
+        } else {
+            DEBUG_TRACE(ERROR_TAG, "BLE Battery Calib Frame Length ERROR [%d]", len);
+        }
+    } else if (data[5] == BLE_FR_BLE_DEBUG) {
+        /* 0xA2 BLE调试模式：10字节定长载荷（帧总长17），仅蓝牙 */
+        if (len == 6 + 10 + 1) {
+            if (upg_ble_active()) {
+                DEBUG_TRACE(ERROR_TAG, "BLE Debug Rejected: Upgrade In Progress");
+                return; /* 升级会话期间禁止调试流（与0xA0/0xA1同纪律） */
+            }
+            if (data[6] != 0x00) {
+                DEBUG_TRACE(ERROR_TAG, "BLE Debug Device Type ERROR [%d]", data[6]); /* 0=地磁，其他预留 */
+                return;
+            }
+            if ((data[7] | data[8]) & ~0x01) {
+                DEBUG_TRACE(ERROR_TAG, "BLE Debug Switch Value ERROR [%d %d]", data[7], data[8]); /* 开关仅0/1 */
+                return;
+            }
+            BLEDebugMode = data[7];          /* 1=开调试透传（system_debug 周期输出） */
+            device_t.ble_sleep_mode = data[8]; /* 1=连接状态时允许进睡眠 */
+            DEBUG_TRACE(LOG_TAG, "BLE Debug Mode=%d SleepAllow=%d", BLEDebugMode, device_t.ble_sleep_mode);
+            callback_BLEAck(); /* 0xFF ACK */
+        } else {
+            DEBUG_TRACE(ERROR_TAG, "BLE Debug Frame Length ERROR [%d]", len);
+        }
+    } else { /* BLE_FR_LORAWAN_SR */
+        if (len == 8 && data[6] == 0x01) {
+            if (upg_ble_active()) {
+                DEBUG_TRACE(ERROR_TAG, "BLE SR Rejected: Upgrade In Progress");
+                return; /* AT交互会阻塞主循环，升级会话期间禁用 */
+            }
+            ble_forward_module_sr();
+        } else {
+            DEBUG_TRACE(ERROR_TAG, "BLE SR Frame Length ERROR [%d]", len);
+        }
+    }
+}
+
 /**
  * @brief  处理来自蓝牙的数据
  * @param  data：接收到数据的数组
@@ -714,25 +974,21 @@ void callback_BLEJoinData(void)
  */
 void fromBleDataHandle(u8 *data, u16 len)
 {
+    if (upg_ble_rx(data, len)) { // 蓝牙升级帧（hkt+BIT3升级位）由升级状态机独占处理
+        return;
+    }
+
+    /* 0xA0/0xA1/0x8E/0xA2 LoRaWAN配置/调试/电量校准/BLE调试帧：hkt+特殊类型0x00，与旧帧形(len在data[4..5])互不冲突 */
+    if (len >= 8 && data[0] == SYNC_HEAD[0] && data[1] == SYNC_HEAD[1] && data[2] == SYNC_HEAD[2] && data[3] == 0x00 &&
+        (data[5] == BLE_FR_LORAWAN_CFG || data[5] == BLE_FR_LORAWAN_SR || data[5] == BLE_FR_BATTERY_CALIB ||
+         data[5] == BLE_FR_BLE_DEBUG)) {
+        ble_handle_lorawan_frame(data, len);
+        return;
+    }
+
     if (device_t.power_on) {
-        if (strstr((const char *)data, "switchBLEDebugON")) // 切换BLE Debug模式
-        {
-            BLEDebugMode = 1;
-            BLE_SendCMD("DebugON");
-            mDelay(500);
-        } else if (strstr((const char *)data, "switchBLEDebugOFF")) // 关闭BLE Debug模式
-        {
-            BLEDebugMode = 0;
-            BLE_SendCMD("DebugOFF");
-        } else if (strstr((const char *)data, "switchBLESleepON")) // 蓝牙连接状态时进入睡眠
-        {
-            device_t.ble_sleep_mode = 1;
-            BLE_SendCMD("BLESleepON");
-        } else if (strstr((const char *)data, "switchBLESleepOFF")) // 蓝牙连接状态时不进入睡眠
-        {
-            device_t.ble_sleep_mode = 0;
-            BLE_SendCMD("BLESleepOFF");
-        } else if (strstr((const char *)data, "enterMagCalibrationMode")) // 进入地磁校准模式
+        /* BLEDebugMode/ble_sleep_mode 已由 0xA2 帧控制（switchBLEDebug/Sleep 字符串命令已废弃） */
+        if (strstr((const char *)data, "enterMagCalibrationMode")) // 进入地磁校准模式
         {
             magnetometer_enter_cal();
             PWR_CTRL_H;
@@ -895,6 +1151,8 @@ void fromBleDataHandle(u8 *data, u16 len)
         }
         BLE_SendCMD("PowerOFF");
     } else if (strstr((const char *)data, "reboot")) {
+        if (batterySavedCapacity != batteryInitialCapacity) /* 复位前补落盘 */
+            FLASH_Write_Battery();
         NVIC_SystemReset(); // 复位
     } else if (strstr((const char *)data, "hkt") && (data[5] == 5 || data[5] == 4)) { // APP操作指令
         DebugHexInfo("RevBLE", data, len);
@@ -975,15 +1233,7 @@ void fromBleDataHandle(u8 *data, u16 len)
                 DEBUG_TRACE(ERROR_TAG, "Update  Device Park Mode Error: %d", parkMode);
             }
             callback_BLEAck();
-        } else if (data[7] == 1) { // APP更新指令
-            FLASH_Write_Update_Flag();
-            mDelay(100);
-            NVIC_SystemReset(); // 复位
         }
-    } else if (strstr((const char *)data, "hkt") && data[5] == 1) { // 更新固件
-        FLASH_Write_Update_Flag();
-        mDelay(100);
-        NVIC_SystemReset(); // 复位
     } else if (strstr((const char *)data, "hkt") && data[5] == 4 && data[6] == 6) { // 同步设备时间
         time_t stamp = data[7] << 24 | data[8] << 16 | data[9] << 8 | data[10];
         if (stamp != 0) {

@@ -340,8 +340,8 @@ bool AT_LoRaWAN_getVer(void)
 bool AT_LoRaWAN_setDebug(u8 value)
 {
     u16 retry = 0;
-    char at_cmd[] = "AT+DEBUG=1";
-    sprintf(at_cmd, "AT+DEBUG=%d", value);
+    char at_cmd[16]; /* "AT+DEBUG=%d", explicit bound */
+    snprintf(at_cmd, sizeof(at_cmd), "AT+DEBUG=%d", value);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(at_cmd, 1500, "OK")) {
             return TRUE;
@@ -400,8 +400,8 @@ bool AT_LoRaWAN_systemReset(void)
 bool AT_LoRaWAN_setBaud(char *baud)
 {
     u16 retry = 0;
-    char valid[] = "AT+BAUD=115200";
-    sprintf(valid, "AT+BAUD=%s", baud);
+    char valid[24]; /* "AT+BAUD=%s", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+BAUD=%s", baud);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -440,8 +440,8 @@ bool AT_LoRaWAN_getBaud(void)
 bool AT_LoRaWAN_setBaudTimeout(int timeout)
 {
     u16 retry = 0;
-    char valid[] = "AT+TIMEOUT=65535";
-    sprintf(valid, "AT+TIMEOUT=%d", timeout);
+    char valid[24]; /* "AT+TIMEOUT=%d", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+TIMEOUT=%d", timeout);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -480,8 +480,8 @@ bool AT_LoRaWAN_getBaudTimeout(void)
 bool AT_LoRaWAN_setConfirm(int type, int sendCnt)
 {
     u16 retry = 0;
-    char valid[] = "AT+CONFIRM=1,3";
-    sprintf(valid, "AT+CONFIRM=%d,%d", type, sendCnt);
+    char valid[24]; /* "AT+CONFIRM=%d,%d", explicit bound (cnt can be 2 digits) */
+    snprintf(valid, sizeof(valid), "AT+CONFIRM=%d,%d", type, sendCnt);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -593,9 +593,9 @@ bool AT_LoRaWAN_getDEVEUI(void)
 bool AT_LoRaWAN_setDEVEUI(void)
 {
     u16 retry = 0;
-    char DevEUI_Str[] = "AT+DEVEUI= FF FF FE 00 00 00 00 01, D3 91 01 02 20 10 28 16, 1";
-    sprintf(DevEUI_Str, "AT+DEVEUI= %02x %02x %02x %02x %02x %02x %02x %02x, D3 91 01 02 20 10 28 16, 1", LoRaWAN.DevEUI[0], LoRaWAN.DevEUI[1],
-            LoRaWAN.DevEUI[2], LoRaWAN.DevEUI[3], LoRaWAN.DevEUI[4], LoRaWAN.DevEUI[5], LoRaWAN.DevEUI[6], LoRaWAN.DevEUI[7]);
+    char DevEUI_Str[64]; /* two 8-byte hex segments + flags, explicit bound */
+    snprintf(DevEUI_Str, sizeof(DevEUI_Str), "AT+DEVEUI= %02x %02x %02x %02x %02x %02x %02x %02x, D3 91 01 02 20 10 28 16, 1", LoRaWAN.DevEUI[0],
+             LoRaWAN.DevEUI[1], LoRaWAN.DevEUI[2], LoRaWAN.DevEUI[3], LoRaWAN.DevEUI[4], LoRaWAN.DevEUI[5], LoRaWAN.DevEUI[6], LoRaWAN.DevEUI[7]);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(DevEUI_Str, 1500, "OK")) {
             return TRUE;
@@ -614,9 +614,9 @@ bool AT_LoRaWAN_setDEVEUI(void)
 bool AT_LoRaWAN_setAPPEUI(void)
 {
     u16 retry = 0;
-    char AppEUI_Str[] = "AT+APPEUI= FF FF FE 00 00 00 00 01";
-    sprintf(AppEUI_Str, "AT+APPEUI= %02x %02x %02x %02x %02x %02x %02x %02x", LoRaWAN.AppEUI[0], LoRaWAN.AppEUI[1], LoRaWAN.AppEUI[2],
-            LoRaWAN.AppEUI[3], LoRaWAN.AppEUI[4], LoRaWAN.AppEUI[5], LoRaWAN.AppEUI[6], LoRaWAN.AppEUI[7]);
+    char AppEUI_Str[40]; /* "AT+APPEUI=" + 8 bytes hex, explicit bound */
+    snprintf(AppEUI_Str, sizeof(AppEUI_Str), "AT+APPEUI= %02x %02x %02x %02x %02x %02x %02x %02x", LoRaWAN.AppEUI[0], LoRaWAN.AppEUI[1], LoRaWAN.AppEUI[2],
+             LoRaWAN.AppEUI[3], LoRaWAN.AppEUI[4], LoRaWAN.AppEUI[5], LoRaWAN.AppEUI[6], LoRaWAN.AppEUI[7]);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(AppEUI_Str, 1500, "OK")) {
             return TRUE;
@@ -668,19 +668,19 @@ bool AT_LoRaWAN_getAPPEUI(void)
 bool AT_LoRaWAN_setAPPKEY(void)
 {
     u16 retry = 0;
-    char AppKEY_Str[] = "AT+APPKEY= 2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C,0";
+    char AppKEY_Str[72]; /* "AT+APPKEY=" + 16 bytes hex + flag, explicit bound */
 #if 1
     /* 设置为密钥可读模式 */
-    sprintf(AppKEY_Str, "AT+APPKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x,0", LoRaWAN.AppKEY[0],
-            LoRaWAN.AppKEY[1], LoRaWAN.AppKEY[2], LoRaWAN.AppKEY[3], LoRaWAN.AppKEY[4], LoRaWAN.AppKEY[5], LoRaWAN.AppKEY[6], LoRaWAN.AppKEY[7],
-            LoRaWAN.AppKEY[8], LoRaWAN.AppKEY[9], LoRaWAN.AppKEY[10], LoRaWAN.AppKEY[11], LoRaWAN.AppKEY[12], LoRaWAN.AppKEY[13], LoRaWAN.AppKEY[14],
-            LoRaWAN.AppKEY[15]);
+    snprintf(AppKEY_Str, sizeof(AppKEY_Str), "AT+APPKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x,0",
+             LoRaWAN.AppKEY[0], LoRaWAN.AppKEY[1], LoRaWAN.AppKEY[2], LoRaWAN.AppKEY[3], LoRaWAN.AppKEY[4], LoRaWAN.AppKEY[5], LoRaWAN.AppKEY[6],
+             LoRaWAN.AppKEY[7], LoRaWAN.AppKEY[8], LoRaWAN.AppKEY[9], LoRaWAN.AppKEY[10], LoRaWAN.AppKEY[11], LoRaWAN.AppKEY[12], LoRaWAN.AppKEY[13],
+             LoRaWAN.AppKEY[14], LoRaWAN.AppKEY[15]);
 #else
     /* 设置为密钥不可读模式 */
-    sprintf(AppKEY_Str, "AT+APPKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x,1", LoRaWAN.AppKEY[0],
-            LoRaWAN.AppKEY[1], LoRaWAN.AppKEY[2], LoRaWAN.AppKEY[3], LoRaWAN.AppKEY[4], LoRaWAN.AppKEY[5], LoRaWAN.AppKEY[6], LoRaWAN.AppKEY[7],
-            LoRaWAN.AppKEY[8], LoRaWAN.AppKEY[9], LoRaWAN.AppKEY[10], LoRaWAN.AppKEY[11], LoRaWAN.AppKEY[12], LoRaWAN.AppKEY[13], LoRaWAN.AppKEY[14],
-            LoRaWAN.AppKEY[15]);
+    snprintf(AppKEY_Str, sizeof(AppKEY_Str), "AT+APPKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x,1",
+             LoRaWAN.AppKEY[0], LoRaWAN.AppKEY[1], LoRaWAN.AppKEY[2], LoRaWAN.AppKEY[3], LoRaWAN.AppKEY[4], LoRaWAN.AppKEY[5], LoRaWAN.AppKEY[6],
+             LoRaWAN.AppKEY[7], LoRaWAN.AppKEY[8], LoRaWAN.AppKEY[9], LoRaWAN.AppKEY[10], LoRaWAN.AppKEY[11], LoRaWAN.AppKEY[12], LoRaWAN.AppKEY[13],
+             LoRaWAN.AppKEY[14], LoRaWAN.AppKEY[15]);
 #endif
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(AppKEY_Str, 1500, "OK")) {
@@ -735,8 +735,9 @@ bool AT_LoRaWAN_getAPPKEY(void)
 bool AT_LoRaWAN_setDEVADDR(void)
 {
     u16 retry = 0;
-    char DevADDR[] = "AT+DEVADDR= FF FF FE 00";
-    sprintf(DevADDR, "AT+DEVADDR= %02x %02x %02x %02x", LoRaWAN.DevADDR[0], LoRaWAN.DevADDR[1], LoRaWAN.DevADDR[2], LoRaWAN.DevADDR[3]);
+    char DevADDR[24]; /* "AT+DEVADDR=" + 4 bytes hex, explicit bound */
+    snprintf(DevADDR, sizeof(DevADDR), "AT+DEVADDR= %02x %02x %02x %02x", LoRaWAN.DevADDR[0], LoRaWAN.DevADDR[1], LoRaWAN.DevADDR[2],
+             LoRaWAN.DevADDR[3]);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(DevADDR, 1500, "OK")) {
             return TRUE;
@@ -787,12 +788,12 @@ bool AT_LoRaWAN_getDEVADDR(void)
 bool AT_LoRaWAN_setAPPSKEY(void)
 {
     u16 retry = 0;
-    char AppSKEY_Str[] = "AT+APPSKEY= 2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C";
+    char AppSKEY_Str[72]; /* "AT+APPSKEY=" + 16 bytes hex, explicit bound */
 
-    sprintf(AppSKEY_Str, "AT+APPSKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", LoRaWAN.AppSKEY[0],
-            LoRaWAN.AppSKEY[1], LoRaWAN.AppSKEY[2], LoRaWAN.AppSKEY[3], LoRaWAN.AppSKEY[4], LoRaWAN.AppSKEY[5], LoRaWAN.AppSKEY[6],
-            LoRaWAN.AppSKEY[7], LoRaWAN.AppSKEY[8], LoRaWAN.AppSKEY[9], LoRaWAN.AppSKEY[10], LoRaWAN.AppSKEY[11], LoRaWAN.AppSKEY[12],
-            LoRaWAN.AppSKEY[13], LoRaWAN.AppSKEY[14], LoRaWAN.AppSKEY[15]);
+    snprintf(AppSKEY_Str, sizeof(AppSKEY_Str), "AT+APPSKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             LoRaWAN.AppSKEY[0], LoRaWAN.AppSKEY[1], LoRaWAN.AppSKEY[2], LoRaWAN.AppSKEY[3], LoRaWAN.AppSKEY[4], LoRaWAN.AppSKEY[5],
+             LoRaWAN.AppSKEY[6], LoRaWAN.AppSKEY[7], LoRaWAN.AppSKEY[8], LoRaWAN.AppSKEY[9], LoRaWAN.AppSKEY[10], LoRaWAN.AppSKEY[11],
+             LoRaWAN.AppSKEY[12], LoRaWAN.AppSKEY[13], LoRaWAN.AppSKEY[14], LoRaWAN.AppSKEY[15]);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(AppSKEY_Str, 1500, "OK")) {
             return TRUE;
@@ -846,12 +847,12 @@ bool AT_LoRaWAN_getAPPSKEY(void)
 bool AT_LoRaWAN_setNwkSKEY(void)
 {
     u16 retry = 0;
-    char AppSKEY_Str[] = "AT+NWKSKEY= 2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C";
+    char AppSKEY_Str[72]; /* "AT+NWKSKEY=" + 16 bytes hex, explicit bound */
 
-    sprintf(AppSKEY_Str, "AT+NWKSKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", LoRaWAN.NwkSKEY[0],
-            LoRaWAN.NwkSKEY[1], LoRaWAN.NwkSKEY[2], LoRaWAN.NwkSKEY[3], LoRaWAN.NwkSKEY[4], LoRaWAN.NwkSKEY[5], LoRaWAN.NwkSKEY[6],
-            LoRaWAN.NwkSKEY[7], LoRaWAN.NwkSKEY[8], LoRaWAN.NwkSKEY[9], LoRaWAN.NwkSKEY[10], LoRaWAN.NwkSKEY[11], LoRaWAN.NwkSKEY[12],
-            LoRaWAN.NwkSKEY[13], LoRaWAN.NwkSKEY[14], LoRaWAN.NwkSKEY[15]);
+    snprintf(AppSKEY_Str, sizeof(AppSKEY_Str), "AT+NWKSKEY= %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             LoRaWAN.NwkSKEY[0], LoRaWAN.NwkSKEY[1], LoRaWAN.NwkSKEY[2], LoRaWAN.NwkSKEY[3], LoRaWAN.NwkSKEY[4], LoRaWAN.NwkSKEY[5],
+             LoRaWAN.NwkSKEY[6], LoRaWAN.NwkSKEY[7], LoRaWAN.NwkSKEY[8], LoRaWAN.NwkSKEY[9], LoRaWAN.NwkSKEY[10], LoRaWAN.NwkSKEY[11],
+             LoRaWAN.NwkSKEY[12], LoRaWAN.NwkSKEY[13], LoRaWAN.NwkSKEY[14], LoRaWAN.NwkSKEY[15]);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(AppSKEY_Str, 1500, "OK")) {
             return TRUE;
@@ -905,8 +906,8 @@ bool AT_LoRaWAN_getNwkSKEY(void)
 bool AT_LoRaWAN_setPORT(int port)
 {
     u16 retry = 0;
-    char portStr[] = "AT+PORT=20";
-    sprintf(portStr, "AT+PORT=%02x", port);
+    char portStr[20]; /* "AT+PORT=%02X" (module parses hex, uppercase), explicit bound */
+    snprintf(portStr, sizeof(portStr), "AT+PORT=%02X", port);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(portStr, 1500, "OK")) {
             return TRUE;
@@ -944,8 +945,8 @@ bool AT_LoRaWAN_getPORT(void)
 bool AT_LoRaWAN_setCSQ(int freq)
 {
     u16 retry = 0;
-    char valid[] = "AT+CSQ=0";
-    sprintf(valid, "AT+CSQ=%d", freq);
+    char valid[16]; /* "AT+CSQ=%d", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+CSQ=%d", freq);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -986,8 +987,8 @@ bool AT_LoRaWAN_getCSQ(void)
 bool AT_LoRaWAN_setClass(int class)
 {
     u16 retry = 0;
-    char classStr[] = "AT+CLASS=0";
-    sprintf(classStr, "AT+CLASS=%d", class);
+    char classStr[16]; /* "AT+CLASS=%d", explicit bound */
+    snprintf(classStr, sizeof(classStr), "AT+CLASS=%d", class);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(classStr, 1500, "OK")) {
             return TRUE;
@@ -1025,8 +1026,8 @@ bool AT_LoRaWAN_getClass(void)
 bool AT_LoRaWAN_setADR(int adr)
 {
     u16 retry = 0;
-    char adrStr[] = "AT+ADR=1";
-    sprintf(adrStr, "AT+ADR=%d", adr);
+    char adrStr[16]; /* "AT+ADR=%d", explicit bound */
+    snprintf(adrStr, sizeof(adrStr), "AT+ADR=%d", adr);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(adrStr, 1500, "OK")) {
             return TRUE;
@@ -1073,8 +1074,9 @@ bool AT_LoRaWAN_getADR(void)
 bool AT_LoRaWAN_setPower(int power)
 {
     u16 retry = 0;
-    char powerStr[] = "AT+POWER=0";
-    sprintf(powerStr, "AT+POWER=%d", power);
+    char powerStr[20]; /* "AT+POWER=%d": index is region-relative, up to 2 digits
+                          (US915/AU915 go to 14) - the old 11B buffer overflowed */
+    snprintf(powerStr, sizeof(powerStr), "AT+POWER=%d", power);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(powerStr, 1500, "OK")) {
             return TRUE;
@@ -1121,8 +1123,8 @@ bool AT_LoRaWAN_getPower(void)
 bool AT_LoRaWAN_setDataRate(int dataRate)
 {
     u16 retry = 0;
-    char valid[] = "AT+DATARATE=0";
-    sprintf(valid, "AT+DATARATE=%d", dataRate);
+    char valid[24]; /* "AT+DATARATE=%d", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+DATARATE=%d", dataRate);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -1162,7 +1164,7 @@ bool AT_LoRaWAN_setJOIN(void)
     u16 retry = 0;
     while (retry < 3) {
         // if (AT_OK == AT_Exec_SendCMD("AT+JOIN=1", 1500, "OK"))
-        if (AT_OK == AT_Exec_SendCMD("AT+JOIN=1,1,12,10", 1500, "OK")) // 120秒
+        if (AT_OK == AT_Exec_SendCMD("AT+JOIN=1,3,15,20", 1500, "OK")) // 300秒
         {
             memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
             uartLoRa.recvLen = 0;
@@ -1243,8 +1245,8 @@ bool AT_LoRaWAN_getStatus(void)
 bool AT_LoRaWAN_setCheckLink(int checkLink)
 {
     u16 retry = 0;
-    char valid[] = "AT+LINK CHECK=1";
-    sprintf(valid, "AT+LINK CHECK=%d", checkLink);
+    char valid[28]; /* "AT+LINK CHECK=%d", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+LINK CHECK=%d", checkLink);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 5000, "+LINK INFO:")) {
             DEBUG_TRACE(LOG_TAG, "%s", uartLoRa.recvData);
@@ -1299,8 +1301,8 @@ bool AT_LoRaWAN_getCheckLink(void)
 bool AT_LoRaWAN_setRX2(int dataRate, int rx2)
 {
     u16 retry = 0;
-    char valid[] = "AT+RX2=0,869525000";
-    sprintf(valid, "AT+RX2=%d,%d", dataRate, rx2);
+    char valid[24]; /* "AT+RX2=%d,%d": freq up to 930000000 (9 digits), explicit bound */
+    snprintf(valid, sizeof(valid), "AT+RX2=%d,%d", dataRate, rx2);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -1344,8 +1346,8 @@ bool AT_LoRaWAN_getRX2(void)
 bool AT_LoRaWAN_setFREQ(int param, int channel_num, int freq)
 {
     u16 retry = 0;
-    char valid[] = "AT+FREQ=1,20,868100000";
-    sprintf(valid, "AT+FREQ=%d,%d,%d", param, channel_num, freq);
+    char valid[40]; /* "AT+FREQ=%d,%d,%d": two 9-digit freqs fit, explicit bound */
+    snprintf(valid, sizeof(valid), "AT+FREQ=%d,%d,%d", param, channel_num, freq);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -1360,7 +1362,7 @@ bool AT_LoRaWAN_setFREQBW(int param, int channel_num, int freq, int bw)
 {
     u16 retry = 0;
     char valid[50] = {0};
-    sprintf(valid, "AT+FREQ=%d,%d,%d,%d", param, channel_num, freq, bw);
+    snprintf(valid, sizeof(valid), "AT+FREQ=%d,%d,%d,%d", param, channel_num, freq, bw);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 1500, "OK")) {
             return TRUE;
@@ -1438,8 +1440,8 @@ bool AT_LoRaWAN_getFREQ(void)
 bool AT_LoRaWAN_setBAND(int band)
 {
     u16 retry = 0;
-    char valid[12];
-    sprintf(valid, "AT+BAND=%d", band);
+    char valid[16]; /* "AT+BAND=%d", explicit bound */
+    snprintf(valid, sizeof(valid), "AT+BAND=%d", band);
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 2500, "OK")) {
             return TRUE;
@@ -1571,7 +1573,43 @@ bool AT_LoRaWAN_setCHMASK(int chmask)
 {
     u16 retry = 0;
     char valid[20] = {0};
-    sprintf(valid, "AT+CHMASK=%04X", chmask);
+    snprintf(valid, sizeof(valid), "AT+CHMASK=%04X", chmask);
+    while (retry < 3) {
+        if (AT_OK == AT_Exec_SendCMD(valid, 2500, "OK")) {
+            return TRUE;
+        }
+        retry++;
+        LoRa_DelayMs(1000);
+    }
+    return FALSE;
+}
+
+/**
+ * @brief  设置 CHMASK（完整72位信道位图，不截断为16位）
+ * @param  chmask：9字节信道位图，byte0的bit0=channel0，byte8为最高信道
+ * @retval 指令执行状态 FALSE 执行失败，TRUE 执行成功
+ * @note   hex 串字节序与模组 AT+CHMASK 解析约定一致（2026-11-14 真机确认）：
+ *          左起第一字节=ch0-7（=chmask[0]），尾部高位零字节裁剪、最少4个
+ *          十六进制位（CN470默认FF00 / EU868默认0700）；宽掩码最长18位
+ *          按输入原样透传。历史 %04X 大端数值形态（chmask[0]在串尾）废弃——
+ *          模组按左字节=ch0-7解析，旧序会把 CN470 默认开成 ch8-15
+ */
+bool AT_LoRaWAN_setCHMASKBitmap(const u8 *chmask)
+{
+    u16 retry = 0;
+    char valid[32]; /* "AT+CHMASK=" + up to 18 hex digits + NUL */
+    u8 top = 8;
+    u8 i, pos;
+
+    while (top > 0 && chmask[top] == 0)
+        top--; /* 去掉尾部高位零字节 */
+    if (top < 1)
+        top = 1; /* 至少两个字节=4个十六进制位，保持历史形态 */
+
+    pos = (u8)sprintf(valid, "AT+CHMASK=");
+    for (i = 0; i <= top; i++) /* chmask[0](ch0-7) 在串首 */
+        pos += (u8)sprintf(&valid[pos], "%02X", chmask[i]);
+
     while (retry < 3) {
         if (AT_OK == AT_Exec_SendCMD(valid, 2500, "OK")) {
             return TRUE;
@@ -1599,4 +1637,40 @@ bool AT_LoRaWAN_getCHMASK(void)
         LoRa_DelayMs(1000);
     }
     return FALSE;
+}
+
+/**
+ * @brief  读取模组状态寄存器0（AT+SR0?），用于蓝牙0xA1透传调试
+ * @param
+ * @retval 指令执行状态 FALSE 无应答，TRUE 收到模组原始文本
+ * @note   应答为模组自定义自由文本（无固定关键字），故不做关键字等待，
+ *          收到的裸文本留在 uartLoRa.recvData 中由调用方透传给蓝牙
+ */
+bool AT_LoRaWAN_getSR0(void)
+{
+    u16 waited = 0;
+
+    /* 清除缓存数据 */
+    memset(uartLoRa.recvData, 0, sizeof(uartLoRa.recvData));
+    uartLoRa.recvLen = 0;
+
+    LoRa_SendCMD("AT+SR0?");
+    LoRa_SendCMD("\r\n");
+
+    /* 等待任意应答到达（最长2s），期间喂狗 */
+    while (uartLoRa.recvLen == 0 && waited < 2000) {
+        LoRa_DelayMs(100);
+        LL_IWDG_ReloadCounter(IWDG);
+        waited += 100;
+    }
+    if (uartLoRa.recvLen == 0) {
+        DEBUG_TRACE(WARN_TAG, "\"AT+SR0?\" no response");
+        return FALSE;
+    }
+
+    /* 静置等整行收完（串口50ms空闲分帧），再交给调用方 */
+    LoRa_DelayMs(200);
+    LL_IWDG_ReloadCounter(IWDG);
+    DEBUG_TRACE(LOG_TAG, "\"AT+SR0?\" rsp len[%d]", uartLoRa.recvLen);
+    return TRUE;
 }

@@ -80,6 +80,8 @@
 #define HARDWARE_VER 0x07
 #define SOFTWARE_VER 0x0E
 
+#define PROCT_NAME "SCB100" // 空开
+
 #define FUNC_LoRaWAN_ABP      0
 #define FUNC_LoRaWAN_SAMPLE   1
 #define FUNC_LORA_VERSION_LIR 1

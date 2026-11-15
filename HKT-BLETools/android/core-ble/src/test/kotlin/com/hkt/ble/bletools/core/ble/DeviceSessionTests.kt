@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.jsonPrimitive
 
 /// 设备会话轮询（R-5/R-7/R-8）——MockLink 夹具应答，无真机全流程测试。
 /// 虚拟时钟驱动：nowMs/epochSeconds 接 testScheduler.currentTime。
@@ -335,6 +336,67 @@ class DeviceSessionTests {
         advanceTimeBy(100)
         runCurrent()
         assertTrue(session.pollsSent.value > pollsBefore)
+        session.stop()
+    }
+
+    // MARK: LoRaWAN 配置协议（0xA0 应答帧旁路 / 0xA1 SR0 裸文本旁路）
+
+    /** LW-RSP-CONFIG-001：设备 40B 0xA0 配置应答帧（真源 shared/fixtures/lorawan-config.json）。 */
+    private fun loRaWanConfigResponse(): ByteArray {
+        val vector = Fixtures.jsonArray("lorawan-config.json")
+            .map { (it as kotlinx.serialization.json.JsonObject) }
+            .first { (it["id"]!!.jsonPrimitive.content) == "LW-RSP-CONFIG-001" }
+        return fixture(vector["response"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun testLoRaWANConfigResponseDoesNotMarkUnknownTail() = runTest {
+        // 0xA0 不在三家族 TLV 表内：若无旁路必触发 unknownTail 误报「响应数据异常」
+        val link = MockLink()
+        link.responder = { _ -> loRaWanConfigResponse() }
+        val session = session(link, family = DeviceFamily.DC200_FAMILY, pollIntervalMs = 3_600_000)
+        session.start()
+        var consumedFrame: ByteArray? = null
+        session.rawFrameHandler = { frame -> consumedFrame = frame; true }
+        link.onReceive?.invoke(loRaWanConfigResponse())
+        runCurrent()
+        assertFalse(session.unknownTail.value)
+        assertEquals(40, consumedFrame?.size)
+        session.stop()
+    }
+
+    @Test
+    fun testLoRaWANConfigResponseWithoutHandlerSilentlyDropped() = runTest {
+        // 页面已退出（无 handler）：静默丢弃，同样不得污染 TLV 状态
+        val link = MockLink()
+        link.responder = { _ -> loRaWanConfigResponse() }
+        val session = session(link, family = DeviceFamily.DC200_FAMILY, pollIntervalMs = 3_600_000)
+        session.start()
+        link.onReceive?.invoke(loRaWanConfigResponse())
+        runCurrent()
+        assertFalse(session.unknownTail.value)
+        session.stop()
+    }
+
+    @Test
+    fun testRawTextHandlerReceivesNonHktPayload() = runTest {
+        // 0xA1 SR0 应答为裸 ASCII（非 hkt 帧）：挂 handler 才可见，未挂不改变旧行为
+        val link = MockLink()
+        link.responder = { _ -> null }
+        val session = session(link, family = DeviceFamily.DC200_FAMILY, pollIntervalMs = 3_600_000)
+        session.start()
+        var received: ByteArray? = null
+        session.rawTextHandler = { data -> received = data; true }
+        link.onReceive?.invoke("+SR0:37,868000000,5,1,1\r\nOK".toByteArray(Charsets.US_ASCII))
+        runCurrent()
+        assertTrue(received?.decodeToString()?.contains("+SR0:") == true)
+        assertFalse(session.unknownTail.value)
+        // hkt 前缀帧（TLV 轮询回应）不进裸文本钩子
+        var polluted = false
+        session.rawTextHandler = { polluted = true; true }
+        link.onReceive?.invoke(fixture(dc200Response))
+        runCurrent()
+        assertFalse(polluted)
         session.stop()
     }
 }

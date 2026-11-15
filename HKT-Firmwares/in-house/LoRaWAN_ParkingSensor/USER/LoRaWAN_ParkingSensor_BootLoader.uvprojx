@@ -10,7 +10,7 @@
       <TargetName>LoRaWAN_ParkingSensor_BootLoaderr_Release</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060960::V5.06 update 7 (build 960)::ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
@@ -276,7 +276,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x40000</Size>
+                <Size>0x4000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32L431xx,USE_FULL_LL_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\Compents\Lib\STM32L4xx_HAL_Driver\Inc;..\Compents\Lib\CMSIS\Include;..\Compents\Lib\CMSIS\Device\ST\STM32L4xx\Include;..\Compents\System;..\Compents\BootLoader</IncludePath>
+              <IncludePath>..\Compents\Lib\STM32L4xx_HAL_Driver\Inc;..\Compents\Lib\CMSIS\Include;..\Compents\Lib\CMSIS\Device\ST\STM32L4xx\Include;..\Compents\System;..\Compents\BootLoader;..\Compents\Upgrade</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -427,6 +427,21 @@
               <FileName>crclib.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Compents\BootLoader\crclib.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Upgrade</GroupName>
+          <Files>
+            <File>
+              <FileName>upgrade_crc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\upgrade_crc.c</FilePath>
+            </File>
+            <File>
+              <FileName>upgrade_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Compents\Upgrade\upgrade_flash.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -80,32 +80,39 @@
 #define SYSTEM_TIMER_BASE 1
 #define SEC_DELAY (1000 / SYSTEM_TIMER_BASE) // u16 不能超过65秒
 
+// 旧升级方式 2026.11.4之前
+// #if 0
+// #define HARDWARE_VER 0x0A
+// #define PROCT_NAME "EPS100" // 地埋式
+// #else
+// #define HARDWARE_VER 0x0B
+// #define PROCT_NAME "MPS100" // 表贴式
+// #endif
+
+// 2026.11.4 以后使用新硬件版本区分升级方式
 #if 0
-#define HARDWARE_VER 0x0A
+#define HARDWARE_VER 0x3C
 #define PROCT_NAME "EPS100" // 地埋式
 #else
-#define HARDWARE_VER 0x0B
+#define HARDWARE_VER 0x3D
 #define PROCT_NAME "MPS100" // 表贴式
 #endif
 
-#define SOFTWARE_VER 0x1C
+#define SOFTWARE_VER 0x1E
 
-#define FUNC_LoRaWAN_ABP 0
+/* LoRaWAN region is a runtime configuration since the 0xA0 BLE protocol:
+ * band comes from the flash-backed cfg struct (see LoRaWAN_APPLY.h), this
+ * constant only seeds a blank/erased cfg page. Band codes (module AT+BAND):
+ * 6=CN470 7=CN470B 84=RU864 85=IN865 86=EU868 90=US915 91=AU915
+ * 92=KR920 93..96=AS923-1..4 */
+#define LoRaWAN_DEFAULT_BAND 86
+
+/* 1 = apply custom (non-standard) uplink/downlink FREQ tables per region,
+ * for custom-network deployments only. Stock builds use the module's own
+ * region defaults. */
+#define LORAWAN_CUSTOM_FREQ_ENABLE 0
+
 #define FUNC_LoRaWAN_SAMPLE 1
-
-#define FUNC_LoRaWAN_CN470_0 0 // 通道0-7
-#define FUNC_LoRaWAN_CN470_8 0 // 通道8-15
-#define FUNC_LoRaWAN_CN470A 0  // 通道25-32
-#define FUNC_LoRaWAN_IN865 0
-#define FUNC_LoRaWAN_RU864 0
-#define FUNC_LoRaWAN_EU868 0
-#define FUNC_LoRaWAN_US915 0
-#define FUNC_LoRaWAN_AU915 0
-#define FUNC_LoRaWAN_AU915_0 0
-#define FUNC_LoRaWAN_EU868_TO_US915 0
-#define FUNC_LoRaWAN_EU868_TO_AU915 0
-#define FUNC_LoRaWAN_AS923_AS1 1
-#define FUNC_LoRaWAN_AS923_AS2 0
 
 #define LoRaWAN_DEFAULT_PORT 10
 #define LoRaWAN_DEFAULT_CLASS 0 // 0 – ClassA  2 – ClassC

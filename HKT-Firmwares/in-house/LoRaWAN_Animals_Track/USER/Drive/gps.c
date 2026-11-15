@@ -17,6 +17,82 @@ time_t gps_stamp;
 static u8 processRMC(char *field[], struct gps_fix_t *session);
 static struct gps_fix_t gps_l76k;
 
+/* convergence filter state: a single fix is never reported directly,
+ * fixes are merged into a converged point unless they drift too far */
+static struct
+{
+	double lat;  /* converged latitude, degrees */
+	double lon;  /* converged longitude, degrees */
+	u8 have;     /* anchor point established */
+	u8 valid;    /* converged point is reportable */
+	u16 accept;  /* fixes merged into converged point */
+	u8 reject;   /* consecutive fixes rejected as drift */
+} gps_conv;
+
+/* approx distance in meters between two lat/lon points (equirectangular) */
+static double gps_distance_m(double lat1, double lon1, double lat2, double lon2)
+{
+	double dlat = (lat2 - lat1) * 111194.9;
+	double dlon = (lon2 - lon1) * 111194.9 * cos(lat1 * DEG_2_RAD);
+	return sqrt(dlat * dlat + dlon * dlon);
+}
+
+/* clear convergence state at the start of each locate window */
+static void gps_converge_reset(void)
+{
+	memset(&gps_conv, 0, sizeof(gps_conv));
+}
+
+/* feed one valid fix into the convergence filter */
+static void gps_converge_feed(double lat, double lon)
+{
+	double d;
+
+	if (!gps_conv.have)
+	{
+		/* first fix: anchor only, not reportable yet */
+		gps_conv.lat = lat;
+		gps_conv.lon = lon;
+		gps_conv.have = 1;
+		gps_conv.accept = 1;
+		gps_conv.reject = 0;
+		gps_conv.valid = 0;
+		DEBUG_TRACE(LOG_TAG, "Gps Conv: anchor lat=%.6f lon=%.6f", lat, lon);
+		return;
+	}
+
+	d = gps_distance_m(gps_conv.lat, gps_conv.lon, lat, lon);
+	if (d <= GPS_DRIFT_THRESHOLD_M)
+	{
+		/* within drift gate: merge into converged point (running average) */
+		gps_conv.accept++;
+		gps_conv.lat += (lat - gps_conv.lat) / gps_conv.accept;
+		gps_conv.lon += (lon - gps_conv.lon) / gps_conv.accept;
+		gps_conv.reject = 0;
+		if (gps_conv.accept >= GPS_CONV_MIN_ACCEPT)
+			gps_conv.valid = 1;
+		DEBUG_TRACE(LOG_TAG, "Gps Conv: accept #%d d=%.1fm lat=%.6f lon=%.6f",
+					gps_conv.accept, d, gps_conv.lat, gps_conv.lon);
+	}
+	else
+	{
+		/* drift too large: reject and keep converging on the current point */
+		gps_conv.reject++;
+		DEBUG_TRACE(LOG_TAG, "Gps Conv: reject #%d d=%.1fm lat=%.6f lon=%.6f",
+					gps_conv.reject, d, lat, lon);
+		if (gps_conv.reject >= GPS_CONV_MAX_REJECT)
+		{
+			/* convergence failed N times in a row: adopt latest fix as new anchor */
+			gps_conv.lat = lat;
+			gps_conv.lon = lon;
+			gps_conv.accept = 1;
+			gps_conv.reject = 0;
+			gps_conv.valid = 0;
+			DEBUG_TRACE(LOG_TAG, "Gps Conv: re-anchor to latest lat=%.6f lon=%.6f", lat, lon);
+		}
+	}
+}
+
 void nmea_add_checksum(char *sentence)
 /* add NMEA checksum to a possibly  *-terminated sentence */
 {
@@ -354,6 +430,8 @@ static u8 processRMC(char *field[], struct gps_fix_t *session)
 			/* might cause blinking */
 			session->mode = MODE_2D;
 			session->status = 1;
+			/* raw fix goes through the convergence filter before use */
+			gps_converge_feed(session->latitude, session->longitude);
 		}
 		else
 		{
@@ -424,46 +502,49 @@ static u8 processRMC(char *field[], struct gps_fix_t *session)
 void Gps_Handler(void)
 {
 	static u32 startTimer;
-	static u8 wait_result_count;
+	static u16 wait_result_count; /* 500ms per count */
 	if (startTimer > get_syspant_ms() || !device_t.powerState)
 		return;
 	startTimer = get_syspant_ms() + 500;
 	if (startTimer >= 86400000)
 		startTimer = 0;
 
-	if (gps_stamp <= Timestamp)
+	/* start a new locate window only when idle: a period event arriving
+	 * during an ongoing locate is ignored until that locate finishes */
+	if (!wait_result_count && gps_stamp <= Timestamp)
 	{
-		gps_stamp = Timestamp + device_t.gpsLocateInterval * 60; // 30分钟定位一次
+		gps_stamp = Timestamp + device_t.gpsLocateInterval * 60; 
 		GPIO_GPS_PWR_CTRL_H;									 // 开始GPS模块
 		GPIO_GPS_BPWR_CTRL_H;
 		gps_l76k.latitude = 0; // 清除历史定位记录
 		gps_l76k.longitude = 0;
+		gps_converge_reset(); // 清除收敛滤波状态
 
-		wait_result_count = 180;
+		wait_result_count = GPS_LOCATE_TIMEOUT_S * 2; /* 180s timeout @ 500ms */
 		DEBUG_TRACE(LOG_TAG, "Open Gps Mode Power, Next Read Timestamp: %d, Now Timestamp: %d", gps_stamp, Timestamp);
 	}
 	if (wait_result_count)
 	{
 		wait_result_count--;
 		DEBUG_TRACE(LOG_TAG, "Wait Gps Mode Result: %d", wait_result_count);
-		if (!wait_result_count || gps_l76k.latitude || gps_l76k.latitude)
+		if (!wait_result_count || gps_conv.valid)
 		{
 			wait_result_count = 0;
 			GPIO_GPS_PWR_CTRL_L;
-			// gps_stamp = Timestamp + device_t.gpsLocateInterval * 60; // 30分钟定位一次
+			// gps_stamp = Timestamp + device_t.gpsLocateInterval * 60;
 			DEBUG_TRACE(LOG_TAG, "Close Gps Mode Power, Next Read Timestamp: %d, Now Timestamp: %d", gps_stamp, Timestamp);
 			device_t.syncDeviceState = 1;
-			if (gps_l76k.latitude && gps_l76k.longitude)
+			if (gps_conv.valid) // 上报收敛后的定位点，单个点不再直接生效
 			{
-				if (gps_l76k.longitude >= 0)
-					device_t.sensor_t.longitude = gps_l76k.longitude * 1000000;
+				if (gps_conv.lon >= 0)
+					device_t.sensor_t.longitude = gps_conv.lon * 1000000;
 				else
-					device_t.sensor_t.longitude = (u32)(fabs(gps_l76k.longitude) * 1000000) | 0x80000000;
+					device_t.sensor_t.longitude = (u32)(fabs(gps_conv.lon) * 1000000) | 0x80000000;
 
-				if (gps_l76k.latitude >= 0)
-					device_t.sensor_t.latitude = gps_l76k.latitude * 1000000;
+				if (gps_conv.lat >= 0)
+					device_t.sensor_t.latitude = gps_conv.lat * 1000000;
 				else
-					device_t.sensor_t.latitude = (u32)(fabs(gps_l76k.latitude) * 1000000) | 0x80000000;
+					device_t.sensor_t.latitude = (u32)(fabs(gps_conv.lat) * 1000000) | 0x80000000;
 			}
 			else
 			{

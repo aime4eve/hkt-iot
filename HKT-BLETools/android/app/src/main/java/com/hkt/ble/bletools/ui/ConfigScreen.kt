@@ -40,6 +40,7 @@ import com.hkt.ble.bletools.core.protocol.CommandCode
 import com.hkt.ble.bletools.core.protocol.DeviceFamily
 import com.hkt.ble.bletools.core.protocol.DeviceSnapshot
 import com.hkt.ble.bletools.core.protocol.HKTFrameEncoder
+import com.hkt.ble.bletools.core.protocol.LoRaWANFrame
 import com.hkt.ble.bletools.designsystem.BadgeKind
 import com.hkt.ble.bletools.designsystem.ChoiceCell
 import com.hkt.ble.bletools.designsystem.ConfigCaption
@@ -102,6 +103,10 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
     var showConfirm by remember { mutableStateOf(false) }
     var showSaving by remember { mutableStateOf(false) }
     var tzHint by remember { mutableStateOf<String?>(null) }
+    // 0x8E 电量校准（DC200 家族专属，独立栏独立按钮，不走上方 0x02 保存流）
+    var batteryPct by remember { mutableStateOf("100") }
+    var showBatteryConfirm by remember { mutableStateOf(false) }
+    var batteryBusy by remember { mutableStateOf(false) }
 
     val isUDS = session.family == DeviceFamily.UDS100
     val isSVC = session.family == DeviceFamily.SVC100
@@ -278,12 +283,40 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
                 FormBody(session, draft, errors, zh)
                 Spacer(Modifier.height(12.dp))
                 SaveButton { saveTapped({ errors = it }, { showConfirm = true }) }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "0x02 · " + (if (zh) "载荷" else "payload") + " " +
-                        (if (isUDS) 9 else 4) + " B",
-                    style = hkt(11f), color = c.text2,
-                )
+                if (session.family == DeviceFamily.DC200_FAMILY) {
+                    // 电量校准独立栏（2026-11-14 用户需求，置于保存按钮下方）：按百分比反算已消耗
+                    // 上报次数并落盘环形槽，重启不再回 100%；换新电池校准 100%
+                    Spacer(Modifier.height(12.dp))
+                    ConfigSection(title = if (zh) "电量校准" else "Battery Calibration") {
+                        ConfigInputRow(
+                            label = if (zh) "剩余电量" else "Level",
+                            text = batteryPct,
+                            onTextChange = { batteryPct = it.filter { ch -> ch.isDigit() }.take(3) },
+                            unit = "% · 0–100",
+                        )
+                        Box(Modifier.padding(top = 9.dp)) {
+                            DialogButton(
+                                title = when {
+                                    batteryBusy -> if (zh) "校准中…" else "Calibrating…"
+                                    else -> if (zh) "校准电量" else "Calibrate Battery"
+                                },
+                                kind = DialogButtonKind.PRIMARY,
+                            ) {
+                                if (batteryBusy) return@DialogButton
+                                val pct = batteryPct.trim().toIntOrNull()
+                                if (pct == null || pct !in 0..100) {
+                                    errors = errors + ("battery" to (if (zh) "超出范围 0–100" else "out of range 0–100"))
+                                } else {
+                                    errors = errors - "battery"
+                                    showBatteryConfirm = true
+                                }
+                            }
+                        }
+                        errors["battery"]?.let {
+                            Text("✕ $it", style = hkt(12f), color = c.err, modifier = Modifier.padding(top = 8.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -321,6 +354,41 @@ fun ConfigScreen(session: DeviceSession, onBack: () -> Unit) {
                 Text(if (zh) "正在写入配置…" else "Writing configuration…", style = hkt(16f, FontWeight.Bold), color = c.text)
                 Text("0x02 → ${session.deviceName}", style = hkt(13f), color = c.text2, textAlign = TextAlign.Center)
             }
+        }
+    }
+    if (showBatteryConfirm) {
+        val pct = batteryPct.trim().toIntOrNull() ?: 100
+        Box(
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f))
+                .clickableBox { if (!batteryBusy) showBatteryConfirm = false },
+            contentAlignment = Alignment.Center,
+        ) {
+            HktDialogCard(
+                title = if (zh) "校准电量为 $pct%？" else "Calibrate battery to $pct%?",
+                message = androidx.compose.ui.text.AnnotatedString(
+                    if (zh) "设备将把电池剩余容量设为 $pct% 并立即保存（换新电池选 100）。"
+                    else "Set battery level to $pct% and persist immediately (use 100 for a fresh battery)."
+                ),
+                buttons = listOf(
+                    Triple(if (zh) "取消" else "Cancel", DialogButtonKind.SECONDARY) {
+                        if (!batteryBusy) showBatteryConfirm = false
+                    },
+                    Triple(if (zh) "确认校准" else "Calibrate", DialogButtonKind.PRIMARY) {
+                        showBatteryConfirm = false
+                        scope.launch {
+                            batteryBusy = true
+                            LogStore.info(if (zh) "0x8E 电量校准 $pct% → ${session.deviceName}" else "0x8E battery calib $pct% → ${session.deviceName}")
+                            val acked = session.sendRawAwaitingAck(LoRaWANFrame.batteryCalibFrame(1, pct))
+                            batteryBusy = false
+                            banner = if (acked) BannerKind.OK else BannerKind.FAIL
+                            LogStore.info(
+                                if (acked) (if (zh) "0x8E ACK（校准完成）" else "0x8E ACK (calibrated)")
+                                else (if (zh) "0x8E 等待确认超时（无 ACK）" else "0x8E ACK timeout"),
+                            )
+                        }
+                    },
+                ),
+            )
         }
     }
 }

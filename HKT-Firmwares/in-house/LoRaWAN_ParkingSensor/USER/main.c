@@ -3,6 +3,7 @@
 #include "LoRaWAN_APPLY.h"
 #include "LoRaWAN_ATCMD.h"
 #include "adc.h"
+#include "ble_upgrade.h"
 #include "communicate.h"
 #include "config.h"
 #include "control_center.h"
@@ -116,9 +117,14 @@ int main(void)
     /* Infinite loop */
     while (1) {
         systemLowPowerMode_Process();
-        LoRaWAN_JoinInit();
-        DeviceStateProcess();
+        /* 升级会话期间暂停入网与LoRa数据发送（AT交互/等待空中发射会阻塞主循环，
+         * 拖慢蓝牙升级帧的收发）；传感器照常检测，状态标志积压待升级结束后上报 */
+        if (!upg_ble_active()) {
+            LoRaWAN_JoinInit();
+            DeviceStateProcess();
+        }
         fromUartDataHandle();
+        upg_ble_poll();
         magnetometer_work_process();
         rkb_period_event();
         rkb_calibration_event();
