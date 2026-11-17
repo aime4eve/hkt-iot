@@ -30,7 +30,7 @@ sdk.dir=D\:\\Android\\sdk
 
 ## 1b. macOS 本机（现役开发机，2026-09-21 实测核实）
 
-当前开发在 macOS（Apple Silicon，Xcode 26）。工作区 `/Volumes/DEV/00-products-dev/01-solutions/98-hkt-iot`——**git 根在 monorepo 顶层**（`HKT-BLETools` 与 `HKT-Firmwares`/`HKT-Decoders`/`HKT-DeviceHub` 并列），git 命令在本目录直接跑即可。**本地安装包产物统一放 `releases/`（已 gitignore），不要放仓库根目录。**
+当前开发在 macOS（Apple Silicon，Xcode 26）。工作区 `/Volumes/DEV/00-products-dev/hkt-smart-agentic/L1-hkt-iot`——**git 根在 monorepo 顶层**（`HKT-BLETools` 与 `HKT-Firmwares`/`HKT-Decoders`/`HKT-DeviceHub` 并列），git 命令在本目录直接跑即可。**本地安装包产物统一放 `releases/`（已 gitignore），不要放仓库根目录。**
 
 | 事项 | 实测命令 / 结论 |
 |------|----------------|

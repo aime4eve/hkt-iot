@@ -1,8 +1,8 @@
 
 
-在代码库 /Volumes/DEV/00-products-dev/01-solutions/02-smart-livestock/smart-livestock-server 中调查真实设备遥测接入链路，回答以下问题（搜索广度：medium）： 背景：test 环境两台真实设备 9/12、9/14 各自有数据，9/15（今天）没有数据。设备1 = 瘤胃胶囊 RBC-001a0103ff000265（LoRaWAN 868/CN470 频段），设备2 = 动物追踪器 0095690a00008c91（915 频段，GPS TRACKER 类型）。 请查明： 1. 真实设备遥测有哪几条接入通道？（ThingsBoard TB 通道、中台 agentic platform 同步 job、NS 预置通道等）每条通道的入口类/定时任务类名和文件路径。特别是：瘤胃胶囊数据走哪条/哪几条通道？动物追踪器（TRACKER，GPS）走哪条通道？ 2. 每次遥测入库会写哪些表？device_telemetry_logs 是否每条遥测都写（作为原始入库记录）？temperature_logs / rumen_motility_logs / activity_logs / gps_logs 的写入条件（设备类型、payload 内容）？ 3. devices 表是否有 last_active_at / last_seen 之类的字段，在哪里被更新？设备离线判定/离线告警逻辑在哪？ 4. 中台同步 job 和 TB 通道各自的"同步游标"机制：游标存在哪、如何推进、什么情况下会卡住不推进（例如解析失败、时间 fallback now() 等）？ 5. gps_ingestion_tasks outbox 的调度器逻辑：PENDING/FAILED 状态、重试上限、什么错误会导致任务卡住。 6. 是否存在任何"数据今天突然没有"的代码层可能：例如 30 天数据清理、分区维护、同步窗口上限、轮询频率等定时任务配置。 输出：每个问题给出结论 + 关键类名/文件路径:行号。不要贴大段代码，只给结论和位置。
+在代码库 /Volumes/DEV/00-products-dev/hkt-smart-agentic/L3-smart-livestock/smart-livestock-server 中调查真实设备遥测接入链路，回答以下问题（搜索广度：medium）： 背景：test 环境两台真实设备 9/12、9/14 各自有数据，9/15（今天）没有数据。设备1 = 瘤胃胶囊 RBC-001a0103ff000265（LoRaWAN 868/CN470 频段），设备2 = 动物追踪器 0095690a00008c91（915 频段，GPS TRACKER 类型）。 请查明： 1. 真实设备遥测有哪几条接入通道？（ThingsBoard TB 通道、中台 agentic platform 同步 job、NS 预置通道等）每条通道的入口类/定时任务类名和文件路径。特别是：瘤胃胶囊数据走哪条/哪几条通道？动物追踪器（TRACKER，GPS）走哪条通道？ 2. 每次遥测入库会写哪些表？device_telemetry_logs 是否每条遥测都写（作为原始入库记录）？temperature_logs / rumen_motility_logs / activity_logs / gps_logs 的写入条件（设备类型、payload 内容）？ 3. devices 表是否有 last_active_at / last_seen 之类的字段，在哪里被更新？设备离线判定/离线告警逻辑在哪？ 4. 中台同步 job 和 TB 通道各自的"同步游标"机制：游标存在哪、如何推进、什么情况下会卡住不推进（例如解析失败、时间 fallback now() 等）？ 5. gps_ingestion_tasks outbox 的调度器逻辑：PENDING/FAILED 状态、重试上限、什么错误会导致任务卡住。 6. 是否存在任何"数据今天突然没有"的代码层可能：例如 30 天数据清理、分区维护、同步窗口上限、轮询频率等定时任务配置。 输出：每个问题给出结论 + 关键类名/文件路径:行号。不要贴大段代码，只给结论和位置。
 
-调查完成。以下按问题给出结论（路径均在 `/Volumes/DEV/00-products-dev/01-solutions/02-smart-livestock/smart-livestock-server/src/main/java/com/smartlivestock/` 下，简写为 `…`）。
+调查完成。以下按问题给出结论（路径均在 `/Volumes/DEV/00-products-dev/hkt-smart-agentic/L3-smart-livestock/smart-livestock-server/src/main/java/com/smartlivestock/` 下，简写为 `…`）。
 
 ## 1. 遥测接入通道
 
