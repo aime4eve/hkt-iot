@@ -10,3 +10,6 @@ DerivedData/
 HKT-DeviceHub/.playwright-cli/
 HKT-DeviceHub/.zcode/
 HKT-DeviceHub/output/
+
+# AI editor state
+.zcode/
